@@ -1,0 +1,17 @@
+Package: spicyR
+Type: Package
+Title: Spatial analysis of imaging cytometry data
+Version: 0.1.0
+Author: Nicolas Canete, Heeva Baharlou and Ellis Patrick
+Maintainer: Ellis Patrick <ellis.patrick@sydney.edu.au>
+Description: spicyR provides a series of functions to aid in the analysis of both immunofluorescence and mass cytometry imaging data.
+License: GPL (>=2)
+Encoding: UTF-8
+LazyData: true
+VignetteBuilder: knitr
+Imports:
+    ggplot2,
+    class,
+    concaveman,
+    grid,
+    BiocParallel
