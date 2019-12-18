@@ -1,3 +1,8 @@
+<<<<<<< HEAD
 export('geom_hatching','scale_region','scale_region_manual', 'lisa')
 import('ggplot2','grid','class','concaveman','BiocParallel','S4Vectors')
+=======
+export('geom_hatching','scale_region','scale_region_manual', 'localLCurves','localLCurves2','localLCurves2Inhom', 'localLCurvesInhom')
+import('ggplot2','grid','class','concaveman','BiocParallel','spatstat')
+>>>>>>> fa607a11147fc05722cc15f6b5f45785f1088603
 
