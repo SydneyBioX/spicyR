@@ -1,3 +1,3 @@
 export('geom_hatching','scale_region','scale_region_manual', 'localLCurves','localLCurves2','localLCurves2Inhom', 'localLCurvesInhom')
-import('ggplot2','grid','class','concaveman','BiocParallel')
+import('ggplot2','grid','class','concaveman','BiocParallel','spatstat')
 
