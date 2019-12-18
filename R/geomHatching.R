@@ -109,7 +109,7 @@ hatchingLevels <- function(data, hatching = NULL) {
 
 GeomHatching <- ggproto("GeomHatching", GeomPoint, extra_params = c("na.rm", "line.spacing", 
     "window", "nbp", "line.width"), draw_panel = function(data, panel_params, coord, 
-    na.rm = FALSE, line.spacing = 21, window = FALSE, nbp = 250, line.width = 1) {
+    na.rm = FALSE, line.spacing = 21, window = FALSE, window.length = 21, nbp = 250, line.width = 1) {
     coords <- coord$transform(data, panel_params)
     
     if (is.factor(coords$region)) 
@@ -117,20 +117,10 @@ GeomHatching <- ggproto("GeomHatching", GeomPoint, extra_params = c("na.rm", "li
     if (is.character(coords$region)) 
         coords$region <- as.numeric(as.factor(coords$region))
     
-    ow <- owin(xrange = range(coords$x), yrange = range(coords$y))
-    if (window == "convex") {
-        ch <- chull(coords[, c("x", "y")])
-        poly <- coords[, c("x", "y")][rev(ch), ]
-        colnames(poly) <- c("x", "y")
-        ow <- owin(xrange = range(coords$x), yrange = range(coords$y), poly = poly)
-    }
-    if (window == "concave") {
-        ch <- concaveman(as.matrix(coords[, c("x", "y")]), length = 0.01)
-        poly <- as.data.frame(ch[nrow(ch):1, ])
-        colnames(poly) <- c("x", "y")
-        ow <- owin(xrange = range(poly$x) + c(-0.1, 0.1), yrange = range(poly$y), 
-            poly = poly)
-    }
+    ow <- makeWindow(coords, window, window.length)
+    
+    ow <- makeWindow(coords, window) 
+    
     pp <- ppp(coords$x, coords$y, window = ow, marks = coords$region)
     
     pp$region <- pp$marks
@@ -142,12 +132,12 @@ GeomHatching <- ggproto("GeomHatching", GeomPoint, extra_params = c("na.rm", "li
 
 
 geom_hatching <- function(mapping = NULL, data = NULL, stat = "identity", position = "identity", 
-    na.rm = FALSE, show.legend = NA, inherit.aes = TRUE, line.spacing = 21, window = FALSE, 
+    na.rm = FALSE, show.legend = NA, inherit.aes = TRUE, line.spacing = 21, window = FALSE, window.length = 21,
     nbp = 250, line.width = 1, ...) {
     
     layer(geom = GeomHatching, mapping = mapping, data = data, stat = stat, position = position, 
         show.legend = show.legend, inherit.aes = inherit.aes, params = list(na.rm = na.rm, 
-            line.spacing = line.spacing, window = window, nbp = nbp, line.width = line.width, 
+            line.spacing = line.spacing, window = window, window.length = window.length, nbp = nbp, line.width = line.width, 
             ...))
 }
 

@@ -33,13 +33,13 @@ location <- function(x, image = NULL, bind = FALSE){
 }
 
 
-'location<-' <- function(x, value, bind=FALSE){
+'location<-' <- function(x, value){
   if(nrow(value)==nrow(x)){
   x$location <- value
   return(x)
   }
   
-  if(nrow(value)==length(imageID(x,bind ==TRUE))){
+  if(nrow(value)==length(imageID(x))){
     x$location <- split(value,rep(rownames(x),unlist(lapply(x$location,nrow))))
     return(x)
   }
@@ -49,7 +49,7 @@ location <- function(x, image = NULL, bind = FALSE){
 
 ### Get imageIDs for each cell, not sure if this should also report rownames(df)
 
-imageID <- function(x, image = NULL, bind = FALSE){
+imageID <- function(x, image = NULL){
   if(!is.null(image)){
     x = x[image,]
   }
@@ -63,8 +63,24 @@ cellType <- function(x, image = NULL){
     x = x[image,]
   }
   do.call('rbind',x$location)$cellType
-  }
+}
 
+'cellType<-' <- function(x, value){
+  
+  loc <- location(x, bind = TRUE)
+  
+  if(nrow(loc)!=nrow(x)){
+    stop('There is not enough or too many cell types')
+  }
+  
+  loc$cellType <- value
+  
+  location(x) <- loc
+  
+}
+
+
+### Get cellID
 
 cellID <- function(x, image = NULL){
   if(!is.null(image)){
@@ -72,6 +88,41 @@ cellID <- function(x, image = NULL){
   }
   do.call('rbind',x$location)$cellID
 }
+
+
+'cellID<-' <- function(x, value){
+  
+  loc <- location(x, bind = TRUE)
+  
+  if(nrow(loc)!=nrow(x)){
+    stop('There is not enough or too many cellIDs')
+  }
+  
+  loc$cellID <- value
+  
+  location(x) <- loc
+
+}
+
+
+
+### Get uniqueCellID
+
+uniqueCellID <- function(x, image = NULL){
+  if(!is.null(image)){
+    x = x[image,]
+  }
+  do.call('rbind',x$location)$uniqueCellID
+}
+
+
+makeUniqueCellID <- function(x){
+ loc <- location(x,bind=TRUE)
+ loc$uniqueCellID <- paste('cell', seq_len(nrow(loc)),sep = '')
+ location(x) <- loc
+ x
+}
+
 
 
 
