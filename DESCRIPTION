@@ -15,4 +15,5 @@ Imports:
     concaveman,
     grid,
     BiocParallel,
-    spatstat
+    spatstat.
+    lme4
