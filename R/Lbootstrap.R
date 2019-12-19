@@ -10,11 +10,7 @@ Lbootstrap <- function(cells,
     #TODO: Produce error messages
     # e.g. Missing entries in 'cells', 'from' or 'to' not present in cellTypes
 
-    pppCell <- ppp(cells$x,
-                   cells$y,
-                   xrange = c(0,max(x)),
-                   ytange = c(0,max(y)),
-                   marks = cells$cellType)
+    pppCell <- pppGenerate(cells)
     
     set.seed(seed)
     
