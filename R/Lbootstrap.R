@@ -15,11 +15,12 @@ Lbootstrap <- function(cells,
     set.seed(seed)
     
     E <- spatstat::envelope(pppCell,
-                            Lcross.inhom,
+                            Lcross,
                             nsim = nsim,
-                            i = 'Tumour',
-                            j = 'Tumour',
+                            from = from,
+                            to = to,
                             simulate = expression(rlabel(pppCell)),
+                            correction = "best",
                             global = global, 
                             savepatterns = TRUE)
     
