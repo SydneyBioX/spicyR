@@ -12,8 +12,8 @@
 #' @rdname lisa
 #' @importFrom methods is
 #' @importFrom BiocParallel bplapply SerialParam
-#' @import SegmentedCellExperiment
-lisa <- function(cells, Rs = c(2, 20, 50, 100), BPPARAM = SerialParam(), window = "square", 
+#' @import SegmentedCellExperiment S4Vectors BiocGenerics
+lisa <- function(cells, Rs = NULL, BPPARAM = SerialParam(), window = "square", 
     window.length = NULL) {
     
     if (is.data.frame(cells)) {
@@ -41,13 +41,20 @@ lisa <- function(cells, Rs = c(2, 20, 50, 100), BPPARAM = SerialParam(), window 
             cells$imageID <- "image1"
         }
         
-        location <- split(cells[, c("imageID", "imageCellID", "cellID", "x", "y", 
-            "cellType")], cells$imageID)
+        location <- split(S4Vectors::DataFrame(cells[, c("imageID", "imageCellID", "cellID", "x", "y", 
+            "cellType")]), cells$imageID)
     }
     
     if (is(cells, "SegmentedCellExperiment")) {
         location <- location(cells, bind = FALSE)
     }
+  
+   if (is.null(Rs)){
+     loc = do.call('rbind', location)
+     range <- max(loc$x) - min(loc$x)
+     maxR <- range/5
+     Rs = seq(from = maxR / 20, maxR, length.out = 20)
+   } 
     
     curveList <- BiocParallel::bplapply(location, generateCurves, Rs = Rs, BPPARAM = BPPARAM, 
         window = window, window.length = window.length)

@@ -23,7 +23,7 @@ geom_hatching(
 
 lisa(
   cells,
-  Rs = c(2, 20, 50, 100),
+  Rs = NULL,
   BPPARAM = SerialParam(),
   window = "square",
   window.length = NULL
