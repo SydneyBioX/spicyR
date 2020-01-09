@@ -1,5 +1,6 @@
 ######## Plot the hatchings
-
+#' @importFrom purrr map
+#' @importFrom grid linesGrob gpar gList grobTree
 plotRegions <- function(pp, line.spacing = 21, xrange = c(0, 1), yrange = c(0, 1), 
     nbp = 250, line.width = 1) {
     
@@ -21,7 +22,7 @@ plotRegions <- function(pp, line.spacing = 21, xrange = c(0, 1), yrange = c(0, 1
             g <- linesGrob(x = df$x/rx[2], y = df$y/ry[2], gp = gpar(col = 1, lwd = line.width))
             return(g)
         })
-        cat("before hatchFun", ., "\n")
+        
         hatchFun <- switch(., `1` = hatchNull, `2` = hatch45, `3` = hatch315, `4` = hatch90, 
             `5` = hatch180, `6` = hatchX, `7` = hatchPlus)
         return(c(bdrys, hatchFun(rPoly, width, rx, ry, line.width = line.width)))
@@ -37,25 +38,27 @@ plotRegions <- function(pp, line.spacing = 21, xrange = c(0, 1), yrange = c(0, 1
 
 
 ######## Map predicted regions to a regular grid
-
+#' @importFrom class knn
+#' @importFrom grid linesGrob gpar gList
+#' @importFrom spatstat as.mask
 regionGrid <- function(pp, nbp = 250) {
     ow <- pp$window
     m <- as.mask(ow, dimyx = c(nbp, nbp))$m
     x <- seq(from = ow$xrange[1], to = ow$xrange[2], length.out = nrow(m))
     y <- seq(from = ow$yrange[1], to = ow$yrange[2], length.out = ncol(m))
-    Grid <- expand.grid(x = x, y = y)
-    Grid <- data.frame(x = Grid[, 1], y = Grid[, 2])
+    grid <- expand.grid(x = x, y = y)
+    grid <- data.frame(x = grid[, 1], y = grid[, 2])
     df <- as.data.frame(pp)
     k <- rep(NA, length(m))
-    K <- knn(train = df[, c("x", "y")], test = Grid[t(m)[1:length(m)], ], cl = pp$region, 
+    K <- knn(train = df[, c("x", "y")], test = grid[t(m)[1:length(m)], ], cl = pp$region, 
         k = 1)
     k[t(m)[1:length(m)]] <- as.character(K)
-    return(data.frame(Grid, regions = k))
+    data.frame(grid, regions = k)
 }
 
 
 ######## Convert grid of regions into a polygon mask for a particular region.
-
+#' @importFrom spatstat owin as.polygonal
 regionPoly <- function(grid, region) {
     rx <- range(grid$x)
     ry <- range(grid$y)
@@ -68,6 +71,8 @@ regionPoly <- function(grid, region) {
 
 
 ######## Create line grobs of the hatching
+#' @importFrom purrr map map_dfr
+#' @importFrom grid linesGrob
 
 hatchingLines <- function(rPoly, allHatch, ordColumn, h90 = FALSE, xr, yr, rx, ry, 
     line.width = 1) {

@@ -16,3 +16,4 @@ Imports:
     grid,
     BiocParallel,
     spatstat
+RoxygenNote: 7.0.2
