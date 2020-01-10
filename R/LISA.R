@@ -69,6 +69,7 @@ lisa <- function(cells, Rs = NULL, BPPARAM = SerialParam(), window = "square",
 #' @importFrom spatstat owin
 #' @importFrom concaveman concaveman
 makeWindow <- function(data, window = "square", window.length = 21) {
+  data = data.frame(data)
     ow <- spatstat::owin(xrange = range(data$x), yrange = range(data$y))
     
     if (window == "convex") {
