@@ -5,16 +5,16 @@
 #' @param BPPARAM A BiocParallelParam object.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
+#' @param whichParallel Should the function use parallization on the imageID or the cellType.
 #' 
 #' @examples
 #' 1+1
 #' @export
 #' @rdname lisa
 #' @importFrom methods is
-#' @importFrom BiocParallel bplapply SerialParam
-#' @import SegmentedCellExperiment S4Vectors BiocGenerics
-lisa <- function(cells, Rs = NULL, BPPARAM = SerialParam(), window = "square", 
-    window.length = NULL) {
+#' @import SegmentedCellExperiment S4Vectors BiocGenerics BiocParallel
+lisa <- function(cells, Rs = NULL, BPPARAM = BiocParallel::SerialParam(), window = "square", 
+    window.length = NULL, whichParallel = 'imageID') {
     
     if (is.data.frame(cells)) {
         if (is.null(cells$cellID)) {
@@ -55,9 +55,14 @@ lisa <- function(cells, Rs = NULL, BPPARAM = SerialParam(), window = "square",
      maxR <- range/5
      Rs = seq(from = maxR / 20, maxR, length.out = 20)
    } 
+  
+  BPimage = BPcellType = BiocParallel::SerialParam()
+  if(whichParallel == 'imageID') BPimage <- BPPARAM
+  if(whichParallel == 'cellType') BPcellType <- BPPARAM
+
     
-    curveList <- BiocParallel::bplapply(location, generateCurves, Rs = Rs, BPPARAM = BPPARAM, 
-        window = window, window.length = window.length)
+    curveList <- BiocParallel::bplapply(location, generateCurves, Rs = Rs, 
+        window = window, window.length = window.length, BPcellType = BPcellType, BPPARAM = BPimage)
     
     curves <- do.call("rbind", curveList)
     curves <- curves[location(cells)$cellID, ]
@@ -96,13 +101,14 @@ makeWindow <- function(data, window = "square", window.length = 21) {
 
 #' @importFrom spatstat ppp
 #' @importFrom spatstat localLcross
-generateCurves <- function(data, Rs, window, window.length, ...) {
+#' @importFrom BiocParallel bplapply
+generateCurves <- function(data, Rs, window, window.length, BPcellType = BPcellType, ...) {
     
     ow <- makeWindow(data, window, window.length)
     p1 <- spatstat::ppp(x = data$x, y = data$y, window = ow, marks = as.factor(data$cellType))
     
     
-    locIJ <- lapply(as.list(levels(p1$marks)), function(j) {
+    locIJ <- BiocParallel::bplapply(as.list(levels(p1$marks)), function(j) {
         
         locI <- lapply(as.list(levels(p1$marks)), function(i) {
             
@@ -124,7 +130,7 @@ generateCurves <- function(data, Rs, window, window.length, ...) {
             locR
         })
         do.call("rbind", locI)
-    })
+    }, BPPARAM = BPcellType)
     do.call("cbind", locIJ)
 }
 

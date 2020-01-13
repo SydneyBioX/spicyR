@@ -5,12 +5,12 @@ author:
 - name: Nicolas Canete
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
-  email: nicolas.canete@ydney.edu.au
+  email: nicolas.canete@sydney.edu.au
 - name: Ellis Patrick
   affiliation:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
-  email: ellis.patrick@ydney.edu.au
+  email: ellis.patrick@sydney.edu.au
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
   %\VignetteIndexEntry{"lisaClust"}

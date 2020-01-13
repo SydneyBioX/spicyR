@@ -24,9 +24,10 @@ geom_hatching(
 lisa(
   cells,
   Rs = NULL,
-  BPPARAM = SerialParam(),
+  BPPARAM = BiocParallel::SerialParam(),
   window = "square",
-  window.length = NULL
+  window.length = NULL,
+  whichParallel = "imageID"
 )
 }
 \arguments{
@@ -59,6 +60,8 @@ A function will be called with a single argument, the plot data. The return valu
 \item{Rs}{A vector of the radii that the measures of association should be calculated.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
+
+\item{whichParallel}{Should the function use parallization on the imageID or the cellType.}
 
 \item{Position}{adjustment, either as a string, or the result of a call to a position adjustment function.}
 
