@@ -1,20 +1,24 @@
-getStat <- function(pppCell, from, to, dist) {
-  L <- Lcross(cell, from=from, to=to, correction="best")
-  
-  r <- L$r[L$r <= d]
-  iso = L$iso[L$r <= d]
-  factor = min(r[r > 0])
-  
-  sum(iso)*factor
-  
-  r = LVal$r[LVal$r<=d]
-  iso = LVal$iso[LVal$r<=d]
-  statmat[i,j] = max(iso)
-  
+getStat <- function(cells, from, to, d) {
+    pppCell <- pppGenerate(cells)
+    
+    L <- spatstat::Lcross(pppCell, from=from, to=to, correction="best")
+    
+    r <- L$r[L$r <= d]
+    iso = L$iso[L$r <= d]
+    factor = min(r[r > 0])
+    
+    sum(iso)*factor
+    
+    r = L$r[L$r<=d]
+    iso = L$iso[L$r<=d]
+    
+    max(iso)
 }
 
-getStat2 <- function(pppCell, from, to, dist) {
-    L <- Lcross(cell, from=from, to=to, correction="best")
+getStat2 <- function(cells, from, to, d) {
+    pppCell <- pppGenerate(cells)
+    
+    L <- spatstat::Lcross(pppCell, from=from, to=to, correction="best")
     
     r <- L$r[L$r <= d]
     iso = L$iso[L$r <= d]
@@ -22,11 +26,34 @@ getStat2 <- function(pppCell, from, to, dist) {
     max(iso)
 }
 
-getPairwise <- function(cells, from, to, dist=50, integrate=TRUE){
-    cellSplit <- split(cells,cells$patient)
-    pppCell <- lapply(cellSplit,pppGenerate)
+getPairwise <- function(x, from, to, dist=50, integrate=TRUE) {
+    if (is(x, "SegmentedCellExperiment")) {
+      cells <- location(cellExp, bind = FALSE)
+    } else if (is(x, "data.frame")) {
+      cells <- split(x, x$imageID)
+    } else {
+      stop("x is not a data.frame or SegmentedCellExperiment")
+    }
+  
+    pairwiseVals <- lapply(cells, 
+                           getStat, 
+                           from = "CD8-PD1-PDL1-",
+                           to = "CD8-PD1-PDL1-",
+                           d = 50)
     
-    if (integrate) lapply(pppCell, getStat, from, to, dist)
-    else lapply(pppCell, getStat2, from, to, dist)
+    if (integrate) {
+        pairwiseVals <- lapply(cells, 
+                               getStat, 
+                               from = "CD8-PD1-PDL1-",
+                               to = "CD8-PD1-PDL1-",
+                               d = 50)
+    } else {
+        pairwiseVals <- lapply(cells, 
+                               getStat, 
+                               from = "CD8-PD1-PDL1-",
+                               to = "CD8-PD1-PDL1-",
+                               d = 50)
+    }
+    
+    unlist(pairwiseVals)
 }
-
