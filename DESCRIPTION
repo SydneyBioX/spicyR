@@ -15,5 +15,5 @@ Imports:
     concaveman,
     grid,
     BiocParallel,
-    spatstat.
-    lme4
+    spatstat
+RoxygenNote: 7.0.2

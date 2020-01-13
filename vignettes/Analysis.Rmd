@@ -1,0 +1,101 @@
+---
+title: "Clustering of Local Indicators of Spatial Assocation (LISA) curves"
+date: "`r BiocStyle::doc_date()`"
+author:
+- name: Nicolas Canete
+  affiliation:  
+  - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+  email: ncan4475@uni.sydney.edu.au
+- name: Ellis Patrick
+  affiliation:
+  - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+  - School of Mathematics and Statistics, University of Sydney, Australia
+package: "`r BiocStyle::pkg_ver('spicyR')`"
+vignette: >
+  %\VignetteIndexEntry{"lisaClust"}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---
+
+
+```{r message=FALSE}
+# load required packages
+    library(spicyR)
+library(tidyverse)
+
+```
+ 
+
+# Overview
+
+The folowing will provide a step-by-step guide to a typical analysis of cyclic immunofluorescence images. These step will include:
+
+- Loading data.
+- Image registration.
+- Cell segmentation.
+- Autofluorescence removal.
+- Cell subtype classification.
+- Tissue compartment estimation.
+- Cell density analysis.
+- Nearest neighbours community analysis.
+- Differential interaction analysis.
+
+```{r eval=F}
+set.seed(51773)
+x <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
+           runif(200)+3,runif(200)+2,runif(200)+1,runif(200)),4)
+y <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
+             runif(200),runif(200)+1,runif(200)+2,runif(200)+3),4)
+
+cells <- data.frame(x,y,cellType = factor(paste('c',rep(rep(c(1:2),rep(200,2)),4),sep = '')), imageID = rep(c('s1', 's2'),c(800,800)))
+
+ggplot(cells, aes(x,y, colour = cellType)) + geom_point() + facet_wrap(~imageID)
+
+
+
+
+cellExp <- SegmentedCellExperiment(cells, cellTypeString = 'cellType')
+
+LCurves <- lisa(cellExp, Rs = c(0.01,0.1, 0.5, 1))
+
+kM <- kmeans(LCurves,2)
+
+region(cellExp) <- paste('region',kM$cluster,sep = '_')
+
+df <- region(cellExp, image = 's1', annot = TRUE)
+
+hatchingPlot(cellExp)
+
+p <- ggplot(df, aes(x = x,y = y, colour = cellType)) + geom_point() + geom_hatching(aes(region = region),show.legend = TRUE, window = "concave", line.spacing = 21, nbp = 250, window.length = 0)
+q = p  + theme_minimal()+ scale_region()
+q
+
+
+df <- region(cellExp, image = 's2', annot = TRUE)
+
+p <- ggplot(df, aes(x = x,y = y, colour = cellType)) + geom_point() + geom_hatching(aes(region = region),show.legend = TRUE, window = "concave", line.spacing = 21, nbp = 250, window.length = 0)
+q = p  + theme_minimal()+ scale_region()
+q
+
+
+df <- region(cellExp, image = c('s1','s2'), annot = TRUE)
+
+p <- ggplot(df, aes(x = x,y = y, colour = cellType)) + geom_point() + facet_wrap(~imageID) + geom_hatching(aes(region = region),show.legend = TRUE, window = "concave", line.spacing = 21, nbp = 250, window.length = 0)
+q = p  + theme_minimal()+ scale_region()
+q
+
+p <- ggplot(df,aes(x = x,y = y, colour = marks)) + geom_point() + geom_hatching(aes(region = region),show.legend = TRUE, window = "concave", line.spacing = 51, nbp = 250, line.width = 1.5)
+q = p  + theme_minimal()+ scale_region_manual(values = 6:7)
+q
+
+
+p <- ggplot(df,aes(x = x,y = y, colour = marks, region = region)) + geom_point() + geom_hatching(window = "concave", line.spacing = 51, nbp = 250, line.width = 1.5)
+q = p  + theme_minimal()+ scale_region_manual(values = 6:7, labels = c('ab','cd'))
+q
+
+
+```
+
+
