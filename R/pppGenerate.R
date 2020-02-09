@@ -1,6 +1,3 @@
-#TODO: Add contingencies
-#TODO: Make this function non-accessible?
-
 pppGenerate <- function(cells) {
     pppCell <- spatstat::ppp(cells$x,
                              cells$y,
