@@ -337,7 +337,6 @@ spatialREMForMulti <- function(pairwise, from, to, cells, phenotype, nsim) {
   z1 <- gam(z~ti(count1,count2))
   w <- 1/sqrt(z1$fitted.values-min(z1$fitted.values)+1)
   w <- w/sum(w)
-  w <- unname(tapply(w, (seq_along(w)-1) %/% 100, sum))
 
   mixed.lmer <- lmer(Pair ~ Condition + (1|Donor),
                            data = spatialData,
