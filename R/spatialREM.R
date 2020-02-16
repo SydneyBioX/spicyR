@@ -334,11 +334,7 @@ spatialREMForMulti <- function(pairwise, from, to, cells, phenotype, nsim) {
 
   z <- (spatialData$Pair-mean(spatialData$Pair))^2
 
-  count1Rep <- rep(count1, each = 100)
-  count2Rep <- rep(count2, each = 100)
-  zRep <- rep(z, each = 100)
-
-  z1 <- gam(zRep~ti(count1Rep,count2Rep))
+  z1 <- gam(z~ti(count1,count2))
   w <- 1/sqrt(z1$fitted.values-min(z1$fitted.values)+1)
   w <- w/sum(w)
   w <- unname(tapply(w, (seq_along(w)-1) %/% 100, sum))
