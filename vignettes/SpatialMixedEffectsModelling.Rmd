@@ -1,0 +1,114 @@
+---
+title: "Spatial Mixed-Effects Modelling"
+date: "`r BiocStyle::doc_date()`"
+author:
+- name: Nicolas Canete
+  affiliation:  
+  - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+  email: ncan4475@uni.sydney.edu.au
+- name: Ellis Patrick
+  affiliation:
+  - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+  - School of Mathematics and Statistics, University of Sydney, Australia
+package: "`r BiocStyle::pkg_ver('spicyR')`"
+vignette: >
+  %\VignetteIndexEntry{"lisaClust"}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---
+
+
+```{r warning=F, message=F}
+# load required packages
+library(spicyR)
+library(SegmentedCellExperiment)
+library(ggplot2)
+```
+ 
+
+# Overview
+The folowing will provide a step-by-step guide on how to use mixed-effects models to analyse multiple image datasets.
+
+# mixed-effects modelling
+
+## Reading in the data
+
+```{r echo=F}
+cells <- readRDS("/Users/nick/Desktop/cellExpTest2.rds")
+```
+
+Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.
+```{r}
+head(location(cells))
+head(phenotype(cells))
+```
+Note that `cellType` can be some combination of the expression of CD8, PD1 or PDL1, or is SOX10+.
+
+## Obtaining measure of localisation
+Here, we use the `pairwise` funciton to measure the degree of pairwise localisation between CD8+PD1+PDL1+ cells.
+```{r}
+pairwiseVals <- getPairwise(cells, from = "CD8+PD1+PDL1+", to = "CD8+PD1+PDL1+")
+```
+
+We can produce boxplots to see if any differences exist within our two conditions.
+```{r}
+spatialData <- data.frame(Pairwise = pairwiseVals,
+                          Condition = phenotype(cells)$condition)
+
+ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
+    geom_boxplot() +
+    theme_classic()
+```
+Indeed, there appears to be an increase in the localisation of CD8+PD1+PDL1+ cells.
+
+## Performing mixed-effects modelling
+Now we need to obtain a vector of the corresponding donor, condition, and cell counts for each image.
+```{r}
+donor <- phenotype(cells)$donor
+condition <- phenotype(cells)$condition
+
+cellSplit <- location(cells, bind = FALSE)
+count <- unlist(lapply(cellSplit, 
+                       function(x) sum(x$cellType == "CD8+PD1+PDL1+")))
+count <- as.numeric(count)
+```
+
+Finally, we can use `spatialREM` to perform mixed-effects modelling.
+```{r}
+mixed.lmer <- spatialREM(pairwiseVals, 
+                         donor = donor, 
+                         condition = condition, 
+                         count1 = count, 
+                         count2 = count)
+
+summary(mixed.lmer)
+```
+
+Here we find that there is a decrease in the localisation of CD8+PD1+PDL1+ cells between the Non-Responders and the Responders, with a p-value of 0.00804.
+
+## Performing random effects modelling and bootstrapping
+To obtain more precise p-values, we can use bootstrap by resampling the data and using the gradient as a statistic. This is performed using `spatialREMBootstrap`.
+```{r}
+set.seed(51773)
+pVal <- spatialREMBootstrap(mixed.lmer, nsim = 999)
+pVal
+```
+Again, we find that there is a decrease in the localisation of CD8+PD1+PDL1+ cells between the Non-Responders and the Responders, with a p-value of 0.
+
+# Mixed-effects modelling on all pairwise cell type combinations
+We can perform mixed-effects modelling as above on all pairwise cell type combinations using `spatialREMMulti`. We can specify whether or not to use bootstrapping to obtain p-values by setting the parameter `nsim`. For speed, we simply set it to the default `NULL`.
+```{r}
+df <- spatialREMMulti(cells, nsim = NULL)
+head(df)
+```
+We get a data frame of p-values for each pairwise comparison. We can represent this as a heatmap using the `spatialREMMultiPlot` function.
+```{r}
+spatialREMMultiPlot(df,
+                    fdr = FALSE,
+                    breaks = c(-4,4,0.5),
+                    col=c("blue", "white", "red"))
+```
+The vertical axis represents the 'from' cells, while the horizontal axis represents the 'to' cells. Negative values represent a decrease in localisation between the two groups.
+
