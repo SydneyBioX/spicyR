@@ -5,7 +5,9 @@ library(SegmentedCellExperiment)
 library(ggplot2)
 
 ## ----echo=F-------------------------------------------------------------------
-cells <- readRDS("/Users/nick/Desktop/cellExpTest2.rds")
+cellFile <- system.file("extdata","responderData.rds", 
+                        package = "spicyR")
+cells <- readRDS(cellFile)
 
 ## -----------------------------------------------------------------------------
 head(location(cells))

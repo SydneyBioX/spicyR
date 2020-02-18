@@ -36,7 +36,9 @@ The folowing will provide a step-by-step guide on how to use mixed-effects model
 ## Reading in the data
 
 ```{r echo=F}
-cells <- readRDS("/Users/nick/Desktop/cellExpTest2.rds")
+cellFile <- system.file("extdata","responderData.rds", 
+                        package = "spicyR")
+cells <- readRDS(cellFile)
 ```
 
 Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.
