@@ -47,7 +47,7 @@ NULL
   cat("Number of cells:", length(cellID(object)),'\n')
   
   uniqueCellTypes <- unique(cellType(object))
-  .showCat("Number of cell types: ", uniqueCellTypes)
+  .showCat("Number of cell types: ", as.character(uniqueCellTypes))
   
   .showCat("Number of intensities: ", colnames(object[1,'intensity'][[1]]))
   
