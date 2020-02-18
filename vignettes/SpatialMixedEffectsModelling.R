@@ -23,20 +23,10 @@ ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
     theme_classic()
 
 ## -----------------------------------------------------------------------------
-subject <- phenotype(cells)$subject
-condition <- phenotype(cells)$condition
-
-cellSplit <- location(cells, bind = FALSE)
-count <- unlist(lapply(cellSplit, 
-                       function(x) sum(x$cellType == "CD8+PD1+PDL1+")))
-count <- as.numeric(count)
-
-## -----------------------------------------------------------------------------
-mixed.lmer <- spatialREM(pairwiseVals, 
-                         subject = subject, 
-                         condition = condition, 
-                         count1 = count, 
-                         count2 = count)
+mixed.lmer <- spatialREM(cells,
+                         pairwise = pairwiseVals, 
+                         from = "CD8+PD1+PDL1+", 
+                         to = "CD8+PD1+PDL1+")
 
 summary(mixed.lmer)
 

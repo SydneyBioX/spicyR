@@ -254,25 +254,16 @@ ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
 </div>
 <div id="performing-mixed-effects-modelling" class="section level2">
 <h2><span class="header-section-number">2.3</span> Performing mixed-effects modelling</h2>
-<p>Now we need to obtain a vector of the corresponding subject, condition, and cell counts for each image.</p>
-<pre class="r"><code>subject &lt;- phenotype(cells)$subject
-condition &lt;- phenotype(cells)$condition
-
-cellSplit &lt;- location(cells, bind = FALSE)
-count &lt;- unlist(lapply(cellSplit, 
-                       function(x) sum(x$cellType == &quot;CD8+PD1+PDL1+&quot;)))
-count &lt;- as.numeric(count)</code></pre>
 <p>Finally, we can use <code>spatialREM</code> to perform mixed-effects modelling.</p>
-<pre class="r"><code>mixed.lmer &lt;- spatialREM(pairwiseVals, 
-                         subject = subject, 
-                         condition = condition, 
-                         count1 = count, 
-                         count2 = count)
+<pre class="r"><code>mixed.lmer &lt;- spatialREM(cells,
+                         pairwise = pairwiseVals, 
+                         from = &quot;CD8+PD1+PDL1+&quot;, 
+                         to = &quot;CD8+PD1+PDL1+&quot;)
 
 summary(mixed.lmer)</code></pre>
 <pre><code>## Linear mixed model fit by REML. t-tests use Satterthwaite's method [
 ## lmerModLmerTest]
-## Formula: Pair ~ Condition + (1 | subject)
+## Formula: Pair ~ Condition + (1 | Subject)
 ##    Data: spatialData
 ## Weights: w
 ## 
@@ -284,9 +275,9 @@ summary(mixed.lmer)</code></pre>
 ## 
 ## Random effects:
 ##  Groups   Name        Variance Std.Dev.
-##  subject  (Intercept) 47.780   6.912   
+##  Subject  (Intercept) 47.780   6.912   
 ##  Residual              7.185   2.680   
-## Number of obs: 80, groups:  subject, 22
+## Number of obs: 80, groups:  Subject, 22
 ## 
 ## Fixed effects:
 ##                     Estimate Std. Error      df t value Pr(&gt;|t|)    

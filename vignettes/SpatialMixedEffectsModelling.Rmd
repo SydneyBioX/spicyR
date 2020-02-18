@@ -64,24 +64,13 @@ ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
 Indeed, there appears to be an increase in the localisation of CD8+PD1+PDL1+ cells.
 
 ## Performing mixed-effects modelling
-Now we need to obtain a vector of the corresponding subject, condition, and cell counts for each image.
-```{r}
-subject <- phenotype(cells)$subject
-condition <- phenotype(cells)$condition
-
-cellSplit <- location(cells, bind = FALSE)
-count <- unlist(lapply(cellSplit, 
-                       function(x) sum(x$cellType == "CD8+PD1+PDL1+")))
-count <- as.numeric(count)
-```
 
 Finally, we can use `spatialREM` to perform mixed-effects modelling.
 ```{r}
-mixed.lmer <- spatialREM(pairwiseVals, 
-                         subject = subject, 
-                         condition = condition, 
-                         count1 = count, 
-                         count2 = count)
+mixed.lmer <- spatialREM(cells,
+                         pairwise = pairwiseVals, 
+                         from = "CD8+PD1+PDL1+", 
+                         to = "CD8+PD1+PDL1+")
 
 summary(mixed.lmer)
 ```
