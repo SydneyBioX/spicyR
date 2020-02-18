@@ -15,7 +15,7 @@ spatialREMMulti(
 )
 }
 \arguments{
-\item{x}{A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
+\item{x}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
 
 \item{whichCondition}{Vector containing the two conditions to be analysed.}
 

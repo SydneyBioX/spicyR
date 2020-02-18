@@ -23,7 +23,6 @@ output:
 ```{r warning=F, message=F}
 # load required packages
 library(spicyR)
-library(SegmentedCellExperiment)
 library(ggplot2)
 ```
  

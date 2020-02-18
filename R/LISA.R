@@ -1,6 +1,6 @@
 #' Generate local indicators of spatial association
 #'
-#' @param cells A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param cells A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
 #' @param Rs A vector of the radii that the measures of association should be calculated.
 #' @param BPPARAM A BiocParallelParam object.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
@@ -12,7 +12,7 @@
 #' @export
 #' @rdname lisa
 #' @importFrom methods is
-#' @import SegmentedCellExperiment S4Vectors BiocGenerics BiocParallel
+#' @import S4Vectors BiocGenerics BiocParallel
 lisa <- function(cells, Rs = NULL, BPPARAM = BiocParallel::SerialParam(), window = "square", 
     window.length = NULL, whichParallel = 'imageID') {
     
@@ -45,7 +45,7 @@ lisa <- function(cells, Rs = NULL, BPPARAM = BiocParallel::SerialParam(), window
             "cellType")]), cells$imageID)
     }
     
-    if (is(cells, "SegmentedCellExperiment")) {
+    if (is(cells, "segmentedCells")) {
         location <- location(cells, bind = FALSE)
     }
   

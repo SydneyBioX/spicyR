@@ -1,6 +1,6 @@
 #' Get statistic from pairwise L curve of a single image.
 #'
-#' @param x A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param x A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
 #' @param dist The distance at which the statistic is obtained.
@@ -9,16 +9,16 @@
 #' @return Statistic from pairwise L curve of a single image.
 #' @export
 #' 
-#' @import SegmentedCellExperiment spatstat
+#' @import spatstat
 #'
 #' @examples
 getPairwise <- function(x, from, to, dist=50, integrate=TRUE) {
-  if (is(x, "SegmentedCellExperiment")) {
+  if (is(x, "segmentedCells")) {
     cells <- location(x, bind = FALSE)
   } else if (is(x, "data.frame")) {
     cells <- split(x, x$imageID)
   } else {
-    stop("x is not a data.frame or SegmentedCellExperiment")
+    stop("x is not a data.frame or segmentedCells")
   }
   
   if (integrate) {
@@ -109,13 +109,13 @@ getStat2 <- function(cells, from, to, dist) {
 
 #' Perform mixed-effects modelling on spatial statistics.
 #'
-#' @param x A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param x A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
 #' @param subject Vector of subject IDs corresponding to each image.
 #' @param condition Vector of conditions corresponding to each image.
 #' @param count1 Vector of the number of 'from' cells corresponding to each image.
 #' @param count2 Vector of the number of 'to' cells corresponding to each image.
 #'
-#' @return SegmentedCellExperiment lmerModLmerTest object.
+#' @return segmentedCells lmerModLmerTest object.
 #' @export
 #' 
 #' @import lme4 lmerTest mgcv
@@ -184,7 +184,7 @@ spatialREMBootstrap <- function(mixed.lmer, nsim=19) {
 
 #' Performs multiple mixed-effects modelling on spatial statistics.
 #'
-#' @param x A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param x A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
 #' @param whichCondition Vector containing the two conditions to be analysed.
 #' @param dist The distance at which the statistic is obtained.
 #' @param integrate Should the statistic be the integral from 0 to dist, or the value of the L curve at dist.
@@ -195,7 +195,7 @@ spatialREMBootstrap <- function(mixed.lmer, nsim=19) {
 #' @return Data frame of p-values.
 #' @export
 #'
-#' @import SegmentedCellExperiment lme4 lmerTest
+#' @import lme4 lmerTest
 #'
 #' @examples
 spatialREMMulti <- function(x,
@@ -206,7 +206,7 @@ spatialREMMulti <- function(x,
                             condition=NULL,
                             nsim=NULL) {
 
-  if (is(x, "SegmentedCellExperiment")) {
+  if (is(x, "segmentedCells")) {
     cells <- location(x, bind = FALSE)
     phenotype <- phenotype(x)
     condition <- phenotype$condition
@@ -242,7 +242,7 @@ spatialREMMulti <- function(x,
 
     m <- as.character(unique(x$cellType))
   } else {
-    stop("x is not a data.frame, DataFrame or SegmentedCellExperiment")
+    stop("x is not a data.frame, DataFrame or segmentedCells")
   }
 
   if (length(unique(condition)) != 2) {

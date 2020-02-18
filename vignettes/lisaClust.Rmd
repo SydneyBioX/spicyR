@@ -24,7 +24,7 @@ output:
 ```{r message=FALSE}
 # load required packages
 library(spicyR)
-library(tidyverse)
+library(ggplot2)
 
 ```
  
@@ -61,7 +61,7 @@ ggplot(cells, aes(x,y, colour = cellType)) + geom_point() + facet_wrap(~imageID)
 
 ```{r}
 
-cellExp <- SegmentedCellExperiment(cells, cellTypeString = 'cellType')
+cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
 
 
 ```

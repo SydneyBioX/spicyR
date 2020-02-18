@@ -7,7 +7,7 @@
 spatialREM(x, subject, condition, count1, count2)
 }
 \arguments{
-\item{x}{A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
+\item{x}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
 
 \item{subject}{Vector of subject IDs corresponding to each image.}
 
@@ -18,7 +18,7 @@ spatialREM(x, subject, condition, count1, count2)
 \item{count2}{Vector of the number of 'to' cells corresponding to each image.}
 }
 \value{
-SegmentedCellExperiment lmerModLmerTest object.
+segmentedCells lmerModLmerTest object.
 }
 \description{
 Perform mixed-effects modelling on spatial statistics.

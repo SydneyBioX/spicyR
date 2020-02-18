@@ -25,7 +25,6 @@
 #' @rdname lisa
 #' @importFrom methods is
 #' @importFrom BiocParallel bplapply
-#' @import SegmentedCellExperiment
 geom_hatching <- function(mapping = NULL, data = NULL, stat = "identity", position = "identity", 
     na.rm = FALSE, show.legend = NA, inherit.aes = TRUE, line.spacing = 21, window = "square", 
     window.length = 0, nbp = 250, line.width = 1, ...) {
