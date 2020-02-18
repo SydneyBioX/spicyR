@@ -13,37 +13,12 @@
 #'
 #' @examples
 getPairwise <- function(x, from, to, dist=50, integrate=TRUE) {
-<<<<<<< HEAD
-  if (is(x, "segmentedCells")) {
-    cells <- location(x, bind = FALSE)
-  } else if (is(x, "data.frame")) {
-    cells <- split(x, x$imageID)
-  } else {
-    stop("x is not a data.frame or segmentedCells")
-  }
-  
-  if (integrate) {
-    pairwiseVals <- lapply(cells, 
-                           getStat, 
-                           from = from,
-                           to = to,
-                           dist = dist)
-  } else {
-    pairwiseVals <- lapply(cells, 
-                           getStat2, 
-                           from = from,
-                           to = to,
-                           dist = dist)
-  }
-  
-  unlist(pairwiseVals)
-=======
-    if (is(x, "SegmentedCellExperiment")) {
+    if (is(x, "segmentedCells")) {
         cells <- location(x, bind = FALSE)
     } else if (is(x, "data.frame")) {
         cells <- split(x, x$imageID)
     } else {
-        stop("x is not a data.frame or SegmentedCellExperiment")
+        stop("x is not a data.frame or segmentedCells")
     }
     
     if (integrate) {
@@ -61,7 +36,6 @@ getPairwise <- function(x, from, to, dist=50, integrate=TRUE) {
     }
     
     unlist(pairwiseVals)
->>>>>>> master
 }
 
 #' Title
@@ -135,14 +109,8 @@ getStat2 <- function(cells, from, to, dist) {
 
 #' Perform mixed-effects modelling on spatial statistics.
 #'
-<<<<<<< HEAD
 #' @param x A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
-#' @param subject Vector of subject IDs corresponding to each image.
-=======
-#' @param x A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
 #' @param pairwise Statistic from pairwise L curve of a single image
->>>>>>> master
-#' @param condition Vector of conditions corresponding to each image.
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
 #'
@@ -247,105 +215,8 @@ spatialREMMulti <- function(x,
                             condition=NULL,
                             nsim=NULL) {
 
-<<<<<<< HEAD
-  if (is(x, "segmentedCells")) {
-    cells <- location(x, bind = FALSE)
-    phenotype <- phenotype(x)
-    condition <- phenotype$condition
 
-    if (length(whichCondition) == 0) {
-      imagesToGet <- which(condition %in% unique(condition)[c(1,2)])
-      cells <- cells[imagesToGet]
-      phenotype <- phenotype[imagesToGet,]
-    } else if (length(whichCondition) == 2) {
-      imagesToGet <- which(condition %in% whichCondition)
-      cells <- cells[imagesToGet]
-      phenotype <- phenotype[imagesToGet,]
-      condition <- condition[imagesToget]
-    } else (
-      stop("Two conditions are required")
-    )
-
-    m <- as.character(unique(location(x)$cellType))
-
-  } else if (is(x, "data.frame")  | is(x, "DataFrame")) {
-
-    if (length(condition==0)) {
-      stop("Specify the conditions")
-    } else if (length(subject==0)) {
-      stop("Specify the subjects")
-    }
-
-    cells <- x
-    cells <- split(cells, cells$imageID)
-    phenotype <- data.frame(imageID = unique(cells$imageID),
-                            condition = condition,
-                            subject = subject)
-
-    m <- as.character(unique(x$cellType))
-  } else {
-    stop("x is not a data.frame, DataFrame or segmentedCells")
-  }
-
-  if (length(unique(condition)) != 2) {
-    stop("There must be two unique conditions")
-  }
-
-  m1 <- rep(m, times = length(m))
-  m2 <- rep(m, each = length(m))
-
-  labels <- paste(m1, m2, sep="_")
-
-  MoreArgs1 <- list(x = x, dist = dist, integrate = integrate)
-
-  pairwise <- mapply(getPairwise,
-                     from = m1,
-                     to = m2,
-                     MoreArgs = MoreArgs1)
-
-  pairwise[is.na(pairwise)] <- NA
-
-  pairwise <- as.list(data.frame(pairwise))
-  names(pairwise) <- labels
-
-  MoreArgs2 <- list(cells = cells, phenotype = phenotype, nsim = nsim)
-
-  mixed.lmer <- mapply(spatialREMForMulti,
-                       pairwise = pairwise,
-                       from = m1,
-                       to = m2,
-                       MoreArgs = MoreArgs2,
-                       SIMPLIFY = FALSE)
-
-  if (length(nsim) > 0) {
-    p <- lapply(mixed.lmer, spatialREMBootstrap, nsim = nsim)
-
-    p <- do.call(rbind, p)
-
-    df <- data.frame(From = m1,
-                     To = m2,
-                     Greater = unname(p[,1]),
-                     Lesser = unname(p[,2]))
-
-    df
-  } else {
-
-    p <- do.call(rbind, mixed.lmer)
-
-    df <- data.frame(From = m1,
-                     To = m2,
-                     Greater = rep(1, nrow(p)),
-                     Lesser = rep(1, nrow(p)))
-
-    df[p[,1]==1,3] <- unname(p[p[,1]==1,2])
-    df[p[,1]==0,4] <- unname(p[p[,1]==0,2])
-
-    df
-  }
-
-
-=======
-    if (is(x, "SegmentedCellExperiment")) {
+    if (is(x, "segmentedCells")) {
         cells <- location(x, bind = FALSE)
         phenotype <- phenotype(x)
         condition <- phenotype$condition
@@ -381,7 +252,7 @@ spatialREMMulti <- function(x,
     
         m <- as.character(unique(x$cellType))
       } else {
-          stop("x is not a data.frame, DataFrame or SegmentedCellExperiment")
+          stop("x is not a data.frame, DataFrame or segmentedCells")
       }
     
       if (length(unique(condition)) != 2) {
@@ -438,7 +309,6 @@ spatialREMMulti <- function(x,
       
           df
       }
->>>>>>> master
 }
 
 #' Title

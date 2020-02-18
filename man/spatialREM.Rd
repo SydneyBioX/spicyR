@@ -14,8 +14,6 @@ spatialREM(x, pairwise, from, to)
 \item{from}{The 'from' cellType for generating the L curve.}
 
 \item{to}{The 'to' cellType for generating the L curve.}
-
-\item{condition}{Vector of conditions corresponding to each image.}
 }
 \value{
 segmentedCells lmerModLmerTest object.

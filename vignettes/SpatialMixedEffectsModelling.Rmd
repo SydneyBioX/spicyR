@@ -12,7 +12,7 @@ author:
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
-  %\VignetteIndexEntry{"lisaClust"}
+  %\VignetteIndexEntry{"spatialREM"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
@@ -42,8 +42,8 @@ cells <- readRDS(cellFile)
 
 Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.
 ```{r}
-head(location(cells))
-head(phenotype(cells))
+location(cells)
+phenotype(cells)
 ```
 Note that `cellType` can be some combination of the expression of CD8, PD1 or PDL1, or is SOX10+.
 

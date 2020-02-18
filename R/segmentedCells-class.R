@@ -78,6 +78,10 @@ segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL,
         cellData$imageID <- cellData[, imageIDString]
     }
     
+    if (is.null(cellTypeString) & "cellType" %in% colnames(cellData)) {
+        cellTypeString <- "cellType"
+    }
+    
     if (!is.null(cellTypeString)) {
         if (!cellTypeString %in% colnames(cellData)) 
             stop("cellTypeString is not a column name of cellData")
