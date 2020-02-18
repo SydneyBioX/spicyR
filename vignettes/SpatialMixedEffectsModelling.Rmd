@@ -35,7 +35,9 @@ The folowing will provide a step-by-step guide on how to use mixed-effects model
 ## Reading in the data
 
 ```{r echo=F}
-cells <- readRDS("/Users/nick/Desktop/cellExpTest2.rds")
+cellFile <- system.file("extdata","responderData.rds", 
+                        package = "spicyR")
+cells <- readRDS(cellFile)
 ```
 
 Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.
@@ -63,24 +65,13 @@ ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
 Indeed, there appears to be an increase in the localisation of CD8+PD1+PDL1+ cells.
 
 ## Performing mixed-effects modelling
-Now we need to obtain a vector of the corresponding subject, condition, and cell counts for each image.
-```{r}
-subject <- phenotype(cells)$subject
-condition <- phenotype(cells)$condition
-
-cellSplit <- location(cells, bind = FALSE)
-count <- unlist(lapply(cellSplit, 
-                       function(x) sum(x$cellType == "CD8+PD1+PDL1+")))
-count <- as.numeric(count)
-```
 
 Finally, we can use `spatialREM` to perform mixed-effects modelling.
 ```{r}
-mixed.lmer <- spatialREM(pairwiseVals, 
-                         subject = subject, 
-                         condition = condition, 
-                         count1 = count, 
-                         count2 = count)
+mixed.lmer <- spatialREM(cells,
+                         pairwise = pairwiseVals, 
+                         from = "CD8+PD1+PDL1+", 
+                         to = "CD8+PD1+PDL1+")
 
 summary(mixed.lmer)
 ```

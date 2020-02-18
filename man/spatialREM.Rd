@@ -4,18 +4,18 @@
 \alias{spatialREM}
 \title{Perform mixed-effects modelling on spatial statistics.}
 \usage{
-spatialREM(x, subject, condition, count1, count2)
+spatialREM(x, pairwise, from, to)
 }
 \arguments{
 \item{x}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
 
-\item{subject}{Vector of subject IDs corresponding to each image.}
+\item{pairwise}{Statistic from pairwise L curve of a single image}
+
+\item{from}{The 'from' cellType for generating the L curve.}
+
+\item{to}{The 'to' cellType for generating the L curve.}
 
 \item{condition}{Vector of conditions corresponding to each image.}
-
-\item{count1}{Vector of the number of 'from' cells corresponding to each image.}
-
-\item{count2}{Vector of the number of 'to' cells corresponding to each image.}
 }
 \value{
 segmentedCells lmerModLmerTest object.
