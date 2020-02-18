@@ -1,11 +1,11 @@
-#' Show SegmentedCellExperiment object
+#' Show segmentedCells
 #' 
-#' This outputs critical information about aSegmentedCellExperiment object.
+#' This outputs critical information about asegmentedCells.
 #' 
 #' @section usage:
 #' `show(object)`
 #'
-#' @param object A SegmentedCellExperiment object.
+#' @param object A segmentedCells.
 #' 
 #' @return Information of the number of images, cells, intenisties, morphologies and phenotypes.
 #' 
@@ -26,7 +26,7 @@
 #' cells$Intensity_Mean_CD8 <- rexp(n, 10)
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
-#' cellExp <- SegmentedCellExperiment(cells, cellProfiler = TRUE)
+#' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
 #' 
 #' ### Cluster cell types
 #' intensities <- intensity(cellExp)
@@ -35,14 +35,14 @@
 #' 
 #' cellExp
 #' 
-#' @name show-SegmentedCellExperiment
-#' @rdname show-SegmentedCellExperiment
+#' @name show-segmentedCells
+#' @rdname show-segmentedCells
 #' @aliases show
 NULL
 
 
-.SegmentedCellExperiment_show <- function(object) {
-  cat('A SegmentedCellExperiment with... \n')
+.segmentedCells_show <- function(object) {
+  cat('A segmentedCells with... \n')
   cat("Number of images:", nrow(object),'\n')
   cat("Number of cells:", length(cellID(object)),'\n')
   
@@ -58,8 +58,8 @@ NULL
 
 if (!isGeneric("show")) setGeneric("show", function(object) standardGeneric("show"))
 
-setMethod("show", signature(object = "SegmentedCellExperiment"), function(object) {
-  .SegmentedCellExperiment_show(object)
+setMethod("show", signature(object = "segmentedCells"), function(object) {
+  .segmentedCells_show(object)
 })
 
 

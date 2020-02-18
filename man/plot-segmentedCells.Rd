@@ -13,7 +13,7 @@
 A ggplot object.
 }
 \description{
-This function generates a basic plot of the location and cellType data.
+This function generates a basic x-y plot of the location and cellType data.
 }
 \section{usage}{
 

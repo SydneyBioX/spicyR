@@ -1,6 +1,6 @@
 #' A basic plot for segmentedCells object
 #' 
-#' This function generates a basic plot of the location and cellType data. 
+#' This function generates a basic x-y plot of the location and cellType data. 
 #' 
 #' @section usage:
 #' `plot(x, imageID = NULL)`
