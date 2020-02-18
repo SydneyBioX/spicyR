@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2020-02-16" />
+<meta name="date" content="2020-02-18" />
 
 <title>Spatial Mixed-Effects Modelling</title>
 
@@ -177,7 +177,7 @@ summary {
 <p class="author-name">Nicolas Canete<span class="affil-mark">1*</span> and Ellis Patrick<span class="affil-mark">1,2</span></p>
 <p class="author-affiliation"><span class="affil-mark">1</span>Westmead Institute for Medical Research, University of Sydney, Australia<br><span class="affil-mark">2</span>School of Mathematics and Statistics, University of Sydney, Australia</p>
 <p class="author-email"><span class="affil-mark">*</span><a href="mailto:ncan4475@uni.sydney.edu.au">ncan4475@uni.sydney.edu.au</a></p>
-<h4 class="date">16 February 2020</h4>
+<h4 class="date">18 February 2020</h4>
 <h4 class="package">Package</h4>
 <p>spicyR 0.1.0</p>
 
@@ -212,6 +212,11 @@ library(ggplot2)</code></pre>
 <p>Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.</p>
 <pre class="r"><code>head(location(cells))</code></pre>
 <pre><code>## Loading required package: IRanges</code></pre>
+<pre><code>## 
+## Attaching package: 'IRanges'</code></pre>
+<pre><code>## The following objects are masked from 'package:spicyR':
+## 
+##     reflect, shift</code></pre>
 <pre><code>## DataFrame with 6 rows and 6 columns
 ##       imageID      cellID imageCellID         x         y      cellType
 ##   &lt;character&gt; &lt;character&gt; &lt;character&gt; &lt;numeric&gt; &lt;numeric&gt;      &lt;factor&gt;
@@ -223,7 +228,7 @@ library(ggplot2)</code></pre>
 ## 6           1      cell_6      cell_6      2.75      1.25 CD8-PD1-PDL1-</code></pre>
 <pre class="r"><code>head(phenotype(cells))</code></pre>
 <pre><code>## DataFrame with 6 rows and 3 columns
-##      imageID      condition      donor
+##      imageID      condition    subject
 ##    &lt;numeric&gt;       &lt;factor&gt;   &lt;factor&gt;
 ## 1          1 Non-Responders SP12-18569
 ## 2          2 Non-Responders SP12-18569
@@ -249,8 +254,8 @@ ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
 </div>
 <div id="performing-mixed-effects-modelling" class="section level2">
 <h2><span class="header-section-number">2.3</span> Performing mixed-effects modelling</h2>
-<p>Now we need to obtain a vector of the corresponding donor, condition, and cell counts for each image.</p>
-<pre class="r"><code>donor &lt;- phenotype(cells)$donor
+<p>Now we need to obtain a vector of the corresponding subject, condition, and cell counts for each image.</p>
+<pre class="r"><code>subject &lt;- phenotype(cells)$subject
 condition &lt;- phenotype(cells)$condition
 
 cellSplit &lt;- location(cells, bind = FALSE)
@@ -259,7 +264,7 @@ count &lt;- unlist(lapply(cellSplit,
 count &lt;- as.numeric(count)</code></pre>
 <p>Finally, we can use <code>spatialREM</code> to perform mixed-effects modelling.</p>
 <pre class="r"><code>mixed.lmer &lt;- spatialREM(pairwiseVals, 
-                         donor = donor, 
+                         subject = subject, 
                          condition = condition, 
                          count1 = count, 
                          count2 = count)
@@ -267,7 +272,7 @@ count &lt;- as.numeric(count)</code></pre>
 summary(mixed.lmer)</code></pre>
 <pre><code>## Linear mixed model fit by REML. t-tests use Satterthwaite's method [
 ## lmerModLmerTest]
-## Formula: Pair ~ Condition + (1 | Donor)
+## Formula: Pair ~ Condition + (1 | subject)
 ##    Data: spatialData
 ## Weights: w
 ## 
@@ -279,9 +284,9 @@ summary(mixed.lmer)</code></pre>
 ## 
 ## Random effects:
 ##  Groups   Name        Variance Std.Dev.
-##  Donor    (Intercept) 47.780   6.912   
+##  subject  (Intercept) 47.780   6.912   
 ##  Residual              7.185   2.680   
-## Number of obs: 80, groups:  Donor, 22
+## Number of obs: 80, groups:  subject, 22
 ## 
 ## Fixed effects:
 ##                     Estimate Std. Error      df t value Pr(&gt;|t|)    

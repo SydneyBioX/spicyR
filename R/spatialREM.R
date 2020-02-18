@@ -110,7 +110,7 @@ getStat2 <- function(cells, from, to, dist) {
 #' Perform mixed-effects modelling on spatial statistics.
 #'
 #' @param x A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
-#' @param donor Vector of donor IDs corresponding to each image.
+#' @param subject Vector of subject IDs corresponding to each image.
 #' @param condition Vector of conditions corresponding to each image.
 #' @param count1 Vector of the number of 'from' cells corresponding to each image.
 #' @param count2 Vector of the number of 'to' cells corresponding to each image.
@@ -121,10 +121,10 @@ getStat2 <- function(cells, from, to, dist) {
 #' @import lme4 lmerTest mgcv
 #'
 #' @examples
-spatialREM <- function(x, donor, condition, count1, count2) {
+spatialREM <- function(x, subject, condition, count1, count2) {
 
   spatialData <- data.frame(Pair = x,
-                            Donor = donor,
+                            subject = subject,
                             Condition = condition)
   
   count1 <- sqrt(count1)
@@ -143,7 +143,7 @@ spatialREM <- function(x, donor, condition, count1, count2) {
   w <- 1/sqrt(z1$fitted.values-min(z1$fitted.values)+1)
   w <- w/sum(w)
   
-  mixed.lmer <- lmer(Pair ~ Condition + (1|Donor), 
+  mixed.lmer <- lmer(Pair ~ Condition + (1|subject), 
                      data = spatialData, 
                      weights = w)
   
@@ -188,7 +188,7 @@ spatialREMBootstrap <- function(mixed.lmer, nsim=19) {
 #' @param whichCondition Vector containing the two conditions to be analysed.
 #' @param dist The distance at which the statistic is obtained.
 #' @param integrate Should the statistic be the integral from 0 to dist, or the value of the L curve at dist.
-#' @param donor Vector of donor IDs corresponding to each image if x is a data frame.
+#' @param subject Vector of subject IDs corresponding to each image if x is a data frame.
 #' @param condition Vector of conditions corresponding to each image if x is a data frame.
 #' @param nsim Number of simulations to perform. If empty, the p-value from lmerTest is used.
 #'
@@ -202,7 +202,7 @@ spatialREMMulti <- function(x,
                             whichCondition=NULL,
                             dist=50,
                             integrate=TRUE,
-                            donor=NULL,
+                            subject=NULL,
                             condition=NULL,
                             nsim=NULL) {
 
@@ -230,15 +230,15 @@ spatialREMMulti <- function(x,
 
     if (length(condition==0)) {
       stop("Specify the conditions")
-    } else if (length(donor==0)) {
-      stop("Specify the donors")
+    } else if (length(subject==0)) {
+      stop("Specify the subjects")
     }
 
     cells <- x
     cells <- split(cells, cells$imageID)
     phenotype <- data.frame(imageID = unique(cells$imageID),
                             condition = condition,
-                            donor = donor)
+                            subject = subject)
 
     m <- as.character(unique(x$cellType))
   } else {
@@ -319,7 +319,7 @@ spatialREMMulti <- function(x,
 #' @examples
 spatialREMForMulti <- function(pairwise, from, to, cells, phenotype, nsim) {
   spatialData <- data.frame(Pair = pairwise,
-                            Donor = factor(phenotype$donor),
+                            subject = factor(phenotype$subject),
                             Condition = factor(phenotype$condition))
 
   count1 <- unlist(lapply(cells, function(x) sum(x$cellType == from)))
@@ -338,7 +338,7 @@ spatialREMForMulti <- function(pairwise, from, to, cells, phenotype, nsim) {
   w <- 1/sqrt(z1$fitted.values-min(z1$fitted.values)+1)
   w <- w/sum(w)
 
-  mixed.lmer <- lmer(Pair ~ Condition + (1|Donor),
+  mixed.lmer <- lmer(Pair ~ Condition + (1|subject),
                            data = spatialData,
                            weights = w)
 

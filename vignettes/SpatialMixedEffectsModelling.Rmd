@@ -64,9 +64,9 @@ ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
 Indeed, there appears to be an increase in the localisation of CD8+PD1+PDL1+ cells.
 
 ## Performing mixed-effects modelling
-Now we need to obtain a vector of the corresponding donor, condition, and cell counts for each image.
+Now we need to obtain a vector of the corresponding subject, condition, and cell counts for each image.
 ```{r}
-donor <- phenotype(cells)$donor
+subject <- phenotype(cells)$subject
 condition <- phenotype(cells)$condition
 
 cellSplit <- location(cells, bind = FALSE)
@@ -78,7 +78,7 @@ count <- as.numeric(count)
 Finally, we can use `spatialREM` to perform mixed-effects modelling.
 ```{r}
 mixed.lmer <- spatialREM(pairwiseVals, 
-                         donor = donor, 
+                         subject = subject, 
                          condition = condition, 
                          count1 = count, 
                          count2 = count)

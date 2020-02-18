@@ -9,7 +9,7 @@ spatialREMMulti(
   whichCondition = NULL,
   dist = 50,
   integrate = TRUE,
-  donor = NULL,
+  subject = NULL,
   condition = NULL,
   nsim = NULL
 )
@@ -23,7 +23,7 @@ spatialREMMulti(
 
 \item{integrate}{Should the statistic be the integral from 0 to dist, or the value of the L curve at dist.}
 
-\item{donor}{Vector of donor IDs corresponding to each image if x is a data frame.}
+\item{subject}{Vector of subject IDs corresponding to each image if x is a data frame.}
 
 \item{condition}{Vector of conditions corresponding to each image if x is a data frame.}
 

@@ -4,12 +4,12 @@
 \alias{spatialREM}
 \title{Perform mixed-effects modelling on spatial statistics.}
 \usage{
-spatialREM(x, donor, condition, count1, count2)
+spatialREM(x, subject, condition, count1, count2)
 }
 \arguments{
 \item{x}{A SegmentedCellExperiment or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
 
-\item{donor}{Vector of donor IDs corresponding to each image.}
+\item{subject}{Vector of subject IDs corresponding to each image.}
 
 \item{condition}{Vector of conditions corresponding to each image.}
 
