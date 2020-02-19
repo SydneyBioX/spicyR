@@ -12,7 +12,9 @@
 #' @export
 #' @rdname lisa
 #' @importFrom methods is
-#' @import S4Vectors BiocGenerics BiocParallel
+#' @importFrom BiocParallel SerialParam bplapply
+#' @importFrom S4Vectors DataFrame
+#' @importFrom BiocGenerics do.call rbind
 lisa <- function(cells, Rs = NULL, BPPARAM = BiocParallel::SerialParam(), window = "square", 
     window.length = NULL, whichParallel = 'imageID') {
     

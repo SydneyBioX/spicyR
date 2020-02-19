@@ -52,7 +52,7 @@
 #' @export
 #' @rdname segmentedCells
 #' @importFrom methods new
-#' @import S4Vectors
+#' @importFrom S4Vectors DataFrame split
 segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL, 
     cellTypeString = NULL, intensityString = NULL, morphologyString = NULL, cellIDString = NULL, 
     imageCellIDString = NULL, imageIDString = NULL) {

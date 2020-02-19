@@ -5,7 +5,7 @@ author:
 - name: Nicolas Canete
   affiliation:  
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
-  email: ncan4475@uni.sydney.edu.au
+  email: nicolas.canete@sydney.edu.au
 - name: Ellis Patrick
   affiliation:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia

@@ -118,8 +118,7 @@
 ### Get location information for each cell.
 
 #' @export
-#' @import BiocGenerics
-#' @import IRanges
+#' @importFrom BiocGenerics do.call rbind
 setGeneric("location", function(x, imageID = NULL, bind = TRUE) standardGeneric("location"))
 setMethod("location", "segmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
@@ -136,6 +135,7 @@ setMethod("location", "segmentedCells", function(x, imageID = NULL, bind = TRUE)
 })
 
 #' @export
+#' @importFrom S4Vectors split
 setGeneric("location<-", function(x, imageID = NULL, value) standardGeneric("location<-"))
 setMethod("location<-", "segmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID)) 
@@ -174,6 +174,7 @@ setMethod("imageID", "segmentedCells", function(x, imageID = NULL) {
 ### Get cellIDs
 
 #' @export
+#' @importFrom BiocGenerics do.call rbind
 setGeneric("cellID", function(x, imageID = NULL) standardGeneric("cellID"))
 setMethod("cellID", "segmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
@@ -470,8 +471,7 @@ setMethod("phenotype<-", "segmentedCells", function(x, imageID = NULL, value) {
 ### Get morphology information
 
 #' @export
-#' @import BiocGenerics
-#' @import IRanges
+#' @importFrom BiocGenerics do.call rbind
 setGeneric("region", function(x, imageID = NULL, annot = FALSE) standardGeneric("region"))
 setMethod("region", "segmentedCells", function(x, imageID = NULL, annot = TRUE) {
     if (!is.null(imageID)) {

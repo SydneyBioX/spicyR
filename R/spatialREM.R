@@ -9,8 +9,6 @@
 #' @return Statistic from pairwise L curve of a single image.
 #' @export
 #' 
-#' @import spatstat
-#'
 #' @examples
 getPairwise <- function(x, from, to, dist=50, integrate=TRUE) {
     if (is(x, "segmentedCells")) {
@@ -47,8 +45,7 @@ getPairwise <- function(x, from, to, dist=50, integrate=TRUE) {
 #'
 #' @return
 #' 
-#' @import spatstat
-#'
+#' @importFrom spatstat Lcross
 #' @examples
 getStat <- function(cells, from, to, dist) {
     pppCell <- pppGenerate(cells)
@@ -82,8 +79,7 @@ getStat <- function(cells, from, to, dist) {
 #' @param dist 
 #'
 #' @return
-#' @import spatstat
-#'
+#' @importFrom spatstat Lcross
 #' @examples
 getStat2 <- function(cells, from, to, dist) {
     pppCell <- pppGenerate(cells)
@@ -117,8 +113,8 @@ getStat2 <- function(cells, from, to, dist) {
 #' @return segmentedCells lmerModLmerTest object.
 #' @export
 #' 
-#' @import lme4 lmerTest mgcv
-#'
+#' @importFrom mgcv gam ti
+#' @importFrom lmerTest lmer
 #' @examples
 spatialREM <- function(x, pairwise, from, to) {
   
@@ -167,8 +163,7 @@ spatialREM <- function(x, pairwise, from, to) {
 #' @return Vector of two p-values.
 #' @export
 #' 
-#' @import lme4 lmerTest
-#'
+#' @importFrom lme4 fixef bootMer
 #' @examples
 spatialREMBootstrap <- function(mixed.lmer, nsim=19) {
     m <- fixef(mixed.lmer)[2]
@@ -203,8 +198,6 @@ spatialREMBootstrap <- function(mixed.lmer, nsim=19) {
 #'
 #' @return Data frame of p-values.
 #' @export
-#'
-#' @import lme4 lmerTest
 #'
 #' @examples
 spatialREMMulti <- function(x,
@@ -321,7 +314,8 @@ spatialREMMulti <- function(x,
 #' @param nsim 
 #'
 #' @return
-#' @import lme4 lmerTest mgcv
+#' @importFrom mgcv gam ti
+#' @importFrom lmerTest lmer
 #'
 #' @examples
 spatialREMForMulti <- function(pairwise, from, to, cells, phenotype, nsim) {
@@ -370,7 +364,7 @@ spatialREMForMulti <- function(pairwise, from, to, cells, phenotype, nsim) {
 #' @return
 #' @export
 #' 
-#' @import pheatmap
+#' @importFrom pheatmap pheatmap
 #'
 #' @examples
 spatialREMMultiPlot <- function(df,
@@ -416,7 +410,7 @@ spatialREMMultiPlot <- function(df,
 #' @param cells 
 #'
 #' @return
-#' @import spatstat
+#' @importFrom spatstat ppp
 #'
 #' @examples
 pppGenerate <- function(cells) {

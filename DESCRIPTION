@@ -9,5 +9,8 @@ License: GPL (>=2)
 Encoding: UTF-8
 LazyData: true
 VignetteBuilder: knitr
-Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest
+Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
+     purrr, rlang
+Suggests: BiocStyle, knitr, rmarkdown
+Depends: R (>= 3.5.0)
 RoxygenNote: 7.0.2
