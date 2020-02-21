@@ -14,6 +14,7 @@ segmentedCells(
   cellTypeString = NULL,
   intensityString = NULL,
   morphologyString = NULL,
+  phenotypeString = NULL,
   cellIDString = NULL,
   imageCellIDString = NULL,
   imageIDString = NULL

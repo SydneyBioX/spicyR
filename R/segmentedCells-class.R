@@ -54,7 +54,7 @@
 #' @importFrom methods new
 #' @importFrom S4Vectors DataFrame split
 segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL, 
-    cellTypeString = NULL, intensityString = NULL, morphologyString = NULL, cellIDString = NULL, 
+    cellTypeString = NULL, intensityString = NULL, morphologyString = NULL, phenotypeString = NULL, cellIDString = NULL, 
     imageCellIDString = NULL, imageIDString = NULL) {
     
     ### Check variable names
@@ -96,6 +96,8 @@ segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL,
             stop("intensityString is not in column names of cellData")
         
     }
+    
+    
     if (!is.null(morphologyString)) {
         if (length(morphologyString) > 1) 
             stop("morphologyString needs to be NULL or length 1")
@@ -105,9 +107,35 @@ segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL,
     
     
     
+    if (!is.null(phenotypeString)) {
+        if (length(phenotypeString) > 1) 
+            stop("phenotypeString needs to be NULL or length 1")
+        if (length(grep(phenotypeString, colnames(cellData))) == 0) 
+            stop("phenotypeString is not in column names of cellData")
+    }
+    
+    
+    if (is.null(phenotypeString)) {
+        if (length(grep("phenotype_", colnames(cellData))) > 0) 
+            phenotypeString = "phenotype_"
+    }
+    
     ### Format variable names if not from cellProfiler output
     
     if (!cellProfiler) {
+        
+        if (is.null(intensityString)) {
+            if (length(grep("intensity_", colnames(cellData))) == 0) 
+                intensityString = "intensity_"
+        }
+        
+        
+        if (is.null(morphologyString)) {
+            if (length(grep("morphology_", colnames(cellData))) == 0) 
+                intensityString = "morphology_"
+        }
+        
+        
         
         if (is.null(cellData$cellID)) {
             cat("There is no cellID. I'll create these", "\n")
@@ -227,6 +255,16 @@ segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL,
     ### images and masks.
     
     df$phenotype <- S4Vectors::split(DataFrame(), cellData$imageID)
+    
+    if(!is.null(phenotypeString)){
+        phenotype <- cellData[, grep(phenotypeString, colnames(cellData))]
+        colnames(phenotype) <- gsub(phenotypeString, "", colnames(phenotype))
+        phenotype <- cbind(imageID = cellData$imageID, phenotype)
+        phenotype <- unique(phenotype)
+        phenotype <- S4Vectors::split(DataFrame(phenotype), phenotype$imageID)
+        df$phenotype <- phenotype[rownames(df)]
+    }
+    
     df$images <- S4Vectors::split(DataFrame(), cellData$imageID)
     df$masks <- S4Vectors::split(DataFrame(), cellData$imageID)
     

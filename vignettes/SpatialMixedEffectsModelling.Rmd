@@ -12,7 +12,7 @@ author:
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
-  %\VignetteIndexEntry{"spatialREM"}
+  %\VignetteIndexEntry{"spatialMEM"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
@@ -20,7 +20,7 @@ output:
 ---
 
 
-```{r warning=F, message=F}
+```{r warning=FALSE, message=FALSE}
 # load required packages
 library(spicyR)
 library(ggplot2)
@@ -28,7 +28,7 @@ library(ggplot2)
  
 
 # Overview
-The folowing will provide a step-by-step guide on how to use mixed-effects models to analyse multiple image datasets.
+The following will provide a step-by-step guide on how to use mixed-effects models to analyse multiple image datasets.
 
 # mixed-effects modelling
 
@@ -36,7 +36,10 @@ The folowing will provide a step-by-step guide on how to use mixed-effects model
 
 
 Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.
-```{r}
+
+What is this datasets/experiement trying to ask?
+
+```{r message=FALSE}
 data("melanomaResponders")
 cells
 location(cells)
@@ -44,58 +47,90 @@ phenotype(cells)
 ```
 Note that `cellType` can be some combination of the expression of CD8, PD1 or PDL1, or is SOX10+.
 
-## Obtaining measure of localisation
-Here, we use the `pairwise` funciton to measure the degree of pairwise localisation between CD8+PD1+PDL1+ cells.
+
+## Test for change in colocalisation between Responders and Non-Responders for a specific pair of cells.
+
+
+
 ```{r}
-pairwiseVals <- getPairwise(cells, from = "CD8+PD1+PDL1+", to = "CD8+PD1+PDL1+")
+spicyTest <- spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1+", to = "SOX10+")
+spicyTest
 ```
 
-We can produce boxplots to see if any differences exist within our two conditions.
-```{r}
-spatialData <- data.frame(Pairwise = pairwiseVals,
-                          Condition = phenotype(cells)$condition)
 
-ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) +
-    geom_boxplot() +
-    theme_classic()
-```
-Indeed, there appears to be an increase in the localisation of CD8+PD1+PDL1+ cells.
 
-## Performing mixed-effects modelling
+<!-- ## Test for change in colocalisation between Responders and Non-Responders for all cells. -->
 
-Finally, we can use `spatialREM` to perform mixed-effects modelling.
-```{r}
-mixed.lmer <- spatialREM(cells,
-                         pairwise = pairwiseVals, 
-                         from = "CD8+PD1+PDL1+", 
-                         to = "CD8+PD1+PDL1+")
 
-summary(mixed.lmer)
-```
 
-Here we find that there is a decrease in the localisation of CD8+PD1+PDL1+ cells between the Non-Responders and the Responders, with a p-value of 0.00804.
+<!-- ```{r} -->
+<!-- spicyTest <- spicy(cells, condition = "condition", subject = "subject") -->
+<!-- spicyTest -->
+<!-- ``` -->
 
-## Performing random effects modelling and bootstrapping
-To obtain more precise p-values, we can use bootstrap by resampling the data and using the gradient as a statistic. This is performed using `spatialREMBootstrap`.
-```{r}
-set.seed(51773)
-pVal <- spatialREMBootstrap(mixed.lmer, nsim = 999)
-pVal
-```
-Again, we find that there is a decrease in the localisation of CD8+PD1+PDL1+ cells between the Non-Responders and the Responders, with a p-value of 0.
 
-# Mixed-effects modelling on all pairwise cell type combinations
-We can perform mixed-effects modelling as above on all pairwise cell type combinations using `spatialREMMulti`. We can specify whether or not to use bootstrapping to obtain p-values by setting the parameter `nsim`. For speed, we simply set it to the default `NULL`.
-```{r}
-df <- spatialREMMulti(cells, nsim = NULL)
-head(df)
-```
-We get a data frame of p-values for each pairwise comparison. We can represent this as a heatmap using the `spatialREMMultiPlot` function.
-```{r}
-spatialREMMultiPlot(df,
-                    fdr = FALSE,
-                    breaks = c(-4,4,0.5),
-                    col=c("blue", "white", "red"))
-```
-The vertical axis represents the 'from' cells, while the horizontal axis represents the 'to' cells. Negative values represent a decrease in localisation between the two groups.
+
+
+
+
+<!-- ## Obtaining measure of localisation -->
+<!-- Here, we use the `pairwise` funciton to measure the degree of pairwise localisation between CD8+PD1+PDL1+ cells. -->
+<!-- ```{r} -->
+<!-- pairwiseVals <- getPairwise(cells, from = "CD8+PD1+PDL1+", to = "CD8+PD1+PDL1+") -->
+<!-- ``` -->
+
+
+
+
+
+<!-- We can produce boxplots to see if any differences exist within our two conditions. -->
+<!-- ```{r} -->
+<!-- spatialData <- data.frame(Pairwise = pairwiseVals, -->
+<!--                           Condition = phenotype(cells)$condition) -->
+
+<!-- ggplot(spatialData, aes(x=Condition, y=Pairwise, color = Condition)) + -->
+<!--     geom_boxplot() + -->
+<!--     theme_classic() -->
+<!-- ``` -->
+<!-- Indeed, there appears to be an increase in the localisation of CD8+PD1+PDL1+ cells. -->
+
+
+
+<!-- ## Performing mixed-effects modelling -->
+
+<!-- Finally, we can use `spatialMEM` to perform mixed-effects modelling. -->
+<!-- ```{r} -->
+<!-- mixed.lmer <- spatialMEM(cells, -->
+<!--                          pairwise = pairwiseVals,  -->
+<!--                          from = "CD8+PD1+PDL1+",  -->
+<!--                          to = "CD8+PD1+PDL1+") -->
+
+<!-- summary(mixed.lmer) -->
+<!-- ``` -->
+
+<!-- Here we find that there is a decrease in the localisation of CD8+PD1+PDL1+ cells between the Non-Responders and the Responders, with a p-value of 0.00804. -->
+
+<!-- ## Performing random effects modelling and bootstrapping -->
+<!-- To obtain more precise p-values, we can use bootstrap by resampling the data and using the gradient as a statistic. This is performed using `spatialMEMBootstrap`. -->
+<!-- ```{r} -->
+<!-- set.seed(51773) -->
+<!-- pVal <- spatialMEMBootstrap(mixed.lmer, nsim = 999) -->
+<!-- pVal -->
+<!-- ``` -->
+<!-- Again, we find that there is a decrease in the localisation of CD8+PD1+PDL1+ cells between the Non-Responders and the Responders, with a p-value of 0. -->
+
+<!-- # Mixed-effects modelling on all pairwise cell type combinations -->
+<!-- We can perform mixed-effects modelling as above on all pairwise cell type combinations using `spatialMEMMulti`. We can specify whether or not to use bootstrapping to obtain p-values by setting the parameter `nsim`. For speed, we simply set it to the default `NULL`. -->
+<!-- ```{r} -->
+<!-- df <- spatialMEMMulti(cells, nsim = NULL) -->
+<!-- head(df) -->
+<!-- ``` -->
+<!-- We get a data frame of p-values for each pairwise comparison. We can represent this as a heatmap using the `spatialMEMMultiPlot` function. -->
+<!-- ```{r} -->
+<!-- spatialMEMMultiPlot(df, -->
+<!--                     fdr = FALSE, -->
+<!--                     breaks = c(-4,4,0.5), -->
+<!--                     col=c("blue", "white", "red")) -->
+<!-- ``` -->
+<!-- The vertical axis represents the 'from' cells, while the horizontal axis represents the 'to' cells. Negative values represent a decrease in localisation between the two groups. -->
 

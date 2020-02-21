@@ -370,9 +370,62 @@ setMethod("phenotype<-", "segmentedCells", function(x, imageID = NULL, value) {
 })
 
 
+   
+
+as.data.frame.segmentedCells <- function(x, ...){
+    loc <- location(x)
+    int <- intensity(x)
+    morph <- morphology(x)
+    pheno <- phenotype(x, expand = TRUE)
+    pheno <- pheno[!colnames(pheno)%in%"imageID"]
+    
+    if(length(colnames(int))>0)colnames(int) <- paste("intensity",colnames(int), sep = "_")
+    if(length(colnames(morph))>0)colnames(morph) <- paste("morphology",colnames(morph), sep = "_")
+    if(length(colnames(pheno))>0)colnames(pheno) <- paste("phenotype",colnames(pheno), sep = "_")
+    
+    if(prod(dim(loc))>0 & prod(dim(int))>0 & prod(dim(morph))>0 & prod(dim(pheno))>0){
+        return(as.data.frame(cbind(loc,int,morph,pheno)))
+    }
+    
+    if(prod(dim(loc))>0 & prod(dim(int))>0 & prod(dim(morph))>0){
+        return(as.data.frame(cbind(loc,int,morph)))
+    }
+    
+    if(prod(dim(loc))>0 & prod(dim(int))>0 & prod(dim(pheno))>0){
+        return(as.data.frame(cbind(loc,int,pheno)))
+    }
+    
+    if(prod(dim(loc))>0 & prod(dim(morph))>0 & prod(dim(pheno))>0){
+        return(as.data.frame(cbind(loc,morph,pheno)))
+    }
+    
+    if(prod(dim(loc))>0 & prod(dim(int))>0){
+        return(as.data.frame(cbind(loc,int)))
+    }
+    
+    if(prod(dim(loc))>0 & prod(dim(morph))>0){
+        return(as.data.frame(cbind(loc,morph)))
+    }
+    
+    if(prod(dim(loc))>0 & prod(dim(pheno))>0){
+        return(as.data.frame(cbind(loc,pheno)))
+    }
+    
+    NA
+}
 
 
+if (!isGeneric("as.data.frame")) setGeneric("as.data.frame", function(x, ...) standardGeneric("as.data.frame"))
+setMethod("as.data.frame", "segmentedCells", as.data.frame.segmentedCells)
 
+
+#' @export
+setGeneric("filterCells", function(x, select) standardGeneric("filterCells"))
+setMethod("filterCells", "segmentedCells", function(x, select){
+    df <- as.data.frame(x)
+    if(length(select)!=nrow(df))stop("length of select must equal nrow of segmentedCells")
+    segmentedCells(df[select,])
+})
 
 
 ################################################################################
@@ -468,7 +521,7 @@ setMethod("phenotype<-", "segmentedCells", function(x, imageID = NULL, value) {
 
 
 
-### Get morphology information
+### Get regions information
 
 #' @export
 #' @importFrom BiocGenerics do.call rbind
