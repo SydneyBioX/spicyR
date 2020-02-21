@@ -33,6 +33,11 @@ spicy <- function(x,
   if(is.null(from))from <- as.character(unique(cellType(x)))
   if(is.null(to))to <- as.character(unique(cellType(x)))
   
+  from <- as.character(unique(from))
+  to <- as.character(unique(to))
+  
+  if(any((!to%in%cellType(x))|(!from%in%cellType(x))))stop("to and from need to be cell type in your segmentedCells")
+  
   nCells <- table(imageID(x), cellType(x))
   
   ## Find pairwise associations
@@ -77,7 +82,7 @@ spicy <- function(x,
                           MoreArgs = MoreArgs2,
                           SIMPLIFY = FALSE)
      
-     df <- cleanLM(linearModels,from,to)
+     df <- cleanLM(linearModels)
   }
   
   ## Mixed effects model
@@ -92,13 +97,14 @@ spicy <- function(x,
                        to = m2,
                        MoreArgs = MoreArgs2,
                        SIMPLIFY = FALSE)
-  df <- cleanMEM(mixed.lmer,from,to, nsim)
+  df <- cleanMEM(mixed.lmer,nsim)
   
   }
   
 
   
   df$pairwiseAssoc <- pairwiseAssoc
+  df$comparisons <- data.frame(from = m1, to = m2, labels = labels)
   
   df <- new('spicy',df)
   df
@@ -107,15 +113,15 @@ spicy <- function(x,
 
 
 
-cleanLM <- function(linearModels,from,to){
- 
+cleanLM <- function(linearModels){
+    
     tLm <- lapply(linearModels, function(LM){
       coef <- as.data.frame(t(summary(LM)$coef))
       coef <- split(coef,c("coefficient", "se", "statistic", "p.value"))
-      coef <- lapply(coef,function(x){rownames(x)<-paste(from,to,sep = '_');x})
-    })
+     })
     
     df <- apply(do.call(rbind, tLm),2,function(x)do.call(rbind,x))
+    df <- lapply(df,function(x){rownames(x)<-names(linearModels);x})
     df
   }
   
@@ -127,27 +133,29 @@ cleanLM <- function(linearModels,from,to){
 
 
 
-cleanMEM <- function(mixed.lmer, from,to, nsim){
+cleanMEM <- function(mixed.lmer, nsim){
   if (length(nsim) > 0) {
     boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
     #p <- do.call(rbind, p)
     tBoot <- lapply(boot, function(coef){
       coef <- as.data.frame(t(coef))
       coef <- split(coef,c("coefficient", "se", "p.value"))
-      coef <- lapply(coef,function(x){rownames(x)<-paste(from,to,sep = '_');x})
     })
     
     
     df <- apply(do.call(rbind, tBoot),2,function(x)do.call(rbind,x))
+    df <- lapply(df,function(x){rownames(x)<-names(mixed.lmer);x})
+    
   } else {
     
     tLmer <- lapply(mixed.lmer, function(lmer){
       coef <- as.data.frame(t(summary(lmer)$coef))
       coef <- split(coef,c("coefficient", "se", "df", "statistic", "p.value"))
-      coef <- lapply(coef,function(x){rownames(x)<-paste(from,to,sep = '_');x})
     })
     
     df <- apply(do.call(rbind, tLmer),2,function(x)do.call(rbind,x))
+    df <- lapply(df,function(x){rownames(x)<-names(mixed.lmer);x})
+    
     
   }
   df

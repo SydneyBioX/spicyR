@@ -1,5 +1,38 @@
 ################################################################################
 #
+# Generics for spicy
+#
+################################################################################
+
+#' @export
+setGeneric("top", function(x, coef = 1, n = 10, adj = 'fdr', cutoff = NULL) standardGeneric("top"))
+setMethod("top", "spicy", function(x, coef = 1, n = 10, adj = 'fdr', cutoff = NULL) {
+ 
+    useCondition <- grep('condition',colnames(x$p.value))[coef]
+    pval <- as.numeric(x$p.value[[useCondition]])
+    adj.pvalue <- p.adjust(pval, adj)
+    
+    comp <- x$comparison
+    
+    results <- data.frame(intercept = x$coefficient[,"(Intercept)"], coefficient = x$coefficient[,useCondition],
+                          p.value = pval, adj.pvalue = adj.pvalue, from = comp$from, to = comp$to)
+    rownames(results) <- rownames(x$coefficient)
+    if(length(results$p.value)>0){
+    results <- results[order(results$p.value),]
+    
+    if(is.null(cutoff)&!is.null(n)) return(results[1:pmin(n,nrow(results)),])
+    if(is.null(n)&!is.null(cutoff)) return(results[results$adj.pvalue<0.05,])
+    if(is.null(n)&!is.null(cutoff)) return(results[intersect(Which(results$adj.pvalue<0.05),1:pmin(n,nrow(results))),])
+    }
+    
+    })
+
+
+
+
+
+################################################################################
+#
 # Generics for segmentedCells
 #
 ################################################################################

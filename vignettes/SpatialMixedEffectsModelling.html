@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2020-02-21" />
+<meta name="date" content="2020-02-22" />
 
 <title>Spatial Mixed-Effects Modelling</title>
 
@@ -631,7 +631,7 @@ summary {
 <p class="author-name">Nicolas Canete<span class="affil-mark">1*</span> and Ellis Patrick<span class="affil-mark">1,2</span></p>
 <p class="author-affiliation"><span class="affil-mark">1</span>Westmead Institute for Medical Research, University of Sydney, Australia<br><span class="affil-mark">2</span>School of Mathematics and Statistics, University of Sydney, Australia</p>
 <p class="author-email"><span class="affil-mark">*</span><a href="mailto:nicolas.canete@sydney.edu.au">nicolas.canete@sydney.edu.au</a></p>
-<h4 class="date">21 February 2020</h4>
+<h4 class="date">22 February 2020</h4>
 <h4 class="package">Package</h4>
 <p>spicyR 0.99.1</p>
 
@@ -644,6 +644,7 @@ summary {
 <li><a href="#mixed-effects-modelling"><span class="toc-section-number">2</span> mixed-effects modelling</a><ul>
 <li><a href="#reading-in-the-data"><span class="toc-section-number">2.1</span> Reading in the data</a></li>
 <li><a href="#test-for-change-in-colocalisation-between-responders-and-non-responders-for-a-specific-pair-of-cells."><span class="toc-section-number">2.2</span> Test for change in colocalisation between Responders and Non-Responders for a specific pair of cells.</a></li>
+<li><a href="#test-for-change-in-colocalisation-between-responders-and-non-responders-for-all-cells."><span class="toc-section-number">2.3</span> Test for change in colocalisation between Responders and Non-Responders for all cells.</a></li>
 </ul></li>
 </ul>
 </div>
@@ -704,15 +705,58 @@ cells</code></pre>
 </div>
 <div id="test-for-change-in-colocalisation-between-responders-and-non-responders-for-a-specific-pair-of-cells." class="section level2">
 <h2><span class="header-section-number">2.2</span> Test for change in colocalisation between Responders and Non-Responders for a specific pair of cells.</h2>
-<!-- ```{r} -->
-<!-- spicyTest <- spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1+", to = "SOX10+") -->
-<!-- spicyTest -->
-<!-- ``` -->
-<!-- ## Test for change in colocalisation between Responders and Non-Responders for all cells. -->
-<!-- ```{r} -->
-<!-- spicyTest <- spicy(cells, condition = "condition", subject = "subject") -->
-<!-- spicyTest -->
-<!-- ``` -->
+<pre class="r"><code>spicyTest &lt;- spicy(cells, condition = &quot;condition&quot;, subject = &quot;subject&quot;, from = &quot;CD8+PD1+PDL1+&quot;, to = &quot;SOX10+&quot;)</code></pre>
+<pre><code>## Calculating pairwise spatial associations</code></pre>
+<pre><code>## Testing for spatial differences across conditions accounting for multiple images per subject</code></pre>
+<pre><code>## boundary (singular) fit: see ?isSingular</code></pre>
+<pre class="r"><code>spicyTest</code></pre>
+<pre><code>## Number of cell type pairs:  1 
+## Number of differentially localised cell type pairs: 
+## [1] 0</code></pre>
+<pre class="r"><code>top(spicyTest)</code></pre>
+<pre><code>##                      intercept coefficient   p.value adj.pvalue          from
+## CD8+PD1+PDL1+_SOX10+ -1.621263   -1.670848 0.3835233  0.3835233 CD8+PD1+PDL1+
+##                          to
+## CD8+PD1+PDL1+_SOX10+ SOX10+</code></pre>
+</div>
+<div id="test-for-change-in-colocalisation-between-responders-and-non-responders-for-all-cells." class="section level2">
+<h2><span class="header-section-number">2.3</span> Test for change in colocalisation between Responders and Non-Responders for all cells.</h2>
+<pre class="r"><code>spicyTest &lt;- spicy(cells, condition = &quot;condition&quot;, subject = &quot;subject&quot;)</code></pre>
+<pre><code>## Warning in if ((!to %in% cellType(x)) | (!from %in% cellType(x))) stop(&quot;to and
+## from need to be cell type in your segmentedCells&quot;): the condition has length &gt; 1
+## and only the first element will be used</code></pre>
+<pre><code>## Calculating pairwise spatial associations</code></pre>
+<pre><code>## Testing for spatial differences across conditions accounting for multiple images per subject</code></pre>
+<pre><code>## boundary (singular) fit: see ?isSingular
+## boundary (singular) fit: see ?isSingular</code></pre>
+<pre class="r"><code>spicyTest</code></pre>
+<pre><code>## Number of cell type pairs:  81 
+## Number of differentially localised cell type pairs: 
+## conditionResponders 
+##                   0</code></pre>
+<pre class="r"><code>top(spicyTest)</code></pre>
+<pre><code>##                             intercept coefficient     p.value adj.pvalue
+## CD8-PD1+PDL1+_CD8+PD1+PDL1- 21.403625  -14.143257 0.006696371  0.3184453
+## CD8+PD1+PDL1-_CD8-PD1+PDL1+ 21.300751  -13.854313 0.007862848  0.3184453
+## CD8-PD1+PDL1-_CD8+PD1-PDL1+  6.348714   -7.144476 0.076475111  0.9174987
+## CD8-PD1+PDL1-_CD8-PD1+PDL1+ 12.485009   -7.625312 0.081119183  0.9174987
+## CD8+PD1-PDL1-_CD8+PD1-PDL1- 20.934811  -11.403936 0.093658867  0.9174987
+## CD8-PD1+PDL1+_CD8-PD1+PDL1- 11.621590   -6.942920 0.112733933  0.9174987
+## CD8+PD1-PDL1+_CD8-PD1+PDL1-  4.821599   -6.028484 0.119793885  0.9174987
+## CD8+PD1-PDL1-_CD8+PD1+PDL1- 11.049319    7.124038 0.123391930  0.9174987
+## CD8-PD1-PDL1-_CD8+PD1-PDL1-  9.067690   -2.765159 0.141393584  0.9174987
+## CD8+PD1+PDL1-_CD8+PD1-PDL1- 11.041912    6.860201 0.143290192  0.9174987
+##                                      from            to
+## CD8-PD1+PDL1+_CD8+PD1+PDL1- CD8-PD1+PDL1+ CD8+PD1+PDL1-
+## CD8+PD1+PDL1-_CD8-PD1+PDL1+ CD8+PD1+PDL1- CD8-PD1+PDL1+
+## CD8-PD1+PDL1-_CD8+PD1-PDL1+ CD8-PD1+PDL1- CD8+PD1-PDL1+
+## CD8-PD1+PDL1-_CD8-PD1+PDL1+ CD8-PD1+PDL1- CD8-PD1+PDL1+
+## CD8+PD1-PDL1-_CD8+PD1-PDL1- CD8+PD1-PDL1- CD8+PD1-PDL1-
+## CD8-PD1+PDL1+_CD8-PD1+PDL1- CD8-PD1+PDL1+ CD8-PD1+PDL1-
+## CD8+PD1-PDL1+_CD8-PD1+PDL1- CD8+PD1-PDL1+ CD8-PD1+PDL1-
+## CD8+PD1-PDL1-_CD8+PD1+PDL1- CD8+PD1-PDL1- CD8+PD1+PDL1-
+## CD8-PD1-PDL1-_CD8+PD1-PDL1- CD8-PD1-PDL1- CD8+PD1-PDL1-
+## CD8+PD1+PDL1-_CD8+PD1-PDL1- CD8+PD1+PDL1- CD8+PD1-PDL1-</code></pre>
 <!-- ## Obtaining measure of localisation -->
 <!-- Here, we use the `pairwise` funciton to measure the degree of pairwise localisation between CD8+PD1+PDL1+ cells. -->
 <!-- ```{r} -->

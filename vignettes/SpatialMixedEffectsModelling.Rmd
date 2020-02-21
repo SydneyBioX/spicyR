@@ -55,18 +55,20 @@ Note that `cellType` can be some combination of the expression of CD8, PD1 or PD
 ```{r}
 spicyTest <- spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1+", to = "SOX10+")
 spicyTest
+top(spicyTest)
 ```
 
 
 
-<!-- ## Test for change in colocalisation between Responders and Non-Responders for all cells. -->
+## Test for change in colocalisation between Responders and Non-Responders for all cells.
 
 
 
-<!-- ```{r} -->
-<!-- spicyTest <- spicy(cells, condition = "condition", subject = "subject") -->
-<!-- spicyTest -->
-<!-- ``` -->
+```{r}
+spicyTest <- spicy(cells, condition = "condition", subject = "subject")
+spicyTest
+top(spicyTest)
+```
 
 
 
