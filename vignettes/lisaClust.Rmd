@@ -20,8 +20,15 @@ output:
   BiocStyle::html_document
 ---
 
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, message = FALSE, warning = FALSE
+)
+library(BiocStyle)
+```
 
-```{r message=FALSE}
+
+```{r message=FALSE, warning=FALSE}
 # load required packages
 library(spicyR)
 library(ggplot2)
@@ -30,8 +37,7 @@ library(ggplot2)
  
 
 ## Overview
-
-What is LISA clustering?
+ Clustering local indicators of spatial association (LISA) functions is a methodology for identifying consistent spatial organisation of multiple cell-types in an unsupervised way. This can be used to enable the characterization of interactions between multiple cell-types simultaneously and can complement traditional pairwise analysis. In our implementation our LISA curves are a localised summary of an L-function from a Poisson point process model.  Our framework `lisaClust` can be used to provide a high-level summary of cell-type colocalization in high-parameter spatial cytometry data, facilitating the identification of distinct tissue compartments or identification of complex cellular microenvironments.
 
 
 
@@ -39,7 +45,7 @@ What is LISA clustering?
 
 ### Generate toy data
 
-Here we consider a very simple toy example where two cell-types are completely separated spatially. We simulate data for two different images.
+TO illustrate our `lisaClust` framework, here we consider a very simple toy example where two cell-types are completely separated spatially. We simulate data for two different images.
 
 ```{r eval=T}
 set.seed(51773)
@@ -59,6 +65,8 @@ ggplot(cells, aes(x,y, colour = cellType)) + geom_point() + facet_wrap(~imageID)
 
 ### Create SegmentedCellExperiment object
 
+First we store our datas into a `segmentedCells` object. 
+
 ```{r}
 
 cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
@@ -69,6 +77,8 @@ cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
 
 ### Generate LISA curves
 
+We can then calculate local indicators of spatial association (LISA) functions using the `lisa` function. In our implementation, our LISA curves are a localised summary of an L-function from a Poisson point process model. By default, `lisa` will calculate curves for 20 'sensible' radii for each cell-type. 
+
 ```{r}
 
 lisaCurves <- lisa(cellExp)
@@ -76,6 +86,8 @@ lisaCurves <- lisa(cellExp)
 ```
 
 ### Perform some clustering
+
+The LISA curves can then be used to cluster the cells. Here we use k-means clustering, other clustering methods like SOM could be used. We can store these cell clusters or cell "regions" in our `segmentedCells` object using the `region() <-` function.
 
 ```{r}
 
@@ -86,14 +98,19 @@ region(cellExp) <- paste('region',kM$cluster,sep = '_')
 
 ### Plot identified regions
 
+The `hatchingPlot` function can be used to construct a `ggplot` object where the regions are marked by different hatching patterns. This allows us to plot both regions and cell-types on the same visualization.
+
+
 ```{r}
-hatchingPlot(cellExp, image = c('s1','s2'))
+hatchingPlot(cellExp, imageID = c('s1','s2'))
 ```
 
 
 
 
-### Alternatively, 
+### Alternative hatching plot
+
+We could also create this plot using `geom_hatching` and `scale_region_manual`.
 
 
 ```{r}
@@ -111,4 +128,59 @@ p
 
 ```
 
+
+## Damond et al. islet data.
+
+Here we apply our `lisaClust` framework to three images of pancreatic islets from *A Map of Human Type 1 Diabetes Progression by Imaging Mass Cytometry* by Damon et al. (2019).
+
+### Read in data
+
+We will start by reading in the data and storing it as a `segmentedCells` object. Here the data is in a format consistent with that outputted by CellProfiler.
+```{r}
+isletFile <- system.file("extdata","isletCells.csv", package = "spicyR")
+cells <- read.csv(isletFile)
+cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+
+```
+
+
+### Cluster cell-types
+
+This data does not include annotation of the cell-types of each cell. Here we extract the marker intensities from the `segmentedCells` object using `intensity`. We then perform k-means clustering with eight clusters and store these cell-type clusters in our `segmentedCells` object using `cellType() <-`.
+```{r}
+intensities <- intensity(cellExp)
+kM <- kmeans(intensities,8)
+cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
+```
+
+### Generate LISA curves
+
+As before, we can calculate local indicators of spatial association (LISA) functions using the `lisa` function. In our implementation, our LISA curves are a localised summary of an L-function from a Poisson point process model. By default, `lisa` will calculate curves for 20 'sensible' radii for each cell-type. 
+
+```{r}
+
+lisaCurves <- lisa(cellExp)
+
+```
+
+### Perform some clustering
+
+The LISA curves can then be used to cluster the cells. Here we use k-means clustering to cluster the cells into two microenvironments, other clustering methods like SOM could be used. We can store these cell clusters or cell "regions" in our `segmentedCells` object using the `region() <-` function.
+
+```{r}
+
+kM <- kmeans(lisaCurves,2)
+region(cellExp) <- paste('region',kM$cluster,sep = '_')
+
+```
+
+
+
+### Plot identified regions
+
+Finally, we can use `hatchingPlot` to construct a `ggplot` object where the regions are marked by different hatching patterns. This allows us to visualize the two regions and eight cell-types simultaneously.
+
+```{r}
+hatchingPlot(cellExp, imageID = c("1","2","3"))
+```
 

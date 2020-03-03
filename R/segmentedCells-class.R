@@ -182,7 +182,7 @@ segmentedCells <- function(cellData, cellProfiler = FALSE, spatialCoords = NULL,
     if (cellProfiler) {
         
         cellData$imageID <- as.factor(cellData$ImageNumber)
-        cellData$cellID <- cellData$ObjectNumber
+        cellData$cellID <- paste('cell',1:nrow(cellData),sep='_')
         cellData$imageCellID <- cellData$ObjectNumber
         
         if (is.null(spatialCoords)) {

@@ -8,7 +8,22 @@
 #' @param whichParallel Should the function use parallization on the imageID or the cellType.
 #' 
 #' @examples
-#' 1+1
+#' \dontrun{
+#' # Given a segmentedCells object cellExp
+#' # First constract LISA
+#' 
+#' lisaCurves <- lisa(cellExp)
+#' 
+#' # Then cluster the LISA curves
+#' 
+#' kM <- kmeans(lisaCurves,2)
+#' region(cellExp) <- paste('region',kM$cluster,sep = '_')
+#' 
+#' # Then plot the regions
+#' hatchingPlot(cellExp)
+#' }
+#' 
+#' }
 #' @export
 #' @rdname lisa
 #' @importFrom methods is
@@ -67,7 +82,7 @@ lisa <- function(cells, Rs = NULL, BPPARAM = BiocParallel::SerialParam(), window
         window = window, window.length = window.length, BPcellType = BPcellType, BPPARAM = BPimage)
     
     curves <- do.call("rbind", curveList)
-    curves <- curves[location(cells)$cellID, ]
+    curves <- curves[as.character(location(cells)$cellID), ]
     return(curves)
 }
 
@@ -101,8 +116,7 @@ makeWindow <- function(data, window = "square", window.length = 21) {
 }
 
 
-#' @importFrom spatstat ppp
-#' @importFrom spatstat localLcross
+#' @importFrom spatstat ppp localLcross
 #' @importFrom BiocParallel bplapply
 generateCurves <- function(data, Rs, window, window.length, BPcellType = BPcellType, ...) {
     

@@ -1,11 +1,37 @@
+#' hatchingPlot
+#' 
+#' The hatchingPlot() function is used to create hatching patterns for representating spatial regions and cell-types.
+#'
+#' @param data A segmentedCells object that has region information 
+#' @param imageID A vector of imageIDs to be plotted
+#' @param line.spacing A integer indicating the spacing between hatching lines.
+#' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
+#' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
+#' @param nbp An integer tuning the granularity of the grid used when defining regions
+#' 
+#' @examples
+#' \dontrun{
+#' # Given a segmentedCells object cellExp
+#' # First constract LISA
+#' 
+#' lisaCurves <- lisa(cellExp)
+#' 
+#' # Then cluster the LISA curves
+#' 
+#' kM <- kmeans(lisaCurves,2)
+#' region(cellExp) <- paste('region',kM$cluster,sep = '_')
+#' 
+#' # Then plot the regions
+#' hatchingPlot(cellExp)
+#' 
 #' @export
 #' @importFrom ggplot2 ggplot aes geom_point theme_minimal facet_wrap
-hatchingPlot <- function(data, image = NULL, window = "concave", line.spacing = 21, 
+hatchingPlot <- function(data, imageID = NULL, window = "concave", line.spacing = 21, 
     nbp = 250, window.length = 0) {
     if (!is(data, "segmentedCells") | is.null(data$region)) 
         stop("Please provide a segmentedCells object with region information please.")
     
-    if (is.null(image)) {
+    if (is.null(imageID)) {
         df <- region(data[1, ], annot = TRUE)
         p <- ggplot(df, aes(x = x, y = y, colour = cellType)) + geom_point() + geom_hatching(aes(region = region), 
             show.legend = TRUE, window = "concave", line.spacing = 21, nbp = 250, 
@@ -14,10 +40,10 @@ hatchingPlot <- function(data, image = NULL, window = "concave", line.spacing = 
         return(q)
     }
     
-    if (!is.null(image)) {
-        if (any(!image %in% rownames(data))) 
-            stop("Some of the images are not in your segmentedCells object")
-        df <- region(cellExp, image = image, annot = TRUE)
+    if (!is.null(imageID)) {
+        if (any(!imageID %in% rownames(data))) 
+            stop("Some of the imageIDs are not in your segmentedCells object")
+        df <- region(cellExp, imageID = imageID, annot = TRUE)
         p <- ggplot(df, aes(x = x, y = y, colour = cellType)) + geom_point() + facet_wrap(~imageID) + 
             geom_hatching(aes(region = region), show.legend = TRUE, window = "concave", 
                 line.spacing = 21, nbp = 250, window.length = 0)
@@ -50,14 +76,31 @@ hatchingPlot <- function(data, image = NULL, window = "concave", line.spacing = 
 #' @param show.legend logical. Should this layer be included in the legends? NA, the default, includes if any aesthetics are mapped. FALSE never includes, and TRUE always includes. It can also be a named logical vector to finely select the aesthetics to display.
 #' @param inherit.aes If FALSE, overrides the default aesthetics, rather than combining with them. This is most useful for helper functions that define both data and aesthetics and shouldn't inherit behaviour from the default plot specification, e.g. borders().
 #' @param na.rm If FALSE, the default, missing values are removed with a warning. If TRUE, missing values are silently removed.
-#' @param ling.spacing A integer indicating the spacing between hatching lines.
+#' @param line.spacing A integer indicating the spacing between hatching lines.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
 #' @param nbp An integer tuning the granularity of the grid used when defining regions
 #' @param line.width A numeric controlling the width of the hatching lines
 #' 
 #' @examples
-#' 1+1
+#' \dontrun{
+#' # Given a segmentedCells object cellExp
+#' # First constract LISA
+#' 
+#' lisaCurves <- lisa(cellExp)
+#' 
+#' # Then cluster the LISA curves
+#' 
+#' kM <- kmeans(lisaCurves,2)
+#' region(cellExp) <- paste('region',kM$cluster,sep = '_')
+#' 
+#' # Then plot the regions
+#' p <- ggplot(df,aes(x = x,y = y, colour = cellType, region = region)) + 
+#' geom_point() + 
+#' facet_wrap(~imageID) +
+#' geom_hatching()
+#' }
+#' 
 #' @export
 #' @rdname lisa
 #' @importFrom methods is

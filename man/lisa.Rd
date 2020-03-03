@@ -59,18 +59,34 @@ A function will be called with a single argument, the plot data. The return valu
 
 \item{inherit.aes}{If FALSE, overrides the default aesthetics, rather than combining with them. This is most useful for helper functions that define both data and aesthetics and shouldn't inherit behaviour from the default plot specification, e.g. borders().}
 
+\item{line.spacing}{A integer indicating the spacing between hatching lines.}
+
 \item{nbp}{An integer tuning the granularity of the grid used when defining regions}
 
 \item{line.width}{A numeric controlling the width of the hatching lines}
 
 \item{Position}{adjustment, either as a string, or the result of a call to a position adjustment function.}
-
-\item{ling.spacing}{A integer indicating the spacing between hatching lines.}
 }
 \description{
 The hatching geom is used to create hatching patterns for representation of spatial regions.
 }
 \examples{
-1+1
-1+1
+\dontrun{
+# Given a segmentedCells object cellExp
+# First constract LISA
+
+lisaCurves <- lisa(cellExp)
+
+# Then cluster the LISA curves
+
+kM <- kmeans(lisaCurves,2)
+region(cellExp) <- paste('region',kM$cluster,sep = '_')
+
+# Then plot the regions
+p <- ggplot(df,aes(x = x,y = y, colour = cellType, region = region)) + 
+geom_point() + 
+facet_wrap(~imageID) +
+geom_hatching()
+}
+
 }
