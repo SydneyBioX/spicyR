@@ -7,7 +7,10 @@
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
 #' @param whichParallel Should the function use parallization on the imageID or the cellType.
 #' 
+#' @return A matrix of LISA curves
+#' 
 #' @examples
+#' library(spicyR)
 #' \dontrun{
 #' # Given a segmentedCells object cellExp
 #' # First constract LISA
@@ -136,7 +139,7 @@ generateCurves <- function(data, Rs, window, window.length, BPcellType = BPcellT
             if (length(jID) > 1 & length(iID) > 1) {
                 
                 localL <- spatstat::localLcross(p1, from = i, to = j, verbose = FALSE)
-                ur <- sapply(Rs, function(x) which.min(abs(localL$r - x))[1])
+                ur <- vapply(Rs, function(x) which.min(abs(localL$r - x))[1], numeric(length(Rs)))
                 locR <- t(apply(as.matrix(localL)[, grep("iso", colnames(localL))], 
                   2, function(x) (x - localL$theo)[ur]))
                 rownames(locR) <- iID

@@ -20,9 +20,9 @@ setMethod("top", "spicy", function(x, coef = 1, n = 10, adj = 'fdr', cutoff = NU
     if(length(results$p.value)>0){
     results <- results[order(results$p.value),]
     
-    if(is.null(cutoff)&!is.null(n)) return(results[1:pmin(n,nrow(results)),])
+    if(is.null(cutoff)&!is.null(n)) return(results[seq_len(pmin(n,nrow(results))),])
     if(is.null(n)&!is.null(cutoff)) return(results[results$adj.pvalue<0.05,])
-    if(is.null(n)&!is.null(cutoff)) return(results[intersect(Which(results$adj.pvalue<0.05),1:pmin(n,nrow(results))),])
+    if(is.null(n)&!is.null(cutoff)) return(results[intersect(Which(results$adj.pvalue<0.05),seq_len(pmin(n,nrow(results)))),])
     }
     
     })

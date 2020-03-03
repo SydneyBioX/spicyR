@@ -9,7 +9,10 @@
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
 #' @param nbp An integer tuning the granularity of the grid used when defining regions
 #' 
+#' @return A ggplot object
+#' 
 #' @examples
+#' library(spicyR)
 #' \dontrun{
 #' # Given a segmentedCells object cellExp
 #' # First constract LISA
@@ -23,8 +26,10 @@
 #' 
 #' # Then plot the regions
 #' hatchingPlot(cellExp)
+#' }
 #' 
 #' @export
+#' @rdname lisa
 #' @importFrom ggplot2 ggplot aes geom_point theme_minimal facet_wrap
 hatchingPlot <- function(data, imageID = NULL, window = "concave", line.spacing = 21, 
     nbp = 250, window.length = 0) {
@@ -43,7 +48,7 @@ hatchingPlot <- function(data, imageID = NULL, window = "concave", line.spacing 
     if (!is.null(imageID)) {
         if (any(!imageID %in% rownames(data))) 
             stop("Some of the imageIDs are not in your segmentedCells object")
-        df <- region(cellExp, imageID = imageID, annot = TRUE)
+        df <- region(data, imageID = imageID, annot = TRUE)
         p <- ggplot(df, aes(x = x, y = y, colour = cellType)) + geom_point() + facet_wrap(~imageID) + 
             geom_hatching(aes(region = region), show.legend = TRUE, window = "concave", 
                 line.spacing = 21, nbp = 250, window.length = 0)
@@ -82,7 +87,11 @@ hatchingPlot <- function(data, imageID = NULL, window = "concave", line.spacing 
 #' @param nbp An integer tuning the granularity of the grid used when defining regions
 #' @param line.width A numeric controlling the width of the hatching lines
 #' 
+#' 
+#' @return A ggplot geom
+#' 
 #' @examples
+#' library(spicyR)
 #' \dontrun{
 #' # Given a segmentedCells object cellExp
 #' # First constract LISA
@@ -105,11 +114,12 @@ hatchingPlot <- function(data, imageID = NULL, window = "concave", line.spacing 
 #' @rdname lisa
 #' @importFrom methods is
 #' @importFrom BiocParallel bplapply
+#' @importFrom ggplot2 layer
 geom_hatching <- function(mapping = NULL, data = NULL, stat = "identity", position = "identity", 
                           na.rm = FALSE, show.legend = NA, inherit.aes = TRUE, line.spacing = 21, window = "square", 
                           window.length = 0, nbp = 250, line.width = 1, ...) {
     
-    layer(geom = GeomHatching, mapping = mapping, data = data, stat = stat, position = position, 
+    ggplot2::layer(geom = GeomHatching, mapping = mapping, data = data, stat = stat, position = position, 
           show.legend = show.legend, inherit.aes = inherit.aes, params = list(na.rm = na.rm, 
                                                                               line.spacing = line.spacing, window = window, window.length = window.length, 
                                                                               nbp = nbp, line.width = line.width, ...))
@@ -119,7 +129,7 @@ geom_hatching <- function(mapping = NULL, data = NULL, stat = "identity", positi
 #' @export
 #' @importFrom ggplot2 discrete_scale
 scale_region <- function(aesthetics = "region", ..., guide = "legend") {
-    discrete_scale("region", "region_d", palette = function(n) 1:n, ...)
+    discrete_scale("region", "region_d", palette = function(n) seq_len(n), ...)
 }
 
 #' @export
@@ -133,7 +143,7 @@ scale_region_manual <- function(..., values) {
             stop("Insufficient values in manual scale. ", n, " needed but only ", 
                  length(values), " provided.", call. = FALSE)
         }
-        if (any(!values %in% 1:7)) {
+        if (any(!values %in% seq_len(7))) {
             stop("values must be between 1 and 7")
         }
         
@@ -210,13 +220,13 @@ hatchingLevels <- function(data, hatching = NULL) {
     if (!is.factor(data$region)) 
         data$region <- factor(data$region)
     regionLevels <- levels(data$region)
-    if (!any(hatching %in% 1:7) & !is.null(hatching)) 
+    if (!any(hatching %in% seq_len(7)) & !is.null(hatching)) 
         stop("hatching must equal the number of regions and be <= 7.")
     if (all(regionLevels %in% names(hatching))) {
         hatching <- hatching[regionLevels]
     }
     if (is.null(hatching)) {
-        hatching <- 1:length(regionLevels)
+        hatching <- seq_len(length(regionLevels))
         names(hatching) <- regionLevels
     }
     if (length(hatching) == length(regionLevels)) {
@@ -318,9 +328,9 @@ regionGrid <- function(pp, nbp = 250) {
     grid <- data.frame(x = grid[, 1], y = grid[, 2])
     df <- as.data.frame(pp)
     k <- rep(NA, length(m))
-    K <- knn(train = df[, c("x", "y")], test = grid[t(m)[1:length(m)], ], cl = pp$region, 
+    K <- knn(train = df[, c("x", "y")], test = grid[t(m)[seq_len(length(m))], ], cl = pp$region, 
              k = 1)
-    k[t(m)[1:length(m)]] <- as.character(K)
+    k[t(m)[seq_len(length(m))]] <- as.character(K)
     data.frame(grid, regions = k)
 }
 
@@ -453,7 +463,7 @@ hatch180 <- function(rPoly, width, rx, ry, line.width = 1) {
 
 ######## - hatching
 
-hatch90 <- function(rPoly, width, rx, ry, line.width = l) {
+hatch90 <- function(rPoly, width, rx, ry, line.width = 1) {
     xr <- range(rPoly$x)
     yr <- range(rPoly$y)
     from1 <- seq(from = yr[1], to = yr[2], by = width)

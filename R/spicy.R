@@ -254,7 +254,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim=19) {
     stats <- bootCoef$t
     fe <- fixef(mixed.lmer)
     pval = pmin(colMeans(stats<0),colMeans(stats>0))*2
-    df <- data.frame(coefficient = fe, se = apply(stats,2,sd), p.value = pval )
+    df <- data.frame(coefficient = fe, se = apply(stats,2,stats::sd), p.value = pval )
     df
     }
 
@@ -364,7 +364,7 @@ spatialLM <- function(spatAssoc, from, to, cells, condition, covariates, weightF
 #' @export
 #' 
 #' @importFrom pheatmap pheatmap
-#'
+#' @importFrom grDevices colorRampPalette
 #' @examples
 spatialMEMMultiPlot <- function(spicyTest,
                                 fdr=FALSE,
@@ -393,7 +393,7 @@ spatialMEMMultiPlot <- function(spicyTest,
   rownames(pVal) <- marks
   
   breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-  pal <- colorRampPalette(col)(length(breaks))
+  pal <- grDevices::colorRampPalette(col)(length(breaks))
   
   heatmap <- pheatmap(pVal,
                       col = pal,

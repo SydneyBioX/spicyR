@@ -1,16 +1,20 @@
 Package: spicyR
 Type: Package
-Title: Spatial analysis of imaging cytometry data
+Title: Spatial analysis of in situ cytometry data
 Version: 0.99.1
 Author: Nicolas Canete and Ellis Patrick
 Maintainer: Ellis Patrick <ellis.patrick@sydney.edu.au>
-Description: spicyR provides a series of functions to aid in the analysis of both immunofluorescence and mass cytometry imaging data
+Description: spicyR provides a series of functions to aid in the analysis of both 
+    immunofluorescence and mass cytometry imaging data as well as other assays that 
+    can deeply phenotype individual cells and their spatial location. 
 License: GPL (>=2)
+biocViews: 
+    SingleCell, CellBasedAssays
 Encoding: UTF-8
 LazyData: true
 VignetteBuilder: knitr
 Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
-     purrr, rlang
+     purrr, rlang, grDevices
 Suggests: BiocStyle, knitr, rmarkdown
-Depends: R (>= 3.5.0)
+Depends: R (>= 4.0.0)
 RoxygenNote: 7.0.2
