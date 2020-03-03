@@ -355,7 +355,7 @@ spatialLM <- function(spatAssoc, from, to, cells, condition, covariates, weightF
 
 #' Plots result of spatialMEMMulti.
 #'
-#' @param df Data frame obtained from spatialMEMMulti.
+#' @param spicyTest Data frame obtained from spatialMEMMulti.
 #' @param fdr TRUE if FDR correction is used.
 #' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first number is the minimum, the second is the maximum, the third is the number of breaks.
 #' @param col Vector of colours to use in pheatmap.
@@ -366,44 +366,43 @@ spatialLM <- function(spatAssoc, from, to, cells, condition, covariates, weightF
 #' @importFrom pheatmap pheatmap
 #'
 #' @examples
-spatialMEMMultiPlot <- function(df,
+spatialMEMMultiPlot <- function(spicyTest,
                                 fdr=FALSE,
                                 breaks=c(-5, 5, 0.5),
                                 col=c("blue", "white", "red")) {
-    pVal <- pmin(df[,3], df[,4])*2
   
-    marks <- unique(df[,2])
+  pVal <- spicyTest$p.value$conditionResponders
+  marks <- unique(spicyTest$comparisons$from)
   
-    if (min(pVal) == 0) {
-        pVal <- pVal + 10^floor(log10(min(pVal[pVal>0])))
-    }
+  if (min(pVal) == 0) {
+    pVal[pVal==0] <- pVal[pVal==0] + 10^floor(log10(min(pVal[pVal>0])))
+  }
   
-    if (fdr) {
-        pVal <- p.adjust(pVal, method = "fdr")
-    }
+  if (fdr) {
+    pVal <- p.adjust(pVal, method = "fdr")
+  }
   
-    isGreater <- df[,3] > df[,4]
+  isGreater <- spicyTest$coefficient$conditionResponders > 0
   
-    pVal <- log10(pVal)
+  pVal <- log10(pVal)
   
-    pVal[isGreater] <- abs(pVal[isGreater])
+  pVal[isGreater] <- abs(pVal[isGreater])
   
-    pVal <- matrix(pVal, nrow = length(marks))
-    colnames(pVal) <- marks
-    rownames(pVal) <- marks
+  pVal <- matrix(pVal, nrow = length(marks))
+  colnames(pVal) <- marks
+  rownames(pVal) <- marks
   
-    breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-    pal <- colorRampPalette(col)(length(breaks))
+  breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
+  pal <- colorRampPalette(col)(length(breaks))
   
-    heatmap <- pheatmap(pVal,
-                        col = pal,
-                        breaks = breaks,
-                        cluster_rows = FALSE,
-                        cluster_cols = FALSE)
+  heatmap <- pheatmap(pVal,
+                      col = pal,
+                      breaks = breaks,
+                      cluster_rows = FALSE,
+                      cluster_cols = FALSE)
   
-    heatmap
+  heatmap
 }
-
 #' Title
 #'
 #' @param cells 
