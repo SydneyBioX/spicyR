@@ -6,7 +6,7 @@ Spatial analysis of in situ cytometry data.
 Overview
 --------
 
-**spicyR** spicyR provides a series of functions to aid in the analysis of both 
+**spicyR** provides a series of functions to aid in the analysis of both 
     immunofluorescence and mass cytometry imaging data as well as other assays that 
     can deeply phenotype individual cells and their spatial location such as high-definiton spatial transcriptomics. 
 
