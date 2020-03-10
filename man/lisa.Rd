@@ -2,6 +2,7 @@
 % Please edit documentation in R/LISA.R, R/hatchingPlot.R
 \name{lisa}
 \alias{lisa}
+\alias{hatchingPlot}
 \alias{geom_hatching}
 \title{Generate local indicators of spatial association}
 \usage{
@@ -12,6 +13,15 @@ lisa(
   window = "square",
   window.length = NULL,
   whichParallel = "imageID"
+)
+
+hatchingPlot(
+  data,
+  imageID = NULL,
+  window = "concave",
+  line.spacing = 21,
+  nbp = 250,
+  window.length = 0
 )
 
 geom_hatching(
@@ -43,13 +53,19 @@ geom_hatching(
 
 \item{whichParallel}{Should the function use parallization on the imageID or the cellType.}
 
-\item{mapping}{Set of aesthetic mappings created by aes() or aes_(). If specified and inherit.aes = TRUE (the default), it is combined with the default mapping at the top level of the plot. You must supply mapping if there is no plot mapping.}
-
 \item{data}{The data to be displayed in this layer. There are three options: 
 
 If NULL, the default, the data is inherited from the plot data as specified in the call to ggplot().
 A data.frame, or other object, will override the plot data. All objects will be fortified to produce a data frame. See fortify() for which variables will be created. 
 A function will be called with a single argument, the plot data. The return value must be a data.frame, and will be used as the layer data. A function can be created from a formula (e.g. ~ head(.x, 10)).}
+
+\item{imageID}{A vector of imageIDs to be plotted}
+
+\item{line.spacing}{A integer indicating the spacing between hatching lines.}
+
+\item{nbp}{An integer tuning the granularity of the grid used when defining regions}
+
+\item{mapping}{Set of aesthetic mappings created by aes() or aes_(). If specified and inherit.aes = TRUE (the default), it is combined with the default mapping at the top level of the plot. You must supply mapping if there is no plot mapping.}
 
 \item{stat}{The statistical transformation to use on the data for this layer, as a string.}
 
@@ -59,18 +75,40 @@ A function will be called with a single argument, the plot data. The return valu
 
 \item{inherit.aes}{If FALSE, overrides the default aesthetics, rather than combining with them. This is most useful for helper functions that define both data and aesthetics and shouldn't inherit behaviour from the default plot specification, e.g. borders().}
 
-\item{line.spacing}{A integer indicating the spacing between hatching lines.}
-
-\item{nbp}{An integer tuning the granularity of the grid used when defining regions}
-
 \item{line.width}{A numeric controlling the width of the hatching lines}
 
 \item{Position}{adjustment, either as a string, or the result of a call to a position adjustment function.}
 }
+\value{
+A matrix of LISA curves
+
+A ggplot object
+
+A ggplot geom
+}
 \description{
+The hatchingPlot() function is used to create hatching patterns for representating spatial regions and cell-types.
+
 The hatching geom is used to create hatching patterns for representation of spatial regions.
 }
 \examples{
+library(spicyR)
+\dontrun{
+# Given a segmentedCells object cellExp
+# First constract LISA
+
+lisaCurves <- lisa(cellExp)
+
+# Then cluster the LISA curves
+
+kM <- kmeans(lisaCurves,2)
+region(cellExp) <- paste('region',kM$cluster,sep = '_')
+
+# Then plot the regions
+hatchingPlot(cellExp)
+}
+
+library(spicyR)
 \dontrun{
 # Given a segmentedCells object cellExp
 # First constract LISA

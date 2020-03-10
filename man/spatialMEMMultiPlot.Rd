@@ -5,14 +5,14 @@
 \title{Plots result of spatialMEMMulti.}
 \usage{
 spatialMEMMultiPlot(
-  df,
+  spicyTest,
   fdr = FALSE,
   breaks = c(-5, 5, 0.5),
   col = c("blue", "white", "red")
 )
 }
 \arguments{
-\item{df}{Data frame obtained from spatialMEMMulti.}
+\item{spicyTest}{Data frame obtained from spatialMEMMulti.}
 
 \item{fdr}{TRUE if FDR correction is used.}
 

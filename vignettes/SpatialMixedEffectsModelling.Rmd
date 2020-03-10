@@ -30,14 +30,11 @@ library(ggplot2)
 # Overview
 The following will provide a step-by-step guide on how to use mixed-effects models to analyse multiple image datasets.
 
-# mixed-effects modelling
+# Mixed-effects modelling
 
 ## Reading in the data
 
-
-Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders.
-
-What is this datasets/experiement trying to ask?
+Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders. With this data set, we want to see if there are differences in how cell types are localised with respect to each other.
 
 ```{r message=FALSE}
 data("melanomaResponders")
@@ -50,27 +47,34 @@ Note that `cellType` can be some combination of the expression of CD8, PD1 or PD
 
 ## Test for change in colocalisation between Responders and Non-Responders for a specific pair of cells.
 
-
-
+Firstly, we can see if whether one cell type tends to be around another cell type in one condition compared to the other.
 ```{r}
-spicyTest <- spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1+", to = "SOX10+")
+spicyTest <- spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
 spicyTest
 top(spicyTest)
 ```
-
-
+As the coefficient is negative, we find that CD8-PD1+PDL1+ cells are more likely to be found around CD8+D1+PDL1- cells in Non-Responders.
 
 ## Test for change in colocalisation between Responders and Non-Responders for all cells.
-
-
+Here, we can apply the function to all pairwise cell type combinations, and represent this in a heatmap.
 
 ```{r}
 spicyTest <- spicy(cells, condition = "condition", subject = "subject")
 spicyTest
-top(spicyTest)
+top(spicyTest)  
+
+spatialMEMMultiPlot(spicyTest, breaks=c(-3, 3, 0.5))
 ```
 
+To improve statistical power, we can perform bootstrapping.
+```{r}
+spicyTest <- spicy(cells, condition = "condition", subject = "subject", nsim = 199)
+spicyTest
+top(spicyTest)  
 
+spatialMEMMultiPlot(spicyTest, breaks=c(-3, 3, 0.5))
+```
+Indeed, we get improved statistical power compared to the previous method.
 
 
 

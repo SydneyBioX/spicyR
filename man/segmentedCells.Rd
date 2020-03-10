@@ -60,7 +60,7 @@ n = 10
 
 cells <- data.frame(row.names = seq_len(n))
 cells$ObjectNumber <- seq_len(n)
-cells$ImageNumber <- rep(1:2,c(n/2,n/2))
+cells$ImageNumber <- rep(seq_len(2),c(n/2,n/2))
 cells$AreaShape_Center_X <- runif(n)
 cells$AreaShape_Center_Y <- runif(n)
 cells$AreaShape_round <- rexp(n)
