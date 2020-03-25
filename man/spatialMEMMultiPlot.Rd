@@ -26,3 +26,10 @@ spatialMEMMultiPlot(
 \description{
 Plots result of spatialMEMMulti.
 }
+\examples{
+#' data("melanomaResponders")
+spicy(cells, condition = "condition", subject = "subject")
+spatialMEMMultiPlot(spicyTest, breaks=c(-3, 3, 0.5))
+
+
+}

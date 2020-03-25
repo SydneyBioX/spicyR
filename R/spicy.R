@@ -12,6 +12,10 @@
 #' @export
 #'
 #' @examples
+#' data("melanomaResponders")
+#' spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
+#' spicy(cells, condition = "condition", subject = "subject")
+#' spicy(cells, condition = "condition", subject = "subject", nsim = 199)
 #' @importFrom mgcv gam ti
 spicy <- function(x, 
                   condition=NULL, 
@@ -366,6 +370,11 @@ spatialLM <- function(spatAssoc, from, to, cells, condition, covariates, weightF
 #' @importFrom pheatmap pheatmap
 #' @importFrom grDevices colorRampPalette
 #' @examples
+#' #' data("melanomaResponders")
+#' spicy(cells, condition = "condition", subject = "subject")
+#' spatialMEMMultiPlot(spicyTest, breaks=c(-3, 3, 0.5))
+#' 
+#' 
 spatialMEMMultiPlot <- function(spicyTest,
                                 fdr=FALSE,
                                 breaks=c(-5, 5, 0.5),

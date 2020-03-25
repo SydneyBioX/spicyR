@@ -39,3 +39,9 @@ Data frame of p-values.
 \description{
 Performs spatial tests on spatial cytometry data.
 }
+\examples{
+data("melanomaResponders")
+spicy(cells, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
+spicy(cells, condition = "condition", subject = "subject")
+spicy(cells, condition = "condition", subject = "subject", nsim = 199)
+}
