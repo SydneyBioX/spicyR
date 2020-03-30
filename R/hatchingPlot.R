@@ -164,7 +164,9 @@ geom_hatching <-
 #' @param aesthetics The names of the aesthetics that this scale works with
 #' @param ... Arguments passed on to discrete_scale
 #' @param guide A function used to create a guide or its name. See guides() for more info.
-#' param
+#' 
+#' @return a ggplot guide
+#' 
 #' @export
 #' @rdname scale_region
 #' @importFrom ggplot2 discrete_scale

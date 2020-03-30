@@ -54,6 +54,7 @@
 #' @rdname segmentedCells
 #' @importFrom methods new
 #' @importFrom S4Vectors DataFrame split
+#' @importFrom IRanges SplitDataFrameList
 segmentedCells <-
     function(cellData,
              cellProfiler = FALSE,

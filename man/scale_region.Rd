@@ -14,10 +14,12 @@ scale_region_manual(..., values)
 
 \item{...}{Arguments passed on to discrete_scale}
 
-\item{guide}{A function used to create a guide or its name. See guides() for more info.
-param}
+\item{guide}{A function used to create a guide or its name. See guides() for more info.}
 
 \item{values}{a set of aesthetic values to map data values to. If this is a named vector, then the values will be matched based on the names. If unnamed, values will be matched in order (usually alphabetical) with the limits of the scale. Any data values that don't match will be given na.value.}
+}
+\value{
+a ggplot guide
 }
 \description{
 Region scale constructor.
