@@ -1,14 +1,14 @@
 #' Show segmentedCells
-#' 
+#'
 #' This outputs critical information about asegmentedCells.
-#' 
+#'
 #' @section usage:
 #' `show(object)`
 #'
 #' @param object A segmentedCells.
-#' 
+#'
 #' @return Information of the number of images, cells, intenisties, morphologies and phenotypes.
-#' 
+#'
 #' @examples
 #' ### Something that resembles cellProfiler data
 #'
@@ -27,14 +27,14 @@
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
 #' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
-#' 
+#'
 #' ### Cluster cell types
 #' intensities <- intensity(cellExp)
 #' kM <- kmeans(intensities,2)
 #' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
-#' 
+#'
 #' cellExp
-#' 
+#'
 #' @name show-segmentedCells
 #' @rdname show-segmentedCells
 #' @aliases show
@@ -43,48 +43,53 @@ NULL
 
 .segmentedCells_show <- function(object) {
   cat('A segmentedCells with... \n')
-  cat("Number of images:", nrow(object),'\n')
-  cat("Number of cells:", length(cellID(object)),'\n')
+  cat("Number of images:", nrow(object), '\n')
+  cat("Number of cells:", length(cellID(object)), '\n')
   
   uniqueCellTypes <- unique(cellType(object))
   .showCat("Number of cell types: ", as.character(uniqueCellTypes))
   
-  .showCat("Number of intensities: ", colnames(object[1,'intensity'][[1]]))
+  .showCat("Number of intensities: ", colnames(object[1, 'intensity'][[1]]))
   
-  .showCat("Number of morphologies: ", colnames(object[1,'morphology'][[1]]))
+  .showCat("Number of morphologies: ", colnames(object[1, 'morphology'][[1]]))
   
-  .showCat("Number of image phenotypes: ", colnames(object[1,'phenotype'][[1]]))
+  .showCat("Number of image phenotypes: ", colnames(object[1, 'phenotype'][[1]]))
 }
 
-if (!isGeneric("show")) setGeneric("show", function(object) standardGeneric("show"))
+if (!isGeneric("show"))
+  setGeneric("show", function(object)
+    standardGeneric("show"))
 
 setMethod("show", signature(object = "segmentedCells"), function(object) {
   .segmentedCells_show(object)
 })
 
 
-.showCat <- function (fmt, vals = character(), exdent = 2, ...) 
+.showCat <- function (fmt,
+                      vals = character(),
+                      exdent = 2,
+                      ...)
 {
   vals <- ifelse(nzchar(vals), vals, "''")
-  lbls <- paste('[', paste(.selectSome(vals), collapse = ", ") ,']')
+  lbls <- paste('[', paste(.selectSome(vals), collapse = ", ") , ']')
   txt <- paste(fmt, length(vals), lbls)
   cat(strwrap(txt, exdent = exdent), sep = "\n")
 }
 
-.selectSome <- function (obj, maxToShow = 4) 
+.selectSome <- function (obj, maxToShow = 4)
 {
   len <- length(obj)
-  if (maxToShow < 3) 
+  if (maxToShow < 3)
     maxToShow <- 3
   if (len > maxToShow) {
     maxToShow <- maxToShow - 1
-    bot <- ceiling(maxToShow/2)
+    bot <- ceiling(maxToShow / 2)
     top <- len - (maxToShow - bot - 1)
-    nms <- obj[c(seq_len(bot), seq(top,len,1))]
+    nms <- obj[c(seq_len(bot), seq(top, len, 1))]
     c(as.character(nms[seq_len(bot)]), "...", as.character(nms[-seq_len(bot)]))
   }
-  else if (is.factor(obj)) 
+  else if (is.factor(obj))
     as.character(obj)
-  else obj
+  else
+    obj
 }
-

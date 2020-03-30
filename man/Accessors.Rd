@@ -17,6 +17,7 @@
 \alias{imageCellID<-,segmentedCells-method}
 \alias{cellID,segmentedCells-method}
 \alias{cellID<-,segmentedCells-method}
+\alias{filterCells,segmentedCells-method}
 \alias{location}
 \alias{location<-}
 \alias{intensity}
@@ -32,6 +33,7 @@
 \alias{imageCellID<-}
 \alias{cellID}
 \alias{cellID<-}
+\alias{filterCells}
 \alias{region,segmentedCells-method}
 \alias{region<-,segmentedCells-method}
 \alias{region}
@@ -67,6 +69,8 @@ imageCellID(x) <- value
 cellType(x, imageID = NULL)
 
 cellType(x, imageID = NULL) <- value
+
+filterCells(x, select)
 
 location(x, imageID = NULL, bind = TRUE)
 
@@ -104,6 +108,8 @@ cellType(x, imageID = NULL) <- value
 \item{imageID}{A vector of imageIDs to specifically extract.}
 
 \item{bind}{When false outputs a list of DataFrames split by imageID}
+
+\item{select}{A logical vector of the cells to be kept.}
 
 \item{expand}{Used to expand the phenotype information from per image to per cell.}
 

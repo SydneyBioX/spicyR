@@ -4,5 +4,6 @@
 setClass("segmentedCells", contains = "DataFrame")
 
 #' @export
-#' @rdname spicy-class
+#' @aliases spicy,list,ANY-method
+#' @rdname spicy
 setClass("spicy", contains = "list")

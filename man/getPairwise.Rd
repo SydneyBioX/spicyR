@@ -4,22 +4,24 @@
 \alias{getPairwise}
 \title{Get statistic from pairwise L curve of a single image.}
 \usage{
-getPairwise(x, from, to, dist = NULL)
+getPairwise(cells, from, to, dist = NULL)
 }
 \arguments{
-\item{x}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
+\item{cells}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
 
 \item{from}{The 'from' cellType for generating the L curve.}
 
 \item{to}{The 'to' cellType for generating the L curve.}
 
 \item{dist}{The distance at which the statistic is obtained.}
-
-\item{integrate}{Should the statistic be the integral from 0 to dist, or the value of the L curve at dist.}
 }
 \value{
 Statistic from pairwise L curve of a single image.
 }
 \description{
 Get statistic from pairwise L curve of a single image.
+}
+\examples{
+data("melanomaResponders")
+pairAssoc <- getPairwise(melanomaResponders)
 }

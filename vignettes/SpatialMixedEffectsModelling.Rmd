@@ -12,7 +12,7 @@ author:
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
-  %\VignetteIndexEntry{"spatialMEM"}
+  %\VignetteIndexEntry{"spicy"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
@@ -41,9 +41,9 @@ Here, we use a melanoma image dataset with two conditions: Responders and Non-Re
 
 ```{r message=FALSE}
 data("melanomaResponders")
-cells
-location(cells)
-phenotype(cells)
+melanomaResponders
+location(melanomaResponders)
+phenotype(melanomaResponders)
 ```
 In this data set, `cellType` can be some combination of the expression of CD8, PD1 or PDL1, or is SOX10+.
 
@@ -56,7 +56,7 @@ To investigate changes in colocalisation between two different cell types, we me
 Firstly, we can see whether one cell type tends to be around another cell type in one condition compared to the other. This can be done using the `spicy()` function, where we include `condition`, and `subject`. In this example, we want to see whether or not CD8-PD1+PDL1+ cells (`to`) thend to be found around CD8+PD1+PDL1- cells (`from`).
 
 ```{r}
-spicyTest <- spicy(cells, 
+spicyTest <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject", 
                    from = "CD8+PD1+PDL1-", 
@@ -72,7 +72,7 @@ We obtain a `spicy` object which details the results of the mixed effects modell
 Here, we can perform what we did above for all pairwise combinations of cell types by excluding the `from` and `to` parameters from `spicy()`.
 
 ```{r}
-spicyTest <- spicy(cells, 
+spicyTest <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject")
 spicyTest
@@ -82,18 +82,18 @@ Again, we obtain a `spicy` object which outlines the result of the mixed effects
 
 We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by providing it the `spicy` object obtained.
 ```{r}
-spatialMEMMultiPlot(spicyTest, breaks=c(-3, 3, 0.5))
+signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 ```
 
 To improve statistical power, we can perform bootstrapping by introducing the `nsim` parameter to `spicy()`.
 ```{r}
-spicyTest <- spicy(cells, 
+spicyTest <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject", 
                    nsim = 199)
 spicyTest
 top(spicyTest)  
 
-spatialMEMMultiPlot(spicyTest, breaks=c(-3, 3, 0.5))
+signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 ```
 Indeed, we get improved statistical power compared to the previous method.

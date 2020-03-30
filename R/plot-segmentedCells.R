@@ -1,15 +1,15 @@
 #' A basic plot for segmentedCells object
-#' 
-#' This function generates a basic x-y plot of the location and cellType data. 
-#' 
+#'
+#' This function generates a basic x-y plot of the location and cellType data.
+#'
 #' @section usage:
 #' `plot(x, imageID = NULL)`
 #'
 #' @param x A segmentedCells object.
 #' @param imageID The image that should be plotted.
-#' 
+#'
 #' @return A ggplot object.
-#' 
+#'
 #' @examples
 #' ### Something that resembles cellProfiler data
 #'
@@ -28,14 +28,14 @@
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
 #' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
-#' 
+#'
 #' ### Cluster cell types
 #' intensities <- intensity(cellExp)
 #' kM <- kmeans(intensities,2)
 #' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
-#' 
+#'
 #' #plot(cellExp, imageID=1)
-#' 
+#'
 #' @name plot-segmentedCells
 #' @rdname plot-segmentedCells
 #' @aliases plot
@@ -44,7 +44,6 @@
 NULL
 
 plot.segmentedCells <- function(cellData, imageID = NULL) {
-    
     if (is.null(imageID)) {
         imageID <- imageID(cellData)[1]
     }
@@ -53,20 +52,27 @@ plot.segmentedCells <- function(cellData, imageID = NULL) {
     if (is.na(loc$cellType[1])) {
         ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + theme_classic() + labs(x = "x", y = "y")
     } else {
-        ggplot(loc, aes(x = .data$x, y = .data$y, colour = .data$cellType)) + geom_point() + 
-            theme_classic() + labs(x = "x", y = "y", colour = "cell-type")
+        ggplot(loc, aes(
+            x = .data$x,
+            y = .data$y,
+            colour = .data$cellType
+        )) + geom_point() +
+            theme_classic() + labs(x = "x",
+                                   y = "y",
+                                   colour = "cell-type")
     }
 }
 
 
-if (!isGeneric("plot")) setGeneric("plot", function(x, ...) standardGeneric("plot"))
+if (!isGeneric("plot"))
+    setGeneric("plot", function(x, ...)
+        standardGeneric("plot"))
 
 setMethod("plot", signature(x = "segmentedCells"), function(x, ...) {
     plot.segmentedCells(x, ...)
 })
 
 plot.segmentedCells <- function(cellData, imageID = NULL) {
-
     if (is.null(imageID)) {
         imageID <- imageID(cellData)[1]
     }
@@ -75,9 +81,13 @@ plot.segmentedCells <- function(cellData, imageID = NULL) {
     if (is.na(loc$cellType[1])) {
         ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + theme_classic() + labs(x = "x", y = "y")
     } else {
-        ggplot(loc, aes(x = .data$x, y = .data$y, colour = .data$cellType)) + geom_point() + 
-            theme_classic() + labs(x = "x", y = "y", colour = "cell-type")
+        ggplot(loc, aes(
+            x = .data$x,
+            y = .data$y,
+            colour = .data$cellType
+        )) + geom_point() +
+            theme_classic() + labs(x = "x",
+                                   y = "y",
+                                   colour = "cell-type")
     }
 }
-
-

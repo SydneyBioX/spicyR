@@ -33,22 +33,24 @@ segmentedCells(
 
 \item{morphologyString}{A string which can be used to identify the columns which contains morphology information.}
 
+\item{phenotypeString}{A string which can be used to identify the columns which contains phenotype information.}
+
 \item{cellIDString}{The column name for cellID.}
 
 \item{imageCellIDString}{The column name for imageCellID.}
 
-\item{imageIDString}{The column name for imageIDString}
+\item{imageIDString}{The column name for imageIDString.}
 }
 \value{
 A segmentedCells object
 }
 \description{
-The segmentedCells S4 class is for storing data from segmented 
-imaging cytometry and spatial omics data. It extends DataFrame and defines 
-methods that take advantage of DataFrame nesting to represent elements of 
-cell-based experiments with spatial orientation that are commonly 
-encountered. This object is able to store information on a cell's spatial 
-location, cellType, morphology, intensity of gene/protein marks as well as 
+The segmentedCells S4 class is for storing data from segmented
+imaging cytometry and spatial omics data. It extends DataFrame and defines
+methods that take advantage of DataFrame nesting to represent elements of
+cell-based experiments with spatial orientation that are commonly
+encountered. This object is able to store information on a cell's spatial
+location, cellType, morphology, intensity of gene/protein marks as well as
 image level phenotype information.
 }
 \examples{
