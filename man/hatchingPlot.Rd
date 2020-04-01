@@ -74,10 +74,12 @@ The hatchingPlot() function is used to create hatching patterns for representati
 The hatching geom is used to create hatching patterns for representation of spatial regions.
 }
 \examples{
+\dontrun{
 example(lisa)
 # Plot the regions with hatching
 hatchingPlot(cellExp)
-
+}
+\dontrun{
 library(ggplot2)
 
 # Extract the region information along with x-y coordinates
@@ -88,6 +90,6 @@ p <- ggplot(df,aes(x = x,y = y, colour = cellType, region = region)) +
 geom_point() +
 facet_wrap(~imageID) +
 geom_hatching()
-
+}
 
 }
