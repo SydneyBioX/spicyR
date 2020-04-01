@@ -12,10 +12,11 @@
 #' @return A ggplot object
 #'
 #' @examples
+#' \dontrun{
 #' example(lisa)
 #' # Plot the regions with hatching
 #' hatchingPlot(cellExp)
-#'
+#' }
 #' @export
 #' @rdname hatchingPlot
 #' @importFrom ggplot2 ggplot aes geom_point theme_minimal facet_wrap
@@ -106,6 +107,7 @@ hatchingPlot <-
 #' @return A ggplot geom
 #'
 #' @examples
+#' \dontrun{
 #' library(ggplot2)
 #' 
 #' # Extract the region information along with x-y coordinates
@@ -116,7 +118,7 @@ hatchingPlot <-
 #' geom_point() +
 #' facet_wrap(~imageID) +
 #' geom_hatching()
-#'
+#' }
 #'
 #' @export
 #' @rdname hatchingPlot

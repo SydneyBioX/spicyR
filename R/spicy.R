@@ -447,8 +447,10 @@ spatialLM <-
 #' @return a pheatmap object
 #'
 #' @examples
+#' \dontrun{
 #' example(spicy)
 #' signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
+#' }
 #' @export
 #' @importFrom pheatmap pheatmap
 #' @importFrom grDevices colorRampPalette
