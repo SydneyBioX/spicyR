@@ -16,10 +16,10 @@
 #' @return A data.frame
 #'
 #' @examples
-#' \dontrun{
-#' example(spicy)
+#' 
+#' data(spicyTest)
 #' top(spicyTest)
-#' }
+#' 
 #' @aliases 
 #' top,spicy-method
 #' top

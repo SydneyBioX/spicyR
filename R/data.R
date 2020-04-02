@@ -8,3 +8,32 @@
 #' @aliases 
 #' melanomaResponders
 "melanomaResponders"
+
+
+
+#' Results from spicy for melanomaResponders data
+#'
+#' Results from the call:
+#' spicyTest <- spicy(melanomaResponders, 
+#'                    condition = "condition", 
+#'                    subject = "subject")
+#'
+#' @format spicyTest a spicy object
+#' @aliases 
+#' spicyTest
+"spicyTest"
+
+
+
+#' Results from spicy with bootstrap for melanomaResponders data
+#'
+#' Results from the call:
+#' spicyTestBootstrap <- spicy(melanomaResponders, 
+#'                            condition = "condition", 
+#'                            subject = "subject", 
+#'                            nsim = 199)
+#'
+#' @format spicyTestBootstrap a spicy object
+#' @aliases 
+#' spicyTestBootstrap
+"spicyTestBootstrap"

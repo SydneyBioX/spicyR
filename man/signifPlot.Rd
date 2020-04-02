@@ -27,8 +27,7 @@ a pheatmap object
 Plots result of signifPlot.
 }
 \examples{
-\dontrun{
-example(spicy)
+data(spicyTestBootstrap)
 signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
-}
+
 }

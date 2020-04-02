@@ -49,20 +49,20 @@ In this data set, `cellType` can be some combination of the expression of CD8, P
 
 # Mixed Effects Modelling
 
-To investigate changes in colocalisation between two different cell types, we measure the level of colocalisation between two cell types by modelling with the `Lcross()` function in the `spatstat` package. Specifically, the mean difference between the obtained function and the theoretical function is used as a measure for the level of colocalisation. Differences of this statistic between two conditions is modelled using a mixed effects model, with condition as the fixed effect and subject as the random effect.
+To investigate changes in colocalisation between two different cell types, we measure the level of colocalisation between two cell types by modelling with the `Lcross()` function in the `spatstat` package. Specifically, the mean difference between the obtained function and the theoretical function is used as a measure for the level of colocalisation. Differences of this statistic between two conditions is modelled using a weighted mixed effects model, with condition as the fixed effect and subject as the random effect.
 
 ## Testing for change in colocalisation between Responders and Non-Responders for a specific pair of cells
 
 Firstly, we can see whether one cell type tends to be around another cell type in one condition compared to the other. This can be done using the `spicy()` function, where we include `condition`, and `subject`. In this example, we want to see whether or not CD8-PD1+PDL1+ cells (`to`) thend to be found around CD8+PD1+PDL1- cells (`from`).
 
 ```{r}
-spicyTest <- spicy(melanomaResponders, 
+spicyTestPair <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject", 
                    from = "CD8+PD1+PDL1-", 
                    to = "CD8-PD1+PDL1+")
-spicyTest
-top(spicyTest)
+spicyTestPair
+top(spicyTestPair)
 ```
 
 We obtain a `spicy` object which details the results of the mixed effects modelling performed. As the `coefficient` in `spicyTest` is negative, we find that CD8-PD1+PDL1+ cells are more likely to be found around CD8+PD1+PDL1- cells in Non-Responders.
@@ -71,13 +71,23 @@ We obtain a `spicy` object which details the results of the mixed effects modell
 
 Here, we can perform what we did above for all pairwise combinations of cell types by excluding the `from` and `to` parameters from `spicy()`.
 
-```{r}
+```{r echo=FALSE}
+data("spicyTest")
+```
+
+
+```{r eval = FALSE}
 spicyTest <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject")
+
+```
+
+```{r}
 spicyTest
 top(spicyTest)  
 ```
+
 Again, we obtain a `spicy` object which outlines the result of the mixed effects models performed for each pairwise combination if cell types.
 
 We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by providing it the `spicy` object obtained.
@@ -85,15 +95,27 @@ We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by
 signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 ```
 
-To improve statistical power, we can perform bootstrapping by introducing the `nsim` parameter to `spicy()`.
-```{r}
-spicyTest <- spicy(melanomaResponders, 
+### Bootstrapping with spicy
+There are multiple ways for calculating p-values for mixed effects models. We have also implemented a bootstrapping approach. All that is needed is a choice for the number of resamples used in the bootstrap which can be set with the `nsim` parameter in `spicy()`.
+
+```{r echo=FALSE}
+data(spicyTestBootstrap)
+```
+
+
+```{r eval = FALSE}
+spicyTestBootstrap <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject", 
                    nsim = 199)
-spicyTest
-top(spicyTest)  
+```
 
-signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
+
+```{r}
+spicyTestBootstrap
+
+top(spicyTestBootstrap)  
+
+signifPlot(spicyTestBootstrap, breaks=c(-3, 3, 0.5))
 ```
 Indeed, we get improved statistical power compared to the previous method.

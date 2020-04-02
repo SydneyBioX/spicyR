@@ -74,12 +74,32 @@ The hatchingPlot() function is used to create hatching patterns for representati
 The hatching geom is used to create hatching patterns for representation of spatial regions.
 }
 \examples{
-\dontrun{
-example(lisa)
-# Plot the regions with hatching
+
+## Generate toy data
+set.seed(51773)
+x <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
+             runif(200)+3,runif(200)+2,runif(200)+1,runif(200)),4)
+             y <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
+                          runif(200),runif(200)+1,runif(200)+2,runif(200)+3),4)
+cellType <- factor(paste('c',rep(rep(c(1:2),rep(200,2)),4),sep = ''))
+imageID <- rep(c('s1', 's2'),c(800,800))
+cells <- data.frame(x, y, cellType, imageID)
+
+## Store data in SegmentedCells object
+cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
+
+## Generate LISA
+lisaCurves <- lisa(cellExp)
+
+## Cluster regions
+kM <- kmeans(lisaCurves,2)
+region(cellExp) <- paste('region',kM$cluster,sep = '_')
+
+## Plot regions
 hatchingPlot(cellExp)
-}
-\dontrun{
+
+
+
 library(ggplot2)
 
 # Extract the region information along with x-y coordinates
@@ -90,6 +110,6 @@ p <- ggplot(df,aes(x = x,y = y, colour = cellType, region = region)) +
 geom_point() +
 facet_wrap(~imageID) +
 geom_hatching()
-}
+
 
 }

@@ -20,16 +20,16 @@
 #'
 #' # Test with random effect for patient on only one pairwise combination of cell types.
 #' spicy(melanomaResponders, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
-#' \dontrun{
+#' 
 #' # Test all pairwise combination of cell types without random effect of patient.
-#' spicyTest <- spicy(melanomaResponders, condition = "condition")
+#' #spicyTest <- spicy(melanomaResponders, condition = "condition")
 #'
-#'  Test all pairwise combination of cell types with random effect of patient.
+#' # Test all pairwise combination of cell types with random effect of patient.
 #' #spicy(melanomaResponders, condition = "condition", subject = "subject")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient using a bootstrap to calculate significance.
-#' spicy(melanomaResponders, condition = "condition", subject = "subject", nsim = 199)
-#' }
+#' #spicy(melanomaResponders, condition = "condition", subject = "subject", nsim = 199)
+#' 
 #' @aliases
 #' spicy
 #' spicy,spicy-method
@@ -278,7 +278,7 @@ getStat <- function(cells, from, to, dist) {
     
   })
   
-  if (length(class(L)) == 1) {
+  if (!is(L,"fv")) {
     return(NA)
   }
   
@@ -448,10 +448,9 @@ spatialLM <-
 #' @return a pheatmap object
 #'
 #' @examples
-#' \dontrun{
-#' example(spicy)
+#' data(spicyTestBootstrap)
 #' signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
-#' }
+#' 
 #' @export
 #' @importFrom pheatmap pheatmap
 #' @importFrom grDevices colorRampPalette

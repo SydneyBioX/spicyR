@@ -25,8 +25,8 @@ A data.frame
 A table of the significant results from spicy tests
 }
 \examples{
-\dontrun{
-example(spicy)
+
+data(spicyTest)
 top(spicyTest)
-}
+
 }
