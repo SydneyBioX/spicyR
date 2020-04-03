@@ -181,6 +181,6 @@ region(cellExp) <- paste('region',kM$cluster,sep = '_')
 Finally, we can use `hatchingPlot` to construct a `ggplot` object where the regions are marked by different hatching patterns. This allows us to visualize the two regions and eight cell-types simultaneously.
 
 ```{r}
-hatchingPlot(cellExp, imageID = c("1","2","3"))
+hatchingPlot(cellExp, imageID = c("1","2"))
 ```
 
