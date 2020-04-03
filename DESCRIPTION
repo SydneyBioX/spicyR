@@ -16,5 +16,4 @@ VignetteBuilder: knitr
 Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
      purrr, rlang, grDevices, IRanges
 Suggests: BiocStyle, knitr, rmarkdown
-Depends: R (>= 4.0.0)
 RoxygenNote: 7.0.2
