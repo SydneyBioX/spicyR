@@ -1,7 +1,7 @@
 Package: spicyR
 Type: Package
 Title: Spatial analysis of in situ cytometry data
-Version: 0.99.6
+Version: 0.99.7
 Author: Nicolas Canete and Ellis Patrick
 Maintainer: Ellis Patrick <ellis.patrick@sydney.edu.au>
 Description: spicyR provides a series of functions to aid in the analysis of both 
@@ -16,4 +16,5 @@ VignetteBuilder: knitr
 Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
      purrr, rlang, grDevices, IRanges
 Suggests: BiocStyle, knitr, rmarkdown
+Depends: R (>= 3.5.0)
 RoxygenNote: 7.0.2
