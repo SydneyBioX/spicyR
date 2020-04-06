@@ -103,11 +103,8 @@ head(loc)
 Read in data.
 
 ```{r}
-isletFile <- system.file("extdata","isletCells.csv", package = "spicyR")
-cells <- read.csv(isletFile)
-
-head(colnames(cells))
-
+isletFile <- system.file("extdata","isletCells.txt.gz", package = "spicyR")
+cells <- read.table(isletFile, header = TRUE)
 ```
 
 We can then create a `segmentedCells` object.

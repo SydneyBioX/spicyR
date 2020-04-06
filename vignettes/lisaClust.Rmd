@@ -137,8 +137,8 @@ Here we apply our `lisaClust` framework to three images of pancreatic islets fro
 
 We will start by reading in the data and storing it as a `segmentedCells` object. Here the data is in a format consistent with that outputted by CellProfiler.
 ```{r}
-isletFile <- system.file("extdata","isletCells.csv", package = "spicyR")
-cells <- read.csv(isletFile)
+isletFile <- system.file("extdata","isletCells.txt.gz", package = "spicyR")
+cells <- read.table(isletFile, header = TRUE)
 cellExp <- segmentedCells(cells, cellProfiler = TRUE)
 
 ```
@@ -149,7 +149,7 @@ cellExp <- segmentedCells(cells, cellProfiler = TRUE)
 This data does not include annotation of the cell-types of each cell. Here we extract the marker intensities from the `segmentedCells` object using `intensity`. We then perform k-means clustering with eight clusters and store these cell-type clusters in our `segmentedCells` object using `cellType() <-`.
 ```{r}
 intensities <- intensity(cellExp)
-kM <- kmeans(intensities,8)
+kM <- kmeans(intensities,10)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 ```
 
@@ -159,7 +159,7 @@ As before, we can calculate local indicators of spatial association (LISA) funct
 
 ```{r}
 
-lisaCurves <- lisa(cellExp)
+lisaCurves <- lisa(cellExp, Rs = c(10,20,50))
 
 ```
 
@@ -181,6 +181,6 @@ region(cellExp) <- paste('region',kM$cluster,sep = '_')
 Finally, we can use `hatchingPlot` to construct a `ggplot` object where the regions are marked by different hatching patterns. This allows us to visualize the two regions and eight cell-types simultaneously.
 
 ```{r}
-hatchingPlot(cellExp, imageID = c("1","2"))
+hatchingPlot(cellExp)
 ```
 
