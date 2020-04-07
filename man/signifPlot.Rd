@@ -8,7 +8,7 @@ signifPlot(
   results,
   fdr = FALSE,
   breaks = c(-5, 5, 0.5),
-  col = c("blue", "white", "red")
+  colors = c("blue", "white", "red")
 )
 }
 \arguments{

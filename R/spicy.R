@@ -318,7 +318,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
 
 
 
-
+#' @importFrom stats p.adjust
 .show_spicy <- function(df) {
   pval <- as.data.frame(df$p.value)
   cond <- colnames(pval)[grep('condition', colnames(pval))]
@@ -340,6 +340,7 @@ setMethod("show", signature(object = "spicy"), function(object) {
 
 
 #' @importFrom lmerTest lmer
+#' @importFrom stats predict
 spatialMEM <-
   function(spatAssoc,
            from,
@@ -391,7 +392,7 @@ spatialMEM <-
 
 
 
-
+#' @importFrom stats predict lm
 spatialLM <-
   function(spatAssoc,
            from,
@@ -454,10 +455,11 @@ spatialLM <-
 #' @export
 #' @importFrom pheatmap pheatmap
 #' @importFrom grDevices colorRampPalette
+#' @importFrom stats p.adjust
 signifPlot <- function(results,
                        fdr = FALSE,
                        breaks = c(-5, 5, 0.5),
-                       col = c("blue", "white", "red")) {
+                       colors = c("blue", "white", "red")) {
   pVal <- results$p.value$conditionResponders
   marks <- unique(results$comparisons$from)
   
@@ -481,7 +483,7 @@ signifPlot <- function(results,
   rownames(pVal) <- marks
   
   breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-  pal <- grDevices::colorRampPalette(col)(length(breaks))
+  pal <- colorRampPalette(colors)(length(breaks))
   
   heatmap <- pheatmap(
     pVal,
