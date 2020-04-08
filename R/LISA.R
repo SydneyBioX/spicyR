@@ -110,6 +110,7 @@ lisa <-
 #' @importFrom grDevices chull
 #' @importFrom spatstat owin
 #' @importFrom concaveman concaveman
+#' @importFrom stats rnorm
 makeWindow <-
   function(data,
            window = "square",
