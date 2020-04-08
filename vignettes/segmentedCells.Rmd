@@ -30,7 +30,17 @@ knitr::opts_chunk$set(
 library(BiocStyle)
 ```
 
-A `segmentedCells` is an object designed to store data from imaging cytometry (FISH, IMC, CycIF, spatial transcriptomics, ... ) that has already been segmented and reduced to individual cells. A `segmentedCells` extends DataFrame and defines methods that take advantage of DataFrame nesting to represent various elements of cell-based experiments with spatial orientation that are commonly encountered. This object is able to store information on a cell's spatial location, cellType, morphology, intensity of gene/protein marks as well as image level phenotype information. Ideally this type of data can be used for cell clustering, point process models or nearest neighbour analysis. Below we will consider a few examples of data formats that can be transformed into a `segmentedCells`.
+A `segmentedCells` is an object designed to store data from imaging cytometry 
+(FISH, IMC, CycIF, spatial transcriptomics, ... ) that has already been 
+segmented and reduced to individual cells. A `segmentedCells` extends DataFrame 
+and defines methods that take advantage of DataFrame nesting to represent 
+various elements of cell-based experiments with spatial orientation that are 
+commonly encountered. This object is able to store information on a cell's 
+spatial location, cellType, morphology, intensity of gene/protein marks as well 
+as image level phenotype information. Ideally this type of data can be used for 
+cell clustering, point process models or nearest neighbour analysis. Below we 
+will consider a few examples of data formats that can be transformed into a 
+`segmentedCells`.
 
 
 First, load the `spicyR` package.
@@ -44,7 +54,10 @@ library(S4Vectors)
 
 ## Example 1 - Data resembles cellProfiler output
 
-Here we create a `segmentedCells` from data that was output from cellProfiler or similar programs. This assumes that there are columns with the string *AreaShape_* and *Intensity_Mean* and that there are `ObjectNumber` and `ImageNumber` columns.
+Here we create a `segmentedCells` from data that was output from cellProfiler or 
+similar programs. This assumes that there are columns with the string 
+*AreaShape_* and *Intensity_Mean* and that there are `ObjectNumber` and 
+`ImageNumber` columns.
 
 Here we create toy cellProfiler data.
 
@@ -85,7 +98,8 @@ head(loc)
 location(cellExp) <- loc
 ```
 
-We can then set the cell types of each cell by extracting and clustering marker intensity information.
+We can then set the cell types of each cell by extracting and clustering marker 
+intensity information.
 
 
 ```{r}
@@ -116,7 +130,8 @@ cellExp
 
 
 
-We can then set the cell types of each cell by extracting and clustering marker intensity information.
+We can then set the cell types of each cell by extracting and clustering marker 
+intensity information.
 
 ```{r}
 intensities <- intensity(cellExp)
@@ -129,7 +144,8 @@ head(loc)
 
 
 
-Here is a very simple plot in ggplot showing the spatial distribution of the cell types
+Here is a very simple plot in ggplot showing the spatial distribution of the 
+cell types
 
 ```{r, fig.width=5, fig.height= 6}
 plot(cellExp, imageID=1)
@@ -180,10 +196,13 @@ head(morph)
 
 ### Phenotype information
 
-We can also include phenotype information for each image. Create some corresponding toy phenotype information which must have a `imageID` variable. 
+We can also include phenotype information for each image. Create some 
+corresponding toy phenotype information which must have a `imageID` variable. 
 
 ```{r}
-phenoData <- DataFrame(imageID = c('1','2'), age = c(21,81), status = c('dead','alive'))
+phenoData <- DataFrame(imageID = c('1','2'), 
+                       age = c(21,81), 
+                       status = c('dead','alive'))
 phenotype(cellExp) <- phenoData
 phenotype(cellExp)
 phenotype(cellExp, expand = TRUE)

@@ -95,7 +95,9 @@ head(morph)
 
 
 ## -----------------------------------------------------------------------------
-phenoData <- DataFrame(imageID = c('1','2'), age = c(21,81), status = c('dead','alive'))
+phenoData <- DataFrame(imageID = c('1','2'), 
+                       age = c(21,81), 
+                       status = c('dead','alive'))
 phenotype(cellExp) <- phenoData
 phenotype(cellExp)
 phenotype(cellExp, expand = TRUE)

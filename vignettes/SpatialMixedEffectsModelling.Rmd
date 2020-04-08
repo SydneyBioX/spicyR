@@ -28,16 +28,26 @@ library(ggplot2)
  
 
 # Overview
-This guide will provide a step-by-step guide on how mixed effects models can be applied to multiple segmented and labelled images to identify how the localisation of different cell types can change across different conditions. Here, the subject is modelled as a random effect, and the different conditions are modelled as a fixed effect.
+This guide will provide a step-by-step guide on how mixed effects models can be 
+applied to multiple segmented and labelled images to identify how the 
+localisation of different cell types can change across different conditions. 
+Here, the subject is modelled as a random effect, and the different conditions 
+are modelled as a fixed effect.
 
 # Example data
-Here, we use a melanoma image dataset with two conditions: Responders and Non-Responders. With this data set, we want to see if there are differences in how cell types are localised with respect to each other.
+Here, we use a melanoma image dataset with two conditions: Responders and 
+Non-Responders. With this data set, we want to see if there are differences in 
+how cell types are localised with respect to each other.
 
-`cells` is a `segmentedCells` object containing single-cell data of 135 images from 27 subjects, with 5 images per subjects. There are 9 Non-Responder subjects and 18 Responder subjects.
+`cells` is a `segmentedCells` object containing single-cell data of 135 images 
+from 27 subjects, with 5 images per subjects. There are 9 Non-Responder subjects 
+and 18 Responder subjects.
 
-`location()` returns a `DataFrame` object providing the location (`x` and `y`) and cell type (`cellType`) of each cell and the image it belongs to (`imageID`).
+`location()` returns a `DataFrame` object providing the location (`x` and `y`) 
+and cell type (`cellType`) of each cell and the image it belongs to (`imageID`).
 
-`phenotype()` returns a `DataFrame` object providing the corresponding subject (`subject`) and condition (`condition`) for each image.
+`phenotype()` returns a `DataFrame` object providing the corresponding subject 
+(`subject`) and condition (`condition`) for each image.
 
 ```{r message=FALSE}
 data("melanomaResponders")
@@ -45,15 +55,27 @@ melanomaResponders
 location(melanomaResponders)
 phenotype(melanomaResponders)
 ```
-In this data set, `cellType` can be some combination of the expression of CD8, PD1 or PDL1, or is SOX10+.
+In this data set, `cellType` can be some combination of the expression of CD8, 
+PD1 or PDL1, or is SOX10+.
 
 # Mixed Effects Modelling
 
-To investigate changes in colocalisation between two different cell types, we measure the level of colocalisation between two cell types by modelling with the `Lcross()` function in the `spatstat` package. Specifically, the mean difference between the obtained function and the theoretical function is used as a measure for the level of colocalisation. Differences of this statistic between two conditions is modelled using a weighted mixed effects model, with condition as the fixed effect and subject as the random effect.
+To investigate changes in colocalisation between two different cell types, we 
+measure the level of colocalisation between two cell types by modelling with the 
+`Lcross()` function in the `spatstat` package. Specifically, the mean difference 
+between the obtained function and the theoretical function is used as a measure
+for the level of colocalisation. Differences of this statistic between two 
+conditions is modelled using a weighted mixed effects model, with condition as 
+the fixed effect and subject as the random effect.
 
-## Testing for change in colocalisation between Responders and Non-Responders for a specific pair of cells
+## Testing for change in colocalisation between Responders and Non-Responders 
+for a specific pair of cells
 
-Firstly, we can see whether one cell type tends to be around another cell type in one condition compared to the other. This can be done using the `spicy()` function, where we include `condition`, and `subject`. In this example, we want to see whether or not CD8-PD1+PDL1+ cells (`to`) thend to be found around CD8+PD1+PDL1- cells (`from`).
+Firstly, we can see whether one cell type tends to be around another cell type 
+in one condition compared to the other. This can be done using the `spicy()` 
+function, where we include `condition`, and `subject`. In this example, we want 
+to see whether or not CD8-PD1+PDL1+ cells (`to`) thend to be found around 
+CD8+PD1+PDL1- cells (`from`).
 
 ```{r}
 spicyTestPair <- spicy(melanomaResponders, 
@@ -65,11 +87,16 @@ spicyTestPair
 top(spicyTestPair)
 ```
 
-We obtain a `spicy` object which details the results of the mixed effects modelling performed. As the `coefficient` in `spicyTest` is negative, we find that CD8-PD1+PDL1+ cells are more likely to be found around CD8+PD1+PDL1- cells in Non-Responders.
+We obtain a `spicy` object which details the results of the mixed effects 
+modelling performed. As the `coefficient` in `spicyTest` is negative, we find 
+that CD8-PD1+PDL1+ cells are more likely to be found around CD8+PD1+PDL1- cells 
+in Non-Responders.
 
-## Test for change in colocalisation between Responders and Non-Responders for all pairwise cell combinations
+## Test for change in colocalisation between Responders and Non-Responders for 
+all pairwise cell combinations
 
-Here, we can perform what we did above for all pairwise combinations of cell types by excluding the `from` and `to` parameters from `spicy()`.
+Here, we can perform what we did above for all pairwise combinations of cell 
+types by excluding the `from` and `to` parameters from `spicy()`.
 
 ```{r echo=FALSE}
 data("spicyTest")
@@ -88,15 +115,20 @@ spicyTest
 top(spicyTest)  
 ```
 
-Again, we obtain a `spicy` object which outlines the result of the mixed effects models performed for each pairwise combination if cell types.
+Again, we obtain a `spicy` object which outlines the result of the mixed effects 
+models performed for each pairwise combination if cell types.
 
-We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by providing it the `spicy` object obtained.
+We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by 
+providing it the `spicy` object obtained.
 ```{r}
 signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 ```
 
 ### Bootstrapping with spicy
-There are multiple ways for calculating p-values for mixed effects models. We have also implemented a bootstrapping approach. All that is needed is a choice for the number of resamples used in the bootstrap which can be set with the `nsim` parameter in `spicy()`.
+There are multiple ways for calculating p-values for mixed effects models. We 
+have also implemented a bootstrapping approach. All that is needed is a choice 
+for the number of resamples used in the bootstrap which can be set with the 
+`nsim` parameter in `spicy()`.
 
 ```{r echo=FALSE}
 data(spicyTestBootstrap)
