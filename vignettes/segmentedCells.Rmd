@@ -30,6 +30,18 @@ knitr::opts_chunk$set(
 library(BiocStyle)
 ```
 
+
+## Installation
+
+```{r, eval = FALSE}
+if (!require("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install("spicyR")
+```
+
+
+## Overview
+
 A `segmentedCells` is an object designed to store data from imaging cytometry 
 (FISH, IMC, CycIF, spatial transcriptomics, ... ) that has already been 
 segmented and reduced to individual cells. A `segmentedCells` extends DataFrame 
@@ -235,3 +247,9 @@ head(loc)
 
 ```
 
+
+# sessionInfo()
+
+```{r}
+sessionInfo()
+```

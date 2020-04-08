@@ -27,6 +27,14 @@ knitr::opts_chunk$set(
 library(BiocStyle)
 ```
 
+# Installation
+
+```{r, eval = FALSE}
+if (!require("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install("spicyR")
+```
+
 
 ```{r message=FALSE, warning=FALSE}
 # load required packages
@@ -35,8 +43,9 @@ library(ggplot2)
 
 ```
  
+ 
 
-## Overview
+# Overview
  Clustering local indicators of spatial association (LISA) functions is a 
  methodology for identifying consistent spatial organisation of multiple 
  cell-types in an unsupervised way. This can be used to enable the 
@@ -50,9 +59,9 @@ library(ggplot2)
 
 
 
-## Quick start
+# Quick start
 
-### Generate toy data
+## Generate toy data
 
 TO illustrate our `lisaClust` framework, here we consider a very simple toy 
 example where two cell-types are completely separated spatially. We simulate 
@@ -74,7 +83,7 @@ ggplot(cells, aes(x,y, colour = cellType)) + geom_point() + facet_wrap(~imageID)
 
 ```
 
-### Create SegmentedCellExperiment object
+## Create SegmentedCellExperiment object
 
 First we store our datas into a `segmentedCells` object. 
 
@@ -86,7 +95,7 @@ cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
 ```
 
 
-### Generate LISA curves
+## Generate LISA curves
 
 We can then calculate local indicators of spatial association (LISA) functions 
 using the `lisa` function. In our implementation, our LISA curves are a 
@@ -100,7 +109,7 @@ lisaCurves <- lisa(cellExp)
 
 ```
 
-### Perform some clustering
+## Perform some clustering
 
 The LISA curves can then be used to cluster the cells. Here we use k-means 
 clustering, other clustering methods like SOM could be used. We can store these 
@@ -114,7 +123,7 @@ region(cellExp) <- paste('region',kM$cluster,sep = '_')
 ```
 
 
-### Plot identified regions
+## Plot identified regions
 
 The `hatchingPlot` function can be used to construct a `ggplot` object where the 
 regions are marked by different hatching patterns. This allows us to plot both 
@@ -128,7 +137,7 @@ hatchingPlot(cellExp, imageID = c('s1','s2'))
 
 
 
-### Alternative hatching plot
+## Alternative hatching plot
 
 We could also create this plot using `geom_hatching` and `scale_region_manual`.
 
@@ -153,13 +162,13 @@ p
 ```
 
 
-## Damond et al. islet data.
+# Damond et al. islet data.
 
 Here we apply our `lisaClust` framework to three images of pancreatic islets 
 from *A Map of Human Type 1 Diabetes Progression by Imaging Mass Cytometry* by 
 Damond et al. (2019).
 
-### Read in data
+## Read in data
 
 We will start by reading in the data and storing it as a `segmentedCells` 
 object. Here the data is in a format consistent with that outputted by 
@@ -172,7 +181,7 @@ cellExp <- segmentedCells(cells, cellProfiler = TRUE)
 ```
 
 
-### Cluster cell-types
+## Cluster cell-types
 
 This data does not include annotation of the cell-types of each cell. Here we 
 extract the marker intensities from the `segmentedCells` object using 
@@ -184,7 +193,7 @@ kM <- kmeans(intensities,10)
 cellType(cellExp) <- paste('cluster', kM$cluster, sep = '')
 ```
 
-### Generate LISA curves
+## Generate LISA curves
 
 As before, we can calculate local indicators of spatial association (LISA) 
 functions using the `lisa` function. In our implementation, our LISA curves are 
@@ -198,7 +207,7 @@ lisaCurves <- lisa(cellExp, Rs = c(10,20,50))
 
 ```
 
-### Perform some clustering
+## Perform some clustering
 
 The LISA curves can then be used to cluster the cells. Here we use k-means 
 clustering to cluster the cells into two microenvironments, other clustering 
@@ -214,7 +223,7 @@ region(cellExp) <- paste('region',kM$cluster,sep = '_')
 
 
 
-### Plot identified regions
+## Plot identified regions
 
 Finally, we can use `hatchingPlot` to construct a `ggplot` object where the 
 regions are marked by different hatching patterns. This allows us to visualize 
@@ -224,3 +233,10 @@ the two regions and eight cell-types simultaneously.
 hatchingPlot(cellExp)
 ```
 
+
+
+# sessionInfo()
+
+```{r}
+sessionInfo()
+```

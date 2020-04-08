@@ -26,6 +26,14 @@ library(spicyR)
 library(ggplot2)
 ```
  
+# Installation
+
+```{r, eval = FALSE}
+if (!require("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install("spicyR")
+```
+
 
 # Overview
 This guide will provide a step-by-step guide on how mixed effects models can be 
@@ -151,3 +159,11 @@ top(spicyTestBootstrap)
 signifPlot(spicyTestBootstrap, breaks=c(-3, 3, 0.5))
 ```
 Indeed, we get improved statistical power compared to the previous method.
+
+
+# sessionInfo()
+
+```{r}
+sessionInfo()
+```
+
