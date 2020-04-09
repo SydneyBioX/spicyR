@@ -72,35 +72,9 @@ cellType(x, imageID = NULL) <- value
 
 filterCells(x, select)
 
-cellSummary(x, imageID = NULL, bind = TRUE)
+region(x, imageID = NULL, annot = FALSE)
 
-cellSummary(x, imageID = NULL) <- value
-
-cellMarks(x, imageID = NULL, bind = TRUE)
-
-cellMarks(x, imageID = NULL) <- value
-
-cellMorph(x, imageID = NULL, bind = TRUE)
-
-cellMorph(x, imageID = NULL) <- value
-
-imagePheno(x, imageID = NULL, bind = TRUE, expand = FALSE)
-
-imagePheno(x, imageID = NULL) <- value
-
-imageID(x, imageID = NULL)
-
-cellID(x, imageID = NULL)
-
-cellID(x) <- value
-
-imageCellID(x, imageID = NULL)
-
-imageCellID(x) <- value
-
-cellType(x, imageID = NULL)
-
-cellType(x, imageID = NULL) <- value
+region(x, imageID = NULL) <- value
 }
 \arguments{
 \item{x}{A `SegmentedCells` object.}
@@ -109,21 +83,19 @@ cellType(x, imageID = NULL) <- value
 
 \item{bind}{When false outputs a list of DataFrames split by imageID}
 
-\item{select}{A logical vector of the cells to be kept.}
-
 \item{expand}{Used to expand the phenotype information from per image to per cell.}
 
 \item{value}{The relevant information used to replace.}
+
+\item{select}{A logical vector of the cells to be kept.}
+
+\item{annot}{Add cell annotation when selecting region information.}
 }
 \value{
-DataFrame or a list of DataFrames
-
 DataFrame or a list of DataFrames
 }
 \description{
 Methods to access various components of the `SegmentedCells` object.
-
-A method for setting and getting regions for a SegmentedCells object.
 }
 \section{Descriptions}{
 
@@ -148,57 +120,9 @@ Retrieves the DataFrame containing the phenotype information for each image.
  to the number of cells.
 }
 }
-
-
-\describe{
-\item{`cellSummary`:}{
-Retrieves the DataFrame containing `x` and `y` coordinates of each cell as 
-well as `cellID`, `imageID` and `cellType`. imageID can be used to select 
-specific images and bind=FALSE outputs the information as a list split by imageID.
-}
-
-\item{`cellMorph`:}{
-Retrieves the DataFrame containing morphology information.
-}
-
-\item{`cellMarks`:}{
-Retrieves the DataFrame containing intensity of gene or protein markers.
-}
-
-\item{`imagePheno`:}{
-Retrieves the DataFrame containing the image phenotype information. Using 
-expand = TRUE will produce a DataFrame with the number of rows equal to the 
-number of cells.
-}
-}
 }
 
 \examples{
-### Something that resembles cellProfiler data
-
-set.seed(51773)
-
-n = 10
-
-cells <- data.frame(row.names = seq_len(n))
-cells$ObjectNumber <- seq_len(n)
-cells$ImageNumber <- rep(1:2,c(n/2,n/2))
-cells$AreaShape_Center_X <- runif(n)
-cells$AreaShape_Center_Y <- runif(n)
-cells$AreaShape_round <- rexp(n)
-cells$AreaShape_diameter <- rexp(n, 2)
-cells$Intensity_Mean_CD8 <- rexp(n, 10)
-cells$Intensity_Mean_CD4 <- rexp(n, 10)
-
-cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
-
-### Cluster cell types
-intensities <- cellMarks(cellExp)
-kM <- kmeans(intensities,2)
-cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
-
-cellSummary(cellExp, imageID = 1)
-
 ### Something that resembles cellProfiler data
 
 set.seed(51773)

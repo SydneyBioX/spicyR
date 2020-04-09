@@ -21,19 +21,26 @@ SegmentedCells(
 )
 }
 \arguments{
-\item{cellData}{A data frame that contains at least the columns x and y giving the location coordinates of each cell.}
+\item{cellData}{A data frame that contains at least the columns x and y giving 
+the location coordinates of each cell.}
 
-\item{cellProfiler}{A logical indicating that cellData is in a format similar to what cellProfiler outputs.}
+\item{cellProfiler}{A logical indicating that cellData is in a format similar 
+to what cellProfiler outputs.}
 
-\item{spatialCoords}{The column names corresponding to spatial coordinates. eg. x, y, z...}
+\item{spatialCoords}{The column names corresponding to spatial coordinates. 
+eg. x, y, z...}
 
 \item{cellTypeString}{The name of the column that contains cell type calls.}
 
-\item{intensityString}{A string which can be used to identify the columns which contain marker intensities. (This needs to be extended to take the column names themselves.)}
+\item{intensityString}{A string which can be used to identify the columns 
+which contain marker intensities. (This needs to be extended to take the 
+column names themselves.)}
 
-\item{morphologyString}{A string which can be used to identify the columns which contains morphology information.}
+\item{morphologyString}{A string which can be used to identify the columns 
+which contains morphology information.}
 
-\item{phenotypeString}{A string which can be used to identify the columns which contains phenotype information.}
+\item{phenotypeString}{A string which can be used to identify the columns 
+which contains phenotype information.}
 
 \item{cellIDString}{The column name for cellID.}
 

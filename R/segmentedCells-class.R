@@ -323,7 +323,7 @@ SegmentedCells <-
 
 
 
-
+#' @export
 as.data.frame.SegmentedCells <- function(x, ...) {
     loc <- cellSummary(x)
     int <- cellMarks(x)
