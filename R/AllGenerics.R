@@ -18,20 +18,20 @@
 #' @examples
 #' 
 #' data(spicyTest)
-#' top(spicyTest)
+#' topPairs(spicyTest)
 #' 
 #' @aliases 
-#' top,spicy-method
-#' top
-#' @rdname top
+#' topPairs,spicy-method
+#' topPairs
+#' @rdname topPairs
 #' @export
-setGeneric("top", function(x,
+setGeneric("topPairs", function(x,
                            coef = 1,
                            n = 10,
                            adj = 'fdr',
                            cutoff = NULL)
-    standardGeneric("top"))
-setMethod("top", "spicy", function(x,
+    standardGeneric("topPairs"))
+setMethod("topPairs", "SpicyResults", function(x,
                                    coef = 1,
                                    n = 10,
                                    adj = 'fdr',
@@ -74,24 +74,24 @@ setMethod("top", "spicy", function(x,
 
 ################################################################################
 #
-# Generics for segmentedCells
+# Generics for SegmentedCells
 #
 ################################################################################
 
 
 
-#' Accessors for segmentedCells
+#' Accessors for SegmentedCells
 #'
-#' Methods to access various components of the `segmentedCells` object.
+#' Methods to access various components of the `SegmentedCells` object.
 #'
-#' @usage location(x, imageID = NULL, bind = TRUE)
-#' @usage location(x, imageID = NULL) <- value
-#' @usage intensity(x, imageID = NULL, bind = TRUE)
-#' @usage intensity(x, imageID = NULL) <- value
-#' @usage morphology(x, imageID = NULL, bind = TRUE)
-#' @usage morphology(x, imageID = NULL) <- value
-#' @usage phenotype(x, imageID = NULL, bind = TRUE, expand = FALSE)
-#' @usage phenotype(x, imageID = NULL) <- value
+#' @usage cellSummary(x, imageID = NULL, bind = TRUE)
+#' @usage cellSummary(x, imageID = NULL) <- value
+#' @usage cellMarks(x, imageID = NULL, bind = TRUE)
+#' @usage cellMarks(x, imageID = NULL) <- value
+#' @usage cellMorph(x, imageID = NULL, bind = TRUE)
+#' @usage cellMorph(x, imageID = NULL) <- value
+#' @usage imagePheno(x, imageID = NULL, bind = TRUE, expand = FALSE)
+#' @usage imagePheno(x, imageID = NULL) <- value
 #' @usage imageID(x, imageID = NULL)
 #' @usage cellID(x, imageID = NULL)
 #' @usage cellID(x) <- value
@@ -101,7 +101,7 @@ setMethod("top", "spicy", function(x,
 #' @usage cellType(x, imageID = NULL) <- value
 #' @usage filterCells(x, select)
 #'
-#' @param x A `segmentedCells` object.
+#' @param x A `SegmentedCells` object.
 #' @param imageID A vector of imageIDs to specifically extract.
 #' @param bind When false outputs a list of DataFrames split by imageID
 #' @param expand Used to expand the phenotype information from per image to per cell.
@@ -110,21 +110,21 @@ setMethod("top", "spicy", function(x,
 #'
 #' @section Descriptions:
 #' \describe{
-#' \item{`location`:}{
+#' \item{`cellSummary`:}{
 #' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as well as `cellID`, `imageID` and `cellType`.
 #' imageID can be used to select specific images and bind=FALSE outputs the information as a list split by imageID.
 #' }
 #'
-#' \item{`morphology`:}{
+#' \item{`cellMorph`:}{
 #' Retrieves the DataFrame containing morphology information.
 #' }
 #'
-#' \item{`intensity`:}{
+#' \item{`cellMarks`:}{
 #' Retrieves the DataFrame containing intensity of gene or protein markers.
 #' }
 #'
-#' \item{`phenotype`:}{
-#' Retrieves the DataFrame containing the phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
+#' \item{`imagePheno`:}{
+#' Retrieves the DataFrame containing the phenotype information for each image. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
 #' }
 #' }
 #'
@@ -149,40 +149,40 @@ setMethod("top", "spicy", function(x,
 #' cells$Intensity_Mean_CD8 <- rexp(n, 10)
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
-#' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+#' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 #'
 #' ### Cluster cell types
-#' intensities <- intensity(cellExp)
+#' intensities <- cellMarks(cellExp)
 #' kM <- kmeans(intensities,2)
 #' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 #'
-#' location(cellExp, imageID = 1)
+#' cellSummary(cellExp, imageID = 1)
 #'
 #' @aliases
-#' location,segmentedCells-method
-#' location<-,segmentedCells-method
-#' intensity,segmentedCells-method
-#' intensity<-,segmentedCells-method
-#' morphology,segmentedCells-method
-#' morphology<-,segmentedCells-method
-#' phenotype,segmentedCells-method
-#' phenotype<-,segmentedCells-method
-#' imageID,segmentedCells-method
-#' cellType,segmentedCells-method
-#' cellType<-,segmentedCells-method
-#' imageCellID,segmentedCells-method
-#' imageCellID<-,segmentedCells-method
-#' cellID,segmentedCells-method
-#' cellID<-,segmentedCells-method
-#' filterCells,segmentedCells-method
-#' location
-#' location<-
-#' intensity
-#' intensity<-
-#' morphology
-#' morphology<-
-#' phenotype
-#' phenotype<-
+#' cellSummary,SegmentedCells-method
+#' cellSummary<-,SegmentedCells-method
+#' cellMarks,SegmentedCells-method
+#' cellMarks<-,SegmentedCells-method
+#' cellMorph,SegmentedCells-method
+#' cellMorph<-,SegmentedCells-method
+#' imagePheno,SegmentedCells-method
+#' imagePheno<-,SegmentedCells-method
+#' imageID,SegmentedCells-method
+#' cellType,SegmentedCells-method
+#' cellType<-,SegmentedCells-method
+#' imageCellID,SegmentedCells-method
+#' imageCellID<-,SegmentedCells-method
+#' cellID,SegmentedCells-method
+#' cellID<-,SegmentedCells-method
+#' filterCells,SegmentedCells-method
+#' cellSummary
+#' cellSummary<-
+#' cellMarks
+#' cellMarks<-
+#' cellMorph
+#' cellMorph<-
+#' imagePheno
+#' imagePheno<-
 #' imageID
 #' cellType
 #' cellType<-
@@ -193,23 +193,23 @@ setMethod("top", "spicy", function(x,
 #' filterCells
 
 
-### Get location information for each cell.
+### Get cellSummary information for each cell.
 
 #' @export
 #' @importFrom BiocGenerics do.call rbind
-setGeneric("location", function(x, imageID = NULL, bind = TRUE)
-    standardGeneric("location"))
-setMethod("location", "segmentedCells", function(x, imageID = NULL, bind = TRUE) {
+setGeneric("cellSummary", function(x, imageID = NULL, bind = TRUE)
+    standardGeneric("cellSummary"))
+setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
     if (bind == FALSE) {
-        return(x$location)
+        return(x$cellSummary)
     }
     if (bind == TRUE) {
         return(cbind(
-            imageID = rep(rownames(x), unlist(lapply(x[, "location"], nrow))),
-            BiocGenerics::do.call("rbind", x$location)
+            imageID = rep(rownames(x), unlist(lapply(x[, "cellSummary"], nrow))),
+            BiocGenerics::do.call("rbind", x$cellSummary)
         ))
     }
     
@@ -217,22 +217,22 @@ setMethod("location", "segmentedCells", function(x, imageID = NULL, bind = TRUE)
 
 #' @export
 #' @importFrom S4Vectors split
-setGeneric("location<-", function(x, imageID = NULL, value)
-    standardGeneric("location<-"))
-setMethod("location<-", "segmentedCells", function(x, imageID = NULL, value) {
+setGeneric("cellSummary<-", function(x, imageID = NULL, value)
+    standardGeneric("cellSummary<-"))
+setMethod("cellSummary<-", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        x[imageID,]@listData$location <- value
+        x[imageID,]@listData$cellSummary <- value
         return(x)
     }
     
     if (nrow(value) == length(imageID(x, imageID))) {
         value <- value[, c("cellID", "imageCellID", "x", "y", "cellType")]
         by <-
-            rep(imageID, unlist(lapply(x[imageID, "location"], nrow)))
+            rep(imageID, unlist(lapply(x[imageID, "cellSummary"], nrow)))
         by <- factor(by, levels = unique(by))
-        x[imageID,]@listData$location <- S4Vectors::split(value, by)
+        x[imageID,]@listData$cellSummary <- S4Vectors::split(value, by)
         return(x)
     }
 })
@@ -245,11 +245,11 @@ setMethod("location<-", "segmentedCells", function(x, imageID = NULL, value) {
 #' @export
 setGeneric("imageID", function(x, imageID = NULL)
     standardGeneric("imageID"))
-setMethod("imageID", "segmentedCells", function(x, imageID = NULL) {
+setMethod("imageID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
-    rep(rownames(x), unlist(lapply(x$location, nrow)))
+    rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
 })
 
 
@@ -261,25 +261,25 @@ setMethod("imageID", "segmentedCells", function(x, imageID = NULL) {
 #' @importFrom BiocGenerics do.call rbind
 setGeneric("cellID", function(x, imageID = NULL)
     standardGeneric("cellID"))
-setMethod("cellID", "segmentedCells", function(x, imageID = NULL) {
+setMethod("cellID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
-    BiocGenerics::do.call("rbind", x$location)$cellID
+    BiocGenerics::do.call("rbind", x$cellSummary)$cellID
 })
 
 #' @export
 setGeneric("cellID<-", function(x, value)
     standardGeneric("cellID<-"))
-setMethod("cellID<-", "segmentedCells", function(x, value) {
-    loc <- location(x)
+setMethod("cellID<-", "SegmentedCells", function(x, value) {
+    loc <- cellSummary(x)
     
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many cellIDs")
     }
     
     loc$cellID <- value
-    location(x) <- loc
+    cellSummary(x) <- loc
 })
 
 
@@ -290,18 +290,18 @@ setMethod("cellID<-", "segmentedCells", function(x, value) {
 #' @export
 setGeneric("imageCellID", function(x, imageID = NULL)
     standardGeneric("imageCellID"))
-setMethod("imageCellID", "segmentedCells", function(x, imageID = NULL) {
+setMethod("imageCellID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
-    BiocGenerics::do.call("rbind", x$location)$imageCellID
+    BiocGenerics::do.call("rbind", x$cellSummary)$imageCellID
 })
 
 #' @export
 setGeneric("imageCellID<-", function(x, value)
     standardGeneric("imageCellID<-"))
-setMethod("imageCellID<-", "segmentedCells", function(x, value) {
-    loc <- location(x)
+setMethod("imageCellID<-", "SegmentedCells", function(x, value) {
+    loc <- cellSummary(x)
     
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many imageCellIDs")
@@ -309,45 +309,45 @@ setMethod("imageCellID<-", "segmentedCells", function(x, value) {
     
     loc$imageCellID <- value
     
-    location(x) <- loc
+    cellSummary(x) <- loc
 })
 
 
 
 
-### Get intensity information
+### Get marker intensity information
 
 #' @export
-setGeneric("intensity", function(x, imageID = NULL, bind = TRUE)
-    standardGeneric("intensity"))
-setMethod("intensity", "segmentedCells", function(x, imageID = NULL, bind = TRUE) {
+setGeneric("cellMarks", function(x, imageID = NULL, bind = TRUE)
+    standardGeneric("cellMarks"))
+setMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
     if (bind == FALSE) {
-        return(x$intensity)
+        return(x$cellMarks)
     }
     if (bind == TRUE) {
-        return(BiocGenerics::do.call("rbind", x$intensity))
+        return(BiocGenerics::do.call("rbind", x$cellMarks))
     }
     
 })
 
 #' @export
-setGeneric("intensity<-", function(x, imageID = NULL, value)
-    standardGeneric("intensity<-"))
-setMethod("intensity<-", "segmentedCells", function(x, imageID = NULL, value) {
+setGeneric("cellMarks<-", function(x, imageID = NULL, value)
+    standardGeneric("cellMarks<-"))
+setMethod("cellMarks<-", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        x[imageID,]@listData$intensity <- value
+        x[imageID,]@listData$cellMarks <- value
         return(x)
     }
     
     if (nrow(value) == length(imageID(x))) {
-        by <- rep(rownames(x), unlist(lapply(x$intensity, nrow)))
+        by <- rep(rownames(x), unlist(lapply(x$cellMarks, nrow)))
         by <- factor(by, levels = unique(by))
-        x[imageID,]@listData$intensity <-
+        x[imageID,]@listData$cellMarks <-
             S4Vectors::split(value, by)
         return(x)
     }
@@ -359,38 +359,38 @@ setMethod("intensity<-", "segmentedCells", function(x, imageID = NULL, value) {
 ### Get morphology information
 
 #' @export
-setGeneric("morphology", function(x, imageID = NULL, bind = TRUE)
-    standardGeneric("morphology"))
-setMethod("morphology", "segmentedCells", function(x, imageID = NULL, bind = TRUE) {
+setGeneric("cellMorph", function(x, imageID = NULL, bind = TRUE)
+    standardGeneric("cellMorph"))
+setMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
     if (bind == FALSE) {
-        return(x$morphology)
+        return(x$cellMorph)
     }
     if (bind == TRUE) {
-        return(BiocGenerics::do.call("rbind", x$morphology))
+        return(BiocGenerics::do.call("rbind", x$cellMorph))
     }
     
 })
 
 #' @export
-setGeneric("morphology<-", function(x, imageID = NULL, value)
-    standardGeneric("morphology<-"))
-setMethod("morphology<-", "segmentedCells", function(x, imageID = NULL,
+setGeneric("cellMorph<-", function(x, imageID = NULL, value)
+    standardGeneric("cellMorph<-"))
+setMethod("cellMorph<-", "SegmentedCells", function(x, imageID = NULL,
                                                      value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        x[imageID,]@listData$morphology <- value
+        x[imageID,]@listData$cellMorph <- value
         return(x)
     }
     
     if (nrow(value) == length(imageID(x, imageID))) {
-        by <- rep(rownames(x), unlist(lapply(x$morphology, nrow)))
+        by <- rep(rownames(x), unlist(lapply(x$cellMorph, nrow)))
         by <- factor(by, levels = unique(by))
         
-        x[imageID,]@listData$morphology <-
+        x[imageID,]@listData$cellMorph <-
             S4Vectors::split(value, by)
         return(x)
     }
@@ -404,20 +404,20 @@ setMethod("morphology<-", "segmentedCells", function(x, imageID = NULL,
 #' @export
 setGeneric("cellType", function(x, imageID = NULL)
     standardGeneric("cellType"))
-setMethod("cellType", "segmentedCells", function(x, imageID = NULL) {
+setMethod("cellType", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
-    BiocGenerics::do.call("rbind", x$location)$cellType
+    BiocGenerics::do.call("rbind", x$cellSummary)$cellType
 })
 
 #' @export
 setGeneric("cellType<-", function(x, imageID = NULL, value)
     standardGeneric("cellType<-"))
-setMethod("cellType<-", "segmentedCells", function(x, imageID = NULL, value) {
+setMethod("cellType<-", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
-    loc <- location(x, imageID = imageID)
+    loc <- cellSummary(x, imageID = imageID)
     
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many cellTypes")
@@ -425,7 +425,7 @@ setMethod("cellType<-", "segmentedCells", function(x, imageID = NULL, value) {
     
     loc$cellType <- value
     
-    location(x, imageID = imageID) <- loc
+    cellSummary(x, imageID = imageID) <- loc
     x
 })
 
@@ -433,15 +433,15 @@ setMethod("cellType<-", "segmentedCells", function(x, imageID = NULL, value) {
 
 
 
-### Get and add phenotype data to the object
+### Get and add image phenotype data to the object
 
 #' @export
-setGeneric("phenotype", function(x,
+setGeneric("imagePheno", function(x,
                                  imageID = NULL,
                                  bind = TRUE,
                                  expand = FALSE)
-    standardGeneric("phenotype"))
-setMethod("phenotype", "segmentedCells", function(x,
+    standardGeneric("imagePheno"))
+setMethod("imagePheno", "SegmentedCells", function(x,
                                                   imageID = NULL,
                                                   bind = TRUE,
                                                   expand = FALSE) {
@@ -449,11 +449,11 @@ setMethod("phenotype", "segmentedCells", function(x,
         x <- x[imageID,]
     }
     if (expand) {
-        pheno <- BiocGenerics::do.call("rbind", x$phenotype)
+        pheno <- BiocGenerics::do.call("rbind", x$imagePheno)
         rownames(pheno) <- pheno$imageID
         return(pheno[imageID(x),])
     } else {
-        pheno <- BiocGenerics::do.call("rbind", x$phenotype)
+        pheno <- BiocGenerics::do.call("rbind", x$imagePheno)
         rownames(pheno) <- pheno$imageID
         return(pheno[rownames(x),])
     }
@@ -461,14 +461,14 @@ setMethod("phenotype", "segmentedCells", function(x,
 
 
 #' @export
-setGeneric("phenotype<-", function(x, imageID = NULL, value)
-    standardGeneric("phenotype<-"))
-setMethod("phenotype<-", "segmentedCells", function(x, imageID = NULL, value) {
+setGeneric("imagePheno<-", function(x, imageID = NULL, value)
+    standardGeneric("imagePheno<-"))
+setMethod("imagePheno<-", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     use <- intersect(value$imageID, imageID)
     rownames(value) <- value$imageID
-    x[use,]@listData$phenotype <-
+    x[use,]@listData$imagePheno <-
         S4Vectors::split(value[use,], use)
     x[unique(use),]
 })
@@ -476,11 +476,11 @@ setMethod("phenotype<-", "segmentedCells", function(x, imageID = NULL, value) {
 
 
 
-as.data.frame.segmentedCells <- function(x, ...) {
-    loc <- location(x)
-    int <- intensity(x)
-    morph <- morphology(x)
-    pheno <- phenotype(x, expand = TRUE)
+as.data.frame.SegmentedCells <- function(x, ...) {
+    loc <- cellSummary(x)
+    int <- cellMarks(x)
+    morph <- cellMorph(x)
+    pheno <- imagePheno(x, expand = TRUE)
     pheno <- pheno[!colnames(pheno) %in% "imageID"]
     
     if (length(colnames(int)) > 0)
@@ -530,18 +530,18 @@ if (!isGeneric("as.data.frame"))
     setGeneric("as.data.frame", function(x, ...)
         standardGeneric("as.data.frame"))
 setMethod("as.data.frame",
-          "segmentedCells",
-          as.data.frame.segmentedCells)
+          "SegmentedCells",
+          as.data.frame.SegmentedCells)
 
 
 #' @export
 setGeneric("filterCells", function(x, select)
     standardGeneric("filterCells"))
-setMethod("filterCells", "segmentedCells", function(x, select) {
+setMethod("filterCells", "SegmentedCells", function(x, select) {
     df <- as.data.frame(x)
     if (length(select) != nrow(df))
-        stop("length of select must equal nrow of segmentedCells")
-    segmentedCells(df[select, ])
+        stop("length of select must equal nrow of SegmentedCells")
+    SegmentedCells(df[select, ])
 })
 
 
@@ -552,18 +552,18 @@ setMethod("filterCells", "segmentedCells", function(x, select) {
 ################################################################################
 
 
-#' Adding regions to segmentedCells
+#' Adding regions to SegmentedCells
 #'
-#' A method for setting and getting regions for a segmentedCells object.
+#' A method for setting and getting regions for a SegmentedCells object.
 #'
-#' @usage location(x, imageID = NULL, bind = TRUE)
-#' @usage location(x, imageID = NULL) <- value
-#' @usage intensity(x, imageID = NULL, bind = TRUE)
-#' @usage intensity(x, imageID = NULL) <- value
-#' @usage morphology(x, imageID = NULL, bind = TRUE)
-#' @usage morphology(x, imageID = NULL) <- value
-#' @usage phenotype(x, imageID = NULL, bind = TRUE, expand = FALSE)
-#' @usage phenotype(x, imageID = NULL) <- value
+#' @usage cellSummary(x, imageID = NULL, bind = TRUE)
+#' @usage cellSummary(x, imageID = NULL) <- value
+#' @usage cellMarks(x, imageID = NULL, bind = TRUE)
+#' @usage cellMarks(x, imageID = NULL) <- value
+#' @usage cellMorph(x, imageID = NULL, bind = TRUE)
+#' @usage cellMorph(x, imageID = NULL) <- value
+#' @usage imagePheno(x, imageID = NULL, bind = TRUE, expand = FALSE)
+#' @usage imagePheno(x, imageID = NULL) <- value
 #' @usage imageID(x, imageID = NULL)
 #' @usage cellID(x, imageID = NULL)
 #' @usage cellID(x) <- value
@@ -572,7 +572,7 @@ setMethod("filterCells", "segmentedCells", function(x, select) {
 #' @usage cellType(x, imageID = NULL)
 #' @usage cellType(x, imageID = NULL) <- value
 #'
-#' @param x A `segmentedCells` object.
+#' @param x A `SegmentedCells` object.
 #' @param imageID A vector of imageIDs to specifically extract.
 #' @param bind When false outputs a list of DataFrames split by imageID
 #' @param expand Used to expand the phenotype information from per image to per cell.
@@ -580,21 +580,21 @@ setMethod("filterCells", "segmentedCells", function(x, select) {
 #'
 #' @section Descriptions:
 #' \describe{
-#' \item{`location`:}{
+#' \item{`cellSummary`:}{
 #' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as well as `cellID`, `imageID` and `cellType`.
 #' imageID can be used to select specific images and bind=FALSE outputs the information as a list split by imageID.
 #' }
 #'
-#' \item{`morphology`:}{
+#' \item{`cellMorph`:}{
 #' Retrieves the DataFrame containing morphology information.
 #' }
 #'
-#' \item{`intensity`:}{
+#' \item{`cellMarks`:}{
 #' Retrieves the DataFrame containing intensity of gene or protein markers.
 #' }
 #'
-#' \item{`phenotype`:}{
-#' Retrieves the DataFrame containing the phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
+#' \item{`imagePheno`:}{
+#' Retrieves the DataFrame containing the image phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
 #' }
 #' }
 #'
@@ -619,18 +619,18 @@ setMethod("filterCells", "segmentedCells", function(x, select) {
 #' cells$Intensity_Mean_CD8 <- rexp(n, 10)
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
-#' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+#' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 #'
 #' ### Cluster cell types
-#' intensities <- intensity(cellExp)
+#' intensities <- cellMarks(cellExp)
 #' kM <- kmeans(intensities,2)
 #' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 #'
-#' location(cellExp, imageID = 1)
+#' cellSummary(cellExp, imageID = 1)
 #'
 #' @aliases
-#' region,segmentedCells-method
-#' region<-,segmentedCells-method
+#' region,SegmentedCells-method
+#' region<-,SegmentedCells-method
 #' region
 #' region<-
 
@@ -644,14 +644,14 @@ setMethod("filterCells", "segmentedCells", function(x, select) {
 #' @importFrom BiocGenerics do.call rbind
 setGeneric("region", function(x, imageID = NULL, annot = FALSE)
     standardGeneric("region"))
-setMethod("region", "segmentedCells", function(x, imageID = NULL, annot = TRUE) {
+setMethod("region", "SegmentedCells", function(x, imageID = NULL, annot = TRUE) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
     if (is.null(x$region))
-        stop("There is no region information in your segmentedCells yet")
+        stop("There is no region information in your SegmentedCells yet")
     if (annot)
-        return(data.frame(location(x), region = BiocGenerics::do.call("rbind", x$region)))
+        return(data.frame(cellSummary(x), region = BiocGenerics::do.call("rbind", x$region)))
     
     BiocGenerics::do.call("rbind", x$region)
 })
@@ -663,20 +663,20 @@ setMethod("region", "segmentedCells", function(x, imageID = NULL, annot = TRUE) 
 #' @importFrom S4Vectors DataFrame split
 setGeneric("region<-", function(x, imageID = NULL, value)
     standardGeneric("region<-"))
-setMethod("region<-", "segmentedCells", function(x, imageID = NULL, value) {
+setMethod("region<-", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (length(value) == length(imageID(x, imageID))) {
         if (is.null(x$region)) {
             x <- DataFrame(x)
-            by <- rep(rownames(x), unlist(lapply(x$location, nrow)))
+            by <- rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
             by <- factor(by, levels = unique(by))
             x$region <-
                 S4Vectors::split(DataFrame(region = value), by)
-            x <- new("segmentedCells", x)
+            x <- new("SegmentedCells", x)
         }
         if (!is.null(x$region))
-            by <- rep(rownames(x), unlist(lapply(x$location, nrow)))
+            by <- rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
         by <- factor(by, levels = unique(by))
         x[imageID,]@listData$region <-
             S4Vectors::split(DataFrame(region = value), by)

@@ -2,30 +2,30 @@
 % Please edit documentation in R/AllGenerics.R
 \name{Accessors}
 \alias{Accessors}
-\alias{location,segmentedCells-method}
-\alias{location<-,segmentedCells-method}
-\alias{intensity,segmentedCells-method}
-\alias{intensity<-,segmentedCells-method}
-\alias{morphology,segmentedCells-method}
-\alias{morphology<-,segmentedCells-method}
-\alias{phenotype,segmentedCells-method}
-\alias{phenotype<-,segmentedCells-method}
-\alias{imageID,segmentedCells-method}
-\alias{cellType,segmentedCells-method}
-\alias{cellType<-,segmentedCells-method}
-\alias{imageCellID,segmentedCells-method}
-\alias{imageCellID<-,segmentedCells-method}
-\alias{cellID,segmentedCells-method}
-\alias{cellID<-,segmentedCells-method}
-\alias{filterCells,segmentedCells-method}
-\alias{location}
-\alias{location<-}
-\alias{intensity}
-\alias{intensity<-}
-\alias{morphology}
-\alias{morphology<-}
-\alias{phenotype}
-\alias{phenotype<-}
+\alias{cellSummary,SegmentedCells-method}
+\alias{cellSummary<-,SegmentedCells-method}
+\alias{cellMarks,SegmentedCells-method}
+\alias{cellMarks<-,SegmentedCells-method}
+\alias{cellMorph,SegmentedCells-method}
+\alias{cellMorph<-,SegmentedCells-method}
+\alias{imagePheno,SegmentedCells-method}
+\alias{imagePheno<-,SegmentedCells-method}
+\alias{imageID,SegmentedCells-method}
+\alias{cellType,SegmentedCells-method}
+\alias{cellType<-,SegmentedCells-method}
+\alias{imageCellID,SegmentedCells-method}
+\alias{imageCellID<-,SegmentedCells-method}
+\alias{cellID,SegmentedCells-method}
+\alias{cellID<-,SegmentedCells-method}
+\alias{filterCells,SegmentedCells-method}
+\alias{cellSummary}
+\alias{cellSummary<-}
+\alias{cellMarks}
+\alias{cellMarks<-}
+\alias{cellMorph}
+\alias{cellMorph<-}
+\alias{imagePheno}
+\alias{imagePheno<-}
 \alias{imageID}
 \alias{cellType}
 \alias{cellType<-}
@@ -34,27 +34,27 @@
 \alias{cellID}
 \alias{cellID<-}
 \alias{filterCells}
-\alias{region,segmentedCells-method}
-\alias{region<-,segmentedCells-method}
+\alias{region,SegmentedCells-method}
+\alias{region<-,SegmentedCells-method}
 \alias{region}
 \alias{region<-}
-\title{Accessors for segmentedCells}
+\title{Accessors for SegmentedCells}
 \usage{
-location(x, imageID = NULL, bind = TRUE)
+cellSummary(x, imageID = NULL, bind = TRUE)
 
-location(x, imageID = NULL) <- value
+cellSummary(x, imageID = NULL) <- value
 
-intensity(x, imageID = NULL, bind = TRUE)
+cellMarks(x, imageID = NULL, bind = TRUE)
 
-intensity(x, imageID = NULL) <- value
+cellMarks(x, imageID = NULL) <- value
 
-morphology(x, imageID = NULL, bind = TRUE)
+cellMorph(x, imageID = NULL, bind = TRUE)
 
-morphology(x, imageID = NULL) <- value
+cellMorph(x, imageID = NULL) <- value
 
-phenotype(x, imageID = NULL, bind = TRUE, expand = FALSE)
+imagePheno(x, imageID = NULL, bind = TRUE, expand = FALSE)
 
-phenotype(x, imageID = NULL) <- value
+imagePheno(x, imageID = NULL) <- value
 
 imageID(x, imageID = NULL)
 
@@ -72,21 +72,21 @@ cellType(x, imageID = NULL) <- value
 
 filterCells(x, select)
 
-location(x, imageID = NULL, bind = TRUE)
+cellSummary(x, imageID = NULL, bind = TRUE)
 
-location(x, imageID = NULL) <- value
+cellSummary(x, imageID = NULL) <- value
 
-intensity(x, imageID = NULL, bind = TRUE)
+cellMarks(x, imageID = NULL, bind = TRUE)
 
-intensity(x, imageID = NULL) <- value
+cellMarks(x, imageID = NULL) <- value
 
-morphology(x, imageID = NULL, bind = TRUE)
+cellMorph(x, imageID = NULL, bind = TRUE)
 
-morphology(x, imageID = NULL) <- value
+cellMorph(x, imageID = NULL) <- value
 
-phenotype(x, imageID = NULL, bind = TRUE, expand = FALSE)
+imagePheno(x, imageID = NULL, bind = TRUE, expand = FALSE)
 
-phenotype(x, imageID = NULL) <- value
+imagePheno(x, imageID = NULL) <- value
 
 imageID(x, imageID = NULL)
 
@@ -103,7 +103,7 @@ cellType(x, imageID = NULL)
 cellType(x, imageID = NULL) <- value
 }
 \arguments{
-\item{x}{A `segmentedCells` object.}
+\item{x}{A `SegmentedCells` object.}
 
 \item{imageID}{A vector of imageIDs to specifically extract.}
 
@@ -121,48 +121,48 @@ DataFrame or a list of DataFrames
 DataFrame or a list of DataFrames
 }
 \description{
-Methods to access various components of the `segmentedCells` object.
+Methods to access various components of the `SegmentedCells` object.
 
-A method for setting and getting regions for a segmentedCells object.
+A method for setting and getting regions for a SegmentedCells object.
 }
 \section{Descriptions}{
 
 \describe{
-\item{`location`:}{
+\item{`cellSummary`:}{
 Retrieves the DataFrame containing `x` and `y` coordinates of each cell as well as `cellID`, `imageID` and `cellType`.
 imageID can be used to select specific images and bind=FALSE outputs the information as a list split by imageID.
 }
 
-\item{`morphology`:}{
+\item{`cellMorph`:}{
 Retrieves the DataFrame containing morphology information.
 }
 
-\item{`intensity`:}{
+\item{`cellMarks`:}{
 Retrieves the DataFrame containing intensity of gene or protein markers.
 }
 
-\item{`phenotype`:}{
-Retrieves the DataFrame containing the phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
+\item{`imagePheno`:}{
+Retrieves the DataFrame containing the phenotype information for each image. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
 }
 }
 
 
 \describe{
-\item{`location`:}{
+\item{`cellSummary`:}{
 Retrieves the DataFrame containing `x` and `y` coordinates of each cell as well as `cellID`, `imageID` and `cellType`.
 imageID can be used to select specific images and bind=FALSE outputs the information as a list split by imageID.
 }
 
-\item{`morphology`:}{
+\item{`cellMorph`:}{
 Retrieves the DataFrame containing morphology information.
 }
 
-\item{`intensity`:}{
+\item{`cellMarks`:}{
 Retrieves the DataFrame containing intensity of gene or protein markers.
 }
 
-\item{`phenotype`:}{
-Retrieves the DataFrame containing the phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
+\item{`imagePheno`:}{
+Retrieves the DataFrame containing the image phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
 }
 }
 }
@@ -184,14 +184,14 @@ cells$AreaShape_diameter <- rexp(n, 2)
 cells$Intensity_Mean_CD8 <- rexp(n, 10)
 cells$Intensity_Mean_CD4 <- rexp(n, 10)
 
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 
 ### Cluster cell types
-intensities <- intensity(cellExp)
+intensities <- cellMarks(cellExp)
 kM <- kmeans(intensities,2)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
-location(cellExp, imageID = 1)
+cellSummary(cellExp, imageID = 1)
 
 ### Something that resembles cellProfiler data
 
@@ -209,13 +209,13 @@ cells$AreaShape_diameter <- rexp(n, 2)
 cells$Intensity_Mean_CD8 <- rexp(n, 10)
 cells$Intensity_Mean_CD4 <- rexp(n, 10)
 
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 
 ### Cluster cell types
-intensities <- intensity(cellExp)
+intensities <- cellMarks(cellExp)
 kM <- kmeans(intensities,2)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
-location(cellExp, imageID = 1)
+cellSummary(cellExp, imageID = 1)
 
 }

@@ -1,11 +1,11 @@
-#' Show segmentedCells
+#' Show SegmentedCells
 #'
-#' This outputs critical information about asegmentedCells.
+#' This outputs critical information about aSegmentedCells.
 #'
 #' @section usage:
 #' `show(object)`
 #'
-#' @param object A segmentedCells.
+#' @param object A SegmentedCells.
 #'
 #' @return Information of the number of images, cells, intenisties, morphologies and phenotypes.
 #'
@@ -26,7 +26,7 @@
 #' cells$Intensity_Mean_CD8 <- rexp(n, 10)
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
-#' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+#' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 #'
 #' ### Cluster cell types
 #' intensities <- intensity(cellExp)
@@ -35,33 +35,33 @@
 #'
 #' cellExp
 #'
-#' @name show-segmentedCells
-#' @rdname show-segmentedCells
+#' @name show-SegmentedCells
+#' @rdname show-SegmentedCells
 #' @aliases show
 NULL
 
 
-.segmentedCells_show <- function(object) {
-  cat('A segmentedCells with... \n')
+.SegmentedCells_show <- function(object) {
+  cat('A SegmentedCells object with... \n')
   cat("Number of images:", nrow(object), '\n')
   cat("Number of cells:", length(cellID(object)), '\n')
   
   uniqueCellTypes <- unique(cellType(object))
   .showCat("Number of cell types: ", as.character(uniqueCellTypes))
   
-  .showCat("Number of intensities: ", colnames(object[1, 'intensity'][[1]]))
+  .showCat("Number of intensities: ", colnames(object[1, 'cellMarks'][[1]]))
   
-  .showCat("Number of morphologies: ", colnames(object[1, 'morphology'][[1]]))
+  .showCat("Number of morphologies: ", colnames(object[1, 'cellMorph'][[1]]))
   
-  .showCat("Number of image phenotypes: ", colnames(object[1, 'phenotype'][[1]]))
+  .showCat("Number of image phenotypes: ", colnames(object[1, 'imagePheno'][[1]]))
 }
 
 if (!isGeneric("show"))
   setGeneric("show", function(object)
     standardGeneric("show"))
 
-setMethod("show", signature(object = "segmentedCells"), function(object) {
-  .segmentedCells_show(object)
+setMethod("show", signature(object = "SegmentedCells"), function(object) {
+  .SegmentedCells_show(object)
 })
 
 

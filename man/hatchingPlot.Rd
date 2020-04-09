@@ -86,7 +86,7 @@ imageID <- rep(c('s1', 's2'),c(800,800))
 cells <- data.frame(x, y, cellType, imageID)
 
 ## Store data in SegmentedCells object
-cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
+cellExp <- SegmentedCells(cells, cellTypeString = 'cellType')
 
 ## Generate LISA
 lisaCurves <- lisa(cellExp)

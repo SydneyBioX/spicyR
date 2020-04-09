@@ -14,7 +14,7 @@ lisa(
 )
 }
 \arguments{
-\item{cells}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
+\item{cells}{A SegmentedCells or data frame that contains at least the variables x and y, giving the  coordinates of each cell, and cellType.}
 
 \item{Rs}{A vector of the radii that the measures of association should be calculated.}
 
@@ -33,14 +33,14 @@ A matrix of LISA curves
 Generate local indicators of spatial association
 }
 \examples{
-# Read in data as a segmentedCells objects
+# Read in data as a SegmentedCells objects
 isletFile <- system.file("extdata","isletCells.csv", package = "spicyR")
 cells <- read.csv(isletFile)
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 
 # Cluster cell types
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,8)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,8)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
 # Generate LISA

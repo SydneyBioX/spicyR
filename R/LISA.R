@@ -1,6 +1,6 @@
 #' Generate local indicators of spatial association
 #'
-#' @param cells A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param cells A SegmentedCells or data frame that contains at least the variables x and y, giving the  coordinates of each cell, and cellType.
 #' @param Rs A vector of the radii that the measures of association should be calculated.
 #' @param BPPARAM A BiocParallelParam object.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
@@ -10,14 +10,14 @@
 #' @return A matrix of LISA curves
 #'
 #' @examples
-#' # Read in data as a segmentedCells objects
+#' # Read in data as a SegmentedCells objects
 #' isletFile <- system.file("extdata","isletCells.csv", package = "spicyR")
 #' cells <- read.csv(isletFile)
-#' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+#' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 #'
 #' # Cluster cell types
-#' intensities <- intensity(cellExp)
-#' kM <- kmeans(intensities,8)
+#' markers <- cellMarks(cellExp)
+#' kM <- kmeans(markers,8)
 #' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 #'
 #' # Generate LISA
@@ -67,17 +67,17 @@ lisa <-
         cells$imageID <- "image1"
       }
       
-      location <-
+      cellSummary <-
         split(S4Vectors::DataFrame(cells[, c("imageID", "imageCellID", "cellID", "x", "y",
                                              "cellType")]), cells$imageID)
     }
     
-    if (is(cells, "segmentedCells")) {
-      location <- location(cells, bind = FALSE)
+    if (is(cells, "SegmentedCells")) {
+      cellSummary <- cellSummary(cells, bind = FALSE)
     }
     
     if (is.null(Rs)) {
-      loc = do.call('rbind', location)
+      loc = do.call('rbind', cellSummary)
       range <- max(loc$x) - min(loc$x)
       maxR <- range / 5
       Rs = seq(from = maxR / 20, maxR, length.out = 20)
@@ -92,7 +92,7 @@ lisa <-
     
     curveList <-
       BiocParallel::bplapply(
-        location,
+        cellSummary,
         generateCurves,
         Rs = Rs,
         window = window,
@@ -102,7 +102,7 @@ lisa <-
       )
     
     curves <- do.call("rbind", curveList)
-    curves <- curves[as.character(location(cells)$cellID),]
+    curves <- curves[as.character(cellSummary(cells)$cellID),]
     return(curves)
   }
 

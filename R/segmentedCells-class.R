@@ -1,14 +1,14 @@
-#' The segmentedCells class
+#' The SegmentedCells class
 #'
-#' The segmentedCells S4 class is for storing data from segmented
+#' The SegmentedCells S4 class is for storing data from segmented
 #' imaging cytometry and spatial omics data. It extends DataFrame and defines
 #' methods that take advantage of DataFrame nesting to represent elements of
 #' cell-based experiments with spatial orientation that are commonly
 #' encountered. This object is able to store information on a cell's spatial
-#' location, cellType, morphology, intensity of gene/protein marks as well as
+#' location, cellType, morphology, intensity of gene/protein markers as well as
 #' image level phenotype information.
 #'
-#' @param cellData A data frame that contains at least the columns x and y giving the location of each cell.
+#' @param cellData A data frame that contains at least the columns x and y giving the location coordinates of each cell.
 #' @param cellProfiler A logical indicating that cellData is in a format similar to what cellProfiler outputs.
 #' @param spatialCoords The column names corresponding to spatial coordinates. eg. x, y, z...
 #' @param cellTypeString The name of the column that contains cell type calls.
@@ -19,7 +19,7 @@
 #' @param imageIDString The column name for imageIDString.
 #' @param phenotypeString A string which can be used to identify the columns which contains phenotype information.
 #'
-#' @return A segmentedCells object
+#' @return A SegmentedCells object
 #'
 #' @examples
 #' ### Something that resembles cellProfiler data
@@ -38,24 +38,24 @@
 #' cells$Intensity_Mean_CD8 <- rexp(n, 10)
 #' cells$Intensity_Mean_CD4 <- rexp(n, 10)
 #'
-#' cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+#' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 #'
 #' ### Cluster cell types
-#' intensities <- intensity(cellExp)
+#' intensities <- cellMarks(cellExp)
 #' kM <- kmeans(intensities,2)
 #' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
-#' location(cellExp)
+#' cellSummary(cellExp)
 #'
 #' @aliases
-#' segmentedCells
-#' segmentedCells,segmentedCells-method
+#' SegmentedCells
+#' SegmentedCells,SegmentedCells-method
 #'
 #' @export
-#' @rdname segmentedCells
+#' @rdname SegmentedCells
 #' @importFrom methods new
 #' @importFrom S4Vectors DataFrame split
 #' @importFrom IRanges SplitDataFrameList
-segmentedCells <-
+SegmentedCells <-
     function(cellData,
              cellProfiler = FALSE,
              spatialCoords = NULL,
@@ -232,45 +232,45 @@ segmentedCells <-
         }
         
         
-        ### Create location information
+        ### Create cellSummary information
         
         df <- DataFrame(row.names = unique(cellData$imageID))
         
         if (!is.null(cellTypeString)) {
             cellData$cellType <- cellData[, cellTypeString]
-            location <-
+            cellSummary <-
                 S4Vectors::split(DataFrame(cellData[, c("cellID", "imageCellID",
                                                         spatialCoords, "cellType")]), cellData$imageID)
         } else {
             cellData$cellType <- NA
-            location <-
+            cellSummary <-
                 S4Vectors::split(DataFrame(cellData[, c("cellID", "imageCellID",
                                                         spatialCoords, "cellType")]), cellData$imageID)
         }
         
-        df$location <- location
+        df$cellSummary <- cellSummary
         
         
-        ### Create intensity and morphology information
+        ### Create marker intensity and morphology information
         
-        df$intensity <-
+        df$cellMarks <-
             S4Vectors::split(DataFrame(), cellData$imageID)
-        df$morphology <-
+        df$cellMorph <-
             S4Vectors::split(DataFrame(), cellData$imageID)
         
         if (!is.null(intensityString)) {
-            intensity <- cellData[, grep(intensityString, colnames(cellData))]
-            colnames(intensity) <-
-                gsub(intensityString, "", colnames(intensity))
-            df$intensity <-
-                S4Vectors::split(DataFrame(intensity), cellData$imageID)
+            markers <- cellData[, grep(intensityString, colnames(cellData))]
+            colnames(markers) <-
+                gsub(intensityString, "", colnames(markers))
+            df$cellMarks <-
+                S4Vectors::split(DataFrame(markers), cellData$imageID)
         }
         
         if (!is.null(morphologyString)) {
             morphology <- cellData[, grep(morphologyString, colnames(cellData))]
             colnames(morphology) <-
                 gsub(morphologyString, "", colnames(morphology))
-            df$morphology <-
+            df$cellMorph <-
                 S4Vectors::split(DataFrame(morphology), cellData$imageID)
         }
         
@@ -278,7 +278,7 @@ segmentedCells <-
         ### Create columns in DataFrame for storing phenotype information and potentially
         ### images and masks.
         
-        df$phenotype <-
+        df$imagePheno <-
             S4Vectors::split(DataFrame(), cellData$imageID)
         
         if (!is.null(phenotypeString)) {
@@ -290,14 +290,14 @@ segmentedCells <-
             phenotype <- unique(phenotype)
             phenotype <-
                 S4Vectors::split(DataFrame(phenotype), phenotype$imageID)
-            df$phenotype <- phenotype[rownames(df)]
+            df$imagePheno <- phenotype[rownames(df)]
         }
         
         df$images <- S4Vectors::split(DataFrame(), cellData$imageID)
         df$masks <- S4Vectors::split(DataFrame(), cellData$imageID)
         
-        ### Create segmentedCells object.
+        ### Create SegmentedCells object.
         
-        df <- new("segmentedCells", df)
+        df <- new("SegmentedCells", df)
         df
     }

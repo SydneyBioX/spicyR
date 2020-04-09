@@ -5,6 +5,11 @@ knitr::opts_chunk$set(
 )
 library(BiocStyle)
 
+## ---- eval = FALSE------------------------------------------------------------
+#  if (!require("BiocManager"))
+#      install.packages("BiocManager")
+#  BiocManager::install("spicyR")
+
 ## ----setup, message=FALSE-----------------------------------------------------
 library(spicyR)
 library(S4Vectors)
@@ -29,38 +34,38 @@ cells$Intensity_Mean_CD4 <- rexp(n, 10)
 
 
 ## -----------------------------------------------------------------------------
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 cellExp
 
 ## -----------------------------------------------------------------------------
-loc <- location(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 
-location(cellExp) <- loc
+cellSummary(cellExp) <- cellSum
 
 ## -----------------------------------------------------------------------------
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,2)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,2)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
-loc <- location(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 
 ## -----------------------------------------------------------------------------
 isletFile <- system.file("extdata","isletCells.txt.gz", package = "spicyR")
 cells <- read.table(isletFile, header = TRUE)
 
 ## -----------------------------------------------------------------------------
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 cellExp
 
 ## -----------------------------------------------------------------------------
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,4)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,4)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
-loc <- location(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 
 ## ---- fig.width=5, fig.height= 6----------------------------------------------
 plot(cellExp, imageID=1)
@@ -85,12 +90,12 @@ cells$cellType <- paste('cluster',sample(1:2,n,replace = TRUE), sep = '_')
 
 ## -----------------------------------------------------------------------------
 
-cellExp <- segmentedCells(cells, cellTypeString = 'cellType', intensityString = 'intensity_', morphologyString = 'shape_')
+cellExp <- SegmentedCells(cells, cellTypeString = 'cellType', intensityString = 'intensity_', morphologyString = 'shape_')
 cellExp
 
 
 ## -----------------------------------------------------------------------------
-morph <- morphology(cellExp)
+morph <- cellMorph(cellExp)
 head(morph)
 
 
@@ -98,9 +103,9 @@ head(morph)
 phenoData <- DataFrame(imageID = c('1','2'), 
                        age = c(21,81), 
                        status = c('dead','alive'))
-phenotype(cellExp) <- phenoData
-phenotype(cellExp)
-phenotype(cellExp, expand = TRUE)
+imagePheno(cellExp) <- phenoData
+imagePheno(cellExp)
+imagePheno(cellExp, expand = TRUE)
 
 ## -----------------------------------------------------------------------------
 set.seed(51773)
@@ -110,12 +115,15 @@ n = 10
 cells <- data.frame(row.names = seq_len(n))
 cells$x <- runif(n)
 cells$y <- runif(n)
-cellExp <- segmentedCells(cells)
+cellExp <- SegmentedCells(cells)
 cellExp
 
 
 ## -----------------------------------------------------------------------------
-loc <- location(cellExp)
+loc <- cellSummary(cellExp)
 head(loc)
 
+
+## -----------------------------------------------------------------------------
+sessionInfo()
 

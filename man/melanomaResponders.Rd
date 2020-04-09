@@ -4,7 +4,7 @@
 \name{melanomaResponders}
 \alias{melanomaResponders}
 \title{Melanoma responders/non-responders dataset.}
-\format{melanomaResponders a segmentedCells object}
+\format{melanomaResponders a SegmentedCells object}
 \usage{
 melanomaResponders
 }

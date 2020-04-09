@@ -85,11 +85,11 @@ ggplot(cells, aes(x,y, colour = cellType)) + geom_point() + facet_wrap(~imageID)
 
 ## Create SegmentedCellExperiment object
 
-First we store our datas into a `segmentedCells` object. 
+First we store our datas into a `SegmentedCells` object. 
 
 ```{r}
 
-cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
+cellExp <- SegmentedCells(cells, cellTypeString = 'cellType')
 
 
 ```
@@ -113,7 +113,7 @@ lisaCurves <- lisa(cellExp)
 
 The LISA curves can then be used to cluster the cells. Here we use k-means 
 clustering, other clustering methods like SOM could be used. We can store these 
-cell clusters or cell "regions" in our `segmentedCells` object using the 
+cell clusters or cell "regions" in our `SegmentedCells` object using the 
 `region() <-` function.
 
 ```{r}
@@ -170,13 +170,13 @@ Damond et al. (2019).
 
 ## Read in data
 
-We will start by reading in the data and storing it as a `segmentedCells` 
+We will start by reading in the data and storing it as a `SegmentedCells` 
 object. Here the data is in a format consistent with that outputted by 
 CellProfiler.
 ```{r}
 isletFile <- system.file("extdata","isletCells.txt.gz", package = "spicyR")
 cells <- read.table(isletFile, header = TRUE)
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 
 ```
 
@@ -184,12 +184,12 @@ cellExp <- segmentedCells(cells, cellProfiler = TRUE)
 ## Cluster cell-types
 
 This data does not include annotation of the cell-types of each cell. Here we 
-extract the marker intensities from the `segmentedCells` object using 
-`intensity`. We then perform k-means clustering with eight clusters and store 
-these cell-type clusters in our `segmentedCells` object using `cellType() <-`.
+extract the marker intensities from the `SegmentedCells` object using 
+`cellMarks`. We then perform k-means clustering with eight clusters and store 
+these cell-type clusters in our `SegmentedCells` object using `cellType() <-`.
 ```{r}
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,10)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,10)
 cellType(cellExp) <- paste('cluster', kM$cluster, sep = '')
 ```
 
@@ -212,7 +212,7 @@ lisaCurves <- lisa(cellExp, Rs = c(10,20,50))
 The LISA curves can then be used to cluster the cells. Here we use k-means 
 clustering to cluster the cells into two microenvironments, other clustering 
 methods like SOM could be used. We can store these cell clusters or cell 
-"regions" in our `segmentedCells` object using the `region() <-` function.
+"regions" in our `SegmentedCells` object using the `region() <-` function.
 
 ```{r}
 

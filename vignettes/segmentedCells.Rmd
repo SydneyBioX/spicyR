@@ -1,5 +1,5 @@
 ---
-title: "Introduction to segmentedCells"
+title: "Introduction to SegmentedCells"
 date: "`r BiocStyle::doc_date()`"
 author:
 - name: Nicolas Canete
@@ -13,7 +13,7 @@ author:
   email: ellis.patrick@sydney.edu.au
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
-  %\VignetteIndexEntry{"Introduction to segmentedCells"}
+  %\VignetteIndexEntry{"Introduction to SegmentedCells"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
@@ -42,9 +42,9 @@ BiocManager::install("spicyR")
 
 ## Overview
 
-A `segmentedCells` is an object designed to store data from imaging cytometry 
+A `SegmentedCells` is an object designed to store data from imaging cytometry 
 (FISH, IMC, CycIF, spatial transcriptomics, ... ) that has already been 
-segmented and reduced to individual cells. A `segmentedCells` extends DataFrame 
+segmented and reduced to individual cells. A `SegmentedCells` extends DataFrame 
 and defines methods that take advantage of DataFrame nesting to represent 
 various elements of cell-based experiments with spatial orientation that are 
 commonly encountered. This object is able to store information on a cell's 
@@ -52,7 +52,7 @@ spatial location, cellType, morphology, intensity of gene/protein marks as well
 as image level phenotype information. Ideally this type of data can be used for 
 cell clustering, point process models or nearest neighbour analysis. Below we 
 will consider a few examples of data formats that can be transformed into a 
-`segmentedCells`.
+`SegmentedCells`.
 
 
 First, load the `spicyR` package.
@@ -66,7 +66,7 @@ library(S4Vectors)
 
 ## Example 1 - Data resembles cellProfiler output
 
-Here we create a `segmentedCells` from data that was output from cellProfiler or 
+Here we create a `SegmentedCells` from data that was output from cellProfiler or 
 similar programs. This assumes that there are columns with the string 
 *AreaShape_* and *Intensity_Mean* and that there are `ObjectNumber` and 
 `ImageNumber` columns.
@@ -94,20 +94,20 @@ cells$Intensity_Mean_CD4 <- rexp(n, 10)
 ```
 
 
-We can then create a `segmentedCells` object.
+We can then create a `SegmentedCells` object.
 
 ```{r}
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 cellExp
 ```
 
-Extract the location information and overwrite it as well.
+Extract the cellSummary information and overwrite it as well.
 
 ```{r}
-loc <- location(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 
-location(cellExp) <- loc
+cellSummary(cellExp) <- cellSum
 ```
 
 We can then set the cell types of each cell by extracting and clustering marker 
@@ -115,12 +115,12 @@ intensity information.
 
 
 ```{r}
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,2)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,2)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
-loc <- location(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 ```
 
 
@@ -133,10 +133,10 @@ isletFile <- system.file("extdata","isletCells.txt.gz", package = "spicyR")
 cells <- read.table(isletFile, header = TRUE)
 ```
 
-We can then create a `segmentedCells` object.
+We can then create a `SegmentedCells` object.
 
 ```{r}
-cellExp <- segmentedCells(cells, cellProfiler = TRUE)
+cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 cellExp
 ```
 
@@ -146,12 +146,12 @@ We can then set the cell types of each cell by extracting and clustering marker
 intensity information.
 
 ```{r}
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,4)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,4)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
-loc <- location(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 ```
 
 
@@ -165,7 +165,7 @@ plot(cellExp, imageID=1)
 
 
 
-## Example 3 - Custom intensity and morphology column names
+## Example 3 - Custom markerintensity and morphology column names
 
 Here we create toy data that has a slightly more fluid naming stucture.
 
@@ -188,11 +188,11 @@ cells$cellType <- paste('cluster',sample(1:2,n,replace = TRUE), sep = '_')
 
 ```
 
-We can then create a `segmentedCells` object.
+We can then create a `SegmentedCells` object.
 
 ```{r}
 
-cellExp <- segmentedCells(cells, cellTypeString = 'cellType', intensityString = 'intensity_', morphologyString = 'shape_')
+cellExp <- SegmentedCells(cells, cellTypeString = 'cellType', intensityString = 'intensity_', morphologyString = 'shape_')
 cellExp
 
 ```
@@ -200,7 +200,7 @@ cellExp
 Extract morphology information
 
 ```{r}
-morph <- morphology(cellExp)
+morph <- cellMorph(cellExp)
 head(morph)
 
 ```
@@ -215,9 +215,9 @@ corresponding toy phenotype information which must have a `imageID` variable.
 phenoData <- DataFrame(imageID = c('1','2'), 
                        age = c(21,81), 
                        status = c('dead','alive'))
-phenotype(cellExp) <- phenoData
-phenotype(cellExp)
-phenotype(cellExp, expand = TRUE)
+imagePheno(cellExp) <- phenoData
+imagePheno(cellExp)
+imagePheno(cellExp, expand = TRUE)
 ```
 
 
@@ -234,15 +234,15 @@ n = 10
 cells <- data.frame(row.names = seq_len(n))
 cells$x <- runif(n)
 cells$y <- runif(n)
-cellExp <- segmentedCells(cells)
+cellExp <- SegmentedCells(cells)
 cellExp
 
 ```
 
-Extract the location information which now also has cellIDs and imageIDs.
+Extract the cellSummary information which now also has cellIDs and imageIDs.
 
 ```{r}
-loc <- location(cellExp)
+loc <- cellSummary(cellExp)
 head(loc)
 
 ```

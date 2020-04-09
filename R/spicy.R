@@ -1,6 +1,6 @@
 #' Performs spatial tests on spatial cytometry data.
 #'
-#' @param cells A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param cells A SegmentedCells or data frame that contains at least the variables x and y, giving the location coordinates of each cell, and cellType.
 #' @param condition Vector of conditions to be tested corresponding to each image if cells is a data frame.
 #' @param subject Vector of subject IDs corresponding to each image if cells is a data frame.
 #' @param covariates Vector of covariate names that should be included in the mixed effects model as fixed effects.
@@ -45,8 +45,8 @@ spicy <- function(cells,
                   nsim = NULL,
                   verbose = TRUE,
                   ...) {
-  if (!is(cells, "segmentedCells")) {
-    stop('cells needs to be a segmentedCells object')
+  if (!is(cells, "SegmentedCells")) {
+    stop('cells needs to be a SegmentedCells object')
   }
   
   if (is.null(from))
@@ -59,7 +59,7 @@ spicy <- function(cells,
   
   if (any((!to %in% cellType(cells)) |
           (!from %in% cellType(cells))))
-    stop("to and from need to be cell type in your segmentedCells")
+    stop("to and from need to be cell type in your SegmentedCells")
   
   nCells <- table(imageID(cells), cellType(cells))
   
@@ -155,7 +155,7 @@ spicy <- function(cells,
                                to = m2,
                                labels = labels)
   
-  df <- new('spicy', df)
+  df <- new('SpicyResults', df)
   df
 }
 
@@ -240,7 +240,7 @@ cleanMEM <- function(mixed.lmer, nsim) {
 
 #' Get statistic from pairwise L curve of a single image.
 #'
-#' @param cells A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.
+#' @param cells A SegmentedCells or data frame that contains at least the variables x and y, giving the location coordinates of each cell, and cellType.
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
 #' @param dist The distance at which the statistic is obtained.
@@ -253,7 +253,7 @@ cleanMEM <- function(mixed.lmer, nsim) {
 #' pairAssoc <- getPairwise(melanomaResponders)
 #' @export
 getPairwise <- function(cells, from, to, dist = NULL) {
-  cells <- location(cells, bind = FALSE)
+  cells <- cellSummary(cells, bind = FALSE)
   
   pairwiseVals <- lapply(cells,
                          getStat,
@@ -319,7 +319,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
 
 
 #' @importFrom stats p.adjust
-.show_spicy <- function(df) {
+.show_SpicyResults <- function(df) {
   pval <- as.data.frame(df$p.value)
   cond <- colnames(pval)[grep('condition', colnames(pval))]
   cat(df$test)
@@ -331,8 +331,8 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     print(colSums(apply(pval[cond], 2, p.adjust, 'fdr') < 0.05))
   
 }
-setMethod("show", signature(object = "spicy"), function(object) {
-  .show_spicy(object)
+setMethod("show", signature(object = "SpicyResults"), function(object) {
+  .show_SpicyResults(object)
 })
 
 
@@ -359,7 +359,7 @@ spatialMEM <-
     if (sum(filter) < 3)
       return(NA)
     
-    pheno <- as.data.frame(phenotype(cells))
+    pheno <- as.data.frame(imagePheno(cells))
     spatialData <-
       data.frame(spatAssoc,
                  condition = pheno[, condition],
@@ -410,7 +410,7 @@ spatialLM <-
     if (sum(filter) < 3)
       return(NA)
     
-    pheno <- as.data.frame(phenotype(cells))
+    pheno <- as.data.frame(imagePheno(cells))
     spatialData <-
       data.frame(spatAssoc, condition = pheno[, condition], pheno[covariates])
     

@@ -19,6 +19,15 @@ output:
   BiocStyle::html_document
 ---
 
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(BiocStyle)
+EVAL=FALSE
+```
+
 
 ```{r warning=FALSE, message=FALSE}
 # load required packages
@@ -47,21 +56,21 @@ Here, we use a melanoma image dataset with two conditions: Responders and
 Non-Responders. With this data set, we want to see if there are differences in 
 how cell types are localised with respect to each other.
 
-`cells` is a `segmentedCells` object containing single-cell data of 135 images 
+`cells` is a `SegmentedCells` object containing single-cell data of 135 images 
 from 27 subjects, with 5 images per subjects. There are 9 Non-Responder subjects 
 and 18 Responder subjects.
 
-`location()` returns a `DataFrame` object providing the location (`x` and `y`) 
+`cellSummary()` returns a `DataFrame` object providing the location (`x` and `y`) 
 and cell type (`cellType`) of each cell and the image it belongs to (`imageID`).
 
-`phenotype()` returns a `DataFrame` object providing the corresponding subject 
+`imagePheno()` returns a `DataFrame` object providing the corresponding subject 
 (`subject`) and condition (`condition`) for each image.
 
 ```{r message=FALSE}
 data("melanomaResponders")
 melanomaResponders
-location(melanomaResponders)
-phenotype(melanomaResponders)
+cellSummary(melanomaResponders)
+imagePheno(melanomaResponders)
 ```
 In this data set, `cellType` can be some combination of the expression of CD8, 
 PD1 or PDL1, or is SOX10+.
@@ -76,8 +85,7 @@ for the level of colocalisation. Differences of this statistic between two
 conditions is modelled using a weighted mixed effects model, with condition as 
 the fixed effect and subject as the random effect.
 
-## Testing for change in colocalisation between Responders and Non-Responders 
-for a specific pair of cells
+## Testing for change in colocalisation for a specific pair of cells
 
 Firstly, we can see whether one cell type tends to be around another cell type 
 in one condition compared to the other. This can be done using the `spicy()` 
@@ -92,7 +100,7 @@ spicyTestPair <- spicy(melanomaResponders,
                    from = "CD8+PD1+PDL1-", 
                    to = "CD8-PD1+PDL1+")
 spicyTestPair
-top(spicyTestPair)
+topPairs(spicyTestPair)
 ```
 
 We obtain a `spicy` object which details the results of the mixed effects 
@@ -100,27 +108,31 @@ modelling performed. As the `coefficient` in `spicyTest` is negative, we find
 that CD8-PD1+PDL1+ cells are more likely to be found around CD8+PD1+PDL1- cells 
 in Non-Responders.
 
-## Test for change in colocalisation between Responders and Non-Responders for 
-all pairwise cell combinations
+## Test for change in colocalisation for all pairwise cell combinations
 
 Here, we can perform what we did above for all pairwise combinations of cell 
 types by excluding the `from` and `to` parameters from `spicy()`.
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=!EVAL}
 data("spicyTest")
 ```
 
 
-```{r eval = FALSE}
+```{r eval=EVAL}
 spicyTest <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject")
 
 ```
 
+```{r echo=FALSE, eval=EVAL}
+save(spicyTest, file = "../data/spicyTest.rda", compress = "xz")
+```
+
+
 ```{r}
 spicyTest
-top(spicyTest)  
+topPairs(spicyTest)  
 ```
 
 Again, we obtain a `spicy` object which outlines the result of the mixed effects 
@@ -132,29 +144,33 @@ providing it the `spicy` object obtained.
 signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 ```
 
-### Bootstrapping with spicy
+## Bootstrapping with spicy
 There are multiple ways for calculating p-values for mixed effects models. We 
 have also implemented a bootstrapping approach. All that is needed is a choice 
 for the number of resamples used in the bootstrap which can be set with the 
 `nsim` parameter in `spicy()`.
 
-```{r echo=FALSE}
+```{r echo=FALSE, eval=!EVAL }
 data(spicyTestBootstrap)
 ```
 
 
-```{r eval = FALSE}
+```{r eval = EVAL}
 spicyTestBootstrap <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject", 
                    nsim = 199)
 ```
 
+```{r echo=FALSE, eval=EVAL}
+save(spicyTestBootstrap, file = "../data/spicyTestBootstrap.rda", compress = "xz")
+```
+
 
 ```{r}
 spicyTestBootstrap
 
-top(spicyTestBootstrap)  
+topPairs(spicyTestBootstrap)  
 
 signifPlot(spicyTestBootstrap, breaks=c(-3, 3, 0.5))
 ```

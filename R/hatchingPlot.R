@@ -2,7 +2,7 @@
 #'
 #' The hatchingPlot() function is used to create hatching patterns for representating spatial regions and cell-types.
 #'
-#' @param data A segmentedCells object that has region information
+#' @param data A SegmentedCells object that has region information
 #' @param imageID A vector of imageIDs to be plotted
 #' @param line.spacing A integer indicating the spacing between hatching lines.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
@@ -24,7 +24,7 @@
 #' cells <- data.frame(x, y, cellType, imageID)
 #' 
 #' ## Store data in SegmentedCells object
-#' cellExp <- segmentedCells(cells, cellTypeString = 'cellType')
+#' cellExp <- SegmentedCells(cells, cellTypeString = 'cellType')
 #' 
 #' ## Generate LISA
 #' lisaCurves <- lisa(cellExp)
@@ -46,8 +46,8 @@ hatchingPlot <-
              line.spacing = 21,
              nbp = 250,
              window.length = 0) {
-        if (!is(data, "segmentedCells") | is.null(data$region))
-            stop("Please provide a segmentedCells object with region information please.")
+        if (!is(data, "SegmentedCells") | is.null(data$region))
+            stop("Please provide a SegmentedCells object with region information please.")
         
         if (is.null(imageID)) {
             df <- region(data[1,], annot = TRUE)
@@ -70,7 +70,7 @@ hatchingPlot <-
         
         if (!is.null(imageID)) {
             if (any(!imageID %in% rownames(data)))
-                stop("Some of the imageIDs are not in your segmentedCells object")
+                stop("Some of the imageIDs are not in your SegmentedCells object")
             df <- region(data, imageID = imageID, annot = TRUE)
             p <-
                 ggplot(df, aes(

@@ -4,7 +4,7 @@
 #' respond to treatment. Each subject has 5 images. The data has already been 
 #' summarised into 9 cell-types.
 #'
-#' @format melanomaResponders a segmentedCells object
+#' @format melanomaResponders a SegmentedCells object
 #' @aliases 
 #' melanomaResponders
 "melanomaResponders"

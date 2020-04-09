@@ -1,9 +1,9 @@
 #' @export
-#' @rdname segmentedCells
+#' @rdname SegmentedCells
 #' @importClassesFrom S4Vectors DataFrame
-setClass("segmentedCells", contains = "DataFrame")
+setClass("SegmentedCells", contains = "DataFrame")
 
 #' @export
-#' @aliases spicy,list,ANY-method
+#' @aliases SpicyResults,list,ANY-method
 #' @rdname spicy
-setClass("spicy", contains = "list")
+setClass("SpicyResults", contains = "list")

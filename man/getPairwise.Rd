@@ -7,7 +7,7 @@
 getPairwise(cells, from, to, dist = NULL)
 }
 \arguments{
-\item{cells}{A segmentedCells or data frame that contains at least the variables x and y, giving the location of each cell, and cellType.}
+\item{cells}{A SegmentedCells or data frame that contains at least the variables x and y, giving the location coordinates of each cell, and cellType.}
 
 \item{from}{The 'from' cellType for generating the L curve.}
 
