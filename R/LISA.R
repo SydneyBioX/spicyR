@@ -42,7 +42,7 @@ lisa <-
            whichParallel = 'imageID') {
     if (is.data.frame(cells)) {
       if (is.null(cells$cellID)) {
-        cat("Creating cellID as it doesn't exist")
+        message("Creating cellID as it doesn't exist")
         cells$cellID <- paste("cell", seq_len(nrow(cells)), sep = "_")
       }
       
@@ -61,7 +61,7 @@ lisa <-
         stop("The number of rows in cells does not equal the number of uniqueCellIDs")
       
       if (is.null(cells$imageID)) {
-        cat(
+        message(
           "There is no imageID. I'll assume this is only one image and create an arbitrary imageID"
         )
         cells$imageID <- "image1"

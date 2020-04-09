@@ -322,9 +322,9 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
 .show_SpicyResults <- function(df) {
   pval <- as.data.frame(df$p.value)
   cond <- colnames(pval)[grep('condition', colnames(pval))]
-  cat(df$test)
-  cat("Number of cell type pairs: ", nrow(pval), "\n")
-  cat("Number of differentially localised cell type pairs: \n")
+  message(df$test)
+  message("Number of cell type pairs: ", nrow(pval), "\n")
+  message("Number of differentially localised cell type pairs: \n")
   if (nrow(pval) == 1)
     print(sum(pval[cond] < 0.05))
   if (nrow(pval) > 1)

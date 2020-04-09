@@ -10,14 +10,14 @@
 SegmentedCells(
   cellData,
   cellProfiler = FALSE,
-  spatialCoords = NULL,
-  cellTypeString = NULL,
-  intensityString = NULL,
-  morphologyString = NULL,
-  phenotypeString = NULL,
-  cellIDString = NULL,
-  imageCellIDString = NULL,
-  imageIDString = NULL
+  spatialCoords = c("x", "y"),
+  cellTypeString = "cellType",
+  intensityString = "intensity_",
+  morphologyString = "morphology_",
+  phenotypeString = "phenotype_",
+  cellIDString = "cellID",
+  imageCellIDString = "imageCellID",
+  imageIDString = "imageID"
 )
 }
 \arguments{

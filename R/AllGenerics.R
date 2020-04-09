@@ -223,7 +223,7 @@ setMethod("cellSummary<-", "SegmentedCells", function(x, imageID = NULL, value) 
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        x[imageID,]@listData$cellSummary <- value
+        slot(x[imageID,],"listData")$cellSummary <- value
         return(x)
     }
     
@@ -232,7 +232,7 @@ setMethod("cellSummary<-", "SegmentedCells", function(x, imageID = NULL, value) 
         by <-
             rep(imageID, unlist(lapply(x[imageID, "cellSummary"], nrow)))
         by <- factor(by, levels = unique(by))
-        x[imageID,]@listData$cellSummary <- S4Vectors::split(value, by)
+        slot(x[imageID,],"listData")$cellSummary <- S4Vectors::split(value, by)
         return(x)
     }
 })
@@ -340,14 +340,14 @@ setMethod("cellMarks<-", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        x[imageID,]@listData$cellMarks <- value
+        slot(x[imageID,],"listData")$cellMarks <- value
         return(x)
     }
     
     if (nrow(value) == length(imageID(x))) {
         by <- rep(rownames(x), unlist(lapply(x$cellMarks, nrow)))
         by <- factor(by, levels = unique(by))
-        x[imageID,]@listData$cellMarks <-
+        slot(x[imageID,],"listData")$cellMarks <-
             S4Vectors::split(value, by)
         return(x)
     }
@@ -382,7 +382,7 @@ setMethod("cellMorph<-", "SegmentedCells", function(x, imageID = NULL,
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        x[imageID,]@listData$cellMorph <- value
+        slot(x[imageID,],"listData")$cellMorph <- value
         return(x)
     }
     
@@ -390,7 +390,7 @@ setMethod("cellMorph<-", "SegmentedCells", function(x, imageID = NULL,
         by <- rep(rownames(x), unlist(lapply(x$cellMorph, nrow)))
         by <- factor(by, levels = unique(by))
         
-        x[imageID,]@listData$cellMorph <-
+        slot(x[imageID,],"listData")$cellMorph <-
             S4Vectors::split(value, by)
         return(x)
     }
@@ -468,70 +468,11 @@ setMethod("imagePheno<-", "SegmentedCells", function(x, imageID = NULL, value) {
         imageID <- rownames(x)
     use <- intersect(value$imageID, imageID)
     rownames(value) <- value$imageID
-    x[use,]@listData$imagePheno <-
+    slot(x[use,],"listData")$imagePheno <-
         S4Vectors::split(value[use,], use)
     x[unique(use),]
 })
 
-
-
-
-as.data.frame.SegmentedCells <- function(x, ...) {
-    loc <- cellSummary(x)
-    int <- cellMarks(x)
-    morph <- cellMorph(x)
-    pheno <- imagePheno(x, expand = TRUE)
-    pheno <- pheno[!colnames(pheno) %in% "imageID"]
-    
-    if (length(colnames(int)) > 0)
-        colnames(int) <- paste("intensity", colnames(int), sep = "_")
-    if (length(colnames(morph)) > 0)
-        colnames(morph) <- paste("morphology", colnames(morph), sep = "_")
-    if (length(colnames(pheno)) > 0)
-        colnames(pheno) <- paste("phenotype", colnames(pheno), sep = "_")
-    
-    if (prod(dim(loc)) > 0 &
-        prod(dim(int)) > 0 & prod(dim(morph)) > 0 & prod(dim(pheno)) > 0) {
-        return(as.data.frame(cbind(loc, int, morph, pheno)))
-    }
-    
-    if (prod(dim(loc)) > 0 & prod(dim(int)) > 0 &
-        prod(dim(morph)) > 0) {
-        return(as.data.frame(cbind(loc, int, morph)))
-    }
-    
-    if (prod(dim(loc)) > 0 & prod(dim(int)) > 0 &
-        prod(dim(pheno)) > 0) {
-        return(as.data.frame(cbind(loc, int, pheno)))
-    }
-    
-    if (prod(dim(loc)) > 0 &
-        prod(dim(morph)) > 0 & prod(dim(pheno)) > 0) {
-        return(as.data.frame(cbind(loc, morph, pheno)))
-    }
-    
-    if (prod(dim(loc)) > 0 & prod(dim(int)) > 0) {
-        return(as.data.frame(cbind(loc, int)))
-    }
-    
-    if (prod(dim(loc)) > 0 & prod(dim(morph)) > 0) {
-        return(as.data.frame(cbind(loc, morph)))
-    }
-    
-    if (prod(dim(loc)) > 0 & prod(dim(pheno)) > 0) {
-        return(as.data.frame(cbind(loc, pheno)))
-    }
-    
-    NA
-}
-
-
-if (!isGeneric("as.data.frame"))
-    setGeneric("as.data.frame", function(x, ...)
-        standardGeneric("as.data.frame"))
-setMethod("as.data.frame",
-          "SegmentedCells",
-          as.data.frame.SegmentedCells)
 
 
 #' @export
@@ -678,7 +619,7 @@ setMethod("region<-", "SegmentedCells", function(x, imageID = NULL, value) {
         if (!is.null(x$region))
             by <- rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
         by <- factor(by, levels = unique(by))
-        x[imageID,]@listData$region <-
+        slot(x[imageID,],"listData")$region <-
             S4Vectors::split(DataFrame(region = value), by)
     }
     x

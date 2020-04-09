@@ -58,38 +58,21 @@
 SegmentedCells <-
     function(cellData,
              cellProfiler = FALSE,
-             spatialCoords = NULL,
-             cellTypeString = NULL,
-             intensityString = NULL,
-             morphologyString = NULL,
-             phenotypeString = NULL,
-             cellIDString = NULL,
-             imageCellIDString = NULL,
-             imageIDString = NULL) {
+             spatialCoords = c("x", "y"),
+             cellTypeString = "cellType",
+             intensityString = "intensity_",
+             morphologyString = "morphology_",
+             phenotypeString = "phenotype_",
+             cellIDString = "cellID",
+             imageCellIDString = "imageCellID",
+             imageIDString = "imageID") {
         ### Check variable names
         
-        if (!is.null(cellIDString)) {
-            if (!cellIDString %in% colnames(cellData))
-                stop("cellIDString is not a column name of cellData")
-            cellData$cellID <- cellData[, cellIDString]
-        }
         
-        if (!is.null(imageIDString)) {
-            if (!imageIDString %in% colnames(cellData))
-                stop("imageIDString is not a column name of cellData")
-            cellData$imageCellID <- cellData[, imageIDString]
-        }
         
-        if (!is.null(imageIDString)) {
-            if (!imageIDString %in% colnames(cellData))
-                stop("imageIDString is not a column name of cellData")
-            
-            cellData$imageID <- cellData[, imageIDString]
-        }
-        
-        if (is.null(cellTypeString) &
-            "cellType" %in% colnames(cellData)) {
-            cellTypeString <- "cellType"
+        if (cellTypeString=="cellType"&!"cellType"%in%colnames(cellData)) {
+            message("There is no cellType column, setting to NA")
+            cellData$cellType = NA
         }
         
         if (!is.null(cellTypeString)) {
@@ -99,80 +82,67 @@ SegmentedCells <-
             cellData$cellType <- cellData[, cellTypeString]
         }
         
-        if (!is.null(intensityString)) {
-            if (length(intensityString) > 1)
-                stop("intensityString needs to be NULL or length 1")
-            if (length(grep(intensityString, colnames(cellData))) == 0)
-                stop("intensityString is not in column names of cellData")
-            
-        }
+        if (!any(grepl(intensityString, colnames(cellData)))&intensityString!="intensity_")
+            stop("intensityString is not in column names of cellData")
+
         
         
-        if (!is.null(morphologyString)) {
-            if (length(morphologyString) > 1)
-                stop("morphologyString needs to be NULL or length 1")
-            if (length(grep(morphologyString, colnames(cellData))) == 0)
-                stop("morphologyString is not in column names of cellData")
-        }
+
+        if (!any(grepl(morphologyString, colnames(cellData)))&morphologyString!="morphology_")
+            stop("morphologyString is not in column names of cellData")
+
         
         
-        
-        if (!is.null(phenotypeString)) {
-            if (length(phenotypeString) > 1)
-                stop("phenotypeString needs to be NULL or length 1")
-            if (length(grep(phenotypeString, colnames(cellData))) == 0)
-                stop("phenotypeString is not in column names of cellData")
-        }
+
+        if (!any(grepl(phenotypeString, colnames(cellData)))&phenotypeString!="phenotype_")
+            stop("phenotypeString is not in column names of cellData")
         
         
-        if (is.null(phenotypeString)) {
-            if (length(grep("phenotype_", colnames(cellData))) > 0)
-                phenotypeString = "phenotype_"
-        }
         
         ### Format variable names if not from cellProfiler output
         
         if (!cellProfiler) {
-            if (is.null(intensityString)) {
-                if (length(grep("intensity_", colnames(cellData))) == 0)
-                    intensityString = "intensity_"
-            }
             
+            if(any(!spatialCoords%in%colnames(cellData)))
+                stop("spatialCoords are not column names of cellData")
             
-            if (is.null(morphologyString)) {
-                if (length(grep("morphology_", colnames(cellData))) == 0)
-                    intensityString = "morphology_"
-            }
+            cellData$x <- cellData[, spatialCoords[1]]
             
+            cellData$y <- cellData[, spatialCoords[2]]
             
+            spatialCoords <- c("x", "y")
             
-            if (is.null(cellData$cellID)) {
-                cat("There is no cellID. I'll create these", "\n")
+            if (cellIDString=="cellID"&!"cellID"%in%colnames(cellData)) {
+                message("There is no cellID. I'll create these", "\n")
                 cellData$cellID <-
                     paste("cell", seq_len(nrow(cellData)), sep = "_")
             }
             
-            if (!is.null(spatialCoords)) {
-                cellData$x <- cellData[, spatialCoords[1]]
+            if (!is.null(cellIDString)) {
+                if (!cellIDString %in% colnames(cellData))
+                    stop("cellIDString is not a column name of cellData")
+                if (length(unique(cellData$cellID))!=length(cellData$cellID))
+                    stop("Your cellIDs are not unique to each cell ")            
+                cellData$cellID <- cellData[, cellIDString]
             }
             
-            if (!is.null(spatialCoords)) {
-                cellData$y <- cellData[, spatialCoords[2]]
+            
+            if (imageCellIDString!="imageCellID") {
+                if (!imageIDString %in% colnames(cellData))
+                    stop("imageIDString is not a column name of cellData")
+                cellData$imageCellID <- cellData[, imageIDString]
             }
             
-            spatialCoords <- c("x", "y")
-            
-            if (is.null(cellData$x)) {
-                stop("You need to include a 'x' column in the data.frame")
-            }
-            
-            if (is.null(cellData$y)) {
-                stop("You need to include a 'y' column in the data.frame")
+            if (imageIDString!="imageID") {
+                if (!imageIDString %in% colnames(cellData))
+                    stop("imageIDString is not a column name of cellData")
+                
+                cellData$imageID <- cellData[, imageIDString]
             }
             
             
             if (is.null(cellData$imageCellID)) {
-                cat("There is no image specific imageCellID. I'll create these",
+                message("There is no image specific imageCellID. I'll create these",
                     "\n")
                 cellData$imageCellID <-
                     paste("cell", seq_len(nrow(cellData)), sep = "_")
@@ -181,7 +151,7 @@ SegmentedCells <-
                 stop("The number of rows in cells does not equal the number of imageCellIDs")
             
             if (is.null(cellData$imageID)) {
-                cat(
+                message(
                     "There is no imageID. I'll assume this is only one image and create an arbitrary imageID",
                     "\n"
                 )
@@ -194,30 +164,76 @@ SegmentedCells <-
         ### Format variable names if cellProfiler output
         
         if (cellProfiler) {
-            cellData$imageID <- as.factor(cellData$ImageNumber)
+            
+            if (imageIDString=="imageID"&"ImageNumber"%in%colnames(cellData)&
+                !"imageID"%in%colnames(cellData))
+                    cellData$imageID <- as.factor(cellData$ImageNumber)
+            
+            if (imageIDString!="imageID") {
+                if (!imageIDString %in% colnames(cellData))
+                    stop("imageIDString is not a column name of cellData")
+                
+                cellData$imageID <- cellData[, imageIDString]
+            }
+            
+            if (is.null(cellData$imageID)) {
+                message(
+                    "There is no imageID. I'll assume this is only one image and create an arbitrary imageID",
+                    "\n"
+                )
+                cellData$imageID <- "image1"
+            }
+            
             cellData$cellID <-
                 paste('cell', seq_len(nrow(cellData)), sep = '_')
-            cellData$imageCellID <- cellData$ObjectNumber
             
-            if (is.null(spatialCoords)) {
+            if (!is.null(cellIDString)) {
+                if (!cellIDString %in% colnames(cellData))
+                    stop("cellIDString is not a column name of cellData")
+                if (length(unique(cellData$cellID))!=length(cellData$cellID))
+                    stop("Your cellIDs are not unique to each cell ")            
+                cellData$cellID <- cellData[, cellIDString]
+            }
+            
+            cellData$imageID <- as.factor(cellData$imageID)
+            cellData$cellID <- as.character(cellData$cellID)
+            
+            
+            
+            if (imageCellIDString=="imageCellID"&"ObjectNumber"%in%colnames(cellData)&
+                !"imageCellID"%in%colnames(cellData))
+                cellData$imageCellID <- cellData$ObjectNumber
+            
+            cellData$imageCellID <-
+                paste('cell', seq_len(nrow(cellData)), sep = '_')
+            
+            if (imageCellIDString!="imageCellID") {
+                if (!imageCellIDString %in% colnames(cellData))
+                    stop("imageCellIDString is not a column name of cellData")
+                cellData$imagCelleID <- cellData[, imageIDString]
+            }
+            
+            if (all(spatialCoords%in%c("x","y"))&
+                all(c("AreaShape_Center_X", "AreaShape_Center_Y")%in%colnames(cellData))&
+                !all(c("x","y")%in%colnames(cellData))){
                 spatialCoords <- c("AreaShape_Center_X", "AreaShape_Center_Y")
             }
             
-            if (!is.null(spatialCoords)) {
-                cellData$x <- cellData[, spatialCoords[1]]
-            }
+            if(any(!spatialCoords%in%colnames(cellData)))
+                stop("spatialCoords are not column names of cellData")
             
-            if (!is.null(spatialCoords)) {
-                cellData$y <- cellData[, spatialCoords[2]]
-            }
+            cellData$x <- cellData[, spatialCoords[1]]
             
+            cellData$y <- cellData[, spatialCoords[2]]
             
-            if (is.null(intensityString) &
+            if (intensityString=="intensity_" &
+                !any(grepl("intensity_", colnames(cellData)))&
                 any(grepl("Intensity_Mean_", colnames(cellData)))) {
                 intensityString <- "Intensity_Mean_"
             }
             
-            if (is.null(morphologyString) &
+            if (morphologyString=="morphology_" &
+                !any(grepl("morphology_", colnames(cellData)))&
                 any(grepl("AreaShape_", colnames(cellData)))) {
                 morphologyString <- "AreaShape_"
             }
@@ -241,12 +257,7 @@ SegmentedCells <-
             cellSummary <-
                 S4Vectors::split(DataFrame(cellData[, c("cellID", "imageCellID",
                                                         spatialCoords, "cellType")]), cellData$imageID)
-        } else {
-            cellData$cellType <- NA
-            cellSummary <-
-                S4Vectors::split(DataFrame(cellData[, c("cellID", "imageCellID",
-                                                        spatialCoords, "cellType")]), cellData$imageID)
-        }
+        } 
         
         df$cellSummary <- cellSummary
         
@@ -258,7 +269,7 @@ SegmentedCells <-
         df$cellMorph <-
             S4Vectors::split(DataFrame(), cellData$imageID)
         
-        if (!is.null(intensityString)) {
+        if (any(grepl(intensityString,colnames(cellData)))) {
             markers <- cellData[, grep(intensityString, colnames(cellData))]
             colnames(markers) <-
                 gsub(intensityString, "", colnames(markers))
@@ -266,7 +277,7 @@ SegmentedCells <-
                 S4Vectors::split(DataFrame(markers), cellData$imageID)
         }
         
-        if (!is.null(morphologyString)) {
+        if (any(grepl(morphologyString,colnames(cellData)))) {
             morphology <- cellData[, grep(morphologyString, colnames(cellData))]
             colnames(morphology) <-
                 gsub(morphologyString, "", colnames(morphology))
@@ -281,7 +292,7 @@ SegmentedCells <-
         df$imagePheno <-
             S4Vectors::split(DataFrame(), cellData$imageID)
         
-        if (!is.null(phenotypeString)) {
+        if (any(grepl(phenotypeString, colnames(cellData)))) {
             phenotype <- cellData[, grep(phenotypeString, colnames(cellData))]
             colnames(phenotype) <-
                 gsub(phenotypeString, "", colnames(phenotype))
@@ -301,3 +312,62 @@ SegmentedCells <-
         df <- new("SegmentedCells", df)
         df
     }
+
+
+
+
+
+as.data.frame.SegmentedCells <- function(x, ...) {
+    loc <- cellSummary(x)
+    int <- cellMarks(x)
+    morph <- cellMorph(x)
+    pheno <- imagePheno(x, expand = TRUE)
+    pheno <- pheno[!colnames(pheno) %in% "imageID"]
+    
+    if (length(colnames(int)) > 0)
+        colnames(int) <- paste("intensity", colnames(int), sep = "_")
+    if (length(colnames(morph)) > 0)
+        colnames(morph) <- paste("morphology", colnames(morph), sep = "_")
+    if (length(colnames(pheno)) > 0)
+        colnames(pheno) <- paste("phenotype", colnames(pheno), sep = "_")
+    
+    if (prod(dim(loc)) > 0 &
+        prod(dim(int)) > 0 & prod(dim(morph)) > 0 & prod(dim(pheno)) > 0) {
+        return(as.data.frame(cbind(loc, int, morph, pheno)))
+    }
+    
+    if (prod(dim(loc)) > 0 & prod(dim(int)) > 0 &
+        prod(dim(morph)) > 0) {
+        return(as.data.frame(cbind(loc, int, morph)))
+    }
+    
+    if (prod(dim(loc)) > 0 & prod(dim(int)) > 0 &
+        prod(dim(pheno)) > 0) {
+        return(as.data.frame(cbind(loc, int, pheno)))
+    }
+    
+    if (prod(dim(loc)) > 0 &
+        prod(dim(morph)) > 0 & prod(dim(pheno)) > 0) {
+        return(as.data.frame(cbind(loc, morph, pheno)))
+    }
+    
+    if (prod(dim(loc)) > 0 & prod(dim(int)) > 0) {
+        return(as.data.frame(cbind(loc, int)))
+    }
+    
+    if (prod(dim(loc)) > 0 & prod(dim(morph)) > 0) {
+        return(as.data.frame(cbind(loc, morph)))
+    }
+    
+    if (prod(dim(loc)) > 0 & prod(dim(pheno)) > 0) {
+        return(as.data.frame(cbind(loc, pheno)))
+    }
+    
+    NA
+}
+
+
+setAs("SegmentedCells", "data.frame", function(from) {
+    from <- as.data.frame.SegmentedCells(from)
+    new("SegmentedCells", from)
+})

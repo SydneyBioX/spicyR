@@ -242,8 +242,8 @@ cellExp
 Extract the cellSummary information which now also has cellIDs and imageIDs.
 
 ```{r}
-loc <- cellSummary(cellExp)
-head(loc)
+cellSum <- cellSummary(cellExp)
+head(cellSum)
 
 ```
 

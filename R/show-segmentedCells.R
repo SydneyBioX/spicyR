@@ -42,9 +42,9 @@ NULL
 
 
 .SegmentedCells_show <- function(object) {
-  cat('A SegmentedCells object with... \n')
-  cat("Number of images:", nrow(object), '\n')
-  cat("Number of cells:", length(cellID(object)), '\n')
+  message('A SegmentedCells object with... \n')
+  message("Number of images:", nrow(object), '\n')
+  message("Number of cells:", length(cellID(object)), '\n')
   
   uniqueCellTypes <- unique(cellType(object))
   .showCat("Number of cell types: ", as.character(uniqueCellTypes))
@@ -73,7 +73,7 @@ setMethod("show", signature(object = "SegmentedCells"), function(object) {
   vals <- ifelse(nzchar(vals), vals, "''")
   lbls <- paste('[', paste(.selectSome(vals), collapse = ", ") , ']')
   txt <- paste(fmt, length(vals), lbls)
-  cat(strwrap(txt, exdent = exdent), sep = "\n")
+  message(strwrap(txt, exdent = exdent), sep = "\n")
 }
 
 .selectSome <- function (obj, maxToShow = 4)
