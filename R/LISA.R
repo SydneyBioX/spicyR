@@ -1,11 +1,14 @@
 #' Generate local indicators of spatial association
 #'
-#' @param cells A SegmentedCells or data frame that contains at least the variables x and y, giving the  coordinates of each cell, and cellType.
+#' @param cells A SegmentedCells or data frame that contains at least the 
+#' variables x and y, giving the  coordinates of each cell, and cellType.
 #' @param Rs A vector of the radii that the measures of association should be calculated.
 #' @param BPPARAM A BiocParallelParam object.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
-#' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
-#' @param whichParallel Should the function use parallization on the imageID or the cellType.
+#' @param window.length A tuning parameter for controlling the level of concavity 
+#' when estimating concave windows.
+#' @param whichParallel Should the function use parallization on the imageID or 
+#' the cellType.
 #'
 #' @return A matrix of LISA curves
 #'

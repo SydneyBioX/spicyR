@@ -1,6 +1,8 @@
 ---
 title: "Spatial Mixed-Effects Modelling"
 date: "`r BiocStyle::doc_date()`"
+params:
+  test: FALSE
 author:
 - name: Nicolas Canete
   affiliation:  
@@ -25,7 +27,6 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 library(BiocStyle)
-EVAL=FALSE
 ```
 
 
@@ -113,19 +114,19 @@ in Non-Responders.
 Here, we can perform what we did above for all pairwise combinations of cell 
 types by excluding the `from` and `to` parameters from `spicy()`.
 
-```{r echo=FALSE, eval=!EVAL}
+```{r echo=FALSE, eval=!params$test}
 data("spicyTest")
 ```
 
 
-```{r eval=EVAL}
+```{r eval=params$test}
 spicyTest <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject")
 
 ```
 
-```{r echo=FALSE, eval=EVAL}
+```{r echo=FALSE, eval=params$test}
 save(spicyTest, file = "../data/spicyTest.rda", compress = "xz")
 ```
 
@@ -150,19 +151,19 @@ have also implemented a bootstrapping approach. All that is needed is a choice
 for the number of resamples used in the bootstrap which can be set with the 
 `nsim` parameter in `spicy()`.
 
-```{r echo=FALSE, eval=!EVAL }
+```{r echo=FALSE, eval=!params$test }
 data(spicyTestBootstrap)
 ```
 
 
-```{r eval = EVAL}
+```{r eval = params$test}
 spicyTestBootstrap <- spicy(melanomaResponders, 
                    condition = "condition", 
                    subject = "subject", 
                    nsim = 199)
 ```
 
-```{r echo=FALSE, eval=EVAL}
+```{r echo=FALSE, eval=params$test}
 save(spicyTestBootstrap, file = "../data/spicyTestBootstrap.rda", compress = "xz")
 ```
 

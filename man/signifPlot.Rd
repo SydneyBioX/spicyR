@@ -16,7 +16,8 @@ signifPlot(
 
 \item{fdr}{TRUE if FDR correction is used.}
 
-\item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first number is the minimum, the second is the maximum, the third is the number of breaks.}
+\item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first 
+number is the minimum, the second is the maximum, the third is the number of breaks.}
 
 \item{colors}{Vector of colours to use in pheatmap.}
 }

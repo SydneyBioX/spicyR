@@ -23,13 +23,17 @@ spicy(
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the variables x and y, giving the location coordinates of each cell, and cellType.}
+\item{cells}{A SegmentedCells or data frame that contains at least the 
+variables x and y, giving the location coordinates of each cell, and cellType.}
 
-\item{condition}{Vector of conditions to be tested corresponding to each image if cells is a data frame.}
+\item{condition}{Vector of conditions to be tested corresponding to each image
+if cells is a data frame.}
 
-\item{subject}{Vector of subject IDs corresponding to each image if cells is a data frame.}
+\item{subject}{Vector of subject IDs corresponding to each image if cells is
+a data frame.}
 
-\item{covariates}{Vector of covariate names that should be included in the mixed effects model as fixed effects.}
+\item{covariates}{Vector of covariate names that should be included in the 
+mixed effects model as fixed effects.}
 
 \item{from}{vector of cell types which you would like to compare to the to vector}
 
@@ -37,7 +41,8 @@ spicy(
 
 \item{dist}{The distance at which the statistic is obtained.}
 
-\item{integrate}{Should the statistic be the integral from 0 to dist, or the value of the L curve at dist.}
+\item{integrate}{Should the statistic be the integral from 0 to dist, or the 
+value of the L curve at dist.}
 
 \item{nsim}{Number of simulations to perform. If empty, the p-value from lmerTest is used.}
 

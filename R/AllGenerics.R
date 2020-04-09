@@ -111,8 +111,9 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @section Descriptions:
 #' \describe{
 #' \item{`cellSummary`:}{
-#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as well as `cellID`, `imageID` and `cellType`.
-#' imageID can be used to select specific images and bind=FALSE outputs the information as a list split by imageID.
+#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as 
+#' well as `cellID`, `imageID` and `cellType`. imageID can be used to select 
+#' specific images and bind=FALSE outputs the information as a list split by imageID.
 #' }
 #'
 #' \item{`cellMorph`:}{
@@ -124,7 +125,9 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' }
 #'
 #' \item{`imagePheno`:}{
-#' Retrieves the DataFrame containing the phenotype information for each image. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
+#' Retrieves the DataFrame containing the phenotype information for each image.
+#'  Using expand = TRUE will produce a DataFrame with the number of rows equal 
+#'  to the number of cells.
 #' }
 #' }
 #'
@@ -523,8 +526,9 @@ setMethod("filterCells", "SegmentedCells", function(x, select) {
 #' @section Descriptions:
 #' \describe{
 #' \item{`cellSummary`:}{
-#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as well as `cellID`, `imageID` and `cellType`.
-#' imageID can be used to select specific images and bind=FALSE outputs the information as a list split by imageID.
+#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as 
+#' well as `cellID`, `imageID` and `cellType`. imageID can be used to select 
+#' specific images and bind=FALSE outputs the information as a list split by imageID.
 #' }
 #'
 #' \item{`cellMorph`:}{
@@ -536,7 +540,9 @@ setMethod("filterCells", "SegmentedCells", function(x, select) {
 #' }
 #'
 #' \item{`imagePheno`:}{
-#' Retrieves the DataFrame containing the image phenotype information. Using expand = TRUE will produce a DataFrame with the number of rows equal to the number of cells.
+#' Retrieves the DataFrame containing the image phenotype information. Using 
+#' expand = TRUE will produce a DataFrame with the number of rows equal to the 
+#' number of cells.
 #' }
 #' }
 #'

@@ -1,13 +1,18 @@
 #' Performs spatial tests on spatial cytometry data.
 #'
-#' @param cells A SegmentedCells or data frame that contains at least the variables x and y, giving the location coordinates of each cell, and cellType.
-#' @param condition Vector of conditions to be tested corresponding to each image if cells is a data frame.
-#' @param subject Vector of subject IDs corresponding to each image if cells is a data frame.
-#' @param covariates Vector of covariate names that should be included in the mixed effects model as fixed effects.
+#' @param cells A SegmentedCells or data frame that contains at least the 
+#' variables x and y, giving the location coordinates of each cell, and cellType.
+#' @param condition Vector of conditions to be tested corresponding to each image
+#'  if cells is a data frame.
+#' @param subject Vector of subject IDs corresponding to each image if cells is
+#'  a data frame.
+#' @param covariates Vector of covariate names that should be included in the 
+#' mixed effects model as fixed effects.
 #' @param from vector of cell types which you would like to compare to the to vector
 #' @param to vector of cell types which you would like to compare to the from vector
 #' @param dist The distance at which the statistic is obtained.
-#' @param integrate Should the statistic be the integral from 0 to dist, or the value of the L curve at dist.
+#' @param integrate Should the statistic be the integral from 0 to dist, or the 
+#' value of the L curve at dist.
 #' @param nsim Number of simulations to perform. If empty, the p-value from lmerTest is used.
 #' @param verbose logical indicating whether to output messages.
 #' @param ... Other options to pass to bootstrap.
@@ -242,7 +247,8 @@ cleanMEM <- function(mixed.lmer, nsim) {
 
 #' Get statistic from pairwise L curve of a single image.
 #'
-#' @param cells A SegmentedCells or data frame that contains at least the variables x and y, giving the location coordinates of each cell, and cellType.
+#' @param cells A SegmentedCells or data frame that contains at least the 
+#' variables x and y, giving the location coordinates of each cell, and cellType.
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
 #' @param dist The distance at which the statistic is obtained.
@@ -445,7 +451,8 @@ spatialLM <-
 #'
 #' @param results Data frame obtained from spicy.
 #' @param fdr TRUE if FDR correction is used.
-#' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first number is the minimum, the second is the maximum, the third is the number of breaks.
+#' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first 
+#' number is the minimum, the second is the maximum, the third is the number of breaks.
 #' @param colors Vector of colours to use in pheatmap.
 #'
 #' @return a pheatmap object

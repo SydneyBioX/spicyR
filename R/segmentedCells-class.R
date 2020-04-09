@@ -8,16 +8,23 @@
 #' location, cellType, morphology, intensity of gene/protein markers as well as
 #' image level phenotype information.
 #'
-#' @param cellData A data frame that contains at least the columns x and y giving the location coordinates of each cell.
-#' @param cellProfiler A logical indicating that cellData is in a format similar to what cellProfiler outputs.
-#' @param spatialCoords The column names corresponding to spatial coordinates. eg. x, y, z...
+#' @param cellData A data frame that contains at least the columns x and y giving 
+#' the location coordinates of each cell.
+#' @param cellProfiler A logical indicating that cellData is in a format similar 
+#' to what cellProfiler outputs.
+#' @param spatialCoords The column names corresponding to spatial coordinates. 
+#' eg. x, y, z...
 #' @param cellTypeString The name of the column that contains cell type calls.
-#' @param intensityString A string which can be used to identify the columns which contain marker intensities. (This needs to be extended to take the column names themselves.)
-#' @param morphologyString A string which can be used to identify the columns which contains morphology information.
+#' @param intensityString A string which can be used to identify the columns 
+#' which contain marker intensities. (This needs to be extended to take the 
+#' column names themselves.)
+#' @param morphologyString A string which can be used to identify the columns 
+#' which contains morphology information.
 #' @param cellIDString The column name for cellID.
 #' @param imageCellIDString The column name for imageCellID.
 #' @param imageIDString The column name for imageIDString.
-#' @param phenotypeString A string which can be used to identify the columns which contains phenotype information.
+#' @param phenotypeString A string which can be used to identify the columns 
+#' which contains phenotype information.
 #'
 #' @return A SegmentedCells object
 #'
