@@ -14,7 +14,8 @@ lisa(
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the variables x and y, giving the  coordinates of each cell, and cellType.}
+\item{cells}{A SegmentedCells or data frame that contains at least the 
+variables x and y, giving the  coordinates of each cell, and cellType.}
 
 \item{Rs}{A vector of the radii that the measures of association should be calculated.}
 
@@ -22,9 +23,11 @@ lisa(
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
-\item{window.length}{A tuning parameter for controlling the level of concavity when estimating concave windows.}
+\item{window.length}{A tuning parameter for controlling the level of concavity 
+when estimating concave windows.}
 
-\item{whichParallel}{Should the function use parallization on the imageID or the cellType.}
+\item{whichParallel}{Should the function use parallization on the imageID or 
+the cellType.}
 }
 \value{
 A matrix of LISA curves

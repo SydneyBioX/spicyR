@@ -100,6 +100,9 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @usage cellType(x, imageID = NULL)
 #' @usage cellType(x, imageID = NULL) <- value
 #' @usage filterCells(x, select)
+#' @usage region(x, imageID = NULL, annot = FALSE)
+#' @usage region(x, imageID = NULL) <- value
+
 #'
 #' @param x A `SegmentedCells` object.
 #' @param imageID A vector of imageIDs to specifically extract.
@@ -107,6 +110,7 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @param expand Used to expand the phenotype information from per image to per cell.
 #' @param value The relevant information used to replace.
 #' @param select A logical vector of the cells to be kept.
+#' @param annot Add cell annotation when selecting region information.
 #'
 #' @section Descriptions:
 #' \describe{
@@ -194,6 +198,10 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' cellID
 #' cellID<-
 #' filterCells
+#' region,SegmentedCells-method
+#' region<-,SegmentedCells-method
+#' region
+#' region<-
 
 
 ### Get cellSummary information for each cell.
@@ -218,16 +226,23 @@ setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TR
     
 })
 
+
+#' @importFrom methods slot slot<-
+.putData <- function(object,variable, value, image = NULL){
+    methods::slot(object, "listData")[[variable]] <- value
+    object
+}
+
+
 #' @export
 #' @importFrom S4Vectors split
-#' @importFrom methods slot slot<-
 setGeneric("cellSummary<-", function(x, imageID = NULL, value)
     standardGeneric("cellSummary<-"))
 setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        slot(x[imageID,],"listData")$cellSummary <- value
+        x <- .putData(x, "cellSummary", value, imageID)
         return(x)
     }
     
@@ -236,11 +251,11 @@ setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, va
         by <-
             rep(imageID, unlist(lapply(x[imageID, "cellSummary"], nrow)))
         by <- factor(by, levels = unique(by))
-        slot(x[imageID,],"listData")$cellSummary <- S4Vectors::split(value, by)
+        value <- S4Vectors::split(value, by)
+        x <- .putData(x, "cellSummary", value, imageID)
         return(x)
     }
 })
-
 
 
 
@@ -344,15 +359,15 @@ setReplaceMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, valu
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        slot(x[imageID,],"listData")$cellMarks <- value
+        x <- .putData(x, "cellMarks", value, imageID)
         return(x)
     }
     
     if (nrow(value) == length(imageID(x))) {
         by <- rep(rownames(x), unlist(lapply(x$cellMarks, nrow)))
         by <- factor(by, levels = unique(by))
-        slot(x[imageID,],"listData")$cellMarks <-
-            S4Vectors::split(value, by)
+        value <- S4Vectors::split(value, by)
+        x <- .putData(x, "cellMarks", value, imageID)
         return(x)
     }
 })
@@ -386,16 +401,15 @@ setReplaceMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL,
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        slot(x[imageID,],"listData")$cellMorph <- value
+        x <- .putData(x, "cellMorph", value, imageID)
         return(x)
     }
     
     if (nrow(value) == length(imageID(x, imageID))) {
         by <- rep(rownames(x), unlist(lapply(x$cellMorph, nrow)))
         by <- factor(by, levels = unique(by))
-        
-        slot(x[imageID,],"listData")$cellMorph <-
-            S4Vectors::split(value, by)
+        value <- S4Vectors::split(value, by)
+        x <- .putData(x, "cellMorph", value, imageID)
         return(x)
     }
 })
@@ -472,8 +486,8 @@ setReplaceMethod("imagePheno", "SegmentedCells", function(x, imageID = NULL, val
         imageID <- rownames(x)
     use <- intersect(value$imageID, imageID)
     rownames(value) <- value$imageID
-    slot(x[use,],"listData")$imagePheno <-
-        S4Vectors::split(value[use,], use)
+    value <- S4Vectors::split(value[use,], use)
+    x <- .putData(x, "imagePheno", value, use)
     x[unique(use),]
 })
 
@@ -495,94 +509,6 @@ setMethod("filterCells", "SegmentedCells", function(x, select) {
 # Generics for lisa
 #
 ################################################################################
-
-
-#' Adding regions to SegmentedCells
-#'
-#' A method for setting and getting regions for a SegmentedCells object.
-#'
-#' @usage cellSummary(x, imageID = NULL, bind = TRUE)
-#' @usage cellSummary(x, imageID = NULL) <- value
-#' @usage cellMarks(x, imageID = NULL, bind = TRUE)
-#' @usage cellMarks(x, imageID = NULL) <- value
-#' @usage cellMorph(x, imageID = NULL, bind = TRUE)
-#' @usage cellMorph(x, imageID = NULL) <- value
-#' @usage imagePheno(x, imageID = NULL, bind = TRUE, expand = FALSE)
-#' @usage imagePheno(x, imageID = NULL) <- value
-#' @usage imageID(x, imageID = NULL)
-#' @usage cellID(x, imageID = NULL)
-#' @usage cellID(x) <- value
-#' @usage imageCellID(x, imageID = NULL)
-#' @usage imageCellID(x) <- value
-#' @usage cellType(x, imageID = NULL)
-#' @usage cellType(x, imageID = NULL) <- value
-#'
-#' @param x A `SegmentedCells` object.
-#' @param imageID A vector of imageIDs to specifically extract.
-#' @param bind When false outputs a list of DataFrames split by imageID
-#' @param expand Used to expand the phenotype information from per image to per cell.
-#' @param value The relevant information used to replace.
-#'
-#' @section Descriptions:
-#' \describe{
-#' \item{`cellSummary`:}{
-#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as 
-#' well as `cellID`, `imageID` and `cellType`. imageID can be used to select 
-#' specific images and bind=FALSE outputs the information as a list split by imageID.
-#' }
-#'
-#' \item{`cellMorph`:}{
-#' Retrieves the DataFrame containing morphology information.
-#' }
-#'
-#' \item{`cellMarks`:}{
-#' Retrieves the DataFrame containing intensity of gene or protein markers.
-#' }
-#'
-#' \item{`imagePheno`:}{
-#' Retrieves the DataFrame containing the image phenotype information. Using 
-#' expand = TRUE will produce a DataFrame with the number of rows equal to the 
-#' number of cells.
-#' }
-#' }
-#'
-#' @return DataFrame or a list of DataFrames
-#' @name Accessors
-#'
-#'
-#' @examples
-#' ### Something that resembles cellProfiler data
-#'
-#' set.seed(51773)
-#'
-#' n = 10
-#'
-#' cells <- data.frame(row.names = seq_len(n))
-#' cells$ObjectNumber <- seq_len(n)
-#' cells$ImageNumber <- rep(1:2,c(n/2,n/2))
-#' cells$AreaShape_Center_X <- runif(n)
-#' cells$AreaShape_Center_Y <- runif(n)
-#' cells$AreaShape_round <- rexp(n)
-#' cells$AreaShape_diameter <- rexp(n, 2)
-#' cells$Intensity_Mean_CD8 <- rexp(n, 10)
-#' cells$Intensity_Mean_CD4 <- rexp(n, 10)
-#'
-#' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
-#'
-#' ### Cluster cell types
-#' intensities <- cellMarks(cellExp)
-#' kM <- kmeans(intensities,2)
-#' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
-#'
-#' cellSummary(cellExp, imageID = 1)
-#'
-#' @aliases
-#' region,SegmentedCells-method
-#' region<-,SegmentedCells-method
-#' region
-#' region<-
-
-
 
 
 
@@ -626,8 +552,8 @@ setReplaceMethod("region", "SegmentedCells", function(x, imageID = NULL, value) 
         if (!is.null(x$region))
             by <- rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
         by <- factor(by, levels = unique(by))
-        slot(x[imageID,],"listData")$region <-
-            S4Vectors::split(DataFrame(region = value), by)
+        value <- S4Vectors::split(DataFrame(region = value), by)
+        x <- .putData(x, "region", value, imageID)
     }
     x
 })
