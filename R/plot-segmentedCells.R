@@ -50,7 +50,8 @@ plot.SegmentedCells <- function(cellData, imageID = NULL) {
     
     loc <- as.data.frame(cellSummary(cellData, imageID = imageID))
     if (is.na(loc$cellType[1])) {
-        ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + theme_classic() + labs(x = "x", y = "y")
+        ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + 
+            theme_classic() + labs(x = "x", y = "y")
     } else {
         ggplot(loc, aes(
             x = .data$x,
