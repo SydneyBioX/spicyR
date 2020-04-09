@@ -38,8 +38,8 @@ cells$Intensity_Mean_CD4 <- rexp(n, 10)
 cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 
 ### Cluster cell types
-intensities <- intensity(cellExp)
-kM <- kmeans(intensities,2)
+markers <- cellMarks(cellExp)
+kM <- kmeans(markers,2)
 cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
 
 cellExp

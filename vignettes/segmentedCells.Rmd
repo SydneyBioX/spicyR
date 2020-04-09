@@ -31,7 +31,7 @@ library(BiocStyle)
 ```
 
 
-## Installation
+# Installation
 
 ```{r, eval = FALSE}
 if (!require("BiocManager"))
@@ -40,7 +40,7 @@ BiocManager::install("spicyR")
 ```
 
 
-## Overview
+# Overview
 
 A `SegmentedCells` is an object designed to store data from imaging cytometry 
 (FISH, IMC, CycIF, spatial transcriptomics, ... ) that has already been 
@@ -64,7 +64,7 @@ library(S4Vectors)
 ```
 
 
-## Example 1 - Data resembles cellProfiler output
+# Example 1 - Data resembles cellProfiler output
 
 Here we create a `SegmentedCells` from data that was output from cellProfiler or 
 similar programs. This assumes that there are columns with the string 
@@ -124,7 +124,7 @@ head(cellSum)
 ```
 
 
-## Example 2 - Three pancreatic islets from from Damond et al (2019)
+# Example 2 - Three pancreatic islets from from Damond et al (2019)
 
 Read in data.
 
@@ -165,7 +165,7 @@ plot(cellExp, imageID=1)
 
 
 
-## Example 3 - Custom markerintensity and morphology column names
+# Example 3 - Custom markerintensity and morphology column names
 
 Here we create toy data that has a slightly more fluid naming stucture.
 
@@ -206,7 +206,7 @@ head(morph)
 ```
 
 
-### Phenotype information
+## Phenotype information
 
 We can also include phenotype information for each image. Create some 
 corresponding toy phenotype information which must have a `imageID` variable. 
@@ -222,7 +222,7 @@ imagePheno(cellExp, expand = TRUE)
 
 
 
-## Example 4 - Minimal example, cells only have spatial coordinates
+# Example 4 - Minimal example, cells only have spatial coordinates
 
 Here we generate data where we only know the location of each cell.
 

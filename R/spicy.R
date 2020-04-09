@@ -19,7 +19,8 @@
 #' data("melanomaResponders")
 #'
 #' # Test with random effect for patient on only one pairwise combination of cell types.
-#' spicy(melanomaResponders, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
+#' spicy(melanomaResponders, condition = "condition", subject = "subject", 
+#'       from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
 #' 
 #' # Test all pairwise combination of cell types without random effect of patient.
 #' #spicyTest <- spicy(melanomaResponders, condition = "condition")
@@ -27,7 +28,8 @@
 #' # Test all pairwise combination of cell types with random effect of patient.
 #' #spicy(melanomaResponders, condition = "condition", subject = "subject")
 #'
-#' # Test all pairwise combination of cell types with random effect of patient using a bootstrap to calculate significance.
+#' # Test all pairwise combination of cell types with random effect of patient using 
+#' # a bootstrap to calculate significance.
 #' #spicy(melanomaResponders, condition = "condition", subject = "subject", nsim = 199)
 #' 
 #' @aliases
@@ -444,12 +446,12 @@ spatialLM <-
 #' @param results Data frame obtained from spicy.
 #' @param fdr TRUE if FDR correction is used.
 #' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first number is the minimum, the second is the maximum, the third is the number of breaks.
-#' @param col Vector of colours to use in pheatmap.
+#' @param colors Vector of colours to use in pheatmap.
 #'
 #' @return a pheatmap object
 #'
 #' @examples
-#' data(spicyTestBootstrap)
+#' data(spicyTest)
 #' signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 #' 
 #' @export
@@ -487,7 +489,7 @@ signifPlot <- function(results,
   
   heatmap <- pheatmap(
     pVal,
-    col = pal,
+    color = pal,
     breaks = breaks,
     cluster_rows = FALSE,
     cluster_cols = FALSE

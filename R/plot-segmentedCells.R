@@ -72,22 +72,4 @@ setMethod("plot", signature(x = "SegmentedCells"), function(x, ...) {
     plot.SegmentedCells(x, ...)
 })
 
-plot.SegmentedCells <- function(cellData, imageID = NULL) {
-    if (is.null(imageID)) {
-        imageID <- imageID(cellData)[1]
-    }
-    
-    loc <- as.data.frame(cellSummary(cellData, imageID = imageID))
-    if (is.na(loc$cellType[1])) {
-        ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + theme_classic() + labs(x = "x", y = "y")
-    } else {
-        ggplot(loc, aes(
-            x = .data$x,
-            y = .data$y,
-            colour = .data$cellType
-        )) + geom_point() +
-            theme_classic() + labs(x = "x",
-                                   y = "y",
-                                   colour = "cell-type")
-    }
-}
+

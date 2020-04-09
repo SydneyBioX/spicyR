@@ -53,8 +53,8 @@ hatchingPlot <-
             df <- region(data[1,], annot = TRUE)
             p <-
                 ggplot(df, aes(
-                    x = x,
-                    y = y,
+                    x = .data$x,
+                    y = .data$y,
                     colour = cellType
                 )) + geom_point() + geom_hatching(
                     aes(region = region),
@@ -64,7 +64,7 @@ hatchingPlot <-
                     nbp = 250,
                     window.length = 0
                 )
-            q <- p + theme_minimal() + scale_region()
+            q <- p + theme_minimal() + scale_region() + labs(x = "x", y = "y")
             return(q)
         }
         
@@ -74,8 +74,8 @@ hatchingPlot <-
             df <- region(data, imageID = imageID, annot = TRUE)
             p <-
                 ggplot(df, aes(
-                    x = x,
-                    y = y,
+                    x = .data$x,
+                    y = .data$y,
                     colour = cellType
                 )) + geom_point() + facet_wrap( ~ imageID) +
                 geom_hatching(
@@ -86,7 +86,7 @@ hatchingPlot <-
                     nbp = 250,
                     window.length = 0
                 )
-            q <- p + theme_minimal() + scale_region()
+            q <- p + theme_minimal() + scale_region() + labs(x = "x", y = "y")
             q
         }
     }

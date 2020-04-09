@@ -1,7 +1,7 @@
 Package: spicyR
 Type: Package
 Title: Spatial analysis of in situ cytometry data
-Version: 0.99.8
+Version: 0.99.9
 Authors@R: c(person("Nicolas", "Canete", email = "nicolas.canete@sydney.edu.au",
     role = c("aut")),
     person("Ellis", "Patrick", email = "ellis.patrick@sydney.edu.au",
@@ -13,10 +13,9 @@ License: GPL (>=2)
 biocViews: 
     SingleCell, CellBasedAssays
 Encoding: UTF-8
-LazyData: true
 VignetteBuilder: knitr
 BugReports: https://github.com/ellispatrick/spicyR/issues
 Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
-     purrr, rlang, grDevices, IRanges
+     purrr, rlang, grDevices, IRanges, stats
 Suggests: BiocStyle, knitr, rmarkdown
 RoxygenNote: 7.0.2

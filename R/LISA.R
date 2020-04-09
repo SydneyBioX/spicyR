@@ -11,8 +11,8 @@
 #'
 #' @examples
 #' # Read in data as a SegmentedCells objects
-#' isletFile <- system.file("extdata","isletCells.csv", package = "spicyR")
-#' cells <- read.csv(isletFile)
+#' isletFile <- system.file("extdata","isletCells.txt.gz", package = "spicyR")
+#' cells <- read.table(isletFile, header=TRUE)
 #' cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 #'
 #' # Cluster cell types

@@ -18,7 +18,7 @@ signifPlot(
 
 \item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first number is the minimum, the second is the maximum, the third is the number of breaks.}
 
-\item{col}{Vector of colours to use in pheatmap.}
+\item{colors}{Vector of colours to use in pheatmap.}
 }
 \value{
 a pheatmap object
@@ -27,7 +27,7 @@ a pheatmap object
 Plots result of signifPlot.
 }
 \examples{
-data(spicyTestBootstrap)
+data(spicyTest)
 signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
 
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/AllGenerics.R
 \name{topPairs}
 \alias{topPairs}
-\alias{topPairs,spicy-method}
+\alias{topPairs,SpicyResults-method}
 \title{A table of the significant results from spicy tests}
 \usage{
 topPairs(x, coef = 1, n = 10, adj = "fdr", cutoff = NULL)

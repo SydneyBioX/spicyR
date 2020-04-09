@@ -21,7 +21,7 @@
 #' topPairs(spicyTest)
 #' 
 #' @aliases 
-#' topPairs,spicy-method
+#' topPairs,SpicyResults-method
 #' topPairs
 #' @rdname topPairs
 #' @export
@@ -60,10 +60,10 @@ setMethod("topPairs", "SpicyResults", function(x,
             return(results[seq_len(pmin(n, nrow(results))), ])
         if (is.null(n) &
             !is.null(cutoff))
-            return(results[results$adj.pvalue < 0.05, ])
+            return(results[results$adj.pvalue <= 0.05, ])
         if (is.null(n) &
             !is.null(cutoff))
-            return(results[intersect(Which(results$adj.pvalue < 0.05), seq_len(pmin(n, nrow(results)))), ])
+            return(results[results$adj.pvalue <= 0.05&seq_len(nrow(results))<=n, ])
     }
     
 })
@@ -217,9 +217,10 @@ setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TR
 
 #' @export
 #' @importFrom S4Vectors split
+#' @importFrom methods slot slot<-
 setGeneric("cellSummary<-", function(x, imageID = NULL, value)
     standardGeneric("cellSummary<-"))
-setMethod("cellSummary<-", "SegmentedCells", function(x, imageID = NULL, value) {
+setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
@@ -271,7 +272,7 @@ setMethod("cellID", "SegmentedCells", function(x, imageID = NULL) {
 #' @export
 setGeneric("cellID<-", function(x, value)
     standardGeneric("cellID<-"))
-setMethod("cellID<-", "SegmentedCells", function(x, value) {
+setReplaceMethod("cellID", "SegmentedCells", function(x, value) {
     loc <- cellSummary(x)
     
     if (nrow(loc) != length(value)) {
@@ -300,7 +301,7 @@ setMethod("imageCellID", "SegmentedCells", function(x, imageID = NULL) {
 #' @export
 setGeneric("imageCellID<-", function(x, value)
     standardGeneric("imageCellID<-"))
-setMethod("imageCellID<-", "SegmentedCells", function(x, value) {
+setReplaceMethod("imageCellID", "SegmentedCells", function(x, value) {
     loc <- cellSummary(x)
     
     if (nrow(loc) != length(value)) {
@@ -336,7 +337,7 @@ setMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, bind = TRUE
 #' @export
 setGeneric("cellMarks<-", function(x, imageID = NULL, value)
     standardGeneric("cellMarks<-"))
-setMethod("cellMarks<-", "SegmentedCells", function(x, imageID = NULL, value) {
+setReplaceMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
@@ -377,7 +378,7 @@ setMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL, bind = TRUE
 #' @export
 setGeneric("cellMorph<-", function(x, imageID = NULL, value)
     standardGeneric("cellMorph<-"))
-setMethod("cellMorph<-", "SegmentedCells", function(x, imageID = NULL,
+setReplaceMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL,
                                                      value) {
     if (is.null(imageID))
         imageID <- rownames(x)
@@ -414,7 +415,7 @@ setMethod("cellType", "SegmentedCells", function(x, imageID = NULL) {
 #' @export
 setGeneric("cellType<-", function(x, imageID = NULL, value)
     standardGeneric("cellType<-"))
-setMethod("cellType<-", "SegmentedCells", function(x, imageID = NULL, value) {
+setReplaceMethod("cellType", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     loc <- cellSummary(x, imageID = imageID)
@@ -463,7 +464,7 @@ setMethod("imagePheno", "SegmentedCells", function(x,
 #' @export
 setGeneric("imagePheno<-", function(x, imageID = NULL, value)
     standardGeneric("imagePheno<-"))
-setMethod("imagePheno<-", "SegmentedCells", function(x, imageID = NULL, value) {
+setReplaceMethod("imagePheno", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     use <- intersect(value$imageID, imageID)
@@ -604,7 +605,7 @@ setMethod("region", "SegmentedCells", function(x, imageID = NULL, annot = TRUE) 
 #' @importFrom S4Vectors DataFrame split
 setGeneric("region<-", function(x, imageID = NULL, value)
     standardGeneric("region<-"))
-setMethod("region<-", "SegmentedCells", function(x, imageID = NULL, value) {
+setReplaceMethod("region", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
         imageID <- rownames(x)
     if (length(value) == length(imageID(x, imageID))) {

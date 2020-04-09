@@ -55,7 +55,8 @@ Performs spatial tests on spatial cytometry data.
 data("melanomaResponders")
 
 # Test with random effect for patient on only one pairwise combination of cell types.
-spicy(melanomaResponders, condition = "condition", subject = "subject", from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
+spicy(melanomaResponders, condition = "condition", subject = "subject", 
+      from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
 
 # Test all pairwise combination of cell types without random effect of patient.
 #spicyTest <- spicy(melanomaResponders, condition = "condition")
@@ -63,7 +64,8 @@ spicy(melanomaResponders, condition = "condition", subject = "subject", from = "
 # Test all pairwise combination of cell types with random effect of patient.
 #spicy(melanomaResponders, condition = "condition", subject = "subject")
 
-# Test all pairwise combination of cell types with random effect of patient using a bootstrap to calculate significance.
+# Test all pairwise combination of cell types with random effect of patient using 
+# a bootstrap to calculate significance.
 #spicy(melanomaResponders, condition = "condition", subject = "subject", nsim = 199)
 
 }
