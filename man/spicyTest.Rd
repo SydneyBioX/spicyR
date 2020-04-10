@@ -4,7 +4,9 @@
 \name{spicyTest}
 \alias{spicyTest}
 \title{Results from spicy for melanomaResponders data}
-\format{spicyTest a spicy object}
+\format{
+spicyTest a spicy object
+}
 \usage{
 spicyTest
 }

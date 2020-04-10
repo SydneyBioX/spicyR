@@ -4,7 +4,9 @@
 \name{spicyTestBootstrap}
 \alias{spicyTestBootstrap}
 \title{Results from spicy with bootstrap for melanomaResponders data}
-\format{spicyTestBootstrap a spicy object}
+\format{
+spicyTestBootstrap a spicy object
+}
 \usage{
 spicyTestBootstrap
 }
