@@ -13,7 +13,7 @@ author:
   email: ellis.patrick@sydney.edu.au
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
-  %\VignetteIndexEntry{"lisaClust"}
+  %\VignetteIndexEntry{"Inroduction to lisaClust"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 

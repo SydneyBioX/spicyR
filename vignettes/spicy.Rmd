@@ -1,5 +1,5 @@
 ---
-title: "Spatial Mixed-Effects Modelling"
+title: "Spatial Mixed-Effects Modelling with spicy"
 date: "`r BiocStyle::doc_date()`"
 params:
   test: FALSE
@@ -14,7 +14,7 @@ author:
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
-  %\VignetteIndexEntry{"spicy"}
+  %\VignetteIndexEntry{"Introduction to spicy"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
