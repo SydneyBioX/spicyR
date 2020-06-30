@@ -36,19 +36,24 @@
 #'
 #' #plot(cellExp, imageID=1)
 #'
-#' @name plot-SegmentedCells
 #' @rdname plot-SegmentedCells
-#' @aliases plot
+#' @aliases 
+#' plot
+#' plot,SegmentedCells
 #' @importFrom ggplot2 ggplot aes geom_point theme_classic labs
 #' @importFrom rlang .data
-NULL
+#' @importFrom S4Vectors as.data.frame
+#' @export
+setMethod("plot", signature(x = "SegmentedCells"), function(x, imageID=NULL) {
+    plot.SegmentedCells(x, imageID)
+})
 
-plot.SegmentedCells <- function(cellData, imageID = NULL) {
+plot.SegmentedCells <- function(x, imageID = NULL) {
     if (is.null(imageID)) {
-        imageID <- imageID(cellData)[1]
+        imageID <- imageID(x)[1]
     }
     
-    loc <- as.data.frame(cellSummary(cellData, imageID = imageID))
+    loc <- S4Vectors::as.data.frame(cellSummary(x, imageID = imageID))
     if (is.na(loc$cellType[1])) {
         ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + 
             theme_classic() + labs(x = "x", y = "y")
@@ -63,14 +68,5 @@ plot.SegmentedCells <- function(cellData, imageID = NULL) {
                                    colour = "cell-type")
     }
 }
-
-
-if (!isGeneric("plot"))
-    setGeneric("plot", function(x, ...)
-        standardGeneric("plot"))
-
-setMethod("plot", signature(x = "SegmentedCells"), function(x, ...) {
-    plot.SegmentedCells(x, ...)
-})
 
 

@@ -440,7 +440,7 @@ setReplaceMethod("cellType", "SegmentedCells", function(x, imageID = NULL, value
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many cellTypes")
     }
-    
+    if(!is(value,"factor"))value = factor(value)
     loc$cellType <- value
     
     cellSummary(x, imageID = imageID) <- loc
@@ -469,11 +469,14 @@ setMethod("imagePheno", "SegmentedCells", function(x,
     if (expand) {
         pheno <- BiocGenerics::do.call("rbind", x$imagePheno)
         rownames(pheno) <- pheno$imageID
-        return(pheno[imageID(x),])
+        if(dim(pheno)[1]>0){
+            return(pheno[imageID(x),])
+            }else{
+            return(pheno)
+            }
+        
     } else {
-        pheno <- BiocGenerics::do.call("rbind", x$imagePheno)
-        rownames(pheno) <- pheno$imageID
-        return(pheno[rownames(x),])
+        return(BiocGenerics::do.call("rbind", x$imagePheno))
     }
 })
 
@@ -518,7 +521,7 @@ setMethod("filterCells", "SegmentedCells", function(x, select) {
 #' @importFrom BiocGenerics do.call rbind
 setGeneric("region", function(x, imageID = NULL, annot = FALSE)
     standardGeneric("region"))
-setMethod("region", "SegmentedCells", function(x, imageID = NULL, annot = TRUE) {
+setMethod("region", "SegmentedCells", function(x, imageID = NULL, annot = FALSE) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }

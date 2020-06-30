@@ -120,7 +120,7 @@ hatchingPlot(cellExp)
 library(ggplot2)
 
 # Extract the region information along with x-y coordinates
-df <- region(cellExp)
+df <- region(cellExp, annot = TRUE)
 
 # Plot the regions with geom_hatching()
 p <- ggplot(df,aes(x = x,y = y, colour = cellType, region = region)) +

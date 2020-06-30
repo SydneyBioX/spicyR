@@ -9,6 +9,7 @@
 #' when estimating concave windows.
 #' @param whichParallel Should the function use parallization on the imageID or 
 #' the cellType.
+#' @param sigma A numeric variable used for scaling when fiting inhomogeneous L-curves
 #'
 #' @return A matrix of LISA curves
 #'
@@ -42,11 +43,13 @@ lisa <-
            BPPARAM = BiocParallel::SerialParam(),
            window = "square",
            window.length = NULL,
-           whichParallel = 'imageID') {
+           whichParallel = 'imageID',
+           sigma = NULL) {
     if (is.data.frame(cells)) {
       if (is.null(cells$cellID)) {
         message("Creating cellID as it doesn't exist")
-        cells$cellID <- paste("cell", seq_len(nrow(cells)), sep = "_")
+        cells$cellID <-
+          paste("cell", seq_len(nrow(cells)), sep = "_")
       }
       
       if (is.null(cells$cellType)) {
@@ -71,7 +74,11 @@ lisa <-
       }
       
       cellSummary <-
-        split(S4Vectors::DataFrame(cells[, c("imageID", "imageCellID", "cellID", "x", "y",
+        split(S4Vectors::DataFrame(cells[, c("imageID",
+                                             "imageCellID",
+                                             "cellID",
+                                             "x",
+                                             "y",
                                              "cellType")]), cells$imageID)
     }
     
@@ -101,11 +108,12 @@ lisa <-
         window = window,
         window.length = window.length,
         BPcellType = BPcellType,
-        BPPARAM = BPimage
+        BPPARAM = BPimage,
+        sigma = sigma
       )
     
     curves <- do.call("rbind", curveList)
-    curves <- curves[as.character(cellSummary(cells)$cellID),]
+    curves <- curves[as.character(cellSummary(cells)$cellID), ]
     return(curves)
   }
 
@@ -123,27 +131,43 @@ makeWindow <-
       spatstat::owin(xrange = range(data$x), yrange = range(data$y))
     
     if (window == "convex") {
-      ch <- grDevices::chull(data[, c("x", "y")])
-      poly <- data[, c("x", "y")][rev(ch),]
+      ch <- grDevices::chull(as.matrix(data[, c("x", "y")]))
+      poly <- data[, c("x", "y")][rev(ch), ]
+      colnames(poly) <- c("x", "y")
+      range1 <- max(poly[, 1]) - min(poly[, 1])
+      range2 <- max(poly[, 2]) - min(poly[, 2])
+      data2 <-
+        do.call("rbind", lapply(as.list(as.data.frame(t(poly))),
+                                function(x)
+                                  cbind(
+                                    rnorm(1000, x[1], range1 / 1000),
+                                    rnorm(1000, x[2], range2 / 1000)
+                                  )))
+      colnames(data2) <- c("x", "y")
+      ch <- grDevices::chull(as.matrix(data2[, c("x", "y")]))
+      poly <- data2[, c("x", "y")][rev(ch), ]
       colnames(poly) <- c("x", "y")
       ow <-
         spatstat::owin(
-          xrange = range(data$x),
-          yrange = range(data$y),
+          xrange = range(poly[, "x"]),
+          yrange = range(poly[, "y"]),
           poly = poly
         )
     }
     if (window == "concave") {
       ch <- concaveman::concaveman(as.matrix(data[, c("x", "y")]))
-      poly <- as.data.frame(ch[nrow(ch):1,])
+      poly <- as.data.frame(ch[nrow(ch):1, ])
       range1 <- max(poly[, 1]) - min(poly[, 1])
       range2 <- max(poly[, 2]) - min(poly[, 2])
       ch <-
         concaveman::concaveman(do.call("rbind", lapply(as.list(as.data.frame(t(poly))),
                                                        function(x)
-                                                         cbind(rnorm(1000, x[1], range1 / 1000), rnorm(1000, x[2], range2 / 1000)))),
+                                                         cbind(
+                                                           rnorm(1000, x[1], range1 / 1000),
+                                                           rnorm(1000, x[2], range2 / 1000)
+                                                         ))),
                                length_threshold = window.length)
-      poly <- as.data.frame(ch[nrow(ch):1,])
+      poly <- as.data.frame(ch[nrow(ch):1, ])
       colnames(poly) <- c("x", "y")
       ow <-
         spatstat::owin(
@@ -164,6 +188,7 @@ generateCurves <-
            window,
            window.length,
            BPcellType = BPcellType,
+           sigma = sigma,
            ...) {
     ow <- makeWindow(data, window, window.length)
     p1 <-
@@ -171,8 +196,13 @@ generateCurves <-
         x = data$x,
         y = data$y,
         window = ow,
-        marks = as.factor(data$cellType)
+        marks = data$cellType
       )
+    
+    if (!is.null(sigma)) {
+      d <- spatstat::density.ppp(p1, sigma = sigma)
+      d <- d / mean(d)
+    }
     
     
     locIJ <-
@@ -184,21 +214,39 @@ generateCurves <-
           rownames(locR) <- iID
           
           if (length(jID) > 1 & length(iID) > 1) {
-            localL <-
-              spatstat::localLcross(p1,
-                                    from = i,
-                                    to = j,
-                                    verbose = FALSE)
+            if (!is.null(sigma)) {
+              dFrom <- d * (sum(p1$marks == i) - 1) / spatstat::area(ow)
+              dTo <-
+                d * (sum(p1$marks == j) - 1) / spatstat::area(ow)
+              localL <-
+                spatstat::localLcross.inhom(
+                  p1,
+                  from = i,
+                  to = j,
+                  verbose = FALSE,
+                  lambdaFrom = dFrom,
+                  lambdaTo = dTo
+                )
+            } else{
+              localL <-
+                spatstat::localLcross(
+                  p1,
+                  from = i,
+                  to = j,
+                  verbose = FALSE
+                )
+            }
             ur <-
               vapply(Rs, function(x)
                 which.min(abs(localL$r - x))[1], numeric(1))
             locR <-
               t(apply(as.matrix(localL)[, grep("iso", colnames(localL))],
                       2, function(x)
-                        (x - localL$theo)[ur]))
+                        ((x - localL$theo)/localL$theo)[ur]))
             rownames(locR) <- iID
           }
-          colnames(locR) <- paste(j, round(Rs, 2), sep = "_")
+          colnames(locR) <-
+            paste(j, round(Rs, 2), sep = "_")
           
           locR
         })

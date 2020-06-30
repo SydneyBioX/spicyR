@@ -10,7 +10,8 @@ lisa(
   BPPARAM = BiocParallel::SerialParam(),
   window = "square",
   window.length = NULL,
-  whichParallel = "imageID"
+  whichParallel = "imageID",
+  sigma = NULL
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ when estimating concave windows.}
 
 \item{whichParallel}{Should the function use parallization on the imageID or 
 the cellType.}
+
+\item{sigma}{A numeric variable used for scaling when fiting inhomogeneous L-curves}
 }
 \value{
 A matrix of LISA curves
