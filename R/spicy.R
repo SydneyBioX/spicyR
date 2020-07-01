@@ -51,199 +51,192 @@ spicy <- function(cells,
                   integrate = TRUE,
                   nsim = NULL,
                   verbose = TRUE,
+                  weights = TRUE,
                   ...) {
-  if (!is(cells, "SegmentedCells")) {
-    stop('cells needs to be a SegmentedCells object')
-  }
-  
-  if (is.null(from))
-    from <- as.character(unique(cellType(cells)))
-  if (is.null(to))
-    to <- as.character(unique(cellType(cells)))
-  
-  from <- as.character(unique(from))
-  to <- as.character(unique(to))
-  
-  if (any((!to %in% cellType(cells)) |
-          (!from %in% cellType(cells))))
-    stop("to and from need to be cell type in your SegmentedCells")
-  
-  nCells <- table(imageID(cells), cellType(cells))
-  
-  ## Find pairwise associations
-  
-  m1 <- rep(from, times = length(to))
-  m2 <- rep(to, each = length(from))
-  labels <- paste(m1, m2, sep = "_")
-  
-  MoreArgs1 <- list(cells = cells, dist = dist)
-  
-  if (verbose)
-    message("Calculating pairwise spatial associations")
-  
-  pairwiseAssoc <- mapply(getPairwise,
-                          from = m1,
-                          to = m2,
-                          MoreArgs = MoreArgs1)
-  
-  
-  
-  count1 <- as.vector(nCells[, m1])
-  count2 <- as.vector(nCells[, m2])
-  
-  resSq <-
-    as.vector(apply(pairwiseAssoc, 2, function(x)
-      (x - mean(x, na.rm = TRUE))^2))
-  
-  weightFunction <- gam(resSq ~ ti(count1, count2))
-  
-  pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
-  names(pairwiseAssoc) <- labels
-  
-  
-  
-  ## Linear model
-  if (is.null(subject) & !is.null(condition)) {
+    if (!is(cells, "SegmentedCells")) {
+        stop('cells needs to be a SegmentedCells object')
+    }
+    
+    if (is.null(from))
+        from <- as.character(unique(cellType(cells)))
+    if (is.null(to))
+        to <- as.character(unique(cellType(cells)))
+    
+    from <- as.character(unique(from))
+    to <- as.character(unique(to))
+    
+    if (any((!to %in% cellType(cells)) |
+            (!from %in% cellType(cells))))
+        stop("to and from need to be cell type in your SegmentedCells")
+    
+    nCells <- table(imageID(cells), cellType(cells))
+    
+    ## Find pairwise associations
+    
+    m1 <- rep(from, times = length(to))
+    m2 <- rep(to, each = length(from))
+    labels <- paste(m1, m2, sep = "_")
+    
+    MoreArgs1 <- list(cells = cells, dist = dist)
+    
     if (verbose)
-      message("Testing for spatial differences across conditions")
+        message("Calculating pairwise spatial associations")
     
-    MoreArgs2 <-
-      list(
-        cells = cells,
-        condition = condition,
-        covariates = covariates,
-        weightFunction = weightFunction
-      )
+    pairwiseAssoc <- mapply(getPairwise,
+                            from = m1,
+                            to = m2,
+                            MoreArgs = MoreArgs1)
     
-    linearModels <- mapply(
-      spatialLM,
-      spatAssoc = pairwiseAssoc,
-      from = m1,
-      to = m2,
-      MoreArgs = MoreArgs2,
-      SIMPLIFY = FALSE
-    )
     
-    df <- cleanLM(linearModels)
-  }
-  
-  ## Mixed effects model
-  if ((!is.null(subject)) & !is.null(condition)) {
-    if (verbose)
-      message(
-        "Testing for spatial differences across conditions accounting for multiple images per subject"
-      )
     
-    MoreArgs2 <-
-      list(
-        cells = cells,
-        subject = subject,
-        condition = condition,
-        covariates = covariates,
-        weightFunction = weightFunction
-      )
+    count1 <- as.vector(nCells[, m1])
+    count2 <- as.vector(nCells[, m2])
     
-    mixed.lmer <- mapply(
-      spatialMEM,
-      spatAssoc = pairwiseAssoc,
-      from = m1,
-      to = m2,
-      MoreArgs = MoreArgs2,
-      SIMPLIFY = FALSE
-    )
-    df <- cleanMEM(mixed.lmer, nsim)
+    resSq <-
+        as.vector(apply(pairwiseAssoc, 2, function(x)
+            (x - mean(x, na.rm = TRUE))^2))
     
-  }
-  
-  
-  
-  df$pairwiseAssoc <- pairwiseAssoc
-  df$comparisons <- data.frame(from = m1,
-                               to = m2,
-                               labels = labels)
-  
-  df <- new('SpicyResults', df)
-  df
+    if (weights) {
+        weightFunction <- gam(resSq ~ ti(count1, count2))
+    } else {
+        weightFunction <- NULL
+    }
+    
+    pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
+    names(pairwiseAssoc) <- labels
+    
+    ## Linear model
+    if (is.null(subject) & !is.null(condition)) {
+        if (verbose)
+            message("Testing for spatial differences across conditions")
+        
+        MoreArgs2 <-
+            list(
+                cells = cells,
+                condition = condition,
+                covariates = covariates,
+                weightFunction = weightFunction
+            )
+        
+        linearModels <- mapply(
+            spatialLM,
+            spatAssoc = pairwiseAssoc,
+            from = m1,
+            to = m2,
+            MoreArgs = MoreArgs2,
+            SIMPLIFY = FALSE
+        )
+        
+        df <- cleanLM(linearModels, nsim)
+    }
+    
+    ## Mixed effects model
+    if ((!is.null(subject)) & !is.null(condition)) {
+        if (verbose)
+            message(
+                "Testing for spatial differences across conditions accounting for multiple images per subject"
+            )
+        
+        MoreArgs2 <-
+            list(
+                cells = cells,
+                subject = subject,
+                condition = condition,
+                covariates = covariates,
+                weightFunction = weightFunction
+            )
+        
+        mixed.lmer <- mapply(
+            spatialMEM,
+            spatAssoc = pairwiseAssoc,
+            from = m1,
+            to = m2,
+            MoreArgs = MoreArgs2,
+            SIMPLIFY = FALSE
+        )
+        df <- cleanMEM(mixed.lmer, nsim)
+        
+    }
+    
+    
+    
+    df$pairwiseAssoc <- pairwiseAssoc
+    df$comparisons <- data.frame(from = m1,
+                                 to = m2,
+                                 labels = labels)
+    
+    df <- new('SpicyResults', df)
+    df
 }
 
-
-
-
-cleanLM <- function(linearModels) {
-  tLm <- lapply(linearModels, function(LM) {
-    coef <- as.data.frame(t(summary(LM)$coef))
-    coef <-
-      split(coef, c("coefficient", "se", "statistic", "p.value"))
-  })
-  
-  df <- apply(do.call(rbind, tLm), 2, function(x)
-    do.call(rbind, x))
-  df <- lapply(df, function(x) {
-    rownames(x) <- names(linearModels)
-    x
-  })
-  df
+cleanLM <- function(linearModels, nsim) {
+    if (length(nsim) > 0) {
+        boot <- lapply(linearModels, spatialLMBootstrap, nsim = nsim)
+        #p <- do.call(rbind, p)
+        tBoot <- lapply(boot, function(coef) {
+            coef <- as.data.frame(t(coef))
+            coef <- split(coef, c("coefficient", "se", "p.value"))
+            
+        })
+        
+        df <- apply(do.call(rbind, tBoot), 2, function(x)
+            do.call(rbind, x))
+        df <- lapply(df, function(x) {
+            rownames(x) <- names(linearModels)
+            x
+        })
+    } else {
+        tLm <- lapply(linearModels, function(LM) {
+            coef <- as.data.frame(t(summary(LM)$coef))
+            coef <-
+                split(coef, c("coefficient", "se", "statistic", "p.value"))
+        })
+        
+        df <- apply(do.call(rbind, tLm), 2, function(x)
+            do.call(rbind, x))
+        df <- lapply(df, function(x) {
+            rownames(x) <- names(linearModels)
+            x
+        })
+    }
+    df
 }
-
-
-
-
-
-
-
-
 
 cleanMEM <- function(mixed.lmer, nsim) {
-  if (length(nsim) > 0) {
-    boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
-    #p <- do.call(rbind, p)
-    tBoot <- lapply(boot, function(coef) {
-      coef <- as.data.frame(t(coef))
-      coef <- split(coef, c("coefficient", "se", "p.value"))
-    })
-    
-    
-    df <- apply(do.call(rbind, tBoot), 2, function(x)
-      do.call(rbind, x))
-    df <- lapply(df, function(x) {
-      rownames(x) <- names(mixed.lmer)
-      x
-    })
-    
-  } else {
-    tLmer <- lapply(mixed.lmer, function(lmer) {
-      coef <- as.data.frame(t(summary(lmer)$coef))
-      coef <-
-        split(coef,
-              c("coefficient", "se", "df", "statistic", "p.value"))
-    })
-    
-    df <- apply(do.call(rbind, tLmer), 2, function(x)
-      do.call(rbind, x))
-    df <- lapply(df, function(x) {
-      rownames(x) <- names(mixed.lmer)
-      x
-    })
-    
-    
-  }
-  df
+    if (length(nsim) > 0) {
+        boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
+        #p <- do.call(rbind, p)
+        tBoot <- lapply(boot, function(coef) {
+            coef <- as.data.frame(t(coef))
+            coef <- split(coef, c("coefficient", "se", "p.value"))
+        })
+        
+        
+        df <- apply(do.call(rbind, tBoot), 2, function(x)
+            do.call(rbind, x))
+        df <- lapply(df, function(x) {
+            rownames(x) <- names(mixed.lmer)
+            x
+        })
+        
+    } else {
+        tLmer <- lapply(mixed.lmer, function(lmer) {
+            coef <- as.data.frame(t(summary(lmer)$coef))
+            coef <-
+                split(coef,
+                      c("coefficient", "se", "df", "statistic", "p.value"))
+        })
+        
+        df <- apply(do.call(rbind, tLmer), 2, function(x)
+            do.call(rbind, x))
+        df <- lapply(df, function(x) {
+            rownames(x) <- names(mixed.lmer)
+            x
+        })
+        
+    }
+    df
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #' Get statistic from pairwise L curve of a single image.
 #'
@@ -261,191 +254,229 @@ cleanMEM <- function(mixed.lmer, nsim) {
 #' pairAssoc <- getPairwise(melanomaResponders)
 #' @export
 getPairwise <- function(cells, from, to, dist = NULL) {
-  cells <- cellSummary(cells, bind = FALSE)
-  
-  pairwiseVals <- lapply(cells,
-                         getStat,
-                         from = from,
-                         to = to,
-                         dist = dist)
-  
-  unlist(pairwiseVals)
+    cells <- cellSummary(cells, bind = FALSE)
+    
+    pairwiseVals <- lapply(cells,
+                           getStat,
+                           from = from,
+                           to = to,
+                           dist = dist)
+    
+    unlist(pairwiseVals)
 }
 
 
 #' @importFrom spatstat Lcross
 getStat <- function(cells, from, to, dist) {
-  pppCell <- pppGenerate(cells)
-  
-  L <- tryCatch({
-    Lcross(pppCell,
-           from = from,
-           to = to,
-           correction = "best")
-  }, error = function(e) {
+    pppCell <- pppGenerate(cells)
     
-  })
-  
-  if (!is(L,"fv")) {
-    return(NA)
-  }
-  
-  if (is.null(dist))
-    dist <- max(L$r)
-  
-  theo = L$theo[L$r <= dist]
-  iso = L$iso[L$r <= dist]
-  mean(iso - theo)
+    L <- tryCatch({
+        Lcross(pppCell,
+               from = from,
+               to = to,
+               correction = "best")
+    }, error = function(e) {
+        
+    })
+    
+    if (!is(L,"fv")) {
+        return(NA)
+    }
+    
+    if (is.null(dist))
+        dist <- max(L$r)
+    
+    theo = L$theo[L$r <= dist]
+    iso = L$iso[L$r <= dist]
+    mean(iso - theo)
 }
-
-
 
 # Performs bootstrapping to estimate p-value.
 
 #' @importFrom lme4 fixef bootMer
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
-  bootCoef <- bootMer(mixed.lmer,
-                      fixef,
-                      nsim = nsim,
-                      re.form = NA)
-  
-  stats <- bootCoef$t
-  fe <- fixef(mixed.lmer)
-  pval = pmin(colMeans(stats < 0), colMeans(stats > 0)) * 2
-  df <-
-    data.frame(
-      coefficient = fe,
-      se = apply(stats, 2, stats::sd),
-      p.value = pval
-    )
-  df
+    bootCoef <- bootMer(mixed.lmer,
+                        fixef,
+                        nsim = nsim,
+                        re.form = NA)
+    
+    stats <- bootCoef$t
+    fe <- fixef(mixed.lmer)
+    pval = pmin(colMeans(stats < 0), colMeans(stats > 0)) * 2
+    df <-
+        data.frame(
+            coefficient = fe,
+            se = apply(stats, 2, stats::sd),
+            p.value = pval
+        )
+    df
 }
-
-
-
-
-
 
 #' @importFrom stats p.adjust
 .show_SpicyResults <- function(df) {
-  pval <- as.data.frame(df$p.value)
-  cond <- colnames(pval)[grep('condition', colnames(pval))]
-  message(df$test)
-  message("Number of cell type pairs: ", nrow(pval), "\n")
-  message("Number of differentially localised cell type pairs: \n")
-  if (nrow(pval) == 1)
-    print(sum(pval[cond] < 0.05))
-  if (nrow(pval) > 1)
-    print(colSums(apply(pval[cond], 2, p.adjust, 'fdr') < 0.05))
-  
+    pval <- as.data.frame(df$p.value)
+    cond <- colnames(pval)[grep('condition', colnames(pval))]
+    message(df$test)
+    message("Number of cell type pairs: ", nrow(pval), "\n")
+    message("Number of differentially localised cell type pairs: \n")
+    if (nrow(pval) == 1)
+        print(sum(pval[cond] < 0.05))
+    if (nrow(pval) > 1)
+        print(colSums(apply(pval[cond], 2, p.adjust, 'fdr') < 0.05))
+    
 }
 setMethod("show", signature(object = "SpicyResults"), function(object) {
-  .show_SpicyResults(object)
+    .show_SpicyResults(object)
 })
-
-
-
-
 
 #' @importFrom lmerTest lmer
 #' @importFrom stats predict
 spatialMEM <-
-  function(spatAssoc,
-           from,
-           to,
-           cells,
-           subject,
-           condition,
-           covariates,
-           weightFunction) {
-    cellCounts <- table(imageID(cells), cellType(cells))
-    
-    count1 <- cellCounts[, from]
-    count2 <- cellCounts[, to]
-    filter <- !is.na(spatAssoc)
-    
-    if (sum(filter) < 3)
-      return(NA)
-    
-    pheno <- as.data.frame(imagePheno(cells))
-    spatialData <-
-      data.frame(spatAssoc,
-                 condition = pheno[, condition],
-                 subject = pheno[, subject],
-                 pheno[covariates])
-    
-    spatialData <- spatialData[filter, ]
-    count1 <- count1[filter]
-    count2 <- count2[filter]
-    
-    if (is.null(weightFunction)) {
-      w <- rep(1, length(count1))
-    } else{
-      z1 <- predict(weightFunction, data.frame(count1, count2))
-      w <- 1 / sqrt(z1 - min(z1) + 1)
-      w <- w / sum(w)
+    function(spatAssoc,
+             from,
+             to,
+             cells,
+             subject,
+             condition,
+             covariates,
+             weightFunction) {
+        cellCounts <- table(imageID(cells), cellType(cells))
+        
+        count1 <- cellCounts[, from]
+        count2 <- cellCounts[, to]
+        filter <- !is.na(spatAssoc)
+        
+        if (sum(filter) < 3)
+            return(NA)
+        
+        pheno <- as.data.frame(imagePheno(cells))
+        spatialData <-
+            data.frame(spatAssoc,
+                       condition = pheno[, condition],
+                       subject = pheno[, subject],
+                       pheno[covariates])
+        
+        spatialData <- spatialData[filter, ]
+        count1 <- count1[filter]
+        count2 <- count2[filter]
+        
+        if (is.null(weightFunction)) {
+            w <- rep(1, length(count1))
+        } else{
+            z1 <- predict(weightFunction, data.frame(count1, count2))
+            w <- 1 / sqrt(z1 - min(z1) + 1)
+            w <- w / sum(w)
+        }
+        
+        formula <- 'spatAssoc ~ condition + (1|subject)'
+        if (!is.null(covariates))
+            formula <-
+            paste('spatAssoc ~ condition + (1|subject)',
+                  paste(covariates, collapse = '+'),
+                  sep = "+")
+        mixed.lmer <- lmer(formula(formula),
+                           data = spatialData,
+                           weights = w)
+        mixed.lmer
     }
-    
-    formula <- 'spatAssoc ~ condition + (1|subject)'
-    if (!is.null(covariates))
-      formula <-
-      paste('spatAssoc ~ condition + (1|subject)',
-            paste(covariates, collapse = '+'),
-            sep = "+")
-    mixed.lmer <- lmer(formula(formula),
-                       data = spatialData,
-                       weights = w)
-    mixed.lmer
-  }
-
-
 
 #' @importFrom stats predict lm
 spatialLM <-
-  function(spatAssoc,
-           from,
-           to,
-           cells,
-           condition,
-           covariates,
-           weightFunction) {
-    cellCounts <- table(imageID(cells), cellType(cells))
-    
-    count1 <- cellCounts[, from]
-    count2 <- cellCounts[, to]
-    filter <- !is.na(spatAssoc)
-    
-    if (sum(filter) < 3)
-      return(NA)
-    
-    pheno <- as.data.frame(imagePheno(cells))
-    spatialData <-
-      data.frame(spatAssoc, condition = pheno[, condition], pheno[covariates])
-    
-    spatialData <- spatialData[filter, ]
-    count1 <- count1[filter]
-    count2 <- count2[filter]
-    
-    if (is.null(weightFunction)) {
-      w <- rep(1, length(count1))
-    } else{
-      z1 <- predict(weightFunction, data.frame(count1, count2))
-      w <- 1 / sqrt(z1 - min(z1) + 1)
-      w <- w / sum(w)
+    function(spatAssoc,
+             from,
+             to,
+             cells,
+             condition,
+             covariates,
+             weightFunction) {
+        cellCounts <- table(imageID(cells), cellType(cells))
+        
+        count1 <- cellCounts[, from]
+        count2 <- cellCounts[, to]
+        filter <- !is.na(spatAssoc)
+        
+        if (sum(filter) < 3)
+            return(NA)
+        
+        pheno <- as.data.frame(imagePheno(cells))
+        spatialData <-
+            data.frame(spatAssoc, condition = pheno[, condition], pheno[covariates])
+        
+        spatialData <- spatialData[filter, ]
+        count1 <- count1[filter]
+        count2 <- count2[filter]
+        
+        if (is.null(weightFunction)) {
+            w <- rep(1, length(count1))
+        } else {
+            z1 <- predict(weightFunction, data.frame(count1, count2))
+            w <- 1 / sqrt(z1 - min(z1) + 1)
+            w <- w / sum(w)
+        }
+        
+        formula <- 'spatAssoc ~ condition'
+        
+        if (!is.null(covariates))
+            formula <-
+            paste('spatAssoc ~ condition',
+                  paste(covariates, collapse = '+'),
+                  sep = "+")
+        lm1 <- lm(formula(formula),
+                  data = spatialData,
+                  weights = w)
+        
+        lm1
     }
-    
-    formula <- 'spatAssoc ~ condition'
-    if (!is.null(covariates))
-      formula <-
-      paste('spatAssoc ~ condition',
-            paste(covariates, collapse = '+'),
-            sep = "+")
-    lm1 <- lm(formula(formula),
-              data = spatialData,
-              weights = w)
-    lm1
-  }
 
+spatialLMBootstrap <- function(linearModels, nsim=19) {
+    functionToReplicate <- function(x) {
+        
+        toGet <- sample(nrow(x$model), replace = TRUE)
+        
+        spatAssocBoot <- x$model$spatAssoc[toGet]
+        conditionBoot <- x$model$condition[toGet]
+        weightsBoot <- x$weights[toGet]
+        
+        spatialDataBoot <- data.frame(spatAssoc = spatAssocBoot,
+                                      condition = conditionBoot)
+        
+        lm1 <- lm(spatAssoc ~ condition,
+                  data = spatialDataBoot,
+                  weights = weightsBoot)
+        
+        lm1$coefficients[2]
+    }
+    stats <- replicate(nsim, functionToReplicate(x = linearModels))
+    
+    # stats <- numeric(nsim)
+    # 
+    # for (i in 1:nsim) {
+    #     toGet <- sample(nrow(linearModels$model), replace = TRUE)
+    # 
+    #     spatAssocBoot <- linearModels$model$spatAssoc[toGet]
+    #     conditionBoot <- linearModels$model$condition[toGet]
+    #     weightsBoot <- linearModels$weights[toGet]
+    # 
+    #     spatialDataBoot <- data.frame(spatAssoc = spatAssocBoot,
+    #                                   condition = conditionBoot)
+    # 
+    #     lm1 <- lm(spatAssoc ~ condition,
+    #               data = spatialDataBoot,
+    #               weights = weightsBoot)
+    # 
+    #     stats[i] <- lm1$coefficients[2]
+    # }
+    fe <- linearModels$coefficients[2]
+    
+    pval <- pmin(mean(stats < 0), mean(stats > 0)) * 2
+    df <-
+        data.frame(
+            coefficient = fe,
+            se = sd(stats),
+            p.value = pval
+        )
+    df
+}
 
 #' Plots result of signifPlot.
 #'
@@ -469,53 +500,51 @@ signifPlot <- function(results,
                        fdr = FALSE,
                        breaks = c(-5, 5, 0.5),
                        colors = c("blue", "white", "red")) {
-  pVal <- results$p.value$conditionResponders
-  marks <- unique(results$comparisons$from)
-  
-  if (min(pVal) == 0) {
-    pVal[pVal == 0] <-
-      pVal[pVal == 0] + 10 ^ floor(log10(min(pVal[pVal > 0])))
-  }
-  
-  if (fdr) {
-    pVal <- p.adjust(pVal, method = "fdr")
-  }
-  
-  isGreater <- results$coefficient$conditionResponders > 0
-  
-  pVal <- log10(pVal)
-  
-  pVal[isGreater] <- abs(pVal[isGreater])
-  
-  pVal <- matrix(pVal, nrow = length(marks))
-  colnames(pVal) <- marks
-  rownames(pVal) <- marks
-  
-  breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-  pal <- colorRampPalette(colors)(length(breaks))
-  
-  heatmap <- pheatmap(
-    pVal,
-    color = pal,
-    breaks = breaks,
-    cluster_rows = FALSE,
-    cluster_cols = FALSE
-  )
-  
-  heatmap
+    pVal <- results$p.value$conditionResponders
+    marks <- unique(results$comparisons$from)
+    
+    if (min(pVal) == 0) {
+        pVal[pVal == 0] <-
+            pVal[pVal == 0] + 10 ^ floor(log10(min(pVal[pVal > 0])))
+    }
+    
+    if (fdr) {
+        pVal <- p.adjust(pVal, method = "fdr")
+    }
+    
+    isGreater <- results$coefficient$conditionResponders > 0
+    
+    pVal <- log10(pVal)
+    
+    pVal[isGreater] <- abs(pVal[isGreater])
+    
+    pVal <- matrix(pVal, nrow = length(marks))
+    colnames(pVal) <- marks
+    rownames(pVal) <- marks
+    
+    breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
+    pal <- colorRampPalette(colors)(length(breaks))
+    
+    heatmap <- pheatmap(
+        pVal,
+        color = pal,
+        breaks = breaks,
+        cluster_rows = FALSE,
+        cluster_cols = FALSE
+    )
+    
+    heatmap
 }
-
-
 
 #' @importFrom spatstat ppp
 pppGenerate <- function(cells) {
-  pppCell <- ppp(
-    cells$x,
-    cells$y,
-    xrange = c(0, max(cells$x)),
-    yrange = c(0, max(cells$y)),
-    marks = cells$cellType
-  )
-  
-  pppCell
+    pppCell <- ppp(
+        cells$x,
+        cells$y,
+        xrange = c(0, max(cells$x)),
+        yrange = c(0, max(cells$y)),
+        marks = cells$cellType
+    )
+    
+    pppCell
 }
