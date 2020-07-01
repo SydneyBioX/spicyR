@@ -19,6 +19,7 @@ spicy(
   integrate = TRUE,
   nsim = NULL,
   verbose = TRUE,
+  weights = TRUE,
   ...
 )
 }
@@ -47,6 +48,8 @@ value of the L curve at dist.}
 \item{nsim}{Number of simulations to perform. If empty, the p-value from lmerTest is used.}
 
 \item{verbose}{logical indicating whether to output messages.}
+
+\item{weights}{logical indicating whether to include weights based on cell counts.}
 
 \item{...}{Other options to pass to bootstrap.}
 }

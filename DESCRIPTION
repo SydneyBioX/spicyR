@@ -20,4 +20,4 @@ Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest,
         purrr, rlang, grDevices, IRanges, stats
 Suggests: BiocStyle, knitr, rmarkdown
 Depends: R (>= 4.0.0)
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1

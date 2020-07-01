@@ -15,6 +15,7 @@
 #' value of the L curve at dist.
 #' @param nsim Number of simulations to perform. If empty, the p-value from lmerTest is used.
 #' @param verbose logical indicating whether to output messages.
+#' @param weights logical indicating whether to include weights based on cell counts.
 #' @param ... Other options to pass to bootstrap.
 #'
 #' @return Data frame of p-values.
@@ -428,6 +429,7 @@ spatialLM <-
         lm1
     }
 
+#' @importFrom stats sd
 spatialLMBootstrap <- function(linearModels, nsim=19) {
     functionToReplicate <- function(x) {
         
@@ -448,24 +450,6 @@ spatialLMBootstrap <- function(linearModels, nsim=19) {
     }
     stats <- replicate(nsim, functionToReplicate(x = linearModels))
     
-    # stats <- numeric(nsim)
-    # 
-    # for (i in 1:nsim) {
-    #     toGet <- sample(nrow(linearModels$model), replace = TRUE)
-    # 
-    #     spatAssocBoot <- linearModels$model$spatAssoc[toGet]
-    #     conditionBoot <- linearModels$model$condition[toGet]
-    #     weightsBoot <- linearModels$weights[toGet]
-    # 
-    #     spatialDataBoot <- data.frame(spatAssoc = spatAssocBoot,
-    #                                   condition = conditionBoot)
-    # 
-    #     lm1 <- lm(spatAssoc ~ condition,
-    #               data = spatialDataBoot,
-    #               weights = weightsBoot)
-    # 
-    #     stats[i] <- lm1$coefficients[2]
-    # }
     fe <- linearModels$coefficients[2]
     
     pval <- pmin(mean(stats < 0), mean(stats > 0)) * 2
