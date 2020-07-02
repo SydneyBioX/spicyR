@@ -139,7 +139,9 @@ SegmentedCells <-
                         "\n")
                 cellData$imageID <- "image1"
             }
-            cellData$imageID <- as.factor(cellData$imageID)
+            if(!is(cellData$imageID, "factor")){
+                cellData$imageID <- factor(cellData$imageID, unique(cellData$imageID))
+            }
             cellData$cellID <- as.character(cellData$cellID)
         }
         if (cellProfiler) {
