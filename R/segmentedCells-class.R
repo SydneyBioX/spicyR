@@ -201,7 +201,7 @@ SegmentedCells <-
             }
             spatialCoords <- c("x", "y")
         }
-        df <- DataFrame(row.names = unique(cellData$imageID))
+        df <- DataFrame(row.names = levels(cellData$imageID))
         if (!is.null(cellTypeString)) {
             cellData$cellType <- cellData[, cellTypeString]
             cellSummary <- S4Vectors::split(DataFrame(cellData[, 
