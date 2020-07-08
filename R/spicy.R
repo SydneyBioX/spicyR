@@ -406,7 +406,7 @@ spatialLM <-
         # spatialData <- spatialData[filter, ]
         # count1 <- count1[filter]
         # count2 <- count2[filter]
-        print(spatialData)
+        #print(spatialData)
         
         if (is.null(weightFunction)) {
             w <- rep(1, length(count1))
