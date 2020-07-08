@@ -400,12 +400,12 @@ spatialLM <-
         count2 <- cellCounts[, to]
         
         pheno <- as.data.frame(imagePheno(cells))
-        print(pheno)
+        #print(pheno)
         spatialData <-
             data.frame(spatAssoc, condition = pheno[, condition], pheno[covariates])
-        spatialData <- spatialData[filter, ]
-        count1 <- count1[filter]
-        count2 <- count2[filter]
+        # spatialData <- spatialData[filter, ]
+        # count1 <- count1[filter]
+        # count2 <- count2[filter]
         print(spatialData)
         
         if (is.null(weightFunction)) {
