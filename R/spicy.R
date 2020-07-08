@@ -87,8 +87,7 @@ spicy <- function(cells,
                             from = m1,
                             to = m2,
                             MoreArgs = MoreArgs1)
-    
-    
+    colnames(pairwiseAssoc) <- labels
     
     count1 <- as.vector(nCells[, m1])
     count2 <- as.vector(nCells[, m2])
@@ -97,8 +96,13 @@ spicy <- function(cells,
         as.vector(apply(pairwiseAssoc, 2, function(x)
             (x - mean(x, na.rm = TRUE))^2))
     
+    toWeight <- !is.na(as.vector(pairwiseAssoc))
+    resSqToWeight <- resSq[toWeight]
+    count1ToWeight <- count1[toWeight]
+    count2ToWeight <- count2[toWeight]
+    
     if (weights) {
-        weightFunction <- gam(resSq ~ ti(count1, count2))
+        weightFunction <- gam(resSqToWeight ~ ti(count1ToWeight, count2ToWeight))
     } else {
         weightFunction <- NULL
     }
@@ -156,7 +160,6 @@ spicy <- function(cells,
             SIMPLIFY = FALSE
         )
         df <- cleanMEM(mixed.lmer, nsim)
-        
     }
     
     
@@ -255,9 +258,9 @@ cleanMEM <- function(mixed.lmer, nsim) {
 #' pairAssoc <- getPairwise(melanomaResponders)
 #' @export
 getPairwise <- function(cells, from, to, dist = NULL) {
-    cells <- cellSummary(cells, bind = FALSE)
-    
-    pairwiseVals <- lapply(cells,
+    cells2 <- cellSummary(cells, bind = FALSE)
+
+    pairwiseVals <- lapply(cells2,
                            getStat,
                            from = from,
                            to = to,
@@ -303,7 +306,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     
     stats <- bootCoef$t
     fe <- fixef(mixed.lmer)
-    pval = pmin(colMeans(stats < 0), colMeans(stats > 0)) * 2
+    pval <- pmin(colMeans(stats < 0), colMeans(stats > 0)) * 2
     df <-
         data.frame(
             coefficient = fe,
@@ -341,14 +344,16 @@ spatialMEM <-
              condition,
              covariates,
              weightFunction) {
-        cellCounts <- table(imageID(cells), cellType(cells))
         
+        spatAssoc[is.na(spatAssoc)] <- 0
+        cellCounts <- table(imageID(cells), cellType(cells))
+
         count1 <- cellCounts[, from]
         count2 <- cellCounts[, to]
-        filter <- !is.na(spatAssoc)
-        
-        if (sum(filter) < 3)
-            return(NA)
+        # filter <- !is.na(spatAssoc)
+        # 
+        # if (sum(filter) < 3)
+        #     return(NA)
         
         pheno <- as.data.frame(imagePheno(cells))
         spatialData <-
@@ -357,24 +362,23 @@ spatialMEM <-
                        subject = pheno[, subject],
                        pheno[covariates])
         
-        spatialData <- spatialData[filter, ]
-        count1 <- count1[filter]
-        count2 <- count2[filter]
-        
         if (is.null(weightFunction)) {
             w <- rep(1, length(count1))
         } else{
-            z1 <- predict(weightFunction, data.frame(count1, count2))
+            z1 <- predict(weightFunction, data.frame(count1ToWeight = count1, 
+                                                     count2ToWeight = count2))
             w <- 1 / sqrt(z1 - min(z1) + 1)
             w <- w / sum(w)
         }
         
         formula <- 'spatAssoc ~ condition + (1|subject)'
+        
         if (!is.null(covariates))
             formula <-
             paste('spatAssoc ~ condition + (1|subject)',
                   paste(covariates, collapse = '+'),
                   sep = "+")
+        
         mixed.lmer <- lmer(formula(formula),
                            data = spatialData,
                            weights = w)
@@ -394,23 +398,21 @@ spatialLM <-
         
         count1 <- cellCounts[, from]
         count2 <- cellCounts[, to]
-        filter <- !is.na(spatAssoc)
-        
-        if (sum(filter) < 3)
-            return(NA)
         
         pheno <- as.data.frame(imagePheno(cells))
+        print(pheno)
         spatialData <-
             data.frame(spatAssoc, condition = pheno[, condition], pheno[covariates])
-        
         spatialData <- spatialData[filter, ]
         count1 <- count1[filter]
         count2 <- count2[filter]
+        print(spatialData)
         
         if (is.null(weightFunction)) {
             w <- rep(1, length(count1))
         } else {
-            z1 <- predict(weightFunction, data.frame(count1, count2))
+            z1 <- predict(weightFunction, data.frame(count1ToWeight = count1, 
+                                                     count2ToWeight = count2))
             w <- 1 / sqrt(z1 - min(z1) + 1)
             w <- w / sum(w)
         }
@@ -484,7 +486,7 @@ signifPlot <- function(results,
                        fdr = FALSE,
                        breaks = c(-5, 5, 0.5),
                        colors = c("blue", "white", "red")) {
-    pVal <- results$p.value$conditionResponders
+    pVal <- results$p.value[,2]
     marks <- unique(results$comparisons$from)
     
     if (min(pVal) == 0) {
@@ -496,7 +498,7 @@ signifPlot <- function(results,
         pVal <- p.adjust(pVal, method = "fdr")
     }
     
-    isGreater <- results$coefficient$conditionResponders > 0
+    isGreater <- results$coefficient[,2] > 0
     
     pVal <- log10(pVal)
     

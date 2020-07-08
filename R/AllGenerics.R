@@ -219,7 +219,8 @@ setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TR
     }
     if (bind == TRUE) {
         return(cbind(
-            imageID = rep(rownames(x), unlist(lapply(x[, "cellSummary"], nrow))),
+            imageID = factor(rep(rownames(x), unlist(lapply(x[, "cellSummary"], nrow))),
+                             rownames(x)),
             BiocGenerics::do.call("rbind", x$cellSummary)
         ))
     }
@@ -268,7 +269,9 @@ setMethod("imageID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
         x <- x[imageID,]
     }
-    rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
+    
+    factor(rep(rownames(x), unlist(lapply(x$cellSummary, nrow))),
+           rownames(x))
 })
 
 
