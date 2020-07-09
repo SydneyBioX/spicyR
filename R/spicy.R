@@ -471,6 +471,7 @@ spatialLMBootstrap <- function(linearModels, nsim=19) {
 #' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first 
 #' number is the minimum, the second is the maximum, the third is the number of breaks.
 #' @param colors Vector of colours to use in pheatmap.
+#' @param marksToPlot Vector of marks to include in pheatmap.
 #'
 #' @return a pheatmap object
 #'
@@ -485,9 +486,12 @@ spatialLMBootstrap <- function(linearModels, nsim=19) {
 signifPlot <- function(results,
                        fdr = FALSE,
                        breaks = c(-5, 5, 0.5),
-                       colors = c("blue", "white", "red")) {
+                       colors = c("blue", "white", "red"),
+                       marksToPlot = NULL) {
     pVal <- results$p.value[,2]
     marks <- unique(results$comparisons$from)
+    
+    if (is.null(marksToPlot)) marksToPlot <- marks
     
     if (min(pVal) == 0) {
         pVal[pVal == 0] <-
@@ -507,6 +511,7 @@ signifPlot <- function(results,
     pVal <- matrix(pVal, nrow = length(marks))
     colnames(pVal) <- marks
     rownames(pVal) <- marks
+    
     
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
     pal <- colorRampPalette(colors)(length(breaks))

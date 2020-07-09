@@ -8,7 +8,8 @@ signifPlot(
   results,
   fdr = FALSE,
   breaks = c(-5, 5, 0.5),
-  colors = c("blue", "white", "red")
+  colors = c("blue", "white", "red"),
+  marksToPlot = NULL
 )
 }
 \arguments{
@@ -20,6 +21,8 @@ signifPlot(
 number is the minimum, the second is the maximum, the third is the number of breaks.}
 
 \item{colors}{Vector of colours to use in pheatmap.}
+
+\item{marksToPlot}{Vector of marks to include in pheatmap.}
 }
 \value{
 a pheatmap object
