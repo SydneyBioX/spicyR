@@ -152,7 +152,8 @@ p <- ggplot(df,aes(x = x,y = y, colour = cellType, region = region)) +
   geom_hatching(window = "concave", 
                 line.spacing = 11, 
                 nbp = 50, 
-                line.width = 1.5, 
+                line.width = 2, 
+                hatching.colour = "gray20",
                 window.length = 0.1) +
   theme_minimal() + 
   scale_region_manual(values = 6:7, labels = c('ab','cd'))

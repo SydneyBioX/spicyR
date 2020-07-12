@@ -6,6 +6,7 @@
 #' @param data A SegmentedCells object that has region information
 #' @param imageID A vector of imageIDs to be plotted
 #' @param line.spacing A integer indicating the spacing between hatching lines.
+#' @param hatching.colour Colour for the hatching
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity 
 #' when estimating concave windows.
@@ -46,6 +47,7 @@ hatchingPlot <-
              imageID = NULL,
              window = "concave",
              line.spacing = 21,
+             hatching.colour = 1,
              nbp = 250,
              window.length = 0) {
         if (!is(data, "SegmentedCells") | is.null(data$region))
@@ -63,6 +65,7 @@ hatchingPlot <-
                     show.legend = TRUE,
                     window = "concave",
                     line.spacing = 21,
+                    hatching.colour = 1,
                     nbp = 250,
                     window.length = 0
                 )
@@ -85,6 +88,7 @@ hatchingPlot <-
                     show.legend = TRUE,
                     window = "concave",
                     line.spacing = 21,
+                    hatching.colour = 1,
                     nbp = 250,
                     window.length = 0
                 )
@@ -131,6 +135,7 @@ hatchingPlot <-
 #' @param na.rm If FALSE, the default, missing values are removed with a warning. 
 #' If TRUE, missing values are silently removed.
 #' @param line.spacing A integer indicating the spacing between hatching lines.
+#' @param hatching.colour A colour for the hatching.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity 
 #' when estimating concave windows.
@@ -172,6 +177,7 @@ geom_hatching <-
              show.legend = NA,
              inherit.aes = TRUE,
              line.spacing = 21,
+             hatching.colour = 1,
              window = "square",
              window.length = 0,
              nbp = 250,
@@ -188,6 +194,7 @@ geom_hatching <-
             params = list(
                 na.rm = na.rm,
                 line.spacing = line.spacing,
+                hatching.colour = hatching.colour,
                 window = window,
                 window.length = window.length,
                 nbp = nbp,
@@ -259,7 +266,10 @@ ggname <- getFromNamespace("ggname", "ggplot2")
 #' @importFrom grid grob polylineGrob gpar
 draw_key_region <- function(data, params, size) {
     grobs <- grob()
-    
+    cat(class(params))
+    cat(names(params))
+    hatching.colour <- params$hatching.colour
+    cat(hatching.colour)
     
     if (data$region == 1) {
         grobs <-
@@ -268,7 +278,7 @@ draw_key_region <- function(data, params, size) {
                 y = c(0, 1, 1, 0, 0),
                 id = c(1,
                        1, 1, 1, 1),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
     }
     
@@ -280,7 +290,7 @@ draw_key_region <- function(data, params, size) {
                 y = c(c(0.5, 1), c(0, 1), c(0, 0.5), c(0, 1, 1, 0, 0)),
                 id = c(1,
                        1, 2, 2, 3, 3, 4, 4, 4, 4, 4),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
     }
     if (data$region == 3) {
@@ -291,7 +301,7 @@ draw_key_region <- function(data, params, size) {
                 y = c(c(0.5, 1), c(0, 1), c(0, 0.5), c(0, 1, 1, 0, 0)),
                 id = c(1,
                        1, 2, 2, 3, 3, 4, 4, 4, 4, 4),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
         
     }
@@ -304,7 +314,7 @@ draw_key_region <- function(data, params, size) {
                         0.33), c(0.66, 0.66), c(0, 1, 1, 0, 0)),
                 id = c(1, 1, 2, 2, 3, 3, 3,
                        3, 3),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
         
     }
@@ -316,7 +326,7 @@ draw_key_region <- function(data, params, size) {
                 y = c(c(0, 1), c(0, 1), c(0, 1, 1, 0, 0)),
                 id = c(1, 1, 2, 2, 3, 3, 3,
                        3, 3),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
         
     }
@@ -346,7 +356,7 @@ draw_key_region <- function(data, params, size) {
                 ),
                 id = c(1, 1, 2, 2,
                        3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
     }
     
@@ -369,7 +379,7 @@ draw_key_region <- function(data, params, size) {
                     c(0, 1, 1, 0, 0)
                 ),
                 id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 5, 5),
-                gp = gpar(col = 1, lwd = 1)
+                gp = gpar(col = hatching.colour, lwd = 1)
             )
         
     }
@@ -410,7 +420,7 @@ GeomHatching <-
         "GeomHatching",
         ggplot2::GeomPoint,
         extra_params = c("na.rm",
-                         "line.spacing", "window", "nbp", "line.width"),
+                         "line.spacing", "window", "nbp", "line.width", "hatching.colour"),
         draw_panel = function(data,
                               panel_params,
                               coord,
@@ -419,7 +429,8 @@ GeomHatching <-
                               window = "square",
                               window.length = 0,
                               nbp = 250,
-                              line.width = 1) {
+                              line.width = 1,
+                              hatching.colour = 1) {
             coords <- coord$transform(data, panel_params)
             
             if (is.factor(coords$region))
@@ -447,7 +458,8 @@ GeomHatching <-
                             c(0, 1),
                             c(0, 1),
                             nbp = nbp,
-                            line.width = line.width)
+                            line.width = line.width,
+                            hatching.colour = hatching.colour)
             grob$name <-
                 "geom_hatching"
             return(grob)
@@ -485,7 +497,8 @@ plotRegions <-
              xrange = c(0, 1),
              yrange = c(0, 1),
              nbp = 250,
-             line.width = 1) {
+             line.width = 1,
+             hatching.colour = 1) {
         rx <- xrange
         ry <- yrange
         width <- (rx[2] - rx[1]) / line.spacing
@@ -504,7 +517,7 @@ plotRegions <-
                     linesGrob(
                         x = df$x / rx[2],
                         y = df$y / ry[2],
-                        gp = gpar(col = 1, lwd = line.width)
+                        gp = gpar(col = hatching.colour, lwd = line.width)
                     )
                 return(g)
             })
@@ -522,7 +535,7 @@ plotRegions <-
                 )
             return(c(
                 bdrys,
-                hatchFun(rPoly, width, rx, ry, line.width = line.width)
+                hatchFun(rPoly, width, rx, ry, line.width = line.width, hatching.colour = hatching.colour)
             ))
         })
         
@@ -603,7 +616,8 @@ hatchingLines <-
              yr,
              rx,
              ry,
-             line.width = 1) {
+             line.width = 1,
+             hatching.colour = 1) {
         purrr::map(seq_len(nrow(allHatch)), ~ {
             if (h90) {
                 hatch <-
@@ -653,7 +667,7 @@ hatchingLines <-
                     return(linesGrob(
                         x = .$x / rx[2],
                         y = .$y / ry[2],
-                        gp = gpar(col = 1,
+                        gp = gpar(col = hatching.colour,
                                   lwd = line.width)
                     ))
                     
@@ -666,14 +680,14 @@ hatchingLines <-
 
 ######## No hatching
 
-hatchNull <- function(rPoly, width, rx, ry, line.width = 1) {
+hatchNull <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
     NULL
 }
 
 ######## / hatching
 
 
-hatch45 <- function(rPoly, width, rx, ry, line.width = 1) {
+hatch45 <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
     xr <- range(rPoly$x)
     yr <- range(rPoly$y)
     from1 <- seq(from = xr[1],
@@ -700,7 +714,8 @@ hatch45 <- function(rPoly, width, rx, ry, line.width = 1) {
             yr,
             rx,
             ry,
-            line.width = line.width
+            line.width = line.width,
+            hatching.colour = hatching.colour
         )
     
     return(do.call("c", lines))
@@ -708,7 +723,7 @@ hatch45 <- function(rPoly, width, rx, ry, line.width = 1) {
 
 ######## \ hatching
 
-hatch315 <- function(rPoly, width, rx, ry, line.width = 1) {
+hatch315 <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
     xr <- range(rPoly$x)
     yr <- range(rPoly$y)
     from1 <- seq(from = xr[2],
@@ -736,7 +751,8 @@ hatch315 <- function(rPoly, width, rx, ry, line.width = 1) {
             yr,
             rx,
             ry,
-            line.width = line.width
+            line.width = line.width,
+            hatching.colour = hatching.colour
         )
     
     return(do.call("c", lines))
@@ -745,7 +761,7 @@ hatch315 <- function(rPoly, width, rx, ry, line.width = 1) {
 
 ######## | hatching
 
-hatch180 <- function(rPoly, width, rx, ry, line.width = 1) {
+hatch180 <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
     xr <- range(rPoly$x)
     yr <- range(rPoly$y)
     from1 <- seq(from = xr[1],
@@ -766,7 +782,8 @@ hatch180 <- function(rPoly, width, rx, ry, line.width = 1) {
             yr,
             rx,
             ry,
-            line.width = line.width
+            line.width = line.width,
+            hatching.colour = hatching.colour
         )
     
     return(do.call("c", lines))
@@ -775,7 +792,7 @@ hatch180 <- function(rPoly, width, rx, ry, line.width = 1) {
 
 ######## - hatching
 
-hatch90 <- function(rPoly, width, rx, ry, line.width = 1) {
+hatch90 <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
     xr <- range(rPoly$x)
     yr <- range(rPoly$y)
     from1 <- seq(from = yr[1],
@@ -796,7 +813,8 @@ hatch90 <- function(rPoly, width, rx, ry, line.width = 1) {
             yr,
             rx,
             ry,
-            line.width = line.width
+            line.width = line.width,
+            hatching.colour = hatching.colour
         )
     
     return(do.call("c", lines))
@@ -805,17 +823,17 @@ hatch90 <- function(rPoly, width, rx, ry, line.width = 1) {
 
 ######## x hatching
 
-hatchX <- function(rPoly, width, rx, ry, line.width = 1) {
-    h45 <- hatch45(rPoly, width, rx, ry, line.width = line.width)
-    h315 <- hatch315(rPoly, width, rx, ry, line.width = line.width)
+hatchX <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
+    h45 <- hatch45(rPoly, width, rx, ry, line.width = line.width, hatching.colour = hatching.colour)
+    h315 <- hatch315(rPoly, width, rx, ry, line.width = line.width, hatching.colour = hatching.colour)
     return(c(h45, h315))
 }
 
 ######## + hatching
 
-hatchPlus <- function(rPoly, width, rx, ry, line.width = 1) {
-    h90 <- hatch90(rPoly, width, rx, ry, line.width = line.width)
-    h180 <- hatch180(rPoly, width, rx, ry, line.width = line.width)
+hatchPlus <- function(rPoly, width, rx, ry, line.width = 1, hatching.colour = 1) {
+    h90 <- hatch90(rPoly, width, rx, ry, line.width = line.width, hatching.colour = hatching.colour)
+    h180 <- hatch180(rPoly, width, rx, ry, line.width = line.width, hatching.colour = hatching.colour)
     return(c(h90, h180))
 }
 
