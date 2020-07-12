@@ -266,11 +266,8 @@ ggname <- getFromNamespace("ggname", "ggplot2")
 #' @importFrom grid grob polylineGrob gpar
 draw_key_region <- function(data, params, size) {
     grobs <- grob()
-    cat(class(params))
-    cat(names(params))
     hatching.colour <- params$hatching.colour
-    cat(hatching.colour)
-    
+
     if (data$region == 1) {
         grobs <-
             polylineGrob(
