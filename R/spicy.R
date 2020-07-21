@@ -297,14 +297,31 @@ getStat <- function(cells, from, to, dist) {
 
 # Performs bootstrapping to estimate p-value.
 
-#' @importFrom lme4 fixef bootMer
+#' @importFrom lme4 fixef
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
-    bootCoef <- bootMer(mixed.lmer,
-                        fixef,
-                        nsim = nsim,
-                        re.form = NA)
+    functionToReplicate <- function(x) {
+        
+        toGet <- sample(nrow(x@frame), replace = TRUE)
+        
+        spatAssocBoot <- x@frame$spatAssoc[toGet]
+        conditionBoot <- x@frame$condition[toGet]
+        subjectBoot <- x@frame$subject[toGet]
+        weightsBoot <- x@frame$`(weights)`[toGet]
+        
+        spatialDataBoot <- data.frame(spatAssoc = spatAssocBoot,
+                                      condition = conditionBoot,
+                                      subject = subjectBoot)
+        
+        mixed.lmer1 <- lmer(spatAssoc ~ condition + (1|subject),
+                            data = spatialDataBoot,
+                            weights = weightsBoot)
+        
+        
+        fixef(mixed.lmer1)
+    }
     
-    stats <- bootCoef$t
+    stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
+    stats <- t(stats)
     fe <- fixef(mixed.lmer)
     pval <- pmin(colMeans(stats < 0), colMeans(stats > 0)) * 2
     df <-
@@ -517,7 +534,7 @@ signifPlot <- function(results,
     pal <- colorRampPalette(colors)(length(breaks))
     
     heatmap <- pheatmap(
-        pVal,
+        pVal[marksToPlot, marksToPlot],
         color = pal,
         breaks = breaks,
         cluster_rows = FALSE,
