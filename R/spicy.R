@@ -304,6 +304,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         toGet <- sample(nrow(x@frame), replace = TRUE)
         
         spatialData <- x@frame[toGet,]
+        spatialData$weights <- spatialData$`(weights)`
         
         mixed.lmer1 <- eval(x@call)
         
