@@ -398,10 +398,11 @@ spatialMEM <-
             paste('spatAssoc ~ condition + (1|subject)',
                   paste(covariates, collapse = '+'),
                   sep = "+")
+        spatialData$weights = w
         
         mixed.lmer <- lmer(formula(formula),
                            data = spatialData,
-                           weights = w)
+                           weights = weights)
         mixed.lmer
     }
 
