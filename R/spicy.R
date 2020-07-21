@@ -318,13 +318,13 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         
         
         
-        summary(mixed.lmer1)$coef[2, "t value"]
+        summary(mixed.lmer1)$coef[, "t value"]
     }
     
     stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
     stats <- t(stats)
     fe <- fixef(mixed.lmer)
-    pval <- mean(abs(stat)>abs(summary(mixed.lmer)$coef[2, "t value"]))
+    pval <- colMeans(sweep(abs(stat),2,abs(summary(mixed.lmer)$coef[, "t value"]),">"))
     df <-
         data.frame(
             coefficient = fe,
