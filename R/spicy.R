@@ -303,20 +303,9 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         
         toGet <- sample(nrow(x@frame), replace = TRUE)
         
-        spatAssocBoot <- x@frame$spatAssoc[toGet]
-        conditionBoot <- x@frame$condition[toGet]
-        subjectBoot <- x@frame$subject[toGet]
-        weightsBoot <- x@frame$`(weights)`[toGet]
+        spatialData <- x@frame[toGet,]
         
-        spatialDataBoot <- data.frame(spatAssoc = spatAssocBoot,
-                                      condition = conditionBoot,
-                                      subject = subjectBoot)
-        
-        mixed.lmer1 <- lmer(spatAssoc ~ condition + (1|subject),
-                            data = spatialDataBoot,
-                            weights = weightsBoot)
-        
-        
+        mixed.lmer1 <- eval(x@call)
         
         summary(mixed.lmer1)$coef[, "t value"]
     }
@@ -398,10 +387,11 @@ spatialMEM <-
             paste('spatAssoc ~ condition + (1|subject)',
                   paste(covariates, collapse = '+'),
                   sep = "+")
+        spatialData$weights = w
         
         mixed.lmer <- lmer(formula(formula),
                            data = spatialData,
-                           weights = w)
+                           weights = weights)
         mixed.lmer
     }
 
