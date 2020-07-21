@@ -317,14 +317,14 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
                             weights = weightsBoot)
         
         
-        fixef(mixed.lmer1)
+        
+        summary(mixed.lmer1)$coef["condition", "statistic"]
     }
     
     stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
     stats <- t(stats)
     fe <- fixef(mixed.lmer)
-    pval <- pmin(colMeans(stats < 0), colMeans(stats > 0)) * 2
-    df <-
+    pval <- mean(abs(stat)>abs(summary(mixed.lmer)$coef["condition", "statistic"]))    df <-
         data.frame(
             coefficient = fe,
             se = apply(stats, 2, stats::sd),
