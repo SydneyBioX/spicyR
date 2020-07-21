@@ -306,7 +306,9 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         spatialData <- x@frame[toGet,]
         spatialData$weights <- spatialData$`(weights)`
         
-        mixed.lmer1 <- eval(x@call)
+        mixed.lmer1 <- lmer(formula(x),
+                           data = spatialData,
+                           weights = weights)
         
         summary(mixed.lmer1)$coef[, "t value"]
     }
