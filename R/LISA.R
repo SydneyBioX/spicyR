@@ -140,8 +140,8 @@ makeWindow <-
         do.call("rbind", lapply(as.list(as.data.frame(t(poly))),
                                 function(x)
                                   cbind(
-                                    rnorm(1000, x[1], range1 / 1000),
-                                    rnorm(1000, x[2], range2 / 1000)
+                                    rnorm(1000, x[1], range1 / 10000),
+                                    rnorm(1000, x[2], range2 / 10000)
                                   )))
       colnames(data2) <- c("x", "y")
       ch <- grDevices::chull(as.matrix(data2[, c("x", "y")]))
