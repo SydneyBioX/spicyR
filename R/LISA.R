@@ -125,7 +125,7 @@ lisa <-
 makeWindow <-
   function(data,
            window = "square",
-           window.length = 21) {
+           window.length = 0) {
     data = data.frame(data)
     ow <-
       spatstat::owin(xrange = range(data$x), yrange = range(data$y))
