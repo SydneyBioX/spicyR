@@ -158,16 +158,16 @@ makeWindow <-
       ch <-
          concaveman::concaveman(do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
     cbind(
-      x[1] + c(0, 1, 0, -1, -1, 0, 1, -1, 1) * 0.0001,
-      x[2] + c(0, 1, 1, 1, -1, -1, -1, 0, 0) * 0.0001
+      x[1] + c(0, 1, 0, -1, -1, 0, 1, -1, 1) * 0.0000001,
+      x[2] + c(0, 1, 1, 1, -1, -1, -1, 0, 0) * 0.0000001
     ))),
     length_threshold = window.length)
 poly <- as.data.frame(ch[nrow(ch):1,])
 colnames(poly) <- c("x", "y")
 ow <-
   spatstat::owin(
-    xrange = range(poly$x) + c(-0.0001, 0.0001),
-    yrange = range(poly$y) + c(-0.0001, 0.0001),
+    xrange = range(poly$x) + c(-0.0000001, 0.0000001),
+    yrange = range(poly$y) + c(-0.0000001, 0.0000001),
     poly = poly
   )
 
