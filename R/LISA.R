@@ -155,26 +155,22 @@ makeWindow <-
         )
     }
     if (window == "concave") {
-      ch <- concaveman::concaveman(as.matrix(data[, c("x", "y")]))
-      poly <- as.data.frame(ch[nrow(ch):1, ])
-      range1 <- max(poly[, 1]) - min(poly[, 1])
-      range2 <- max(poly[, 2]) - min(poly[, 2])
       ch <-
-        concaveman::concaveman(do.call("rbind", lapply(as.list(as.data.frame(t(poly))),
-                                                       function(x)
-                                                         cbind(
-                                                           rnorm(1000, x[1], range1 / 10000),
-                                                           rnorm(1000, x[2], range2 / 10000)
-                                                         ))),
-                               length_threshold = window.length)
-      poly <- as.data.frame(ch[nrow(ch):1, ])
-      colnames(poly) <- c("x", "y")
-      ow <-
-        spatstat::owin(
-          xrange = range(poly$x),
-          yrange = range(poly$y),
-          poly = poly
-        )
+         concaveman::concaveman(do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
+    cbind(
+      x[1] + c(0, 1, 0, -1, -1, 0, 1, -1, 1) * 0.0001,
+      x[2] + c(0, 1, 1, 1, -1, -1, -1, 0, 0) * 0.0001
+    ))),
+    length_threshold = window.length)
+poly <- as.data.frame(ch[nrow(ch):1,])
+colnames(poly) <- c("x", "y")
+ow <-
+  spatstat::owin(
+    xrange = range(poly$x) + c(-0.0001, 0.0001),
+    yrange = range(poly$y) + c(-0.0001, 0.0001),
+    poly = poly
+  )
+
     }
     ow
   }
