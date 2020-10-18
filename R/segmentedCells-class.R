@@ -203,7 +203,7 @@ SegmentedCells <-
             }
             spatialCoords <- c("x", "y")
         }
-        df$imageID <- droplevels(df$imageID)
+        cellData$imageID <- droplevels(cellData$imageID)
         df <- DataFrame(row.names = levels(cellData$imageID))
         if (!is.null(cellTypeString)) {
             cellData$cellType <- cellData[, cellTypeString]
