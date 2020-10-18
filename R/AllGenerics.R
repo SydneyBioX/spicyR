@@ -489,7 +489,8 @@ setGeneric("imagePheno<-", function(x, imageID = NULL, value)
     standardGeneric("imagePheno<-"))
 setReplaceMethod("imagePheno", "SegmentedCells", function(x, imageID = NULL, value) {
     if (is.null(imageID))
-        imageID <- rownames(x)
+        imageID <- as.character(rownames(x))
+    value$imageID <- as.character(value$imageID)
     use <- intersect(imageID,value$imageID)
     rownames(value) <- value$imageID
     value <- S4Vectors::split(value[use,], factor(use, levels = use))
