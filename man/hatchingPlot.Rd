@@ -10,6 +10,7 @@ hatchingPlot(
   imageID = NULL,
   window = "concave",
   line.spacing = 21,
+  hatching.colour = 1,
   nbp = 250,
   window.length = 0
 )
@@ -23,6 +24,7 @@ geom_hatching(
   show.legend = NA,
   inherit.aes = TRUE,
   line.spacing = 21,
+  hatching.colour = 1,
   window = "square",
   window.length = 0,
   nbp = 250,
@@ -45,6 +47,8 @@ data. All objects will be fortified to produce a data frame. See fortify() for
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
 \item{line.spacing}{A integer indicating the spacing between hatching lines.}
+
+\item{hatching.colour}{A colour for the hatching.}
 
 \item{nbp}{An integer tuning the granularity of the grid used when defining regions}
 
