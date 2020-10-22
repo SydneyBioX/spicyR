@@ -23,6 +23,6 @@ Statistic from pairwise L curve of a single image.
 Get statistic from pairwise L curve of a single image.
 }
 \examples{
-data("melanomaResponders")
-pairAssoc <- getPairwise(melanomaResponders)
+data("diabetesDataSub")
+pairAssoc <- getPairwise(diabetesDataSub)
 }

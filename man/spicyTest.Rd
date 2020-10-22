@@ -3,7 +3,7 @@
 \docType{data}
 \name{spicyTest}
 \alias{spicyTest}
-\title{Results from spicy for melanomaResponders data}
+\title{Results from spicy for diabetesDataSub}
 \format{
 spicyTest a spicy object
 }
@@ -12,7 +12,7 @@ spicyTest
 }
 \description{
 Results from the call:
-spicyTest <- spicy(melanomaResponders, 
+spicyTest <- spicy(diabetesDataSub, 
                    condition = "condition", 
                    subject = "subject")
 }

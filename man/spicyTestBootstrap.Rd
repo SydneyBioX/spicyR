@@ -3,7 +3,7 @@
 \docType{data}
 \name{spicyTestBootstrap}
 \alias{spicyTestBootstrap}
-\title{Results from spicy with bootstrap for melanomaResponders data}
+\title{Results from spicy with bootstrap for diabetesDataSub}
 \format{
 spicyTestBootstrap a spicy object
 }
@@ -12,7 +12,7 @@ spicyTestBootstrap
 }
 \description{
 Results from the call:
-spicyTestBootstrap <- spicy(melanomaResponders, 
+spicyTestBootstrap <- spicy(diabetesDataSub, 
                            condition = "condition", 
                            subject = "subject", 
                            nsim = 199)

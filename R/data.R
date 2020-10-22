@@ -1,20 +1,22 @@
-#' Melanoma responders/non-responders dataset.
+#' Diabetes IMC data 
 #'
-#' A dataset containing cell-types of 27 melanoma patients that did and did not
-#' respond to treatment. Each subject has 5 images. The data has already been 
-#' summarised into 9 cell-types.
+#' This is a subset of the Damond et al 2019 imaging mass cytometry dataset. The data 
+#' contains cells in the pancreatic islets of individuals with early onset 
+#' diabetes and healthy controls. 
+#' The object contains single-cell data of 160 images from 8 subjects, 
+#' with 20 images per subject.
 #'
-#' @format melanomaResponders a SegmentedCells object
+#' @format diabetesDataSub a SegmentedCells object
 #' @aliases 
-#' melanomaResponders
-"melanomaResponders"
+#' diabetesDataSub
+"diabetesDataSub"
 
 
 
-#' Results from spicy for melanomaResponders data
+#' Results from spicy for diabetesDataSub
 #'
 #' Results from the call:
-#' spicyTest <- spicy(melanomaResponders, 
+#' spicyTest <- spicy(diabetesDataSub, 
 #'                    condition = "condition", 
 #'                    subject = "subject")
 #'
@@ -25,10 +27,10 @@
 
 
 
-#' Results from spicy with bootstrap for melanomaResponders data
+#' Results from spicy with bootstrap for diabetesDataSub
 #'
 #' Results from the call:
-#' spicyTestBootstrap <- spicy(melanomaResponders, 
+#' spicyTestBootstrap <- spicy(diabetesDataSub, 
 #'                            condition = "condition", 
 #'                            subject = "subject", 
 #'                            nsim = 199)

@@ -22,21 +22,21 @@
 #' @export
 #'
 #' @examples
-#' data("melanomaResponders")
+#' data("diabetesDataSub")
 #'
 #' # Test with random effect for patient on only one pairwise combination of cell types.
-#' spicy(melanomaResponders, condition = "condition", subject = "subject", 
-#'       from = "CD8+PD1+PDL1-", to = "CD8-PD1+PDL1+")
+#' spicy(diabetesDataSub, condition = "condition", subject = "subject", 
+#'       from = "Tc", to = "Th")
 #' 
 #' # Test all pairwise combination of cell types without random effect of patient.
-#' #spicyTest <- spicy(melanomaResponders, condition = "condition")
+#' #spicyTest <- spicy(diabetesDataSub, condition = "condition")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient.
-#' #spicy(melanomaResponders, condition = "condition", subject = "subject")
+#' #spicy(diabetesDataSub, condition = "condition", subject = "subject")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient using 
 #' # a bootstrap to calculate significance.
-#' #spicy(melanomaResponders, condition = "condition", subject = "subject", nsim = 199)
+#' #spicy(diabetesDataSub, condition = "condition", subject = "subject", nsim = 10000)
 #' 
 #' @aliases
 #' spicy
@@ -254,8 +254,8 @@ cleanMEM <- function(mixed.lmer, nsim) {
 #'
 #'
 #' @examples
-#' data("melanomaResponders")
-#' pairAssoc <- getPairwise(melanomaResponders)
+#' data("diabetesDataSub")
+#' pairAssoc <- getPairwise(diabetesDataSub)
 #' @export
 getPairwise <- function(cells, from, to, dist = NULL) {
     cells2 <- cellSummary(cells, bind = FALSE)

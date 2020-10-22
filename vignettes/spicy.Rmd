@@ -53,18 +53,16 @@ Here, the subject is modelled as a random effect, and the different conditions
 are modelled as a fixed effect.
 
 # Example data
-Here, we use a melanoma image dataset with two conditions: Responders and 
-Non-Responders. With this data set, we want to see if there are differences in 
-how cell types are localised with respect to each other.
+Here, we use a subset of the Damond et al 2019 imaging mass cytometry dataset. We will compare 
+the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
 
-`cells` is a `SegmentedCells` object containing single-cell data of 135 images 
-from 27 subjects, with 5 images per subjects. There are 9 Non-Responder subjects 
-and 18 Responder subjects.
+`diabetesDataSub` is a `SegmentedCells` object containing single-cell data of 160 images 
+from 8 subjects, with 20 images per subjects.
 
 `cellSummary()` returns a `DataFrame` object providing the location (`x` and `y`) 
 and cell type (`cellType`) of each cell and the image it belongs to (`imageID`).
 
-`imagePheno()` returns a `DataFrame` object providing the corresponding subject 
+`imagePheno()` returns a `tibble` object providing the corresponding subject 
 (`subject`) and condition (`condition`) for each image.
 
 ```{r message=FALSE}
@@ -73,6 +71,7 @@ diabetesDataSub
 cellSummary(diabetesDataSub)
 imagePheno(diabetesDataSub)
 ```
+
 In this data set, cell types include immune cell types (B cells, naive T cells,
 T Helper cells, T cytotoxic cells, neutrophils, macrophages) and pancreatic islet
 cells (alpha, beta, gamma, delta).
@@ -94,7 +93,7 @@ in one condition compared to the other. This can be done using the `spicy()`
 function, where we include `condition`, and `subject`. In this example, we want 
 to see whether or not Th cells (`to`) tend to be found around Tc cells (`from`).
 
-```{r}
+```{r message=FALSE}
 spicyTestPair <- spicy(diabetesDataSub, 
                    condition = "condition", 
                    subject = "subject", 
@@ -107,15 +106,20 @@ topPairs(spicyTestPair)
 We obtain a `spicy` object which details the results of the mixed effects 
 modelling performed. As the `coefficient` in `spicyTest` is positive, we find 
 that Th cells cells are more likely to be found around beta cells in the onset
-diabetes group compared to the non-diabetic contol.
+diabetes group compared to the non-diabetic control.
 
 ## Test for change in colocalisation for all pairwise cell combinations
 
 Here, we can perform what we did above for all pairwise combinations of cell 
 types by excluding the `from` and `to` parameters from `spicy()`.
 
+```{r}
+data("spicyTest")
+```
 
-```{r eval=TRUE}
+
+
+```{r eval=FALSE}
 spicyTest <- spicy(diabetesDataSub, 
                    condition = "condition", 
                    subject = "subject")
@@ -145,13 +149,18 @@ have also implemented a bootstrapping approach. All that is needed is a choice
 for the number of resamples used in the bootstrap which can be set with the 
 `nsim` parameter in `spicy()`.
 
-```{r eval=TRUE}
+```{r}
+data("spicyTestBootstrap")
+```
+
+
+```{r eval=FALSE, warning=FALSE, message=FALSE}
 spicyTestBootstrap <- spicy(diabetesDataSub, 
                    condition = "condition", 
                    subject = "subject",
                    from = "Tc",
                    to = "Th",
-                   nsim = 199)
+                   nsim = 1000)
 ```
 
 ```{r}
