@@ -3,14 +3,14 @@
 #' The hatchingPlot() function is used to create hatching patterns for representating 
 #' spatial regions and cell-types.
 #'
-#' @param data A SegmentedCells object that has region information
-#' @param imageID A vector of imageIDs to be plotted
-#' @param line.spacing A integer indicating the spacing between hatching lines.
-#' @param hatching.colour Colour for the hatching
+#' @param data A SegmentedCells object that has region information.
+#' @param imageID A vector of imageIDs to be plotted.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
+#' @param line.spacing A integer indicating the spacing between hatching lines.
+#' @param hatching.colour Colour for the hatching.
+#' @param nbp An integer tuning the granularity of the grid used when defining regions.
 #' @param window.length A tuning parameter for controlling the level of concavity 
 #' when estimating concave windows.
-#' @param nbp An integer tuning the granularity of the grid used when defining regions
 #'
 #' @return A ggplot object
 #'
