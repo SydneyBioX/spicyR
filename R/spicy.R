@@ -298,6 +298,7 @@ getStat <- function(cells, from, to, dist) {
 # Performs bootstrapping to estimate p-value.
 
 #' @importFrom lme4 fixef
+#' @importFrom stats formula weights
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     functionToReplicate <- function(x) {
         
@@ -346,7 +347,7 @@ setMethod("show", signature(object = "SpicyResults"), function(object) {
 })
 
 #' @importFrom lmerTest lmer
-#' @importFrom stats predict
+#' @importFrom stats predict weights
 spatialMEM <-
     function(spatAssoc,
              from,
