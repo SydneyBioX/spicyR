@@ -489,7 +489,7 @@ setReplaceMethod("cellAnnotation", "SegmentedCells", function(x, variable, image
     if(length(variable)!=1)stop("Sorry, I can only add one variable at a time currently")
     if(!variable%in%colnames(loc)){
         message(c("Creating variable ", variable))
-        loc = cbind(loc, variable = NA)
+        loc[,variable] = NA
     }
     
     
