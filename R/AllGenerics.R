@@ -558,10 +558,26 @@ setReplaceMethod("imagePheno", "SegmentedCells", function(x, imageID = NULL, val
 setGeneric("filterCells", function(x, select)
     standardGeneric("filterCells"))
 setMethod("filterCells", "SegmentedCells", function(x, select) {
-    df <- as.data.frame(x)
+    imageID <- imageID(x)
+    df <- cellSummary(x, bind = TRUE)
     if (length(select) != nrow(df))
         stop("length of select must equal nrow of SegmentedCells")
-    SegmentedCells(df[select, ])
+    loc <- S4Vectors::split(df[select,], imageID[select])
+    x <- .putData(x, "cellSummary", loc, imageID)
+
+    df <- cellMarks(x, bind = TRUE)
+    if(length(select) == nrow(df)){
+    loc <- S4Vectors::split(df[select,], imageID[select])
+    x <- .putData(x, "cellMarks", loc, imageID)
+    }
+    
+    df <- cellMorph(x, bind = TRUE)
+    if(length(select) == nrow(df)){
+    loc <- S4Vectors::split(df[select,], imageID[select])
+    x <- .putData(x, "cellMorph", loc, imageID)
+    }
+    
+    x
 })
 
 
