@@ -92,9 +92,9 @@ SegmentedCells <-
             cellData$cellType = factor(cellData$cellType)
         }
         
-        if (!is.null(cellAnnotString)) {
-            if (any(!cellAnnotString %in% colnames(cellData))) 
-                stop("At least one element of cellAnnotString is not a column name of cellData")
+        if (!is.null(cellAnnotations)) {
+            if (any(!cellAnnotations %in% colnames(cellData))) 
+                stop("At least one element of cellAnnotations is not a column name of cellData")
         }
         
         if (!any(grepl(intensityString, colnames(cellData))) & intensityString != 
@@ -215,7 +215,7 @@ SegmentedCells <-
         cellData$imageID <- droplevels(cellData$imageID)
         df <- DataFrame(row.names = levels(cellData$imageID))
             cellData$cellType <- cellData[, cellTypeString]
-            cellSummaryCols <- c("cellID", "imageCellID", spatialCoords, "cellType", cellAnnotString)
+            cellSummaryCols <- c("cellID", "imageCellID", spatialCoords, "cellType", cellAnnotations)
             cellSummary <- S4Vectors::split(DataFrame(cellData[,cellSummaryCols]), 
                                             cellData$imageID)
         df$cellSummary <- cellSummary[rownames(df),]
