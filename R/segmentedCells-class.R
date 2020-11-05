@@ -21,6 +21,8 @@
 #' @param morphologyString A string which can be used to identify the columns 
 #' which contains morphology information.
 #' @param cellIDString The column name for cellID.
+#' @param cellAnnotations A vector of variables that provide additional 
+#' annotation of a cell.
 #' @param imageCellIDString The column name for imageCellID.
 #' @param imageIDString The column name for imageIDString.
 #' @param phenotypeString A string which can be used to identify the columns 
@@ -71,6 +73,7 @@ SegmentedCells <-
              morphologyString = "morphology_",
              phenotypeString = "phenotype_",
              cellIDString = "cellID",
+             cellAnnotations = NULL,
              imageCellIDString = "imageCellID",
              imageIDString = "imageID") {
         
@@ -84,8 +87,14 @@ SegmentedCells <-
             cellData$cellType <- cellData[, cellTypeString]
         }
         
+        
         if(!is(cellData$cellType,"factor")){
             cellData$cellType = factor(cellData$cellType)
+        }
+        
+        if (!is.null(cellAnnotString)) {
+            if (any(!cellAnnotString %in% colnames(cellData))) 
+                stop("At least one element of cellAnnotString is not a column name of cellData")
         }
         
         if (!any(grepl(intensityString, colnames(cellData))) & intensityString != 
@@ -205,12 +214,10 @@ SegmentedCells <-
         }
         cellData$imageID <- droplevels(cellData$imageID)
         df <- DataFrame(row.names = levels(cellData$imageID))
-        if (!is.null(cellTypeString)) {
             cellData$cellType <- cellData[, cellTypeString]
-            cellSummary <- S4Vectors::split(DataFrame(cellData[, 
-                                                               c("cellID", "imageCellID", spatialCoords, "cellType")]), 
+            cellSummaryCols <- c("cellID", "imageCellID", spatialCoords, "cellType", cellAnnotString)
+            cellSummary <- S4Vectors::split(DataFrame(cellData[,cellSummaryCols]), 
                                             cellData$imageID)
-        }
         df$cellSummary <- cellSummary[rownames(df),]
         df$cellMarks <- S4Vectors::split(DataFrame(), cellData$imageID)
         df$cellMorph <- S4Vectors::split(DataFrame(), cellData$imageID)

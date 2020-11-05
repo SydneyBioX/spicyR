@@ -240,15 +240,21 @@ setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TR
 setGeneric("cellSummary<-", function(x, imageID = NULL, value)
     standardGeneric("cellSummary<-"))
 setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, value) {
+
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
+        if(any(!colnames(cellExp[1,1][[1]])%in%colnames(value[[1]]))){
+            stop("There are colnames of value that aren't in cellSummary")}
         x <- .putData(x, "cellSummary", value, imageID)
         return(x)
     }
     
     if (nrow(value) == length(imageID(x, imageID))) {
-        value <- value[, c("cellID", "imageCellID", "x", "y", "cellType")]
+        colNames <- colnames(cellExp[1,1][[1]])
+        if(any(!colNames%in%colnames(value))){
+            stop("There are colnames of value that aren't in cellSummary")}
+        value <- value[, colNames]
         by <-
             rep(imageID, unlist(lapply(x[imageID, "cellSummary"], nrow)))
         by <- factor(by, levels = unique(by))
