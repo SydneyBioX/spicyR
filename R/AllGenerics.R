@@ -497,8 +497,9 @@ setReplaceMethod("cellAnnotation", "SegmentedCells", function(x, variable, image
         stop("You are trying to put too much or too little into ", variable)
     }
     loc[loc$imageID%in%imageID, variable] <- value
-    cellSummary(x, imageID = imageID) <- loc
-    x
+    value <- S4Vectors::split(value, loc$imageID)
+    x <- .putData(x, "cellSummary", value, imageID)
+    return(x)
 })
 
 
