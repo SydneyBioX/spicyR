@@ -102,6 +102,8 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @usage filterCells(x, select)
 #' @usage region(x, imageID = NULL, annot = FALSE)
 #' @usage region(x, imageID = NULL) <- value
+#' @usage cellAnnotation(x, variable, imageID = NULL)
+#' @usage cellAnnotation(x, variable, imageID = NULL) <- value
 
 #'
 #' @param x A `SegmentedCells` object.
@@ -110,6 +112,7 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @param expand Used to expand the phenotype information from per image to per cell.
 #' @param value The relevant information used to replace.
 #' @param select A logical vector of the cells to be kept.
+#' @param variable A variable to add or retrieve from cellSummary.
 #' @param annot Add cell annotation when selecting region information.
 #'
 #' @section Descriptions:
@@ -177,6 +180,8 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' imageID,SegmentedCells-method
 #' cellType,SegmentedCells-method
 #' cellType<-,SegmentedCells-method
+#' cellAnnotation,SegmentedCells-method
+#' cellAnnotation<-,SegmentedCells-method
 #' imageCellID,SegmentedCells-method
 #' imageCellID<-,SegmentedCells-method
 #' cellID,SegmentedCells-method
@@ -193,6 +198,8 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' imageID
 #' cellType
 #' cellType<-
+#' cellAnnotation
+#' cellAnnotation<-
 #' imageCellID
 #' imageCellID<-
 #' cellID
@@ -452,6 +459,44 @@ setReplaceMethod("cellType", "SegmentedCells", function(x, imageID = NULL, value
     if(!is(value,"factor"))value = factor(value)
     loc$cellType <- value
     
+    cellSummary(x, imageID = imageID) <- loc
+    x
+})
+
+
+
+### Get cell type information
+
+#' @export
+setGeneric("cellAnnotation", function(x, variable, imageID = NULL)
+    standardGeneric("cellAnnotation"))
+setMethod("cellAnnotation", "SegmentedCells", function(x, variable, imageID = NULL) {
+    if (!is.null(imageID)) {
+        x <- x[imageID,]
+    }
+    cS <- cellSummary(x, bind = TRUE)
+    if(!variable%in%colnames(cS))stop("variable not in cellSummary")
+    cS[,variable]
+})
+
+#' @export
+setGeneric("cellAnnotation<-", function(x, variable, imageID = NULL, value)
+    standardGeneric("cellAnnotation<-"))
+setReplaceMethod("cellAnnotation", "SegmentedCells", function(x, variable, imageID = NULL, value) {
+    if (is.null(imageID))
+        imageID <- rownames(x)
+    loc <- cellSummary(x, bind = TRUE)
+    if(length(variable)!=1)stop("Sorry, I can only add one variable at a time currently")
+    if(!variable%in%colnames(loc)){
+        message(c("Creating variable ", variable))
+        loc = cbind(loc, variable = NA)
+    }
+    
+    
+    if (sum(loc$imageID%in%imageID) != length(value)) {
+        stop("You are trying to put too much or too little into ", variable)
+    }
+    loc[loc$imageID%in%imageID, variable] <- value
     cellSummary(x, imageID = imageID) <- loc
     x
 })
