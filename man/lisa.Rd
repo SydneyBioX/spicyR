@@ -9,7 +9,7 @@ lisa(
   Rs = NULL,
   BPPARAM = BiocParallel::SerialParam(),
   window = "square",
-  window.length = NULL,
+  window.length = 20,
   whichParallel = "imageID",
   sigma = NULL,
   fast = TRUE

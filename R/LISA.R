@@ -44,7 +44,7 @@ lisa <-
            Rs = NULL,
            BPPARAM = BiocParallel::SerialParam(),
            window = "square",
-           window.length = NULL,
+           window.length = 20,
            whichParallel = 'imageID',
            sigma = NULL,
            fast = TRUE) {
@@ -136,10 +136,9 @@ lisa <-
   }
 
 
-#' @importFrom grDevices chull
+
 #' @importFrom spatstat owin convexhull
 #' @importFrom concaveman concaveman
-#' @importFrom stats rnorm
 makeWindow <-
   function(data,
            window = "square",
@@ -149,29 +148,31 @@ makeWindow <-
       spatstat::owin(xrange = range(data$x), yrange = range(data$y))
     
     if (window == "convex") {
-      
       p <- ppp(data$x, data$y, ow)
       ow <- spatstat::convexhull(p)
-
+      
     }
     if (window == "concave") {
-      dist <- (max(data$x) - min(data$x))/length(data$x)
+      dist <- (max(data$x) - min(data$x)) / (length(data$x))
+      bigDat <-
+        do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
+          cbind(
+            x[1] + c(0, 1, 0,-1,-1, 0, 1,-1, 1) * dist,
+            x[2] + c(0, 1, 1, 1,-1,-1,-1, 0, 0) * dist
+          )))
       ch <-
-         concaveman::concaveman(do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
-    cbind(
-      x[1] + c(0, 1, 0, -1, -1, 0, 1, -1, 1)*dist,
-      x[2] + c(0, 1, 1, 1, -1, -1, -1, 0, 0)*dist
-    ))),
-    length_threshold = window.length, concavity = 2)
-poly <- as.data.frame(ch[nrow(ch):1,])
-colnames(poly) <- c("x", "y")
-ow <-
-  spatstat::owin(
-    xrange = range(poly$x) + c(-0.0001, 0.0001),
-    yrange = range(poly$y) + c(-0.0001, 0.0001),
-    poly = poly
-  )
-
+        concaveman::concaveman(bigDat,
+                               length_threshold = window.length,
+                               concavity = 1)
+      poly <- as.data.frame(ch[nrow(ch):1, ])
+      colnames(poly) <- c("x", "y")
+      ow <-
+        spatstat::owin(
+          xrange = range(poly$x),
+          yrange = range(poly$y),
+          poly = poly
+        )
+      
     }
     ow
   }

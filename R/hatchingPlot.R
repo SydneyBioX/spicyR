@@ -424,7 +424,7 @@ GeomHatching <-
                               na.rm = FALSE,
                               line.spacing = 21,
                               window = "square",
-                              window.length = 0,
+                              window.length = 20,
                               nbp = 250,
                               line.width = 1,
                               hatching.colour = 1) {
