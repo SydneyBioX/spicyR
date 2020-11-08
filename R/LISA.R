@@ -9,7 +9,9 @@
 #' when estimating concave windows.
 #' @param whichParallel Should the function use parallization on the imageID or 
 #' the cellType.
-#' @param sigma A numeric variable used for scaling when fiting inhomogeneous L-curves
+#' @param sigma A numeric variable used for scaling when filting inhomogeneous L-curves.
+#' @param fast A logical describing whether to use a fast approximation of the 
+#' inhomogeneous local L-curves.
 #'
 #' @return A matrix of LISA curves
 #'
@@ -44,7 +46,8 @@ lisa <-
            window = "square",
            window.length = NULL,
            whichParallel = 'imageID',
-           sigma = NULL) {
+           sigma = NULL,
+           fast = TRUE) {
     if (is.data.frame(cells)) {
       if (is.null(cells$cellID)) {
         message("Creating cellID as it doesn't exist")
@@ -87,10 +90,11 @@ lisa <-
     }
     
     if (is.null(Rs)) {
-      loc = do.call('rbind', cellSummary)
-      range <- max(loc$x) - min(loc$x)
-      maxR <- range / 5
-      Rs = seq(from = maxR / 20, maxR, length.out = 20)
+      # loc = do.call('rbind', cellSummary)
+      # range <- max(loc$x) - min(loc$x)
+      # maxR <- range / 5
+      # Rs = seq(from = maxR / 20, maxR, length.out = 20)
+      Rs = c(20, 50, 100, 200)
     }
     
     BPimage = BPcellType = BiocParallel::SerialParam()
@@ -99,7 +103,7 @@ lisa <-
     if (whichParallel == 'cellType')
       BPcellType <- BPPARAM
     
-    
+    if(!fast){
     curveList <-
       BiocParallel::bplapply(
         cellSummary,
@@ -111,6 +115,20 @@ lisa <-
         BPPARAM = BPimage,
         sigma = sigma
       )
+    }
+    
+    if(fast){
+      curveList <-
+        BiocParallel::bplapply(
+          cellSummary,
+          inhomLocalL,
+          Rs = Rs,
+          window = window,
+          window.length = window.length,
+          BPPARAM = BPimage,
+          sigma = sigma
+        )
+    }
     
     curves <- do.call("rbind", curveList)
     curves <- curves[as.character(cellSummary(cells)$cellID), ]
@@ -119,7 +137,7 @@ lisa <-
 
 
 #' @importFrom grDevices chull
-#' @importFrom spatstat owin
+#' @importFrom spatstat owin convexhull
 #' @importFrom concaveman concaveman
 #' @importFrom stats rnorm
 makeWindow <-
@@ -131,37 +149,20 @@ makeWindow <-
       spatstat::owin(xrange = range(data$x), yrange = range(data$y))
     
     if (window == "convex") {
-      ch <- grDevices::chull(as.matrix(data[, c("x", "y")]))
-      poly <- data[, c("x", "y")][rev(ch), ]
-      colnames(poly) <- c("x", "y")
-      range1 <- max(poly[, 1]) - min(poly[, 1])
-      range2 <- max(poly[, 2]) - min(poly[, 2])
-      data2 <-
-        do.call("rbind", lapply(as.list(as.data.frame(t(poly))),
-                                function(x)
-                                  cbind(
-                                    rnorm(1000, x[1], range1 / 10000),
-                                    rnorm(1000, x[2], range2 / 10000)
-                                  )))
-      colnames(data2) <- c("x", "y")
-      ch <- grDevices::chull(as.matrix(data2[, c("x", "y")]))
-      poly <- data2[, c("x", "y")][rev(ch), ]
-      colnames(poly) <- c("x", "y")
-      ow <-
-        spatstat::owin(
-          xrange = range(poly[, "x"]),
-          yrange = range(poly[, "y"]),
-          poly = poly
-        )
+      
+      p <- ppp(data$x, data$y, ow)
+      ow <- spatstat::convexhull(p)
+
     }
     if (window == "concave") {
+      dist <- (max(data$x) - min(data$x))/length(data$x)
       ch <-
          concaveman::concaveman(do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
     cbind(
-      x[1] + c(0, 1, 0, -1, -1, 0, 1, -1, 1) * 0.00001,
-      x[2] + c(0, 1, 1, 1, -1, -1, -1, 0, 0) * 0.00001
+      x[1] + c(0, 1, 0, -1, -1, 0, 1, -1, 1)*dist,
+      x[2] + c(0, 1, 1, 1, -1, -1, -1, 0, 0)*dist
     ))),
-    length_threshold = window.length, concavity = 1)
+    length_threshold = window.length, concavity = 2)
 poly <- as.data.frame(ch[nrow(ch):1,])
 colnames(poly) <- c("x", "y")
 ow <-
@@ -250,3 +251,70 @@ generateCurves <-
       }, BPPARAM = BPcellType)
     do.call("cbind", locIJ)
   }
+
+
+
+
+#' @importFrom spatstat ppp closepairs density.ppp edge.Ripley nearest.valid.pixel area marks
+inhomLocalL <-
+  function (data,
+            Rs = c(20, 50, 100, 200),
+            sigma = 10000,
+            window = "square",
+            window.length = NULL,
+            minLambda = 0.05) {
+    
+    ow <- makeWindow(data, window, window.length)
+    X <-
+      spatstat::ppp(
+        x = data$x,
+        y = data$y,
+        window = ow,
+        marks = data$cellType
+      )
+    
+    if(is.null(Rs)) Rs = c(20, 50, 100, 200)
+    if(is.null(sigma)) sigma = 100000
+    
+    p <- spatstat::closepairs(X, max(Rs), what = "ijd")
+    n <- X$n
+    pI <- c(p$i)
+    pJ <- c(p$j)
+    d <- c(p$d)
+    
+    den <- spatstat::density.ppp(X, sigma = sigma)
+    den <- den / mean(den)
+    
+    L <- sapply(Rs, function(maxD) {
+      use <- d <= maxD
+      # edge correction
+      e <- spatstat::edge.Ripley(X, rep(maxD, length(X$x)))
+      np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
+      
+      # inhom density
+      dxy <- den$v[cbind(np$row, np$col)]
+      
+      # define weights
+      lamCell <- table(spatstat::marks(X)) / spatstat::area(X$window)
+      lamPoint <- pmax(dxy, minLambda) / as.numeric(e)
+      
+      i <- factor(pI[use], levels = seq_len(n))
+      mj <- spatstat::marks(X)[pJ[use]]
+      
+      # count and scale
+      mat <- table(point = i, mark = mj)
+      mat <- sweep(mat, 2, 1 / lamCell[colnames(mat)], "*")
+      mat <- sweep(mat, 1, 1 / lamPoint, "*")
+      mat <- sqrt(mat / pi)
+      mat[is.na(mat)] <- 0
+      mat <- (apply(mat, 2, function(x)
+        x) - maxD) / maxD
+      colnames(mat) <- paste(maxD, colnames(mat), sep = "_")
+      
+      mat
+    }, simplify = FALSE)
+    Lcomb <- do.call("cbind", L)
+    rownames(Lcomb) <- as.character(data$cellID)
+    Lcomb
+  }
+

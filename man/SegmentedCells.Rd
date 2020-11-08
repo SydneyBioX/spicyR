@@ -16,6 +16,7 @@ SegmentedCells(
   morphologyString = "morphology_",
   phenotypeString = "phenotype_",
   cellIDString = "cellID",
+  cellAnnotations = NULL,
   imageCellIDString = "imageCellID",
   imageIDString = "imageID"
 )
@@ -43,6 +44,9 @@ which contains morphology information.}
 which contains phenotype information.}
 
 \item{cellIDString}{The column name for cellID.}
+
+\item{cellAnnotations}{A vector of variables that provide additional 
+annotation of a cell.}
 
 \item{imageCellIDString}{The column name for imageCellID.}
 

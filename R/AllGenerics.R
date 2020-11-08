@@ -251,14 +251,14 @@ setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, va
     if (is.null(imageID))
         imageID <- rownames(x)
     if (nrow(value) == length(imageID)) {
-        if(any(!colnames(cellExp[1,1][[1]])%in%colnames(value[[1]]))){
+        if(any(!colnames(x[1,1][[1]])%in%colnames(value[[1]]))){
             stop("There are colnames of value that aren't in cellSummary")}
         x <- .putData(x, "cellSummary", value, imageID)
         return(x)
     }
     
     if (nrow(value) == length(imageID(x, imageID))) {
-        colNames <- colnames(cellExp[1,1][[1]])
+        colNames <- colnames(x[1,1][[1]])
         if(any(!colNames%in%colnames(value))){
             stop("There are colnames of value that aren't in cellSummary")}
         value <- value[, colNames]

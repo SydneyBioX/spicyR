@@ -11,7 +11,8 @@ lisa(
   window = "square",
   window.length = NULL,
   whichParallel = "imageID",
-  sigma = NULL
+  sigma = NULL,
+  fast = TRUE
 )
 }
 \arguments{
@@ -30,7 +31,10 @@ when estimating concave windows.}
 \item{whichParallel}{Should the function use parallization on the imageID or 
 the cellType.}
 
-\item{sigma}{A numeric variable used for scaling when fiting inhomogeneous L-curves}
+\item{sigma}{A numeric variable used for scaling when filting inhomogeneous L-curves.}
+
+\item{fast}{A logical describing whether to use a fast approximation of the 
+inhomogeneous local L-curves.}
 }
 \value{
 A matrix of LISA curves

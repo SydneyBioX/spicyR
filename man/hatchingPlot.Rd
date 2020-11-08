@@ -42,7 +42,7 @@ data. All objects will be fortified to produce a data frame. See fortify() for
  the plot data. The return value must be a data.frame, and will be used as the 
  layer data. A function can be created from a formula (e.g. ~ head(.x, 10)).}
 
-\item{imageID}{A vector of imageIDs to be plotted}
+\item{imageID}{A vector of imageIDs to be plotted.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
@@ -99,9 +99,9 @@ The hatching geom is used to create hatching patterns for representation of spat
 ## Generate toy data
 set.seed(51773)
 x <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
-             runif(200)+3,runif(200)+2,runif(200)+1,runif(200)),4)
-             y <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
-                          runif(200),runif(200)+1,runif(200)+2,runif(200)+3),4)
+             runif(200)+3,runif(200)+2,runif(200)+1,runif(200)),4)*100
+ y <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
+              runif(200),runif(200)+1,runif(200)+2,runif(200)+3),4)*100
 cellType <- factor(paste('c',rep(rep(c(1:2),rep(200,2)),4),sep = ''))
 imageID <- rep(c('s1', 's2'),c(800,800))
 cells <- data.frame(x, y, cellType, imageID)

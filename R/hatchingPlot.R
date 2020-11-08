@@ -19,9 +19,9 @@
 #' ## Generate toy data
 #' set.seed(51773)
 #' x <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
-#'              runif(200)+3,runif(200)+2,runif(200)+1,runif(200)),4)
-#'              y <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
-#'                           runif(200),runif(200)+1,runif(200)+2,runif(200)+3),4)
+#'              runif(200)+3,runif(200)+2,runif(200)+1,runif(200)),4)*100
+#'  y <- round(c(runif(200),runif(200)+1,runif(200)+2,runif(200)+3,
+#'               runif(200),runif(200)+1,runif(200)+2,runif(200)+3),4)*100
 #' cellType <- factor(paste('c',rep(rep(c(1:2),rep(200,2)),4),sep = ''))
 #' imageID <- rep(c('s1', 's2'),c(800,800))
 #' cells <- data.frame(x, y, cellType, imageID)
@@ -63,11 +63,11 @@ hatchingPlot <-
                 )) + geom_point() + geom_hatching(
                     aes(region = region),
                     show.legend = TRUE,
-                    window = "concave",
-                    line.spacing = 21,
-                    hatching.colour = 1,
-                    nbp = 250,
-                    window.length = 0
+                    window = window,
+                    line.spacing = line.spacing,
+                    hatching.colour = hatching.colour,
+                    nbp = nbp,
+                    window.length = window.length
                 )
             q <- p + theme_minimal() + scale_region() + labs(x = "x", y = "y")
             return(q)
@@ -86,11 +86,11 @@ hatchingPlot <-
                 geom_hatching(
                     aes(region = region),
                     show.legend = TRUE,
-                    window = "concave",
-                    line.spacing = 21,
-                    hatching.colour = 1,
-                    nbp = 250,
-                    window.length = 0
+                    window = window,
+                    line.spacing = line.spacing,
+                    hatching.colour = hatching.colour,
+                    nbp = nbp,
+                    window.length = window.length
                 )
             q <- p + theme_minimal() + scale_region() + labs(x = "x", y = "y")
             q

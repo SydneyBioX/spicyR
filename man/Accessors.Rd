@@ -13,6 +13,8 @@
 \alias{imageID,SegmentedCells-method}
 \alias{cellType,SegmentedCells-method}
 \alias{cellType<-,SegmentedCells-method}
+\alias{cellAnnotation,SegmentedCells-method}
+\alias{cellAnnotation<-,SegmentedCells-method}
 \alias{imageCellID,SegmentedCells-method}
 \alias{imageCellID<-,SegmentedCells-method}
 \alias{cellID,SegmentedCells-method}
@@ -29,6 +31,8 @@
 \alias{imageID}
 \alias{cellType}
 \alias{cellType<-}
+\alias{cellAnnotation}
+\alias{cellAnnotation<-}
 \alias{imageCellID}
 \alias{imageCellID<-}
 \alias{cellID}
@@ -75,6 +79,10 @@ filterCells(x, select)
 region(x, imageID = NULL, annot = FALSE)
 
 region(x, imageID = NULL) <- value
+
+cellAnnotation(x, variable, imageID = NULL)
+
+cellAnnotation(x, variable, imageID = NULL) <- value
 }
 \arguments{
 \item{x}{A `SegmentedCells` object.}
@@ -88,6 +96,8 @@ region(x, imageID = NULL) <- value
 \item{value}{The relevant information used to replace.}
 
 \item{select}{A logical vector of the cells to be kept.}
+
+\item{variable}{A variable to add or retrieve from cellSummary.}
 
 \item{annot}{Add cell annotation when selecting region information.}
 }
