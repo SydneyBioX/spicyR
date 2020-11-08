@@ -104,6 +104,9 @@ lisa <-
       BPcellType <- BPPARAM
     
     if(!fast){
+      message("Generating local L-curves. ")
+      if(identical(BPimage, BPcellType)) 
+        message("You might like to consider setting BPPARAM to run the calculations in parallel.")
     curveList <-
       BiocParallel::bplapply(
         cellSummary,
@@ -118,6 +121,9 @@ lisa <-
     }
     
     if(fast){
+      
+      message("Generating local L-curves. If you run out of memory, try 'fast = FALSE'.")
+      
       curveList <-
         BiocParallel::bplapply(
           cellSummary,
