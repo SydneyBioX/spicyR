@@ -266,19 +266,19 @@ generateCurves <-
   }
 
 #' @importFrom spatstat edge.Ripley nearest.valid.pixel area marks
-weightCounts <- function(dt, X, minLambda) {
+weightCounts <- function(dt, X, den, minLambda) {
   maxD <- as.numeric(as.character(dt$d[1]))
   
   # edge correction
   e <- spatstat::edge.Ripley(X, rep(maxD, length(X$x)))
-  # np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
-  # 
-  # # inhom density
-  # dxy <- den$v[cbind(np$row, np$col)]
-  # rm(np)
+  np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
+
+  # inhom density
+  dxy <- den$v[cbind(np$row, np$col)]
+  rm(np)
   # 
   # define weights
-  lamCell <- table(spatstat::marks(X)) / spatstat::area(X$window)
+  lamCell <- tapply(1/dxy, spatstat::marks(X), sum) / spatstat::area(X$window)
   lamPoint <- as.numeric(e)
   rm(e)
   
@@ -355,7 +355,7 @@ inhomLocalL <-
     r <-
       data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
     r <- split(r, r$d)
-    r <- lapply(r, weightCounts, X, minLambda)
+    r <- lapply(r, weightCounts, X, den, minLambda)
     r <- do.call("cbind", r)
     
     rownames(r) <- as.character(data$cellID)
