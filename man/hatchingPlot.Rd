@@ -12,7 +12,7 @@ hatchingPlot(
   line.spacing = 21,
   hatching.colour = 1,
   nbp = 250,
-  window.length = 0
+  window.length = NULL
 )
 
 geom_hatching(

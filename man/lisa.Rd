@@ -8,8 +8,8 @@ lisa(
   cells,
   Rs = NULL,
   BPPARAM = BiocParallel::SerialParam(),
-  window = "square",
-  window.length = 20,
+  window = "convex",
+  window.length = NULL,
   whichParallel = "imageID",
   sigma = NULL,
   fast = TRUE

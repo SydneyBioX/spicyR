@@ -43,8 +43,8 @@ lisa <-
   function(cells,
            Rs = NULL,
            BPPARAM = BiocParallel::SerialParam(),
-           window = "square",
-           window.length = 20,
+           window = "convex",
+           window.length = NULL,
            whichParallel = 'imageID',
            sigma = NULL,
            fast = TRUE) {
@@ -148,7 +148,7 @@ lisa <-
 makeWindow <-
   function(data,
            window = "square",
-           window.length = 0) {
+           window.length = NULL) {
     data = data.frame(data)
     ow <-
       spatstat::owin(xrange = range(data$x), yrange = range(data$y))
@@ -159,6 +159,12 @@ makeWindow <-
       
     }
     if (window == "concave") {
+      message("Concave windows are tempermental. Try choosing values of window.length > and < 1 if you have problems.")
+      if(is.null(window.length)){
+        window.length <- (max(data$x) - min(data$x))/20
+      }else{
+        window.length <- (max(data$x) - min(data$x))/20 * window.length
+      }
       dist <- (max(data$x) - min(data$x)) / (length(data$x))
       bigDat <-
         do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
@@ -259,10 +265,37 @@ generateCurves <-
     do.call("cbind", locIJ)
   }
 
+#' @importFrom spatstat edge.Ripley nearest.valid.pixel area marks
+weightCounts <- function(dt, X) {
+  maxD <- as.numeric(as.character(dt$d[1]))
+  
+  # edge correction
+  e <- spatstat::edge.Ripley(X, rep(maxD, length(X$x)))
+  np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
+  
+  # inhom density
+  dxy <- den$v[cbind(np$row, np$col)]
+  rm(np)
+  
+  # define weights
+  lamCell <- table(spatstat::marks(X)) / spatstat::area(X$window)
+  lamPoint <- pmax(dxy, minLambda) / as.numeric(e)
+  rm(dxy, e)
+  
+  # count and scale
+  mat <- dt[,-c(1, 2)]
+  mat <- sweep(mat, 2, 1 / lamCell[colnames(mat)], "*")
+  mat <- sweep(mat, 1, 1 / lamPoint, "*")
+  mat <- sqrt(mat / pi)
+  mat[is.na(mat)] <- 0
+  mat <- (apply(mat, 2, function(x)
+    x) - maxD) / sqrt(maxD)
+  colnames(mat) <- paste(maxD, colnames(mat), sep = "_")
+  mat
+}
 
-
-
-#' @importFrom spatstat ppp closepairs density.ppp edge.Ripley nearest.valid.pixel area marks
+#' @importFrom spatstat ppp closepairs density.ppp marks
+#' @import data.table
 inhomLocalL <-
   function (data,
             Rs = c(20, 50, 100, 200),
@@ -270,7 +303,6 @@ inhomLocalL <-
             window = "square",
             window.length = NULL,
             minLambda = 0.05) {
-    
     ow <- makeWindow(data, window, window.length)
     X <-
       spatstat::ppp(
@@ -280,48 +312,47 @@ inhomLocalL <-
         marks = data$cellType
       )
     
-    if(is.null(Rs)) Rs = c(20, 50, 100, 200)
-    if(is.null(sigma)) sigma = 100000
+    if (is.null(Rs))
+      Rs = c(20, 50, 100, 200)
+    if (is.null(sigma))
+      sigma = 100000
     
-    p <- spatstat::closepairs(X, max(Rs), what = "ijd")
-    n <- X$n
-    pI <- c(p$i)
-    pJ <- c(p$j)
-    d <- c(p$d)
+    Rs <- unique(c(0, sort(Rs)))
     
     den <- spatstat::density.ppp(X, sigma = sigma)
     den <- den / mean(den)
     
-    L <- sapply(Rs, function(maxD) {
-      use <- d <= maxD
-      # edge correction
-      e <- spatstat::edge.Ripley(X, rep(maxD, length(X$x)))
-      np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
-      
-      # inhom density
-      dxy <- den$v[cbind(np$row, np$col)]
-      
-      # define weights
-      lamCell <- table(spatstat::marks(X)) / spatstat::area(X$window)
-      lamPoint <- pmax(dxy, minLambda) / as.numeric(e)
-      
-      i <- factor(pI[use], levels = seq_len(n))
-      mj <- spatstat::marks(X)[pJ[use]]
-      
-      # count and scale
-      mat <- table(point = i, mark = mj)
-      mat <- sweep(mat, 2, 1 / lamCell[colnames(mat)], "*")
-      mat <- sweep(mat, 1, 1 / lamPoint, "*")
-      mat <- sqrt(mat / pi)
-      mat[is.na(mat)] <- 0
-      mat <- (apply(mat, 2, function(x)
-        x) - maxD) / maxD
-      colnames(mat) <- paste(maxD, colnames(mat), sep = "_")
-      
-      mat
-    }, simplify = FALSE)
-    Lcomb <- do.call("cbind", L)
-    rownames(Lcomb) <- as.character(data$cellID)
-    Lcomb
+    p <- spatstat::closepairs(X, max(Rs), what = "ijd")
+    n <- X$n
+    p$j <- spatstat::marks(X)[p$j]
+    p$i <- factor(p$i, seq_len(n))
+    
+    p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
+    
+    
+    p <- data.table::setDT(p)
+    r <- p[, .N, by = .(i, j, d), drop = FALSE]
+    r <- data.table::dcast(r, i + d ~ j, value.var = "N", fill = 0)
+    r <-
+      data.table::melt(r,
+                       c("i", "d"),
+                       variable.name = "cellType",
+                       value.name = "N")
+    r <- data.table::dcast(r, i + cellType ~ d, value.var = "N", fill = 0)
+    r <-
+      data.table::melt(r,
+                       c("i", "cellType"),
+                       variable.name = "d",
+                       value.name = "N")
+    r <- r[, N := cumsum(N), by = list(i, cellType)]
+    r <-
+      data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
+    r <- split(r, r$d)
+    r <- lapply(r, weightCounts, X)
+    r <- do.call("cbind", r)
+    
+    rownames(r) <- as.character(data$cellID)
+    r
+    
   }
 

@@ -49,7 +49,7 @@ hatchingPlot <-
              line.spacing = 21,
              hatching.colour = 1,
              nbp = 250,
-             window.length = 0) {
+             window.length = NULL) {
         if (!is(data, "SegmentedCells") | is.null(data$region))
             stop("Please provide a SegmentedCells object with region information please.")
         
@@ -423,8 +423,8 @@ GeomHatching <-
                               coord,
                               na.rm = FALSE,
                               line.spacing = 21,
-                              window = "square",
-                              window.length = 20,
+                              window = "convex",
+                              window.length = NULL,
                               nbp = 250,
                               line.width = 1,
                               hatching.colour = 1) {
