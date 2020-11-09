@@ -159,7 +159,7 @@ makeWindow <-
       
     }
     if (window == "concave") {
-      message("Concave windows are tempermental. Try choosing values of window.length > and < 1 if you have problems.")
+      message("Concave windows are temperamental. Try choosing values of window.length > and < 1 if you have problems.")
       if(is.null(window.length)){
         window.length <- (max(data$x) - min(data$x))/20
       }else{
@@ -266,21 +266,21 @@ generateCurves <-
   }
 
 #' @importFrom spatstat edge.Ripley nearest.valid.pixel area marks
-weightCounts <- function(dt, X, den, minLambda) {
+weightCounts <- function(dt, X, minLambda) {
   maxD <- as.numeric(as.character(dt$d[1]))
   
   # edge correction
   e <- spatstat::edge.Ripley(X, rep(maxD, length(X$x)))
-  np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
-  
-  # inhom density
-  dxy <- den$v[cbind(np$row, np$col)]
-  rm(np)
-  
+  # np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
+  # 
+  # # inhom density
+  # dxy <- den$v[cbind(np$row, np$col)]
+  # rm(np)
+  # 
   # define weights
   lamCell <- table(spatstat::marks(X)) / spatstat::area(X$window)
-  lamPoint <- pmax(dxy, minLambda) / as.numeric(e)
-  rm(dxy, e)
+  lamPoint <- 1/ as.numeric(e)
+  rm(e)
   
   # count and scale
   mat <- dt[,-c(1, 2)]
@@ -329,9 +329,16 @@ inhomLocalL <-
     
     p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
     
+    # inhom density
+    np <- spatstat::nearest.valid.pixel(X$x[p$j], X$y[p$j], den)
+    p$wt <- den$v[cbind(np$row, np$col)]
+    rm(np)
+    
+    
     
     p <- data.table::setDT(p)
-    r <- p[, .N, by = .(i, j, d), drop = FALSE]
+    r <- p[, N := sum(wt), by = .(i, j, d), drop = FALSE]
+    r <- unique(r)
     r <- data.table::dcast(r, i + d ~ j, value.var = "N", fill = 0)
     r <-
       data.table::melt(r,
@@ -348,7 +355,7 @@ inhomLocalL <-
     r <-
       data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
     r <- split(r, r$d)
-    r <- lapply(r, weightCounts, X, den, minLambda)
+    r <- lapply(r, weightCounts, X, minLambda)
     r <- do.call("cbind", r)
     
     rownames(r) <- as.character(data$cellID)
