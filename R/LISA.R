@@ -266,7 +266,7 @@ generateCurves <-
   }
 
 #' @importFrom spatstat edge.Ripley nearest.valid.pixel area marks
-weightCounts <- function(dt, X, den, minlambda) {
+weightCounts <- function(dt, X, den, minLambda) {
   maxD <- as.numeric(as.character(dt$d[1]))
   
   # edge correction
