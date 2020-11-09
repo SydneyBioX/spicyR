@@ -348,7 +348,7 @@ inhomLocalL <-
     r <-
       data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
     r <- split(r, r$d)
-    r <- lapply(r, weightCounts, X, den, minlambda)
+    r <- lapply(r, weightCounts, X, den, minLambda)
     r <- do.call("cbind", r)
     
     rownames(r) <- as.character(data$cellID)
