@@ -279,13 +279,13 @@ weightCounts <- function(dt, X, minLambda) {
   # 
   # define weights
   lamCell <- table(spatstat::marks(X)) / spatstat::area(X$window)
-  lamPoint <- 1/ as.numeric(e)
+  lamPoint <- as.numeric(e)
   rm(e)
   
   # count and scale
   mat <- dt[,-c(1, 2)]
   mat <- sweep(mat, 2, 1 / lamCell[colnames(mat)], "*")
-  mat <- sweep(mat, 1, 1 / lamPoint, "*")
+  mat <- sweep(mat, 1, lamPoint, "*")
   mat <- sqrt(mat / pi)
   mat[is.na(mat)] <- 0
   mat <- (apply(mat, 2, function(x)
@@ -331,7 +331,7 @@ inhomLocalL <-
     
     # inhom density
     np <- spatstat::nearest.valid.pixel(X$x[p$j], X$y[p$j], den)
-    p$wt <- den$v[cbind(np$row, np$col)]
+    p$wt <- 1/den$v[cbind(np$row, np$col)]
     rm(np)
     
     
