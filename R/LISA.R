@@ -266,7 +266,7 @@ generateCurves <-
   }
 
 #' @importFrom spatstat edge.Ripley nearest.valid.pixel area marks
-weightCounts <- function(dt, X) {
+weightCounts <- function(dt, X, den) {
   maxD <- as.numeric(as.character(dt$d[1]))
   
   # edge correction
@@ -348,7 +348,7 @@ inhomLocalL <-
     r <-
       data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
     r <- split(r, r$d)
-    r <- lapply(r, weightCounts, X)
+    r <- lapply(r, weightCounts, X, den)
     r <- do.call("cbind", r)
     
     rownames(r) <- as.character(data$cellID)
