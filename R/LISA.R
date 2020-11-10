@@ -331,7 +331,7 @@ inhomLocalL <-
     p$wt <- 1/w[p$j]/w[p$i]/D[marks(X)[p$i]]*lam[marks(X)[p$i]]
     rm(np)
     
-    p$wt <- 1/lam[marks(X)[p$j]]
+    #p$wt <- 1/lam[marks(X)[p$j]]
     
     p <- data.table::setDT(p)
     r <- p[, N := sum(wt), by = .(i, j, d), drop = FALSE]
