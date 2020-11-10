@@ -316,10 +316,10 @@ inhomLocalL <-
     
     p <- spatstat::closepairs(X, max(Rs), what = "ijd")
     n <- X$n
-    p$j <- spatstat::marks(X)[p$j]
-    p$i <- factor(p$i, seq_len(n))
+    p$j <- c(spatstat::marks(X)[p$j], seq_len(n))
+    p$i <- c(factor(p$i, seq_len(n)), seq_len(n))
     
-    p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
+    p$d <- cut(c(p$d, rep(0,n)), Rs, labels = Rs[-1], include.lowest = TRUE)
     
     # inhom density
     
