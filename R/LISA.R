@@ -316,8 +316,8 @@ inhomLocalL <-
     
     p <- spatstat::closepairs(X, max(Rs), what = "ijd")
     n <- X$n
-    p$j <- c(spatstat::marks(X)[p$j], seq_len(n))
-    p$i <- c(factor(p$i, seq_len(n)), seq_len(n))
+    p$j <- c(p$j, seq_len(n))
+    p$i <- factor(c(p$i, seq_len(n)), seq_len(n))
     
     p$d <- cut(c(p$d, rep(0,n)), Rs, labels = Rs[-1], include.lowest = TRUE)
     
@@ -325,16 +325,19 @@ inhomLocalL <-
     
     np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
     w <- den$v[cbind(np$row, np$col)]
-    lam <- tapply(w,marks(X),sum)/area(X)
-    w <- w*lam[marks(X)]
+    lam <- table(marks(X))/area(X)
+    w <- w*as.numeric(lam[marks(X)])
    # D <- tapply(1/w,marks(X),sum)/area(X)
     p$wt <- 1/w[p$j]#/w[p$i]*lam[marks(X)[p$i]]
     rm(np)
+    
+    p$j <- spatstat::marks(X)[p$j]
     
     #p$wt <- 1/lam[marks(X)[p$j]]
     
     p <- data.table::setDT(p)
     r <- p[, N := sum(wt), by = .(i, j, d), drop = FALSE]
+    r <- r[,wt:=NULL]
     r <- unique(r)
     r <- data.table::dcast(r, i + d ~ j, value.var = "N", fill = 0)
     r <-
