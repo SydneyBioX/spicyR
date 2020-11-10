@@ -278,8 +278,9 @@ weightCounts <- function(dt, X, den, minLambda) {
   rm(np)
   # 
   # define weights
-  lamCell <- tapply(1/dxy, spatstat::marks(X), sum) / spatstat::area(X$window)
-  lamPoint <- as.numeric(e)
+
+  lamCell <- tapply(dxy, spatstat::marks(X), sum) / spatstat::area(X$window)
+  lamPoint <- as.numeric(e)*dxy[dt$i]/(lamCell[spatstat::marks(X)[dt$i]]*spatstat::area(X$window))
   rm(e)
   
   # count and scale
