@@ -4,7 +4,7 @@
 \alias{getPairwise}
 \title{Get statistic from pairwise L curve of a single image.}
 \usage{
-getPairwise(cells, from, to, dist = NULL)
+getPairwise(cells, from, to, dist = NULL, window, window.length)
 }
 \arguments{
 \item{cells}{A SegmentedCells or data frame that contains at least the 

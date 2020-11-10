@@ -16,6 +16,9 @@
 #' @param nsim Number of simulations to perform. If empty, the p-value from lmerTest is used.
 #' @param verbose logical indicating whether to output messages.
 #' @param weights logical indicating whether to include weights based on cell counts.
+#' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
+#' @param window.length A tuning parameter for controlling the level of concavity 
+#' when estimating concave windows.
 #' @param ... Other options to pass to bootstrap.
 #'
 #' @return Data frame of p-values.
@@ -53,6 +56,8 @@ spicy <- function(cells,
                   nsim = NULL,
                   verbose = TRUE,
                   weights = TRUE,
+                  window = "convex",
+                  window.length = NULL,
                   ...) {
     if (!is(cells, "SegmentedCells")) {
         stop('cells needs to be a SegmentedCells object')
@@ -78,7 +83,7 @@ spicy <- function(cells,
     m2 <- rep(to, each = length(from))
     labels <- paste(m1, m2, sep = "_")
     
-    MoreArgs1 <- list(cells = cells, dist = dist)
+    MoreArgs1 <- list(cells = cells, dist = dist, window = window, window.length = window.length)
     
     if (verbose)
         message("Calculating pairwise spatial associations")
@@ -257,22 +262,22 @@ cleanMEM <- function(mixed.lmer, nsim) {
 #' data("diabetesDataSub")
 #' pairAssoc <- getPairwise(diabetesDataSub)
 #' @export
-getPairwise <- function(cells, from, to, dist = NULL) {
+getPairwise <- function(cells, from, to, dist = NULL, window, window.length) {
     cells2 <- cellSummary(cells, bind = FALSE)
 
     pairwiseVals <- lapply(cells2,
                            getStat,
                            from = from,
                            to = to,
-                           dist = dist)
+                           dist = dist, window, window.length)
     
     unlist(pairwiseVals)
 }
 
 
 #' @importFrom spatstat Lcross
-getStat <- function(cells, from, to, dist) {
-    pppCell <- pppGenerate(cells)
+getStat <- function(cells, from, to, dist, window, window.length) {
+    pppCell <- pppGenerate(cells, window, window.length)
     
     L <- tryCatch({
         Lcross(pppCell,
@@ -542,12 +547,12 @@ signifPlot <- function(results,
 }
 
 #' @importFrom spatstat ppp
-pppGenerate <- function(cells) {
+pppGenerate <- function(cells, window, window.length) {
+    ow <- makeWindow(cells, window, window.length)
     pppCell <- ppp(
         cells$x,
         cells$y,
-        xrange = c(0, max(cells$x)),
-        yrange = c(0, max(cells$y)),
+        window = ow,
         marks = cells$cellType
     )
     

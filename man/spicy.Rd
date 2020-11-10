@@ -20,6 +20,8 @@ spicy(
   nsim = NULL,
   verbose = TRUE,
   weights = TRUE,
+  window = "convex",
+  window.length = NULL,
   ...
 )
 }
@@ -50,6 +52,11 @@ value of the L curve at dist.}
 \item{verbose}{logical indicating whether to output messages.}
 
 \item{weights}{logical indicating whether to include weights based on cell counts.}
+
+\item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
+
+\item{window.length}{A tuning parameter for controlling the level of concavity 
+when estimating concave windows.}
 
 \item{...}{Other options to pass to bootstrap.}
 }
