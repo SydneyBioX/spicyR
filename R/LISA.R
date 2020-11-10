@@ -327,8 +327,8 @@ inhomLocalL <-
     w <- den$v[cbind(np$row, np$col)]
     lam <- tapply(w,marks(X),sum)/area(X)
     w <- w*lam[marks(X)]
-    D <- tapply(1/w,marks(X),sum)/area(X)
-    p$wt <- 1/w[p$j]/w[p$i]/D[marks(X)[p$i]]*lam[marks(X)[p$i]]
+   # D <- tapply(1/w,marks(X),sum)/area(X)
+    p$wt <- 1/w[p$j]#/w[p$i]*lam[marks(X)[p$i]]
     rm(np)
     
     #p$wt <- 1/lam[marks(X)[p$j]]
