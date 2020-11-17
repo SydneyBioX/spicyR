@@ -266,22 +266,67 @@ generateCurves <-
   }
 
 #' @importFrom spatstat edge.Ripley nearest.valid.pixel area marks
-weightCounts <- function(dt, X) {
-  maxD <- as.numeric(as.character(dt$d[1]))
+weightCounts <- function(dt, X, maxD) {
+  maxD <- as.numeric(as.character(maxD))
   
   # edge correction
   e <- spatstat::edge.Ripley(X, rep(maxD, length(X$x)))
 
- lamPoint <- as.numeric(e)
-  rm(e)
+  n <- apply(table(spatstat::marks(X)),1,function(x)x)
+  A <- spatstat::area(X)
+  lam <- n/A
+  #V <- maxD^2/lam/pi
+  #V <- (1/4 - 1/64/(lam*pi*maxD^2))maxD^2/lam/pi
+  
+  
+  len = 300
+  lambda <- (seq(1,300,length.out = len)/100)^4
+  mL <- max(lambda)
+  
+  
+  V <- NULL
+  for(i in 1:len){
+    V[i] <- var(sqrt(rpois(10000,lambda[i]))  ) 
+  }
+  
+  lambda <- lambda^(1/4)
+  V <- V
+  
+  f <- loess(V~lambda,span = 0.1)
+  # plot(f,log = "xy")
+  # points(lambda, fitted(f), type = "l")
+  # lambda4 <- lambda^4
+  # points(lambda, lambda4 - 4*lambda4^2, type = "l", col = 2)
+  
+  lambda <- maxD^2*lam*pi
+  lambda <- lambda[marks(X)]/e
+  pred <- predict(f,lambda^(1/4))
+  pred[lambda < 0.001] = (lambda - 4*lambda^2)[lambda < 0.001]
+  pred[lambda > mL] = 0.25
+  
+  
+  
+  # 
+  # V <- lambda - c(2*lambda - 5/4*lambda^2)^2
+  # 
+  # 
+  # V <- (maxD^2*lam*pi - (maxD^2*lam*pi)^2)
+  # V[maxD^2*lam*pi>0.5] <- 0.25
+  # V <- V/lam/pi
+  
+  V <- pred/lam[marks(X)]/pi*e
+  
   
   # count and scale
-  mat <- dt[,-c(1, 2)]
-  mat <- sweep(mat, 1, lamPoint, "*")
-  mat <- sqrt(mat / pi)
-  mat[is.na(mat)] <- 0
-  mat <- (apply(mat, 2, function(x)
-    x) - maxD) / sqrt(maxD)
+  mat <- as.matrix(dt)
+  #rownames(mat) <- dt$i
+  # mat <- sweep(mat, 1, e, "*")
+  # mat <- sqrt(mat / pi)
+  # mat[is.na(mat)] <- 0
+  # mat <- sweep(mat-maxD, 1, sqrt(V), "/") 
+  
+  mat <- sweep(mat, 1, e, "*")
+  mat <- sweep(mat-pi*maxD^2, 1, sqrt(pi*maxD^2/lam[marks(X)]), "/")
   colnames(mat) <- paste(maxD, colnames(mat), sep = "_")
   mat
 }
@@ -292,7 +337,7 @@ inhomLocalL <-
   function (data,
             Rs = c(20, 50, 100, 200),
             sigma = 10000,
-            window = "square",
+            window = "convex",
             window.length = NULL,
             minLambda = 0.05) {
     ow <- makeWindow(data, window, window.length)
@@ -316,50 +361,73 @@ inhomLocalL <-
     
     p <- spatstat::closepairs(X, max(Rs), what = "ijd")
     n <- X$n
-    p$j <- p$j
-    p$i <- factor(p$i, seq_len(n))
+    p$j <- data$cellID[p$j]
+    p$i <- data$cellID[p$i]
+    
+    cT <- data$cellType
+    names(cT) <- data$cellID
     
     p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
     
     # inhom density
-    
+    cat(length(unique(p$i)),"\n",n,"\n", length(levels(p$i)),"\n")
     np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
     w <- den$v[cbind(np$row, np$col)]
-    lam <- table(marks(X))/area(X)
-    w <- w*as.numeric(lam[marks(X)])
-   # D <- tapply(1/w,marks(X),sum)/area(X)
-    p$wt <- 1/w[p$j]#/w[p$i]*lam[marks(X)[p$i]]
+    names(w) <- data$cellID
+    lam <- table(marks(X))/spatstat::area(X)
+    w <- w*as.numeric(lam[spatstat::marks(X)])
+    D <- tapply(1/w,marks(X),sum)/spatstat::area(X)
+    p$wt <- 1/w[p$j]#/D[cT[p$j]]#/w[p$i]*lam[marks(X)[p$i]]/D[marks(X)[p$i]]
     rm(np)
-    
-    p$j <- spatstat::marks(X)[p$j]
+  
+
+    p$j <- cT[p$j]
+    p$i <- factor(p$i, levels = data$cellID)
     
     #p$wt <- 1/lam[marks(X)[p$j]]
+    #p <- data.table::setDT(p)
     
-    p <- data.table::setDT(p)
-    r <- p[, N := sum(wt), by = .(i, j, d), drop = FALSE]
-    r <- r[,wt:=NULL]
-    r <- unique(r)
-    r <- data.table::dcast(r, i + d ~ j, value.var = "N", fill = 0)
-    r <-
-      data.table::melt(r,
-                       c("i", "d"),
-                       variable.name = "cellType",
-                       value.name = "N")
-    r <- data.table::dcast(r, i + cellType ~ d, value.var = "N", fill = 0)
-    r <-
-      data.table::melt(r,
-                       c("i", "cellType"),
-                       variable.name = "d",
-                       value.name = "N")
-    r <- r[, N := cumsum(N), by = list(i, cellType)]
-    r <-
-      data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
-    r <- split(r, r$d)
-    r <- lapply(r, weightCounts, X)
-    r <- do.call("cbind", r)
+    p <- as.data.frame(p)
+    xt <- xtabs(wt ~ i+j+d, p)
+    r <- NULL
+    for(i in dimnames(xt)$d){
+      r <- cbind(r, weightCounts(xt[,,i], X, i))
+    }
     
-    rownames(r) <- as.character(data$cellID)
-    r
+    
+    # p <- setkey(p, "i", "j", "d")
+    # r <- p[CJ(i, j, d, unique = TRUE)][, lapply(.SD, sum), by = .(i, j, d)][is.na(wt), wt := 0]
+    # message(r[1,])
+    # r <- data.table::dcast(r, i + d ~ j, value.var = "wt", fill = 0)
+    # r <- split(r, r$d)
+    # r <- lapply(r, weightCounts, X)
+    # r <- do.call("cbind", r)
+
+    
+    # 
+    # r <- p[, N := sum(wt), by = .(i, j, d), drop = FALSE]
+    # r <- r[,wt:=NULL]
+    # r <- unique(r)
+    # r <- data.table::dcast(r, i + d ~ j, value.var = "N", fill = 0)
+    # r <-
+    #   data.table::melt(r,
+    #                    c("i", "d"),
+    #                    variable.name = "cellType",
+    #                    value.name = "N")
+    # r <- data.table::dcast(r, i + cellType ~ d, value.var = "N", fill = 0)
+    # r <-
+    #   data.table::melt(r,
+    #                    c("i", "cellType"),
+    #                    variable.name = "d",
+    #                    value.name = "N")
+    # r <- r[, N := cumsum(N), by = list(i, cellType)]
+    # r <-
+    #   data.table::dcast(r, i + d ~ cellType, value.var = "N", fill = 0)
+    # r <- split(r, r$d)
+    # r <- lapply(r, weightCounts, X)
+    # r <- do.call("cbind", r)
+     # message("finish")
+     r[data$cellID,]
     
   }
 
