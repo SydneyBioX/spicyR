@@ -305,12 +305,12 @@ weightCounts <- function(dt, X, maxD, lam) {
   # edge correction
   e <- borderEdge(X, maxD)
   
-  lambda <- as.vector(e%*%t(maxD^2*lam*pi))
-  pred <- predict(fit,lambda^(1/4))
-  pred[lambda < 0.001] = (lambda - 4*lambda^2)[lambda < 0.001]
-  pred[lambda > mL^(1/4)] = 0.25
-  V <- e%*%t(maxD^2*lam*pi)
-  V[] <- pred
+  # lambda <- as.vector(e%*%t(maxD^2*lam*pi))
+  # pred <- predict(fit,lambda^(1/4))
+  # pred[lambda < 0.001] = (lambda - 4*lambda^2)[lambda < 0.001]
+  # pred[lambda > mL^(1/4)] = 0.25
+  # V <- e%*%t(maxD^2*lam*pi)
+  # V[] <- pred
   
   
   lambda <- as.vector(maxD^2*lam*pi)
