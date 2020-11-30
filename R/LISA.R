@@ -127,7 +127,7 @@ lisa <-
       curveList <-
         BiocParallel::bplapply(
           cellSummary,
-          inhomLocalL,
+          inhomLocalK,
           Rs = Rs,
           window = window,
           window.length = window.length,
@@ -283,19 +283,6 @@ sqrtVar <- function(x){
   f <- loess(V~lambda,span = 0.1)
 }
 
-#' @importFrom spatstat union.owin border inside.owin solapply intersect.owin area
-borderEdge <- function(X, maxD){
-  W <-X$window
-  bW <- spatstat::union.owin(spatstat::border(W,maxD, outside = FALSE),
-                             spatstat::border(W,2, outside = TRUE))
-  inB <- spatstat::inside.owin(X$x, X$y, bW)
-  circs <-spatstat:: discs(X[inB], maxD, separate = TRUE)
-  circs <- spatstat::solapply(circs, spatstat::intersect.owin, X$window)
-  areas <- unlist(lapply(circs, spatstat::area))/(pi*maxD^2)
-  e <- rep(1, X$n)
-  e[inB] <- areas
-  e
-}
 
 
 #' @importFrom spatstat nearest.valid.pixel area marks
@@ -328,7 +315,7 @@ weightCounts <- function(dt, X, maxD, lam) {
 
 #' @importFrom spatstat ppp closepairs density.ppp marks area
 #' @import data.table
-inhomLocalL <-
+inhomLocalK <-
   function (data,
             Rs = c(20, 50, 100, 200),
             sigma = 10000,
@@ -373,25 +360,60 @@ inhomLocalL <-
     rm(np)
     
     lam <- table(data$cellType)/spatstat::area(X)
+    
  
 
-    p$j <- cT[p$j]
+    p$cellTypeJ <- cT[p$j]
+    p$cellTypeI <- cT[p$i]
     p$i <- factor(p$i, levels = data$cellID)
+    
+  #  p$wt <- p$wt/as.numeric(lam[as.character(p$cellTypeJ)])
+    
+    edge <- sapply(Rs[-1],function(x)borderEdge(X,x))
+    edge <- as.data.frame(edge)
+    colnames(edge) <- Rs[-1]
+    edge$i <- data$cellID
+    edge <- tidyr::pivot_longer(edge,-i,"d")
+    
+    p <- dplyr::left_join(as.data.frame(p), edge, c("i", "d"))
+    p$d <- factor(p$d, levels = Rs[-1])
+  
     
 
     p <- as.data.frame(p)
 
-    xt <- xtabs(wt ~ i+j+d, p)
-    xt <- apply(xt, c(1,2), cumsum)
-    r <- NULL
-    for(i in dimnames(xt)$d){
-      r <- cbind(r, weightCounts(xt[i,,], X, i, lam))
-    }
-    
-    
+    r <- getK(p, lam)
     
 
     r[data$cellID,]
+    
+  }
+
+
+#' @importFrom data.table as.data.table setkey CJ
+getK <-
+  function (p, lam) {
+
+    r <- data.table::as.data.table(p)
+    r$wt <- r$wt
+    r <- r[,j:=NULL]
+    r <- r[,cellTypeI:=NULL]
+    data.table::setkey(r, i, d, cellTypeJ,value)
+    r <- r[data.table::CJ(i, d, cellTypeJ, unique = TRUE)
+    ][, lapply(.SD, sum), by = .(i, d, cellTypeJ,value)
+    ][is.na(wt), wt := 0]
+    r <- r[, wt := cumsum(wt), by = list(i, cellTypeJ)]
+    r$value[is.na(r$value)] <- 1
+    E <- as.numeric(as.character(r$d))^2*pi*r$value*as.numeric(lam[r$cellTypeJ])
+    r$wt <- (r$wt-E)/sqrt(E)
+    r <- r[,value:=NULL]
+    r <- dcast(r, i ~ d + cellTypeJ, value.var = 'wt')
+
+    r <- as.data.frame(r)
+    rownames(r) <- r$i
+    r <- r[,-1]
+    
+    r
     
   }
 

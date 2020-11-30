@@ -558,3 +558,94 @@ pppGenerate <- function(cells, window, window.length) {
     
     pppCell
 }
+
+
+
+
+inhomL <-
+    function (data,
+              Rs = c(20, 50, 100, 200),
+              sigma = 10000,
+              window = "convex",
+              window.length = NULL,
+              minLambda = 0.05) {
+        ow <- makeWindow(data, window, window.length)
+        X <-
+            spatstat::ppp(
+                x = data$x,
+                y = data$y,
+                window = ow,
+                marks = data$cellType
+            )
+        
+        if (is.null(Rs))
+            Rs = c(20, 50, 100, 200)
+        if (is.null(sigma))
+            sigma = 100000
+        
+        Rs <- unique(c(0, sort(Rs)))
+        
+        den <- spatstat::density.ppp(X, sigma = sigma)
+        den <- den / mean(den)
+        den$v <- pmax(den$v, minLambda)
+        
+        p <- spatstat::closepairs(X, max(Rs), what = "ijd")
+        n <- X$n
+        p$j <- data$cellID[p$j]
+        p$i <- data$cellID[p$i]
+        
+        cT <- data$cellType
+        names(cT) <- data$cellID
+        
+        p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
+        
+        # inhom density
+        np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
+        w <- den$v[cbind(np$row, np$col)]
+        names(w) <- data$cellID
+        p$wt <- 1/w[p$j]*mean(w)
+        rm(np)
+        
+        
+        
+        
+        lam <- table(data$cellType)/spatstat::area(X)
+        p$wt <- as.numeric(p$wt/lam[cT[p$j]])
+        
+        D <- tapply(w/lam[cT[data$cellID]], data$cellType, sum)
+        
+        p$cellTypeJ <- cT[p$j]
+        p$cellTypeI <- cT[p$i]
+        p$i <- factor(p$i, levels = data$cellID)
+        
+        
+        edge <- sapply(Rs[-1],function(x)borderEdge(X,x))
+        edge <- as.data.frame(edge)
+        colnames(edge) <- Rs[-1]
+        edge <- sweep(edge,1,lam[cT[data$cellID]],"/")
+        edge$i <- data$cellID
+        edge <- tidyr::pivot_longer(edge,-i,"d")
+        
+        p <- dplyr::left_join(as.data.frame(p), edge, c("i", "d"))
+        p$d <- factor(p$d, levels = Rs[-1])
+        
+        
+        library(data.table)
+        r <- as.data.table(p)
+        r$wt <- r$wt*r$value/area(X)
+        r <- r[,j:=NULL]
+        r <- r[,value:=NULL]
+        r <- r[,i:=NULL]
+        setkey(r, d, cellTypeI, cellTypeJ)
+        r <- r[CJ(d, cellTypeI, cellTypeJ, unique = TRUE)
+        ][, lapply(.SD, sum), by = .(d, cellTypeI, cellTypeJ)
+        ][is.na(wt), wt := 0]
+        r <- r[, wt := cumsum(wt), by = list(cellTypeI, cellTypeJ)]
+        r <- r[, list(wt=sum(sqrt(wt/pi))), by=.(cellTypeI, cellTypeJ)]
+        r$wt <- r$wt - sum(Rs)
+        
+        r <- as.data.frame(r)
+        
+        r
+        
+    }
