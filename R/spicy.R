@@ -406,13 +406,13 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         }
         
         
-        summary(mixed.lmer1)$coef[, "t value"]
+        lme4::fixef(mixed.lmer[[1]])
     }
     if(!is(mixed.lmer, "lmerMod"))return(NA)
     stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
     stats <- t(stats)
     fe <- lme4::fixef(mixed.lmer)
-    s1 <- sweep(stats,2,sign(summary(mixed.lmer)$coef[, "t value"]),"*")
+    s1 <- sweep(stats,2,sign(fe),"*")
     pval <- colMeans(s1 < 0, na.rm = TRUE)*2 #+ colMeans(sweep(s1,2,2*abs(summary(mixed.lmer)$coef[, "t value"]),">"))
     
     df <-
