@@ -22,6 +22,11 @@ spicy(
   weights = TRUE,
   window = "convex",
   window.length = NULL,
+  BPPARAM = BiocParallel::SerialParam(),
+  sigma = NULL,
+  Rs = NULL,
+  minLambda = 0.05,
+  fast = TRUE,
   ...
 )
 }
@@ -57,6 +62,17 @@ value of the L curve at dist.}
 
 \item{window.length}{A tuning parameter for controlling the level of concavity 
 when estimating concave windows.}
+
+\item{BPPARAM}{A BiocParallelParam object.}
+
+\item{sigma}{A numeric variable used for scaling when fitting inhomogeneous L-curves.}
+
+\item{Rs}{A vector of the radii that the measures of association should be calculated.}
+
+\item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
+
+\item{fast}{A logical describing whether to use a fast approximation of the 
+inhomogeneous L-curves.}
 
 \item{...}{Other options to pass to bootstrap.}
 }

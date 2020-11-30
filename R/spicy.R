@@ -51,6 +51,7 @@
 #' spicy
 #' spicy,spicy-method
 #' @importFrom mgcv gam ti
+#' @importFrom BiocParallel SerialParam
 spicy <- function(cells,
                   condition = NULL,
                   subject = NULL,
@@ -88,6 +89,11 @@ spicy <- function(cells,
     
     nCells <- table(imageID(cells), cellType(cells))
     
+    
+    m1 <- rep(from, times = length(to))
+    m2 <- rep(to, each = length(from))
+    labels <- paste(m1, m2, sep = "_")
+    
     ## Find pairwise associations
     
     if(fast){
@@ -105,9 +111,7 @@ spicy <- function(cells,
     }else{
     
     
-    m1 <- rep(from, times = length(to))
-    m2 <- rep(to, each = length(from))
-    labels <- paste(m1, m2, sep = "_")
+
     
     MoreArgs1 <- list(cells = cells, dist = dist, window = window, window.length = window.length, fast = FALSE)
     
@@ -185,7 +189,8 @@ spicy <- function(cells,
                 condition = condition,
                 covariates = covariates,
                 weightFunction = weightFunction,
-                cellCounts <- table(imageID(cells), cellType(cells))
+                cellCounts <- table(imageID(cells), cellType(cells)),
+                pheno <- as.data.frame(imagePheno(cells))
             )
         
         mixed.lmer <- mapply(
@@ -196,7 +201,13 @@ spicy <- function(cells,
             MoreArgs = MoreArgs2,
             SIMPLIFY = FALSE
         )
-        df <- cleanMEM(mixed.lmer, nsim)
+        
+        mixed.lmer <- lapply(mixed.lmer, function(x){
+            if(x@devcomp$cmp["REML"]==-Inf)return(NA)
+            x
+        })
+        
+        df <- cleanMEM(mixed.lmer, nsim, BPPARAM = BPPARAM)
     }
     
     
@@ -217,9 +228,10 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
         tBoot <- lapply(boot, function(coef) {
             if(length(coef)>1){
             coef <- as.data.frame(t(coef))
-            coef <- split(coef, c("coefficient", "se", "p.value"))
+            coef <-
+                split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA,  p.value = NA, se = NA)
+                coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
             }
             coef
             
@@ -253,13 +265,19 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
     df
 }
 
-cleanMEM <- function(mixed.lmer, nsim) {
+cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
     if (length(nsim) > 0) {
-        boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
+        boot <- BiocParallel::bplapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
         #p <- do.call(rbind, p)
         tBoot <- lapply(boot, function(coef) {
-            coef <- as.data.frame(t(coef))
-            coef <- split(coef, c("coefficient", "se", "p.value"))
+            if(length(coef)>1){
+                coef <- as.data.frame(t(coef))
+                coef <-
+                    split(coef, c("coefficient", "se", "statistic", "p.value"))
+            }else{
+                coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
+            }
+            coef
         })
         
         
@@ -272,11 +290,16 @@ cleanMEM <- function(mixed.lmer, nsim) {
         
     } else {
         tLmer <- lapply(mixed.lmer, function(lmer) {
+            if(is(lmer,"lmerMod")){
             coef <- as.data.frame(t(summary(lmer)$coef))
             coef <-
                 split(coef,
                       c("coefficient", "se", "df", "statistic", "p.value"))
-        })
+        }else{
+            coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
+        }
+            coef
+            })
         
         df <- apply(do.call(rbind, tLmer), 2, function(x)
             do.call(rbind, x))
@@ -304,8 +327,8 @@ cleanMEM <- function(mixed.lmer, nsim) {
 #' data("diabetesDataSub")
 #' pairAssoc <- getPairwise(diabetesDataSub)
 #' @export
-#' importFrom BiocParallel bplapply
-getPairwise <- function(cells, from, to, dist = NULL, window, window.length, Rs = NULL, sigma = NULL, minLambda = 0.05, fast = TRUE, BPPARAM=bpparam()) {
+#' @importFrom BiocParallel bplapply
+getPairwise <- function(cells, from, to, dist = NULL, window, window.length, Rs = NULL, sigma = NULL, minLambda = 0.05, fast = TRUE, BPPARAM=BiocParallel::SerialParam()) {
     cells2 <- cellSummary(cells, bind = FALSE)
     
     if(fast){
@@ -362,6 +385,7 @@ getStat <- function(cells, from, to, dist, window, window.length) {
 # Performs bootstrapping to estimate p-value.
 
 #' @importFrom lme4 fixef
+#' @importFrom lmerTest lmer
 #' @importFrom stats formula weights
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     functionToReplicate <- function(x) {
@@ -371,23 +395,31 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         spatialData <- x@frame[toGet,]
         spatialData$weights <- spatialData$`(weights)`
         
-        mixed.lmer1 <- lmer(formula(x),
-                           data = spatialData,
-                           weights = weights)
+        mixed.lmer1 <- tryCatch({lmerTest::lmer(formula(x),
+                                     data = spatialData,
+                                     weights = weights)},
+                               error = function(e) {
+                                   
+                               })
+        if (!is(mixed.lmer1,"lmerMod")) {
+            return(c(NA,NA))
+        }
+        
         
         summary(mixed.lmer1)$coef[, "t value"]
     }
-    
+    if(!is(mixed.lmer, "lmerMod"))return(NA)
     stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
     stats <- t(stats)
-    fe <- fixef(mixed.lmer)
+    fe <- lme4::fixef(mixed.lmer)
     s1 <- sweep(stats,2,sign(summary(mixed.lmer)$coef[, "t value"]),"*")
-    pval <- colMeans(s1 < 0)*2 #+ colMeans(sweep(s1,2,2*abs(summary(mixed.lmer)$coef[, "t value"]),">"))
+    pval <- colMeans(s1 < 0, na.rm = TRUE)*2 #+ colMeans(sweep(s1,2,2*abs(summary(mixed.lmer)$coef[, "t value"]),">"))
     
     df <-
         data.frame(
             coefficient = fe,
-            se = apply(stats, 2, stats::sd),
+            se = apply(stats, 2, stats::sd, na.rm = TRUE),
+            statistic = fe/apply(stats, 2, stats::sd, na.rm = TRUE),
             p.value = pval
         )
     df
@@ -421,7 +453,8 @@ spatialMEM <-
              condition,
              covariates,
              weightFunction,
-             cellCounts) {
+             cellCounts,
+             pheno) {
         
         spatAssoc[is.na(spatAssoc)] <- 0
 
@@ -432,7 +465,6 @@ spatialMEM <-
         # if (sum(filter) < 3)
         #     return(NA)
         
-        pheno <- as.data.frame(imagePheno(cells))
         spatialData <-
             data.frame(spatAssoc,
                        condition = pheno[, condition],
@@ -442,8 +474,8 @@ spatialMEM <-
         if (is.null(weightFunction)) {
             w <- rep(1, length(count1))
         } else{
-            z1 <- predict(weightFunction, data.frame(count1ToWeight = count1, 
-                                                     count2ToWeight = count2))
+            z1 <- predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
+                                                     count2ToWeight = as.numeric(count2)))
             w <- 1 / sqrt(z1 - min(z1) + 1)
             w <- w / sum(w)
         }
@@ -457,9 +489,16 @@ spatialMEM <-
                   sep = "+")
         spatialData$weights = w
         
-        mixed.lmer <- lmer(formula(formula),
+        mixed.lmer <- tryCatch({lmerTest::lmer(formula(formula),
                            data = spatialData,
-                           weights = weights)
+                           weights = weights)},
+                           error = function(e) {
+                               
+                           })
+        if (!is(mixed.lmer,"lmerMod")) {
+            return(NA)
+        }
+        
         mixed.lmer
     }
 
@@ -545,15 +584,11 @@ spatialLMBootstrap <- function(linearModels, nsim=19) {
     if(!is(linearModels, "lm"))return(NA)
     stats <- replicate(nsim, functionToReplicate(x = linearModels))
     
-    fe <- linearModels$coefficients[2]
+    df <- coef(summary(linearModels))
+    
     
     pval <- pmin(mean(stats < 0,na.rm = TRUE), mean(stats > 0, na.rm = TRUE), na.rm = TRUE) * 2
-    df <-
-        data.frame(
-            coefficient = fe,
-            se = sd(stats),
-            p.value = pval
-        )
+    df[2,4] <- pval
     df
 }
 
@@ -623,7 +658,7 @@ signifPlot <- function(results,
 #' @importFrom spatstat ppp
 pppGenerate <- function(cells, window, window.length) {
     ow <- makeWindow(cells, window, window.length)
-    pppCell <- ppp(
+    pppCell <- spatstat::ppp(
         cells$x,
         cells$y,
         window = ow,
@@ -700,7 +735,8 @@ inhomLPair <-
         p$i <- factor(p$i, levels = data$cellID)
         
         
-        edge <- sapply(Rs[-1],function(x)borderEdge(X,x))
+        edge <- sapply(Rs[-1],function(x)borderEdge(X,x), simplify = FALSE)
+        edge <- do.call("cbind",edge)
         edge <- as.data.frame(edge)
         colnames(edge) <- Rs[-1]
         edge$i <- data$cellID
@@ -708,8 +744,11 @@ inhomLPair <-
         
         p <- dplyr::left_join(as.data.frame(p), edge, c("i", "d"))
         p$d <- factor(p$d, levels = Rs[-1])
+        
+        use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
+        p <- p[use,]
     
-        r <- inhomL(p, lam, X)
+        r <- inhomL(p, lam, X, Rs)
         wt <- r$wt
         names(wt) <- paste(r$cellTypeI, r$cellTypeJ, sep = "_")
         
@@ -719,7 +758,7 @@ inhomLPair <-
         
         assoc <- rep(NA, length(labels))
         names(assoc) <- labels
-        assoc[names(wt)] <- wt
+        assoc <- wt[labels]
         
         
         assoc
@@ -727,10 +766,11 @@ inhomLPair <-
 
 
 #' @importFrom data.table as.data.table setkey CJ
+#' @importFrom spatstat area
 inhomL <-
-    function (p, lam, X) {
+    function (p, lam, X, Rs) {
         r <- data.table::as.data.table(p)
-        r$wt <- r$wt/r$value/as.numeric(lam[r$cellTypeJ])/as.numeric(lam[r$cellTypeI])/area(X)
+        r$wt <- r$wt/r$value/as.numeric(lam[r$cellTypeJ])/as.numeric(lam[r$cellTypeI])/spatstat::area(X)
         r <- r[,j:=NULL]
         r <- r[,value:=NULL]
         r <- r[,i:=NULL]
@@ -757,10 +797,13 @@ borderEdge <- function(X, maxD){
     bW <- spatstat::union.owin(spatstat::border(W,maxD, outside = FALSE),
                                spatstat::border(W,2, outside = TRUE))
     inB <- spatstat::inside.owin(X$x, X$y, bW)
+    e <- rep(1, X$n)
+    if(any(inB)){
     circs <-spatstat:: discs(X[inB], maxD, separate = TRUE)
     circs <- spatstat::solapply(circs, spatstat::intersect.owin, X$window)
     areas <- unlist(lapply(circs, spatstat::area))/(pi*maxD^2)
-    e <- rep(1, X$n)
     e[inB] <- areas
+    }
+    
     e
 }

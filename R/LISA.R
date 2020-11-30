@@ -154,7 +154,7 @@ makeWindow <-
       spatstat::owin(xrange = range(data$x), yrange = range(data$y))
     
     if (window == "convex") {
-      p <- ppp(data$x, data$y, ow)
+      p <- spatstat::ppp(data$x, data$y, ow)
       ow <- spatstat::convexhull(p)
       
     }
