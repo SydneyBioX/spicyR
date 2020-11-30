@@ -314,7 +314,8 @@ weightCounts <- function(dt, X, maxD, lam) {
 }
 
 #' @importFrom spatstat ppp closepairs density.ppp marks area
-#' @import data.table
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr left_join
 inhomLocalK <-
   function (data,
             Rs = c(20, 50, 100, 200),
