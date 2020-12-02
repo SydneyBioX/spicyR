@@ -138,6 +138,7 @@ lisa <-
     
     curves <- do.call("rbind", curveList)
     curves <- curves[as.character(cellSummary(cells)$cellID), ]
+    
     return(curves)
   }
 
@@ -337,7 +338,7 @@ inhomLocalK <-
     if (is.null(sigma))
       sigma = 100000
     
-    Rs <- unique(c(0, sort(Rs)))
+    Rs <- round(unique(c(0, sort(Rs))),3)
     
     den <- spatstat::density.ppp(X, sigma = sigma)
     den <- den / mean(den)
@@ -385,8 +386,7 @@ inhomLocalK <-
 
     r <- getK(p, lam)
     
-
-    r[data$cellID,]
+    as.matrix(r[data$cellID,])
     
   }
 
@@ -408,7 +408,7 @@ getK <-
     E <- as.numeric(as.character(r$d))^2*pi*r$value*as.numeric(lam[r$cellTypeJ])
     r$wt <- (r$wt-E)/sqrt(E)
     r <- r[,value:=NULL]
-    r <- dcast(r, i ~ d + cellTypeJ, value.var = 'wt')
+    r <- data.table::dcast(r, i ~ d + cellTypeJ, value.var = 'wt')
 
     r <- as.data.frame(r)
     rownames(r) <- r$i
