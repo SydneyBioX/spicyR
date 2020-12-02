@@ -391,7 +391,7 @@ inhomLocalK <-
   }
 
 
-#' @importFrom data.table as.data.table setkey CJ
+#' @importFrom data.table as.data.table setkey CJ dcast
 getK <-
   function (p, lam) {
 
