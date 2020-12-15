@@ -201,13 +201,14 @@ spicy <- function(cells,
             MoreArgs = MoreArgs2,
             SIMPLIFY = FALSE
         )
-        
+
         mixed.lmer <- lapply(mixed.lmer, function(x){
             if(x@devcomp$cmp["REML"]==-Inf)return(NA)
             x
         })
-        
+
         df <- cleanMEM(mixed.lmer, nsim, BPPARAM = BPPARAM)
+
     }
     
     
@@ -267,6 +268,7 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
 
 cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
     if (length(nsim) > 0) {
+
         boot <- BiocParallel::bplapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
         #p <- do.call(rbind, p)
         tBoot <- lapply(boot, function(coef) {
@@ -388,8 +390,8 @@ getStat <- function(cells, from, to, dist, window, window.length) {
 #' @importFrom lmerTest lmer
 #' @importFrom stats formula weights
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
+
     functionToReplicate <- function(x) {
-        
         toGet <- sample(nrow(x@frame), replace = TRUE)
         
         spatialData <- x@frame[toGet,]
@@ -405,8 +407,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
             return(c(NA,NA))
         }
         
-        
-        lme4::fixef(mixed.lmer[[1]])
+        summary(mixed.lmer1)$coef[, "t value"]
     }
     if(!is(mixed.lmer, "lmerMod"))return(NA)
     stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
