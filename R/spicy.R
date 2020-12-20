@@ -694,7 +694,9 @@ inhomLPair <-
         if (is.null(sigma))
             sigma = 100000
         
-        Rs <- unique(c(0, sort(Rs)))
+        maxR <- min(ow$xrange[2]- ow$xrange[1], ow$yrange[2]- ow$yrange[1])/2.01
+        
+        Rs <- unique(pmin(c(0, sort(Rs)),maxR))
         
         den <- spatstat::density.ppp(X, sigma = sigma)
         den <- den / mean(den)

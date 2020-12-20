@@ -10,6 +10,8 @@
 #' @param whichParallel Should the function use parallization on the imageID or 
 #' the cellType.
 #' @param sigma A numeric variable used for scaling when filting inhomogeneous L-curves.
+#' @param lisaFunc Either "K" or "L" curve.
+#' @param minLambda  Minimum value for density for scaling when fitting inhomogeneous L-curves.
 #' @param fast A logical describing whether to use a fast approximation of the 
 #' inhomogeneous local L-curves.
 #'
@@ -47,6 +49,8 @@ lisa <-
            window.length = NULL,
            whichParallel = 'imageID',
            sigma = NULL,
+           lisaFunc = "K",
+           minLambda = 0.05,
            fast = TRUE) {
     if (is.data.frame(cells)) {
       if (is.null(cells$cellID)) {
@@ -129,10 +133,12 @@ lisa <-
           cellSummary,
           inhomLocalK,
           Rs = Rs,
+          sigma = sigma,
           window = window,
           window.length = window.length,
-          BPPARAM = BPimage,
-          sigma = sigma
+          minLambda = minLambda,
+          lisaFunc = lisaFunc,
+          BPPARAM = BPimage
         )
     }
     
@@ -323,7 +329,9 @@ inhomLocalK <-
             sigma = 10000,
             window = "convex",
             window.length = NULL,
-            minLambda = 0.05) {
+            minLambda = 0.05,
+            lisaFunc = "K") {
+
     ow <- makeWindow(data, window, window.length)
     X <-
       spatstat::ppp(
@@ -358,7 +366,7 @@ inhomLocalK <-
     np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
     w <- den$v[cbind(np$row, np$col)]
     names(w) <- data$cellID
-    p$wt <- 1/w[p$j]
+    p$wt <- 1/w[p$j]*mean(w)
     rm(np)
     
     lam <- table(data$cellType)/spatstat::area(X)
@@ -368,8 +376,6 @@ inhomLocalK <-
     p$cellTypeJ <- cT[p$j]
     p$cellTypeI <- cT[p$i]
     p$i <- factor(p$i, levels = data$cellID)
-    
-  #  p$wt <- p$wt/as.numeric(lam[as.character(p$cellTypeJ)])
     
     edge <- sapply(Rs[-1],function(x)borderEdge(X,x))
     edge <- as.data.frame(edge)
@@ -384,7 +390,12 @@ inhomLocalK <-
 
     p <- as.data.frame(p)
 
-    r <- getK(p, lam)
+    if(lisaFunc == "K"){
+      r <- getK(p, lam)
+    }
+    if(lisaFunc == "L"){
+      r <- getL(p, lam)
+    }
     
     as.matrix(r[data$cellID,])
     
@@ -410,6 +421,34 @@ getK <-
     r <- r[,value:=NULL]
     r <- data.table::dcast(r, i ~ d + cellTypeJ, value.var = 'wt')
 
+    r <- as.data.frame(r)
+    rownames(r) <- r$i
+    r <- r[,-1]
+    
+    r
+    
+  }
+
+
+#' @importFrom data.table as.data.table setkey CJ dcast
+getL <-
+  function (p, lam) {
+    
+    r <- data.table::as.data.table(p)
+    r$wt <- r$wt
+    r <- r[,j:=NULL]
+    r <- r[,cellTypeI:=NULL]
+    data.table::setkey(r, i, d, cellTypeJ,value)
+    r <- r[data.table::CJ(i, d, cellTypeJ, unique = TRUE)
+    ][, lapply(.SD, sum), by = .(i, d, cellTypeJ,value)
+    ][is.na(wt), wt := 0]
+    r <- r[, wt := cumsum(wt), by = list(i, cellTypeJ)]
+    r$value[is.na(r$value)] <- 1
+    E <- as.numeric(as.character(r$d))^2*pi*r$value*as.numeric(lam[r$cellTypeJ])
+    r$wt <- sqrt(r$wt)-sqrt(E)
+    r <- r[,value:=NULL]
+    r <- data.table::dcast(r, i ~ d + cellTypeJ, value.var = 'wt')
+    
     r <- as.data.frame(r)
     rownames(r) <- r$i
     r <- r[,-1]

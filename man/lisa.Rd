@@ -12,6 +12,8 @@ lisa(
   window.length = NULL,
   whichParallel = "imageID",
   sigma = NULL,
+  lisaFunc = "K",
+  minLambda = 0.05,
   fast = TRUE
 )
 }
@@ -32,6 +34,10 @@ when estimating concave windows.}
 the cellType.}
 
 \item{sigma}{A numeric variable used for scaling when filting inhomogeneous L-curves.}
+
+\item{lisaFunc}{Either "K" or "L" curve.}
+
+\item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 
 \item{fast}{A logical describing whether to use a fast approximation of the 
 inhomogeneous local L-curves.}
