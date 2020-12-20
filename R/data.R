@@ -6,17 +6,17 @@
 #' The object contains single-cell data of 160 images from 8 subjects, 
 #' with 20 images per subject.
 #'
-#' @format diabetesDataSub a SegmentedCells object
+#' @format diabetesData a SegmentedCells object
 #' @aliases 
-#' diabetesDataSub
-"diabetesDataSub"
+#' diabetesData
+"diabetesData"
 
 
 
-#' Results from spicy for diabetesDataSub
+#' Results from spicy for diabetesData
 #'
 #' Results from the call:
-#' spicyTest <- spicy(diabetesDataSub, 
+#' spicyTest <- spicy(diabetesData, 
 #'                    condition = "condition", 
 #'                    subject = "subject")
 #'
@@ -27,10 +27,10 @@
 
 
 
-#' Results from spicy with bootstrap for diabetesDataSub
+#' Results from spicy with bootstrap for diabetesData
 #'
 #' Results from the call:
-#' spicyTestBootstrap <- spicy(diabetesDataSub, 
+#' spicyTestBootstrap <- spicy(diabetesData, 
 #'                            condition = "condition", 
 #'                            subject = "subject", 
 #'                            nsim = 199)
