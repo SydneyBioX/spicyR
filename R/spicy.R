@@ -696,10 +696,6 @@ inhomLPair <-
             sigma = 100000
         
         maxR <- min(ow$xrange[2]- ow$xrange[1], ow$yrange[2]- ow$yrange[1])/2.01
-<<<<<<< HEAD
-        
-=======
->>>>>>> 85f3a9f59b093a32284d0d0fa05a52121470f98d
         Rs <- unique(pmin(c(0, sort(Rs)),maxR))
         
         den <- spatstat::density.ppp(X, sigma = sigma)

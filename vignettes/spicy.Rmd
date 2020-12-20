@@ -65,8 +65,13 @@ and cell type (`cellType`) of each cell and the image it belongs to (`imageID`).
 `imagePheno()` returns a `tibble` object providing the corresponding subject 
 (`subject`) and condition (`condition`) for each image.
 
-```{r message=FALSE}
-data("diabetesData.rda")
+
+
+
+
+
+```{r}
+data("diabetesData")
 diabetesData
 cellSummary(diabetesData)
 imagePheno(diabetesData)
@@ -85,7 +90,7 @@ between the obtained function and the theoretical function is used as a measure
 for the level of colocalisation. Differences of this statistic between two 
 conditions is modelled using a weighted mixed effects model, with condition as 
 the fixed effect and subject as the random effect.
-
+spicyTestBootstrap
 ## Testing for change in colocalisation for a specific pair of cells
 
 Firstly, we can see whether one cell type tends to be around another cell type 
@@ -118,6 +123,10 @@ types by excluding the `from` and `to` parameters from `spicy()`.
 spicyTest <- spicy(diabetesData, 
                    condition = "stage", 
                    subject = "case")
+```
+
+```{r}
+data("spicyTest")
 ```
 
 
