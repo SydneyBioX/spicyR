@@ -31,21 +31,21 @@
 #' @export
 #'
 #' @examples
-#' data("diabetesDataSub")
+#' data("diabetesData")
 #'
 #' # Test with random effect for patient on only one pairwise combination of cell types.
-#' spicy(diabetesDataSub, condition = "condition", subject = "subject", 
+#' spicy(diabetesData, condition = "condition", subject = "subject", 
 #'       from = "Tc", to = "Th")
 #' 
 #' # Test all pairwise combination of cell types without random effect of patient.
-#' #spicyTest <- spicy(diabetesDataSub, condition = "condition")
+#' #spicyTest <- spicy(diabetesData, condition = "condition")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient.
-#' #spicy(diabetesDataSub, condition = "condition", subject = "subject")
+#' #spicy(diabetesData, condition = "condition", subject = "subject")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient using 
 #' # a bootstrap to calculate significance.
-#' #spicy(diabetesDataSub, condition = "condition", subject = "subject", nsim = 10000)
+#' #spicy(diabetesData, condition = "condition", subject = "subject", nsim = 10000)
 #' 
 #' @aliases
 #' spicy
@@ -326,8 +326,8 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #'
 #'
 #' @examples
-#' data("diabetesDataSub")
-#' pairAssoc <- getPairwise(diabetesDataSub)
+#' data("diabetesData")
+#' pairAssoc <- getPairwise(diabetesData)
 #' @export
 #' @importFrom BiocParallel bplapply
 getPairwise <- function(cells, from, to, dist = NULL, window, window.length, Rs = NULL, sigma = NULL, minLambda = 0.05, fast = TRUE, BPPARAM=BiocParallel::SerialParam()) {
