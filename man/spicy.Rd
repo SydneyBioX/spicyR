@@ -83,20 +83,20 @@ Data frame of p-values.
 Performs spatial tests on spatial cytometry data.
 }
 \examples{
-data("diabetesDataSub")
+data("diabetesData")
 
 # Test with random effect for patient on only one pairwise combination of cell types.
-spicy(diabetesDataSub, condition = "condition", subject = "subject", 
+spicy(diabetesData, condition = "stage", subject = "case", 
       from = "Tc", to = "Th")
 
 # Test all pairwise combination of cell types without random effect of patient.
-#spicyTest <- spicy(diabetesDataSub, condition = "condition")
+#spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
 
 # Test all pairwise combination of cell types with random effect of patient.
-#spicy(diabetesDataSub, condition = "condition", subject = "subject")
+#spicy(diabetesData, condition = "condition", subject = "subject")
 
 # Test all pairwise combination of cell types with random effect of patient using 
 # a bootstrap to calculate significance.
-#spicy(diabetesDataSub, condition = "condition", subject = "subject", nsim = 10000)
+#spicy(diabetesData, condition = "stage", subject = "case", nsim = 10000)
 
 }

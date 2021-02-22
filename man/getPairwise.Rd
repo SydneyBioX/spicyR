@@ -6,10 +6,10 @@
 \usage{
 getPairwise(
   cells,
-  from,
-  to,
+  from = unique(cellType(cells)),
+  to = unique(cellType(cells)),
   dist = NULL,
-  window,
+  window = "convex",
   window.length,
   Rs = NULL,
   sigma = NULL,
@@ -27,6 +27,22 @@ variables x and y, giving the location coordinates of each cell, and cellType.}
 \item{to}{The 'to' cellType for generating the L curve.}
 
 \item{dist}{The distance at which the statistic is obtained.}
+
+\item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
+
+\item{window.length}{A tuning parameter for controlling the level of concavity 
+when estimating concave windows.}
+
+\item{Rs}{A vector of the radii that the measures of association should be calculated.}
+
+\item{sigma}{A numeric variable used for scaling when fitting inhomogeneous L-curves.}
+
+\item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
+
+\item{fast}{A logical describing whether to use a fast approximation of the 
+inhomogeneous L-curves.}
+
+\item{BPPARAM}{A BiocParallelParam object.}
 }
 \value{
 Statistic from pairwise L curve of a single image.
@@ -35,6 +51,6 @@ Statistic from pairwise L curve of a single image.
 Get statistic from pairwise L curve of a single image.
 }
 \examples{
-data("diabetesDataSub")
-pairAssoc <- getPairwise(diabetesDataSub)
+data("diabetesData")
+pairAssoc <- getPairwise(diabetesData)
 }

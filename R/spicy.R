@@ -34,18 +34,18 @@
 #' data("diabetesData")
 #'
 #' # Test with random effect for patient on only one pairwise combination of cell types.
-#' spicy(diabetesData, condition = "condition", subject = "subject", 
+#' spicy(diabetesData, condition = "stage", subject = "case", 
 #'       from = "Tc", to = "Th")
 #' 
 #' # Test all pairwise combination of cell types without random effect of patient.
-#' #spicyTest <- spicy(diabetesData, condition = "condition")
+#' #spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient.
 #' #spicy(diabetesData, condition = "condition", subject = "subject")
 #'
 #' # Test all pairwise combination of cell types with random effect of patient using 
 #' # a bootstrap to calculate significance.
-#' #spicy(diabetesData, condition = "condition", subject = "subject", nsim = 10000)
+#' #spicy(diabetesData, condition = "stage", subject = "case", nsim = 10000)
 #' 
 #' @aliases
 #' spicy
@@ -321,6 +321,15 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
 #' @param dist The distance at which the statistic is obtained.
+#' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
+#' @param window.length A tuning parameter for controlling the level of concavity 
+#' when estimating concave windows.
+#' @param Rs A vector of the radii that the measures of association should be calculated.
+#' @param sigma A numeric variable used for scaling when fitting inhomogeneous L-curves.
+#' @param minLambda Minimum value for density for scaling when fitting inhomogeneous L-curves.
+#' @param fast A logical describing whether to use a fast approximation of the 
+#' inhomogeneous L-curves.
+#' @param BPPARAM A BiocParallelParam object.
 #'
 #' @return Statistic from pairwise L curve of a single image.
 #'
@@ -330,7 +339,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' pairAssoc <- getPairwise(diabetesData)
 #' @export
 #' @importFrom BiocParallel bplapply
-getPairwise <- function(cells, from, to, dist = NULL, window, window.length, Rs = NULL, sigma = NULL, minLambda = 0.05, fast = TRUE, BPPARAM=BiocParallel::SerialParam()) {
+getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellType(cells)), dist = NULL, window = "convex", window.length, Rs = NULL, sigma = NULL, minLambda = 0.05, fast = TRUE, BPPARAM=BiocParallel::SerialParam()) {
     cells2 <- cellSummary(cells, bind = FALSE)
     
     if(fast){
@@ -557,7 +566,7 @@ spatialLM <-
         lm1
     }
 
-#' @importFrom stats sd
+#' @importFrom stats sd coef
 spatialLMBootstrap <- function(linearModels, nsim=19) {
     functionToReplicate <- function(x) {
         
@@ -767,7 +776,7 @@ inhomLPair <-
     }
 
 
-#' @importFrom data.table as.data.table setkey CJ
+#' @importFrom data.table as.data.table setkey CJ .SD ":="
 #' @importFrom spatstat area
 inhomL <-
     function (p, lam, X, Rs) {

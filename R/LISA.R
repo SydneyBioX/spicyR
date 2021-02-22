@@ -41,6 +41,7 @@
 #' @importFrom BiocParallel SerialParam bplapply
 #' @importFrom S4Vectors DataFrame
 #' @importFrom BiocGenerics do.call rbind
+#' @importFrom dplyr bind_rows
 lisa <-
   function(cells,
            Rs = NULL,
@@ -98,7 +99,7 @@ lisa <-
       # range <- max(loc$x) - min(loc$x)
       # maxR <- range / 5
       # Rs = seq(from = maxR / 20, maxR, length.out = 20)
-      Rs = c(20, 50, 100, 200)
+      Rs = c(20, 50, 100)
     }
     
     BPimage = BPcellType = BiocParallel::SerialParam()
@@ -142,7 +143,9 @@ lisa <-
         )
     }
     
-    curves <- do.call("rbind", curveList)
+    curvelist <- lapply(curveList, as.data.frame)
+    curves <- as.matrix(bind_rows(curvelist))
+    rownames(curves) <- as.character(cellSummary(cells)$cellID)
     curves <- curves[as.character(cellSummary(cells)$cellID), ]
     
     return(curves)
@@ -272,7 +275,7 @@ generateCurves <-
     do.call("cbind", locIJ)
   }
 
-#' @importFrom stats loess
+#' @importFrom stats loess rpois var
 sqrtVar <- function(x){
   len = 1000
   lambda <- (seq(1,300,length.out = len)/100)^x
@@ -403,7 +406,7 @@ inhomLocalK <-
   }
 
 
-#' @importFrom data.table as.data.table setkey CJ dcast
+#' @importFrom data.table as.data.table setkey CJ dcast .SD ":="
 getK <-
   function (p, lam) {
 
@@ -431,7 +434,7 @@ getK <-
   }
 
 
-#' @importFrom data.table as.data.table setkey CJ dcast
+#' @importFrom data.table as.data.table setkey CJ dcast .SD ":="
 getL <-
   function (p, lam) {
     

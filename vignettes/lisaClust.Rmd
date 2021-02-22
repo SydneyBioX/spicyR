@@ -105,7 +105,7 @@ cell-type.
 
 ```{r}
 
-lisaCurves <- lisa(cellExp)
+lisaCurves <- lisa(cellExp, Rs = c(20, 50, 100))
 
 ```
 
