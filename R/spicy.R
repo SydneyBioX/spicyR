@@ -634,9 +634,9 @@ signifPlot <- function(results,
     
     if (is.null(marksToPlot)) marksToPlot <- marks
     
-    if (min(pVal) == 0) {
+    if (min(pVal,na.rm=TRUE) == 0) {
         pVal[pVal == 0] <-
-            pVal[pVal == 0] + 10 ^ floor(log10(min(pVal[pVal > 0])))
+            pVal[pVal == 0] + 10 ^ floor(log10(min(pVal[pVal > 0],na.rm = TRUE)))
     }
     
     if (fdr) {
