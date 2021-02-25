@@ -222,6 +222,7 @@ spicy <- function(cells,
     df
 }
 
+#' @importFrom dplyr bind_rows
 cleanLM <- function(linearModels, nsim,  BPPARAM) {
     if (length(nsim) > 0) {
         boot <- bplapply(linearModels, spatialLMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
@@ -256,9 +257,11 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
             coef
         })
         
-        df <- apply(do.call(rbind, tLm), 2, function(x)
-            do.call(rbind, x))
+        df <- apply(do.call(rbind, tLm), 2, function(x){
+            x[is.na(x)] <- list(data.frame(`(Intercept)`=NA, check.names=FALSE))
+            dplyr::bind_rows(x)})
         df <- lapply(df, function(x) {
+            x <- as.data.frame(x)
             rownames(x) <- names(linearModels)
             x
         })
