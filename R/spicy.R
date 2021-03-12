@@ -349,7 +349,7 @@ getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellT
         pairwiseVals <- BiocParallel::bplapply(cells2,
                                inhomLPair,
                                Rs = c(20, 50),
-                               sigma = 10000,
+                               sigma = sigma,
                                window = window,
                                window.length = window.length,
                                minLambda = minLambda,
@@ -773,7 +773,7 @@ inhomLPair <-
         assoc <- rep(NA, length(labels))
         names(assoc) <- labels
         assoc <- wt[labels]
-        
+        names(assoc) <- labels
         
         assoc
     }
