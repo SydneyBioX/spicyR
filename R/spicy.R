@@ -457,6 +457,7 @@ setMethod("show", signature(object = "SpicyResults"), function(object) {
 
 #' @importFrom lmerTest lmer
 #' @importFrom stats predict weights
+#' @importFrom methods is
 spatialMEM <-
     function(spatAssoc,
              from,
@@ -667,6 +668,62 @@ signifPlot <- function(results,
     
     heatmap
 }
+
+###########################
+#
+#  Generate distances
+#
+###########################
+
+
+#' @importFrom spatstat owin convexhull
+#' @importFrom concaveman concaveman
+makeWindow <-
+    function(data,
+             window = "square",
+             window.length = NULL) {
+        data = data.frame(data)
+        ow <-
+            spatstat::owin(xrange = range(data$x), yrange = range(data$y))
+        
+        if (window == "convex") {
+            p <- spatstat::ppp(data$x, data$y, ow)
+            ow <- spatstat::convexhull(p)
+            
+        }
+        if (window == "concave") {
+            message("Concave windows are temperamental. Try choosing values of window.length > and < 1 if you have problems.")
+            if(is.null(window.length)){
+                window.length <- (max(data$x) - min(data$x))/20
+            }else{
+                window.length <- (max(data$x) - min(data$x))/20 * window.length
+            }
+            dist <- (max(data$x) - min(data$x)) / (length(data$x))
+            bigDat <-
+                do.call("rbind", lapply(as.list(as.data.frame(t(data[, c("x", "y")]))), function(x)
+                    cbind(
+                        x[1] + c(0, 1, 0,-1,-1, 0, 1,-1, 1) * dist,
+                        x[2] + c(0, 1, 1, 1,-1,-1,-1, 0, 0) * dist
+                    )))
+            ch <-
+                concaveman::concaveman(bigDat,
+                                       length_threshold = window.length,
+                                       concavity = 1)
+            poly <- as.data.frame(ch[nrow(ch):1, ])
+            colnames(poly) <- c("x", "y")
+            ow <-
+                spatstat::owin(
+                    xrange = range(poly$x),
+                    yrange = range(poly$y),
+                    poly = poly
+                )
+            
+        }
+        ow
+    }
+
+
+
 
 #' @importFrom spatstat ppp
 pppGenerate <- function(cells, window, window.length) {

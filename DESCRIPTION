@@ -16,8 +16,8 @@ Encoding: UTF-8
 Depends: R (>= 4.0.0)
 VignetteBuilder: knitr
 BugReports: https://github.com/ellispatrick/spicyR/issues
-Imports: ggplot2, class, concaveman, grid, BiocParallel, spatstat, lmerTest, 
+Imports: ggplot2, concaveman, BiocParallel, spatstat, lmerTest, 
         BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
-        purrr, rlang, grDevices, IRanges, stats, data.table, dplyr, tidyr
+        rlang, grDevices, IRanges, stats, data.table, dplyr, tidyr
 Suggests: BiocStyle, knitr, rmarkdown
 RoxygenNote: 7.1.1

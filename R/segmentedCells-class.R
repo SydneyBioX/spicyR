@@ -288,7 +288,7 @@ as.data.frame.SegmentedCells <- function(x, ...) {
     morph <- cellMorph(x)
     pheno <- imagePheno(x, expand = TRUE)
     pheno <- pheno[!colnames(pheno) %in% "imageID"]
-    if("region"%in%names(x))loc <- region(x, annot = TRUE)
+#    if("region"%in%names(x))loc <- lisaClust::region(x, annot = TRUE)
     
     if (length(colnames(int)) > 0)
         colnames(int) <- paste("intensity", colnames(int), sep = "_")

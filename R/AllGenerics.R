@@ -100,8 +100,6 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @usage cellType(x, imageID = NULL)
 #' @usage cellType(x, imageID = NULL) <- value
 #' @usage filterCells(x, select)
-#' @usage region(x, imageID = NULL, annot = FALSE)
-#' @usage region(x, imageID = NULL) <- value
 #' @usage cellAnnotation(x, variable, imageID = NULL)
 #' @usage cellAnnotation(x, variable, imageID = NULL) <- value
 
@@ -113,7 +111,6 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @param value The relevant information used to replace.
 #' @param select A logical vector of the cells to be kept.
 #' @param variable A variable to add or retrieve from cellSummary.
-#' @param annot Add cell annotation when selecting region information.
 #'
 #' @section Descriptions:
 #' \describe{
@@ -205,10 +202,7 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' cellID
 #' cellID<-
 #' filterCells
-#' region,SegmentedCells-method
-#' region<-,SegmentedCells-method
-#' region
-#' region<-
+
 
 
 ### Get cellSummary information for each cell.
@@ -580,57 +574,3 @@ setMethod("filterCells", "SegmentedCells", function(x, select) {
     x
 })
 
-
-################################################################################
-#
-# Generics for lisa
-#
-################################################################################
-
-
-
-### Get regions information
-
-#' @export
-#' @importFrom BiocGenerics do.call rbind
-setGeneric("region", function(x, imageID = NULL, annot = FALSE)
-    standardGeneric("region"))
-setMethod("region", "SegmentedCells", function(x, imageID = NULL, annot = FALSE) {
-    if (!is.null(imageID)) {
-        x <- x[imageID,]
-    }
-    if (is.null(x$region))
-        stop("There is no region information in your SegmentedCells yet")
-    if (annot)
-        return(data.frame(cellSummary(x), region = BiocGenerics::do.call("rbind", x$region)))
-    
-    BiocGenerics::do.call("rbind", x$region)
-})
-
-
-
-
-#' @export
-#' @importFrom S4Vectors DataFrame split
-setGeneric("region<-", function(x, imageID = NULL, value)
-    standardGeneric("region<-"))
-setReplaceMethod("region", "SegmentedCells", function(x, imageID = NULL, value) {
-    if (is.null(imageID))
-        imageID <- rownames(x)
-    if (length(value) == length(imageID(x, imageID))) {
-        if (is.null(x$region)) {
-            x <- DataFrame(x)
-            by <- rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
-            by <- factor(by, levels = unique(by))
-            x$region <-
-                S4Vectors::split(DataFrame(region = value), by)
-            x <- new("SegmentedCells", x)
-        }
-        if (!is.null(x$region))
-            by <- rep(rownames(x), unlist(lapply(x$cellSummary, nrow)))
-        by <- factor(by, levels = unique(by))
-        value <- S4Vectors::split(DataFrame(region = value), by)
-        x <- .putData(x, "region", value, imageID)
-    }
-    x
-})
