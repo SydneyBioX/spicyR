@@ -371,12 +371,12 @@ getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellT
 }
 
 
-#' @importFrom spatstat Lcross
+#' @importFrom spatstat.core Lcross
 getStat <- function(cells, from, to, dist, window, window.length) {
     pppCell <- pppGenerate(cells, window, window.length)
     
     L <- tryCatch({
-        Lcross(pppCell,
+        spatstat.core::Lcross(pppCell,
                from = from,
                to = to,
                correction = "best")
@@ -676,7 +676,7 @@ signifPlot <- function(results,
 ###########################
 
 
-#' @importFrom spatstat owin convexhull
+#' @importFrom spatstat.geom owin convexhull ppp
 #' @importFrom concaveman concaveman
 makeWindow <-
     function(data,
@@ -684,11 +684,11 @@ makeWindow <-
              window.length = NULL) {
         data = data.frame(data)
         ow <-
-            spatstat::owin(xrange = range(data$x), yrange = range(data$y))
+            spatstat.geom::owin(xrange = range(data$x), yrange = range(data$y))
         
         if (window == "convex") {
-            p <- spatstat::ppp(data$x, data$y, ow)
-            ow <- spatstat::convexhull(p)
+            p <- spatstat.geom::ppp(data$x, data$y, ow)
+            ow <- spatstat.geom::convexhull(p)
             
         }
         if (window == "concave") {
@@ -712,7 +712,7 @@ makeWindow <-
             poly <- as.data.frame(ch[nrow(ch):1, ])
             colnames(poly) <- c("x", "y")
             ow <-
-                spatstat::owin(
+                spatstat.geom::owin(
                     xrange = range(poly$x),
                     yrange = range(poly$y),
                     poly = poly
@@ -725,10 +725,10 @@ makeWindow <-
 
 
 
-#' @importFrom spatstat ppp
+#' @importFrom spatstat.geom ppp
 pppGenerate <- function(cells, window, window.length) {
     ow <- makeWindow(cells, window, window.length)
-    pppCell <- spatstat::ppp(
+    pppCell <- spatstat.geom::ppp(
         cells$x,
         cells$y,
         window = ow,
@@ -740,7 +740,8 @@ pppGenerate <- function(cells, window, window.length) {
 
 
 
-#' @importFrom spatstat ppp density.ppp closepairs nearest.valid.pixel area
+#' @importFrom spatstat.core density.ppp
+#' @importFrom spatstat.geom closepairs nearest.valid.pixel area ppp
 #' @importFrom tidyr pivot_longer
 #' @importFrom dplyr left_join
 inhomLPair <- 
@@ -752,7 +753,7 @@ inhomLPair <-
               minLambda = 0.05, from = NULL, to = NULL) {
         ow <- makeWindow(data, window, window.length)
         X <-
-            spatstat::ppp(
+            spatstat.geom::ppp(
                 x = data$x,
                 y = data$y,
                 window = ow,
@@ -767,7 +768,7 @@ inhomLPair <-
         maxR <- min(ow$xrange[2]- ow$xrange[1], ow$yrange[2]- ow$yrange[1])/2.01
         Rs <- unique(pmin(c(0, sort(Rs)),maxR))
         
-        den <- spatstat::density.ppp(X, sigma = sigma)
+        den <- spatstat.core::density.ppp(X, sigma = sigma)
         den <- den / mean(den)
         den$v <- pmax(den$v, minLambda)
         
@@ -779,7 +780,7 @@ inhomLPair <-
         X <- X[use,]
         
         
-        p <- spatstat::closepairs(X, max(Rs), what = "ijd")
+        p <- spatstat.geom::closepairs(X, max(Rs), what = "ijd")
         n <- X$n
         p$j <- data$cellID[p$j]
         p$i <- data$cellID[p$i]
@@ -790,14 +791,14 @@ inhomLPair <-
         p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
         
         # inhom density
-        np <- spatstat::nearest.valid.pixel(X$x, X$y, den)
+        np <- spatstat.geom::nearest.valid.pixel(X$x, X$y, den)
         w <- den$v[cbind(np$row, np$col)]
         names(w) <- data$cellID
         p$wt <- 1/w[p$j]*mean(w)
         rm(np)
         
         
-        lam <- table(data$cellType)/spatstat::area(X)
+        lam <- table(data$cellType)/spatstat.geom::area(X)
        # p$wt <- as.numeric(p$wt/lam[cT[p$j]])
         
    
@@ -837,11 +838,11 @@ inhomLPair <-
 
 
 #' @importFrom data.table as.data.table setkey CJ .SD ":="
-#' @importFrom spatstat area
+#' @importFrom spatstat.geom area
 inhomL <-
     function (p, lam, X, Rs) {
         r <- data.table::as.data.table(p)
-        r$wt <- r$wt/r$value/as.numeric(lam[r$cellTypeJ])/as.numeric(lam[r$cellTypeI])/spatstat::area(X)
+        r$wt <- r$wt/r$value/as.numeric(lam[r$cellTypeJ])/as.numeric(lam[r$cellTypeI])/spatstat.geom::area(X)
         r <- r[,j:=NULL]
         r <- r[,value:=NULL]
         r <- r[,i:=NULL]
@@ -862,17 +863,17 @@ inhomL <-
 
 
 
-#' @importFrom spatstat union.owin border inside.owin solapply intersect.owin area
+#' @importFrom spatstat.geom union.owin border inside.owin solapply intersect.owin area discs
 borderEdge <- function(X, maxD){
     W <-X$window
-    bW <- spatstat::union.owin(spatstat::border(W,maxD, outside = FALSE),
-                               spatstat::border(W,2, outside = TRUE))
-    inB <- spatstat::inside.owin(X$x, X$y, bW)
+    bW <- spatstat.geom::union.owin(spatstat.geom::border(W,maxD, outside = FALSE),
+                               spatstat.geom::border(W,2, outside = TRUE))
+    inB <- spatstat.geom::inside.owin(X$x, X$y, bW)
     e <- rep(1, X$n)
     if(any(inB)){
-    circs <-spatstat:: discs(X[inB], maxD, separate = TRUE)
-    circs <- spatstat::solapply(circs, spatstat::intersect.owin, X$window)
-    areas <- unlist(lapply(circs, spatstat::area))/(pi*maxD^2)
+    circs <-spatstat.geom:: discs(X[inB], maxD, separate = TRUE)
+    circs <- spatstat.geom::solapply(circs, spatstat.geom::intersect.owin, X$window)
+    areas <- unlist(lapply(circs, spatstat.geom::area))/(pi*maxD^2)
     e[inB] <- areas
     }
     
