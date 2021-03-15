@@ -8,7 +8,7 @@ Authors@R: c(person("Nicolas", "Canete", email = "nicolas.canete@sydney.edu.au",
     role = c("aut", "cre")))
 Description: spicyR provides a series of functions to aid in the analysis of both 
     immunofluorescence and mass cytometry imaging data as well as other assays that 
-    can deeply phenotype individual cells and their spatial location. 
+    can deeply phenotype individual cells and their spatial location.
 License: GPL (>=2)
 biocViews: 
     SingleCell, CellBasedAssays
