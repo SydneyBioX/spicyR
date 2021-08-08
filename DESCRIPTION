@@ -13,7 +13,7 @@ License: GPL (>=2)
 biocViews: 
     SingleCell, CellBasedAssays
 Encoding: UTF-8
-Depends: R (>= 3.6)
+Depends: R (>= 4.0)
 VignetteBuilder: knitr
 BugReports: https://github.com/ellispatrick/spicyR/issues
 Imports: ggplot2, concaveman, BiocParallel, spatstat.core, spatstat.geom, 
