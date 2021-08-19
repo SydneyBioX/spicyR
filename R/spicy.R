@@ -242,7 +242,7 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
                 coef <-
                     split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
+                coef <- list(coefficient = NA, se = NA, statistic = NA, p.value = NA)
             }
             coef
             
@@ -261,7 +261,7 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
                 coef <-
                     split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
+                coef <- list(coefficient = NA, se = NA, statistic = NA, p.value = NA)
             }
             coef
         })
@@ -281,8 +281,8 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
 cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
     if (length(nsim) > 0) {
         
-        #boot <- BiocParallel::bplapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
-        boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
+        boot <- BiocParallel::bplapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
+        #boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
         #p <- do.call(rbind, p)
         tBoot <- lapply(boot, function(coef) {
             if(length(coef)>1){
@@ -290,7 +290,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
                 coef <-
                     split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
+                coef <- list(coefficient = NA, se = NA, statistic = NA, p.value = NA)
             }
             coef
         })
@@ -311,7 +311,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
                     split(coef,
                           c("coefficient", "se", "df", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, p.value = NA, se = NA, statistics = NA)
+                coef <- list(coefficient = NA, se = NA, df = NA, statistic = NA, p.value = NA)
             }
             coef
         })
