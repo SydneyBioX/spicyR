@@ -338,6 +338,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' @param minLambda Minimum value for density for scaling when fitting inhomogeneous L-curves.
 #' @param fast A logical describing whether to use a fast approximation of the 
 #' inhomogeneous L-curves.
+#' @param edgeCorrect A logical indicating whether to perform edge correction.
 #' @param BPPARAM A BiocParallelParam object.
 #'
 #' @return Statistic from pairwise L curve of a single image.

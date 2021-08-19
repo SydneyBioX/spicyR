@@ -11,10 +11,11 @@ getPairwise(
   dist = NULL,
   window = "convex",
   window.length,
-  Rs = NULL,
+  Rs = c(20, 50, 100),
   sigma = NULL,
   minLambda = 0.05,
   fast = TRUE,
+  edgeCorrect = TRUE,
   BPPARAM = BiocParallel::SerialParam()
 )
 }
