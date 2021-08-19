@@ -411,7 +411,8 @@ getStat <- function(cells, from, to, dist, window, window.length) {
 
 #' @importFrom lme4 fixef
 #' @importFrom lmerTest lmer
-#' @importFrom stats formula weights
+#' @importFrom lme4 lmerControl
+#' @importFrom stats formula weights sd
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     
     functionToReplicate <- function(x) {
@@ -423,7 +424,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         mixed.lmer1 <- tryCatch({lmerTest::lmer(formula(x),
                                                 data = spatialData,
                                                 weights = weights,
-                                                control = lmerControl(calc.derivs = FALSE))},
+                                                control = lme4::lmerControl(calc.derivs = FALSE))},
                                 error = function(e){},
                                 warning = function(w){},
                                 message = function(m){})
