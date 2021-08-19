@@ -213,7 +213,8 @@ spicy <- function(cells,
         )
         
         mixed.lmer <- lapply(mixed.lmer, function(x){
-            if(x@devcomp$cmp["REML"]==-Inf)return(NA)
+            if(is(x,"lmerModLmerTest")){
+                if(x@devcomp$cmp["REML"]==-Inf){return(NA)}}
             x
         })
         
@@ -315,8 +316,8 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
             coef
         })
         
-        df <- apply(do.call(rbind, tLmer), 2, function(x)
-            do.call(rbind, x))
+        df <- suppressWarnings(apply(do.call("rbind", tLmer), 2, function(x)
+            do.call("rbind", x)))
         df <- lapply(df, function(x) {
             rownames(x) <- names(mixed.lmer)
             x
@@ -421,12 +422,13 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         
         mixed.lmer1 <- tryCatch({lmerTest::lmer(formula(x),
                                                 data = spatialData,
-                                                weights = weights)},
-                                error = function(e) {
-                                    
-                                })
+                                                weights = weights,
+                                                control = lmerControl(calc.derivs = FALSE))},
+                                error = function(e){},
+                                warning = function(w){},
+                                message = function(m){})
         if (!is(mixed.lmer1,"lmerMod")) {
-            return(c(NA,NA))
+            return(rep(NA,ncol(coef(mixed.lmer)[[1]])))
         }
         
         summary(mixed.lmer1)$coef[, "t value"]
@@ -498,8 +500,8 @@ spatialMEM <-
         if (is.null(weightFunction)) {
             w <- rep(1, length(count1))
         } else{
-            z1 <- predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
-                                                     count2ToWeight = as.numeric(count2)))
+            z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
+                                                                      count2ToWeight = as.numeric(count2))))
             w <- 1 / sqrt(z1 - min(z1) + 1)
             w <- w / sum(w)
         }
@@ -513,15 +515,19 @@ spatialMEM <-
                   sep = "+")
         spatialData$weights = w
         
+        
         mixed.lmer <- tryCatch({lmerTest::lmer(formula(formula),
                                                data = spatialData,
                                                weights = weights)},
                                error = function(e) {
                                    
-                               })
+                               }, 
+                               warning = function(w){},
+                               message = function(m){})
         if (!is(mixed.lmer,"lmerMod")) {
             return(NA)
         }
+        
         
         mixed.lmer
     }
