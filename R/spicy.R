@@ -440,7 +440,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     fe <- lme4::fixef(mixed.lmer)
     # s1 <- sweep(stats,2,sign(fe),"*")
     # pval <- colMeans(s1 < 0, na.rm = TRUE)*2 #+ colMeans(sweep(s1,2,2*abs(summary(mixed.lmer)$coef[, "t value"]),">"))
-    pval <- pmin(mean(stats < 0,na.rm = TRUE), mean(stats > 0, na.rm = TRUE), na.rm = TRUE) * 2
+    pval <- mapply(pmin,colMeans(stats < 0,na.rm = TRUE), colMeans(stats > 0,na.rm = TRUE), MoreArgs = list(na.rm = TRUE))*2
     
     df <-
         data.frame(
