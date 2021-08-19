@@ -110,7 +110,9 @@ spicy <- function(cells,
                                      minLambda = minLambda,
                                      from = from,
                                      to = to,
-                                     fast = fast, edgeCorrect = edgeCorrect)
+                                     fast = fast, 
+                                     edgeCorrect = edgeCorrect,
+                                     BPPARAM = BPPARAM)
         
     }else{
         
@@ -278,7 +280,8 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
 cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
     if (length(nsim) > 0) {
         
-        boot <- BiocParallel::bplapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
+        #boot <- BiocParallel::bplapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
+        boot <- lapply(mixed.lmer, spatialMEMBootstrap, nsim = nsim)
         #p <- do.call(rbind, p)
         tBoot <- lapply(boot, function(coef) {
             if(length(coef)>1){
