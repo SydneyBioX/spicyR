@@ -82,8 +82,8 @@ spicy <- function(cells,
     if (is.null(to))
         to <- as.character(unique(cellType(cells)))
     
-    from <- as.character(unique(from))
-    to <- as.character(unique(to))
+    # from <- as.character(unique(from))
+    # to <- as.character(unique(to))
     
     if (any((!to %in% cellType(cells)) |
             (!from %in% cellType(cells))))
