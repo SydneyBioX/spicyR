@@ -77,6 +77,8 @@ spicy <- function(cells,
         stop('cells needs to be a SegmentedCells object')
     }
     
+    
+    if(is.null(from)|is.null(to)){
     if (is.null(from))
         from <- as.character(unique(cellType(cells)))
     if (is.null(to))
@@ -85,18 +87,22 @@ spicy <- function(cells,
     # from <- as.character(unique(from))
     # to <- as.character(unique(to))
     
+    m1 <- rep(from, times = length(to))
+    m2 <- rep(to, each = length(from))
+    labels <- paste(m1, m2, sep = "_")
+    }else{
+        m1 <- from
+        m2 <- to
+        labels <- paste(m1, m2, sep = "_")
+        if(any(duplicated(labels)))stop("There are duplicated from-to pairs")
+    }
+    
+    
     if (any((!to %in% cellType(cells)) |
             (!from %in% cellType(cells))))
         stop("to and from need to be cell type in your SegmentedCells")
     
     nCells <- table(imageID(cells), cellType(cells))
-    
-    
-    m1 <- rep(from, times = length(to))
-    m2 <- rep(to, each = length(from))
-    labels <- paste(m1, m2, sep = "_")
-    
-    
     ## Find pairwise associations
     
     
