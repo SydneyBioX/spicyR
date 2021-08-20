@@ -119,6 +119,7 @@ spicy <- function(cells,
                                      fast = fast, 
                                      edgeCorrect = edgeCorrect,
                                      BPPARAM = BPPARAM)
+        pairwiseAssoc <- pairwiseAssoc[,labels]
         
     }else{
         
