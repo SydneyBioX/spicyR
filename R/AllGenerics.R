@@ -8,7 +8,7 @@
 #' A table of the significant results from spicy tests
 #'
 #' @param x The output from spicy.
-#' @param coef Which coefficient to list.
+#' @param coef Which coefficient to list. 
 #' @param n Extract the top n most significant pairs.
 #' @param adj Which p-value adjustment method to use, argument for p.adjust().
 #' @param cutoff A p-value threshold to extract significant pairs.
@@ -26,7 +26,7 @@
 #' @rdname topPairs
 #' @export
 setGeneric("topPairs", function(x,
-                                coef = 1,
+                                coef = NULL,
                                 n = 10,
                                 adj = 'fdr',
                                 cutoff = NULL)
