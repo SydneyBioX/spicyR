@@ -38,7 +38,7 @@ setMethod("topPairs", "SpicyResults", function(x,
                                                cutoff = NULL) {
     if(!is(x,"SpicyResults")) stop("x are not results from spicy")
     
-    if(is.null(coef)) coef <- grep('condition', colnames(x$p.value))[coef]
+    if(is.null(coef)) coef <- grep('condition', colnames(x$p.value))[1]
     
     if(is(coef,"character")&!coef%in%colnames(x$p.value)) stop("coef not a column name")
     if(is(coef,"numeric")&!coef%in%seq_len(ncol(x$p.value))) stop("coef not a column name")
