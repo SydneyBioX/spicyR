@@ -32,16 +32,18 @@ setGeneric("topPairs", function(x,
                                 cutoff = NULL)
     standardGeneric("topPairs"))
 setMethod("topPairs", "SpicyResults", function(x,
-                                               coef = 1,
+                                               coef = NULL,
                                                n = 10,
                                                adj = 'fdr',
                                                cutoff = NULL) {
     if(!is(x,"SpicyResults")) stop("x are not results from spicy")
+    
+    if(is.null(coef)) coef <- grep('condition', colnames(x$p.value))[coef]
+    
     if(is(coef,"character")&!coef%in%colnames(x$p.value)) stop("coef not a column name")
     if(is(coef,"numeric")&!coef%in%seq_len(ncol(x$p.value))) stop("coef not a column name")
     if(length(coef)>1) warning("coef needs to be length 1, taking first entry.")
-    coef = coef[1]
-    useCondition <- grep('condition', colnames(x$p.value))[coef]
+    useCondition <- coef[1]
     pval <- x$p.value[[useCondition]]
     adj.pvalue <- p.adjust(pval, adj)
     
