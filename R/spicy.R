@@ -79,17 +79,17 @@ spicy <- function(cells,
     
     
     if(is.null(from)|is.null(to)){
-    if (is.null(from))
-        from <- as.character(unique(cellType(cells)))
-    if (is.null(to))
-        to <- as.character(unique(cellType(cells)))
-    
-    # from <- as.character(unique(from))
-    # to <- as.character(unique(to))
-    
-    m1 <- rep(from, times = length(to))
-    m2 <- rep(to, each = length(from))
-    labels <- paste(m1, m2, sep = "_")
+        if (is.null(from))
+            from <- as.character(unique(cellType(cells)))
+        if (is.null(to))
+            to <- as.character(unique(cellType(cells)))
+        
+        # from <- as.character(unique(from))
+        # to <- as.character(unique(to))
+        
+        m1 <- rep(from, times = length(to))
+        m2 <- rep(to, each = length(from))
+        labels <- paste(m1, m2, sep = "_")
     }else{
         m1 <- from
         m2 <- to
@@ -119,7 +119,8 @@ spicy <- function(cells,
                                      fast = fast, 
                                      edgeCorrect = edgeCorrect,
                                      BPPARAM = BPPARAM)
-        pairwiseAssoc <- pairwiseAssoc[,labels]
+        pairwiseAssoc <- as.data.frame(pairwiseAssoc)
+        pairwiseAssoc <- pairwiseAssoc[labels]
         
     }else{
         
@@ -428,13 +429,11 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         spatialData <- x@frame[toGet,]
         spatialData$weights <- spatialData$`(weights)`
         
-        mixed.lmer1 <- tryCatch({lmerTest::lmer(formula(x),
-                                                data = spatialData,
-                                                weights = weights,
-                                                control = lme4::lmerControl(calc.derivs = FALSE))},
-                                error = function(e){},
-                                warning = function(w){},
-                                message = function(m){})
+        mixed.lmer1 <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(formula(x),
+                                                                                  data = spatialData,
+                                                                                  weights = weights,
+                                                                                  control = lme4::lmerControl(calc.derivs = FALSE))},
+                                                                  error = function(e){})))
         if (!is(mixed.lmer1,"lmerMod")) {
             return(rep(NA,ncol(coef(mixed.lmer)[[1]])))
         }
@@ -525,14 +524,12 @@ spatialMEM <-
         spatialData$weights = w
         
         
-        mixed.lmer <- tryCatch({lmerTest::lmer(formula(formula),
-                                               data = spatialData,
-                                               weights = weights)},
-                               error = function(e) {
-                                   
-                               }, 
-                               warning = function(w){},
-                               message = function(m){})
+        mixed.lmer <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(formula(formula),
+                                                                                 data = spatialData,
+                                                                                 weights = weights)},
+                                                                 error = function(e) {
+                                                                     
+                                                                 })))
         if (!is(mixed.lmer,"lmerMod")) {
             return(NA)
         }
