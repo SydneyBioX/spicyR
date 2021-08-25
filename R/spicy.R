@@ -146,8 +146,14 @@ spicy <- function(cells,
     count2 <- as.vector(nCells[, m2])
     
     resSq <-
-        as.vector(apply(pairwiseAssoc, 2, function(x)
-            (x - mean(x, na.rm = TRUE))^2))
+        as.vector(apply(pairwiseAssoc, 2, function(x){
+            if(sd(x, na.rm = TRUE)>0){
+                return((x - mean(x, na.rm = TRUE))^2)
+            }else{
+                return(rep(NA,length(x)))
+            }
+        }
+        ))
     
     toWeight <- !is.na(as.vector(pairwiseAssoc))
     resSqToWeight <- resSq[toWeight]
@@ -155,7 +161,7 @@ spicy <- function(cells,
     count2ToWeight <- count2[toWeight]
     
     if (weights) {
-        weightFunction <- mgcv::gam(resSqToWeight ~ ti(count1ToWeight, count2ToWeight))
+        weightFunction <- mgcv::gam(resSqToWeight ~ ti(sqrt(count1ToWeight), sqrt(count2ToWeight)), family = Gamma)
     } else {
         weightFunction <- NULL
     }
@@ -510,7 +516,8 @@ spatialMEM <-
         } else{
             z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                                       count2ToWeight = as.numeric(count2))))
-            w <- 1 / sqrt(z1 - min(z1) + 1)
+            #w <- 1 / sqrt(z1 - min(z1) + 1)
+            w <- z1
             w <- w / sum(w)
         }
         
@@ -566,7 +573,8 @@ spatialLM <-
         } else {
             z1 <- predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                      count2ToWeight = as.numeric(count2)))
-            w <- 1 / sqrt(z1 - min(z1) + 1)
+            # w <- 1 / sqrt(z1 - min(z1) + 1)
+            w <- z1
             w <- w / sum(w)
         }
         
