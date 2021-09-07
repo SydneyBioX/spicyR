@@ -1,7 +1,7 @@
 Package: spicyR
 Type: Package
 Title: Spatial analysis of in situ cytometry data
-Version: 1.3.18
+Version: 1.3.19
 Authors@R: c(person("Nicolas", "Canete", email = "nicolas.canete@sydney.edu.au",
     role = c("aut")),
     person("Ellis", "Patrick", email = "ellis.patrick@sydney.edu.au",
@@ -18,6 +18,6 @@ VignetteBuilder: knitr
 BugReports: https://github.com/ellispatrick/spicyR/issues
 Imports: ggplot2, concaveman, BiocParallel, spatstat.core, spatstat.geom, 
         lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
-        rlang, grDevices, IRanges, stats, data.table, dplyr, tidyr
+        rlang, grDevices, IRanges, stats, data.table, dplyr, tidyr, scam
 Suggests: BiocStyle, knitr, rmarkdown
 RoxygenNote: 7.1.1
