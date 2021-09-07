@@ -53,6 +53,7 @@
 #' spicy,spicy-method
 #' @importFrom mgcv gam ti
 #' @importFrom BiocParallel SerialParam
+#' @importFrom scam scam
 spicy <- function(cells,
                   condition = NULL,
                   subject = NULL,
@@ -161,7 +162,10 @@ spicy <- function(cells,
     count2ToWeight <- count2[toWeight]
     
     if (weights) {
-        weightFunction <- mgcv::gam(sqrt(resSqToWeight) ~ ti(sqrt(count1ToWeight), sqrt(count2ToWeight)))
+        t1 <- Sys.time()
+        weightFunction <- scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
+        t2 <- Sys.time()
+        t2-t1
     } else {
         weightFunction <- NULL
     }
@@ -517,7 +521,7 @@ spatialMEM <-
             z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                                       count2ToWeight = as.numeric(count2))))
             #w <- 1 / sqrt(z1 - min(z1) + 1)
-            w <- 1/z1
+            w <-  1/pmax(z1, min(z1[z1>0], na.rm = TRUE), na.rm = TRUE)
             w <- w / sum(w)
         }
         
@@ -574,7 +578,7 @@ spatialLM <-
             z1 <- predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                      count2ToWeight = as.numeric(count2)))
             # w <- 1 / sqrt(z1 - min(z1) + 1)
-            w <- z1
+            w <-  1/pmax(z1, min(z1[z1>0], na.rm = TRUE), na.rm = TRUE)
             w <- w / sum(w)
         }
         
