@@ -163,7 +163,7 @@ spicy <- function(cells,
     
     if (weights) {
         t1 <- Sys.time()
-        weightFunction <- scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
+        weightFunction <- scam::scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
         t2 <- Sys.time()
         t2-t1
     } else {
@@ -383,7 +383,9 @@ getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellT
                                                window.length = window.length,
                                                minLambda = minLambda,
                                                from = from,
-                                               to = to, BPPARAM=BPPARAM, edgeCorrect = edgeCorrect)
+                                               to = to,
+                                               edgeCorrect = edgeCorrect,
+                                               BPPARAM=BPPARAM)
         return(do.call("rbind",pairwiseVals ))
     }else{
         
@@ -820,7 +822,7 @@ inhomLPair <-
         X <- X[use,]
         
         
-        p <- spatstat.geom::closepairs(X, max(Rs), what = "ijd")
+        p <- spatstat.geom::closepairs(X, max(Rs), what = "ijd", distinct = FALSE)
         
         n <- X$n
         p$j <- data$cellID[p$j]
@@ -865,6 +867,8 @@ inhomLPair <-
         
         p$d <- factor(p$d, levels = Rs[-1])
         
+        p <- p[p$i != p$j, ]
+        
         use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
         p <- p[use,]
         
@@ -877,9 +881,10 @@ inhomLPair <-
         m2 <- rep(to, each = length(from))
         labels <- paste(m1, m2, sep = "_")
         
-        assoc <- rep(NA, length(labels))
+        assoc <- rep(-sum(Rs), length(labels))
         names(assoc) <- labels
-        assoc <- wt[labels]
+        assoc[!(m1%in%X$marks&m2%in%X$marks)] = NA
+        assoc[names(wt)] <- wt
         names(assoc) <- labels
         
         assoc

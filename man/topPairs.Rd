@@ -5,7 +5,7 @@
 \alias{topPairs,SpicyResults-method}
 \title{A table of the significant results from spicy tests}
 \usage{
-topPairs(x, coef = 1, n = 10, adj = "fdr", cutoff = NULL)
+topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL)
 }
 \arguments{
 \item{x}{The output from spicy.}

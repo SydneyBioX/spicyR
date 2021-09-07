@@ -43,6 +43,8 @@ when estimating concave windows.}
 \item{fast}{A logical describing whether to use a fast approximation of the 
 inhomogeneous L-curves.}
 
+\item{edgeCorrect}{A logical indicating whether to perform edge correction.}
+
 \item{BPPARAM}{A BiocParallelParam object.}
 }
 \value{
