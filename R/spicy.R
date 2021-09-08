@@ -523,7 +523,7 @@ spatialMEM <-
             z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                                       count2ToWeight = as.numeric(count2))))
             #w <- 1 / sqrt(z1 - min(z1) + 1)
-            w <-  1/pmax(z1, min(z1[z1>0], na.rm = TRUE), na.rm = TRUE)
+            w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE), na.rm = TRUE)
             w <- w / sum(w)
         }
         
@@ -580,7 +580,7 @@ spatialLM <-
             z1 <- predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                      count2ToWeight = as.numeric(count2)))
             # w <- 1 / sqrt(z1 - min(z1) + 1)
-            w <-  1/pmax(z1, min(z1[z1>0], na.rm = TRUE), na.rm = TRUE)
+            w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE), na.rm = TRUE)
             w <- w / sum(w)
         }
         
