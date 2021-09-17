@@ -948,7 +948,7 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
     
     if(weightsByPair){
         
-        weightFunction <- bpmapply(calcWeights, M1 = m1, M2 = m2, rS = as.list(as.data.frame(resSq)), BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells))
+        weightFunction <- bpmapply(calcWeights, M1 = m1, M2 = m2, rS = as.list(as.data.frame(resSq)), BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells), SIMPLIFY = FALSE)
         
     }else{
         
