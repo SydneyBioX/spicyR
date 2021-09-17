@@ -16,6 +16,7 @@
 #' @param nsim Number of simulations to perform. If empty, the p-value from lmerTest is used.
 #' @param verbose logical indicating whether to output messages.
 #' @param weights logical indicating whether to include weights based on cell counts.
+#' @param weightsByPair logical indicating whether weights should be calculated for each cell type pair.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity 
 #' when estimating concave windows.
@@ -65,6 +66,7 @@ spicy <- function(cells,
                   nsim = NULL,
                   verbose = TRUE,
                   weights = TRUE,
+                  weightsByPair = FALSE,
                   window = "convex",
                   window.length = NULL,
                   BPPARAM = BiocParallel::SerialParam(),
@@ -142,33 +144,7 @@ spicy <- function(cells,
     }
     
     
-    
-    count1 <- as.vector(nCells[, m1])
-    count2 <- as.vector(nCells[, m2])
-    
-    resSq <-
-        as.vector(apply(pairwiseAssoc, 2, function(x){
-            if(sd(x, na.rm = TRUE)>0){
-                return((x - mean(x, na.rm = TRUE))^2)
-            }else{
-                return(rep(NA,length(x)))
-            }
-        }
-        ))
-    
-    toWeight <- !is.na(as.vector(pairwiseAssoc))
-    resSqToWeight <- resSq[toWeight]
-    count1ToWeight <- count1[toWeight]
-    count2ToWeight <- count2[toWeight]
-    
-    if (weights) {
-        t1 <- Sys.time()
-        weightFunction <- scam::scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
-        t2 <- Sys.time()
-        t2-t1
-    } else {
-        weightFunction <- NULL
-    }
+    weightFunction <- getWeightFunction(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair)
     
     pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
     names(pairwiseAssoc) <- labels
@@ -184,7 +160,6 @@ spicy <- function(cells,
                 cells = cells,
                 condition = condition,
                 covariates = covariates,
-                weightFunction = weightFunction,
                 cellCounts <- table(imageID(cells), cellType(cells)),
                 pheno <- as.data.frame(imagePheno(cells))
             )
@@ -195,6 +170,7 @@ spicy <- function(cells,
             spatAssoc = pairwiseAssoc,
             from = m1,
             to = m2,
+            weightFunction = weightFunction,
             MoreArgs = MoreArgs2,
             SIMPLIFY = FALSE
         )
@@ -216,7 +192,6 @@ spicy <- function(cells,
                 subject = subject,
                 condition = condition,
                 covariates = covariates,
-                weightFunction = weightFunction,
                 cellCounts <- table(imageID(cells), cellType(cells)),
                 pheno <- as.data.frame(imagePheno(cells))
             )
@@ -226,6 +201,7 @@ spicy <- function(cells,
             spatAssoc = pairwiseAssoc,
             from = m1,
             to = m2,
+            weightFunction = weightFunction,
             MoreArgs = MoreArgs2,
             SIMPLIFY = FALSE
         )
@@ -932,4 +908,53 @@ borderEdge <- function(X, maxD){
     }
     
     e
+}
+
+#' @importFrom scam scam
+calcWeights <- function(M1, M2, rS, nCells){
+    count1 <- as.vector(nCells[, M1])
+    count2 <- as.vector(nCells[, M2])
+    rS <- as.vector(rS)
+    toWeight <- !is.na(rS)
+    resSqToWeight <- rS[toWeight]
+    count1ToWeight <- count1[toWeight]
+    count2ToWeight <- count2[toWeight]
+    if(length(count1ToWeight)<=20){
+        warning("A cell type pair is seen less than 20 times, not using weights for this pair.")
+        weightFunction <- lm(log10(resSqToWeight)~ 1)
+        return(weightFunction)
+    }
+    weightFunction <- scam::scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
+    weightFunction
+}
+
+#' @importFrom BiocParallel bpmapply
+getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair){
+    
+    if(!weights){
+        weights <- NULL
+        return(weights)
+    }
+    
+
+    resSq <- apply(pairwiseAssoc, 2, function(x){
+            if(sd(x, na.rm = TRUE)>0){
+                return((x - mean(x, na.rm = TRUE))^2)
+            }else{
+                return(rep(NA,length(x)))
+            }
+        }
+        )
+    
+    if(weightsByPair){
+        
+        weightFunction <- bpmapply(calcWeights, M1 = m1, M2 = m2, rS = as.list(as.data.frame(resSq)), BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells))
+        
+    }else{
+        
+        weightFunction <- calcWeights(m1, m2, rS = resSq, nCells)
+        weightFunction <- sapply(colnames(pairwiseAssoc), function(x, weightFunction){weightFunction}, simplify = FALSE, USE.NAMES = TRUE, weightFunction = weightFunction)
+    
+    }
+    weightFunction
 }
