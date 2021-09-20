@@ -932,8 +932,8 @@ calcWeights <- function(M1, M2, rS, nCells){
 getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair){
     
     if(!weights){
-        weights <- NULL
-        return(weights)
+        weightFunction <- sapply(colnames(pairwiseAssoc), function(x){NULL}, simplify = FALSE, USE.NAMES = TRUE)
+        return(weightFunction)
     }
     
 
