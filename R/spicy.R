@@ -17,6 +17,7 @@
 #' @param verbose logical indicating whether to output messages.
 #' @param weights logical indicating whether to include weights based on cell counts.
 #' @param weightsByPair logical indicating whether weights should be calculated for each cell type pair.
+#' @param weightFactor numeric that controls the convexity of the weight function.
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity 
 #' when estimating concave windows.
@@ -67,6 +68,7 @@ spicy <- function(cells,
                   verbose = TRUE,
                   weights = TRUE,
                   weightsByPair = FALSE,
+                  weightFactor = 10,
                   window = "convex",
                   window.length = NULL,
                   BPPARAM = BiocParallel::SerialParam(),
@@ -144,7 +146,7 @@ spicy <- function(cells,
     }
     
     
-    weightFunction <- getWeightFunction(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair)
+    weightFunction <- getWeightFunction(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor)
     
     pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
     names(pairwiseAssoc) <- labels
@@ -160,8 +162,8 @@ spicy <- function(cells,
                 cells = cells,
                 condition = condition,
                 covariates = covariates,
-                cellCounts <- table(imageID(cells), cellType(cells)),
-                pheno <- as.data.frame(imagePheno(cells))
+                cellCounts = table(imageID(cells), cellType(cells)),
+                pheno = as.data.frame(imagePheno(cells))
             )
         
         
@@ -192,8 +194,8 @@ spicy <- function(cells,
                 subject = subject,
                 condition = condition,
                 covariates = covariates,
-                cellCounts <- table(imageID(cells), cellType(cells)),
-                pheno <- as.data.frame(imagePheno(cells))
+                cellCounts = table(imageID(cells), cellType(cells)),
+                pheno = as.data.frame(imagePheno(cells))
             )
         
         mixed.lmer <- mapply(
@@ -220,6 +222,7 @@ spicy <- function(cells,
     df$comparisons <- data.frame(from = m1,
                                  to = m2,
                                  labels = labels)
+    df$weights <- weightFunction
     
     df <- new('SpicyResults', df)
     df
@@ -347,7 +350,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' pairAssoc <- getPairwise(diabetesData)
 #' @export
 #' @importFrom BiocParallel bplapply
-getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellType(cells)), dist = NULL, window = "convex", window.length, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, BPPARAM=BiocParallel::SerialParam()) {
+getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellType(cells)), dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, BPPARAM=BiocParallel::SerialParam()) {
     cells2 <- cellSummary(cells, bind = FALSE)
     
     if(fast){
@@ -493,16 +496,6 @@ spatialMEM <-
                        subject = pheno[, subject],
                        pheno[covariates])
         
-        if (is.null(weightFunction)) {
-            w <- rep(1, length(count1))
-        } else{
-            z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
-                                                                      count2ToWeight = as.numeric(count2))))
-            #w <- 1 / sqrt(z1 - min(z1) + 1)
-            w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE), na.rm = TRUE)
-            w <- w / mean(w)
-        }
-        
         formula <- 'spatAssoc ~ condition + (1|subject)'
         
         if (!is.null(covariates))
@@ -510,7 +503,7 @@ spatialMEM <-
             paste('spatAssoc ~ condition + (1|subject)',
                   paste(covariates, collapse = '+'),
                   sep = "+")
-        spatialData$weights = w^10
+        spatialData$weights = weightFunction
         
         
         mixed.lmer <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(formula(formula),
@@ -550,15 +543,6 @@ spatialLM <-
         # count2 <- count2[filter]
         #print(spatialData)
         
-        if (is.null(weightFunction)) {
-            w <- rep(1, length(count1))
-        } else {
-            z1 <- predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
-                                                     count2ToWeight = as.numeric(count2)))
-            # w <- 1 / sqrt(z1 - min(z1) + 1)
-            w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE), na.rm = TRUE)
-            w <- w / sum(w)
-        }
         
         formula <- 'spatAssoc ~ condition'
         
@@ -569,7 +553,7 @@ spatialLM <-
                   sep = "+")
         lm1 <- tryCatch({lm(formula(formula),
                             data = spatialData,
-                            weights = w)},
+                            weights = weightFunction)},
                         error = function(e) {
                             
                         })
@@ -911,7 +895,7 @@ borderEdge <- function(X, maxD){
 }
 
 #' @importFrom scam scam
-calcWeights <- function(M1, M2, rS, nCells){
+calcWeights <- function(M1, M2, rS, nCells, weightFactor){
     count1 <- as.vector(nCells[, M1])
     count2 <- as.vector(nCells[, M2])
     rS <- as.vector(rS)
@@ -925,14 +909,27 @@ calcWeights <- function(M1, M2, rS, nCells){
         return(weightFunction)
     }
     weightFunction <- scam::scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
-    weightFunction
+
+    z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
+                                                              count2ToWeight = as.numeric(count2))))
+    #w <- 1 / sqrt(z1 - min(z1) + 1)
+    w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE), na.rm = TRUE)
+    w <- w / mean(w)
+    w^weightFactor
 }
 
+
+
+
 #' @importFrom BiocParallel bpmapply
-getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair){
+getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor){
     
     if(!weights){
-        weightFunction <- sapply(colnames(pairwiseAssoc), function(x){NULL}, simplify = FALSE, USE.NAMES = TRUE)
+        # weightFunction <- sapply(colnames(pairwiseAssoc), function(x){NULL}, simplify = FALSE, USE.NAMES = TRUE)
+        # return(weightFunction)
+        weightFunction <- rep(1, nrow(pairwiseAssoc))
+        pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
+        weightFunction <- split(weightFunction, pair)
         return(weightFunction)
     }
     
@@ -948,12 +945,14 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
     
     if(weightsByPair){
         
-        weightFunction <- bpmapply(calcWeights, M1 = m1, M2 = m2, rS = as.list(as.data.frame(resSq)), BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells), SIMPLIFY = FALSE)
+        weightFunction <- bpmapply(calcWeights, M1 = m1, M2 = m2, rS = as.list(as.data.frame(resSq)), BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE)
         
     }else{
         
-        weightFunction <- calcWeights(m1, m2, rS = resSq, nCells)
-        weightFunction <- sapply(colnames(pairwiseAssoc), function(x, weightFunction){weightFunction}, simplify = FALSE, USE.NAMES = TRUE, weightFunction = weightFunction)
+        weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor)
+        pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
+        weightFunction <- split(weightFunction, pair)
+        # weightFunction <- sapply(colnames(pairwiseAssoc), function(x, weightFunction){weightFunction}, simplify = FALSE, USE.NAMES = TRUE, weightFunction = weightFunction)
     
     }
     weightFunction
