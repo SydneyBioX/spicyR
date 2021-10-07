@@ -94,11 +94,11 @@ spicy <- function(cells,
         
         m1 <- rep(from, times = length(to))
         m2 <- rep(to, each = length(from))
-        labels <- paste(m1, m2, sep = "_")
+        labels <- paste(m1, m2, sep = "__")
     }else{
         m1 <- from
         m2 <- to
-        labels <- paste(m1, m2, sep = "_")
+        labels <- paste(m1, m2, sep = "__")
         if(any(duplicated(labels)))stop("There are duplicated from-to pairs")
     }
     
@@ -223,6 +223,7 @@ spicy <- function(cells,
                                  to = m2,
                                  labels = labels)
     df$weights <- weightFunction
+    df$nCells <- nCells
     
     df <- new('SpicyResults', df)
     df
@@ -839,7 +840,7 @@ inhomLPair <-
         
         m1 <- rep(from, times = length(to))
         m2 <- rep(to, each = length(from))
-        labels <- paste(m1, m2, sep = "_")
+        labels <- paste(m1, m2, sep = "__")
         
         assoc <- rep(-sum(Rs), length(labels))
         names(assoc) <- labels
