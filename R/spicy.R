@@ -259,7 +259,9 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
                 coef <-
                     split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, se = NA, statistic = NA, p.value = NA)
+                n <- data.frame(NA)
+                colnames(n) <- "(Intercept)"
+                coef <- list(coefficient = n, se = n, df = n, statistic = n, p.value = n)
             }
             coef
         })
@@ -276,6 +278,8 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
     df
 }
 
+
+#' @importFrom dplyr bind_rows
 cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
     if (length(nsim) > 0) {
         
@@ -309,13 +313,19 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
                     split(coef,
                           c("coefficient", "se", "df", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, se = NA, df = NA, statistic = NA, p.value = NA)
+                n <- data.frame(NA)
+                colnames(n) <- "(Intercept)"
+                coef <- list(coefficient = n, se = n, df = n, statistic = n, p.value = n)
             }
             coef
         })
         
-        df <- suppressWarnings(apply(do.call("rbind", tLmer), 2, function(x)
-            do.call("rbind", x)))
+        df <- do.call("rbind", tLmer)
+        
+        df <- suppressWarnings(apply(df, 2, function(x){
+            dplyr::bind_rows(x)
+        }))
+        
         df <- lapply(df, function(x) {
             rownames(x) <- names(mixed.lmer)
             x
@@ -836,7 +846,7 @@ inhomLPair <-
         r <- inhomL(p, lam, X, Rs)
         
         wt <- r$wt
-        names(wt) <- paste(r$cellTypeI, r$cellTypeJ, sep = "_")
+        names(wt) <- paste(r$cellTypeI, r$cellTypeJ, sep = "__")
         
         m1 <- rep(from, times = length(to))
         m2 <- rep(to, each = length(from))
@@ -906,7 +916,8 @@ calcWeights <- function(M1, M2, rS, nCells, weightFactor){
     count2ToWeight <- count2[toWeight]
     if(length(count1ToWeight)<=20){
         warning("A cell type pair is seen less than 20 times, not using weights for this pair.")
-        weightFunction <- lm(log10(resSqToWeight)~ 1)
+        #weightFunction <- lm(log10(resSqToWeight)~ 1)
+        weightFunction <- rep(1, nrow(pairwiseAssoc))
         return(weightFunction)
     }
     weightFunction <- scam::scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
@@ -914,8 +925,9 @@ calcWeights <- function(M1, M2, rS, nCells, weightFactor){
     z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                               count2ToWeight = as.numeric(count2))))
     #w <- 1 / sqrt(z1 - min(z1) + 1)
-    w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE), na.rm = TRUE)
-    w <- w / mean(w)
+    z1[which(as.numeric(count1)==0|as.numeric(count2)==0)] <- NA
+    w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE))
+    w <- w / mean(w, na.rm = TRUE)
     w^weightFactor
 }
 
