@@ -20,6 +20,8 @@ spicy(
   nsim = NULL,
   verbose = TRUE,
   weights = TRUE,
+  weightsByPair = FALSE,
+  weightFactor = 1,
   window = "convex",
   window.length = NULL,
   BPPARAM = BiocParallel::SerialParam(),
@@ -58,6 +60,10 @@ value of the L curve at dist.}
 \item{verbose}{logical indicating whether to output messages.}
 
 \item{weights}{logical indicating whether to include weights based on cell counts.}
+
+\item{weightsByPair}{logical indicating whether weights should be calculated for each cell type pair.}
+
+\item{weightFactor}{numeric that controls the convexity of the weight function.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 

@@ -68,7 +68,7 @@ spicy <- function(cells,
                   verbose = TRUE,
                   weights = TRUE,
                   weightsByPair = FALSE,
-                  weightFactor = 10,
+                  weightFactor = 1,
                   window = "convex",
                   window.length = NULL,
                   BPPARAM = BiocParallel::SerialParam(),
@@ -292,7 +292,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
                 coef <-
                     split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
-                coef <- list(coefficient = NA, se = NA, statistic = NA, p.value = NA)
+                coef <- list(coefficient = n,  df = n, p.value = n, se = n, statistic = n)
             }
             coef
         })
@@ -315,7 +315,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
             }else{
                 n <- data.frame(NA)
                 colnames(n) <- "(Intercept)"
-                coef <- list(coefficient = n, se = n, df = n, statistic = n, p.value = n)
+                coef <- list(coefficient = n,  df = n, p.value = n, se = n, statistic = n)
             }
             coef
         })
@@ -805,7 +805,7 @@ inhomLPair <-
         p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
         
         # inhom density
-        p$wt <- 1
+        p$wt <- rep(1,length(p$d))
         if(!is.null(sigma)){
             np <- spatstat.geom::nearest.valid.pixel(X$x, X$y, den)
             w <- den$v[cbind(np$row, np$col)]
@@ -906,7 +906,7 @@ borderEdge <- function(X, maxD){
 }
 
 #' @importFrom scam scam
-calcWeights <- function(M1, M2, rS, nCells, weightFactor){
+calcWeights <- function(rS, M1, M2, nCells, weightFactor){
     count1 <- as.vector(nCells[, M1])
     count2 <- as.vector(nCells[, M2])
     rS <- as.vector(rS)
@@ -920,13 +920,13 @@ calcWeights <- function(M1, M2, rS, nCells, weightFactor){
         weightFunction <- rep(1, nrow(pairwiseAssoc))
         return(weightFunction)
     }
-    weightFunction <- scam::scam(log10(resSqToWeight)~ s(log10(count1ToWeight+10),bs="mpd")+s(log10(count2ToWeight+10), bs="mpd"), optimizer = "nlm.fd")
-
+    weightFunction <- scam::scam(log10(resSqToWeight+1)~ s(log10(count1ToWeight+1),bs="mpd")+s(log10(count2ToWeight+1), bs="mpd"), optimizer = "nlm.fd")
+    
     z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                               count2ToWeight = as.numeric(count2))))
     #w <- 1 / sqrt(z1 - min(z1) + 1)
     z1[which(as.numeric(count1)==0|as.numeric(count2)==0)] <- NA
-    w <-  1/pmax(z1, quantile(z1[z1>0], 0.1, na.rm = TRUE))
+    w <-  1/pmax(z1, quantile(z1[z1>0.1], 0.01, na.rm = TRUE))
     w <- w / mean(w, na.rm = TRUE)
     w^weightFactor
 }
@@ -940,25 +940,25 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
     if(!weights){
         # weightFunction <- sapply(colnames(pairwiseAssoc), function(x){NULL}, simplify = FALSE, USE.NAMES = TRUE)
         # return(weightFunction)
-        weightFunction <- rep(1, nrow(pairwiseAssoc))
+        weightFunction <- rep(1, nrow(pairwiseAssoc)*ncol(pairwiseAssoc))
         pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
         weightFunction <- split(weightFunction, pair)
         return(weightFunction)
     }
     
-
+    
     resSq <- apply(pairwiseAssoc, 2, function(x){
-            if(sd(x, na.rm = TRUE)>0){
-                return((x - mean(x, na.rm = TRUE))^2)
-            }else{
-                return(rep(NA,length(x)))
-            }
+        if(sd(x, na.rm = TRUE)>0){
+            return((x - mean(x, na.rm = TRUE))^2)
+        }else{
+            return(rep(NA,length(x)))
         }
-        )
+    }
+    )
     
     if(weightsByPair){
         
-        weightFunction <- bpmapply(calcWeights, M1 = m1, M2 = m2, rS = as.list(as.data.frame(resSq)), BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE)
+        weightFunction <- BiocParallel::bpmapply(calcWeights, rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM=BPPARAM, MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE)
         
     }else{
         
@@ -966,7 +966,8 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
         pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
         weightFunction <- split(weightFunction, pair)
         # weightFunction <- sapply(colnames(pairwiseAssoc), function(x, weightFunction){weightFunction}, simplify = FALSE, USE.NAMES = TRUE, weightFunction = weightFunction)
-    
+        
     }
-    weightFunction
+    weightFunction[colnames(pairwiseAssoc)]
 }
+

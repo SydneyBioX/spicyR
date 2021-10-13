@@ -10,7 +10,7 @@ getPairwise(
   to = unique(cellType(cells)),
   dist = NULL,
   window = "convex",
-  window.length,
+  window.length = NULL,
   Rs = c(20, 50, 100),
   sigma = NULL,
   minLambda = 0.05,
