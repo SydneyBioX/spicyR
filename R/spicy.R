@@ -292,6 +292,8 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
                 coef <-
                     split(coef, c("coefficient", "se", "statistic", "p.value"))
             }else{
+                n <- data.frame(NA)
+                colnames(n) <- "(Intercept)"
                 coef <- list(coefficient = n,  df = n, p.value = n, se = n, statistic = n)
             }
             coef
@@ -906,6 +908,7 @@ borderEdge <- function(X, maxD){
 }
 
 #' @importFrom scam scam
+#' @importFrom stats quantile
 calcWeights <- function(rS, M1, M2, nCells, weightFactor){
     count1 <- as.vector(nCells[, M1])
     count2 <- as.vector(nCells[, M2])
