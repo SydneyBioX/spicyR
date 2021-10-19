@@ -79,7 +79,7 @@ spicy <- function(cells,
                   minLambda = 0.05,
                   fast = TRUE,
                   edgeCorrect = TRUE,
-                  includeZeroCells = TRUE
+                  includeZeroCells = TRUE,
                   ...) {
     if (!is(cells, "SegmentedCells")) {
         stop('cells needs to be a SegmentedCells object')
