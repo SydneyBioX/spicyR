@@ -28,6 +28,8 @@
 #' @param fast A logical describing whether to use a fast approximation of the 
 #' inhomogeneous L-curves.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
+#' @param includeZeroCells A logical indicating whether to include cells with 
+#' zero counts in the pairwise association calculation.
 #' @param ... Other options to pass to bootstrap.
 #'
 #' @return Data frame of p-values.
@@ -77,6 +79,7 @@ spicy <- function(cells,
                   minLambda = 0.05,
                   fast = TRUE,
                   edgeCorrect = TRUE,
+                  includeZeroCells = TRUE
                   ...) {
     if (!is(cells, "SegmentedCells")) {
         stop('cells needs to be a SegmentedCells object')
@@ -123,6 +126,7 @@ spicy <- function(cells,
                                      to = to,
                                      fast = fast, 
                                      edgeCorrect = edgeCorrect,
+                                     includeZeroCells = includeZeroCells,
                                      BPPARAM = BPPARAM)
         pairwiseAssoc <- as.data.frame(pairwiseAssoc)
         pairwiseAssoc <- pairwiseAssoc[labels]
@@ -363,7 +367,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' pairAssoc <- getPairwise(diabetesData)
 #' @export
 #' @importFrom BiocParallel bplapply
-getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellType(cells)), dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, BPPARAM=BiocParallel::SerialParam()) {
+getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellType(cells)), dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM=BiocParallel::SerialParam()) {
     cells2 <- cellSummary(cells, bind = FALSE)
     
     if(fast){
@@ -377,6 +381,7 @@ getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellT
                                                from = from,
                                                to = to,
                                                edgeCorrect = edgeCorrect,
+                                               includeZeroCells = includeZeroCells,
                                                BPPARAM=BPPARAM)
         return(do.call("rbind",pairwiseVals ))
     }else{
@@ -759,7 +764,11 @@ inhomLPair <-
               sigma = NULL,
               window = "convex",
               window.length = NULL,
-              minLambda = 0.05, from = NULL, to = NULL, edgeCorrect = TRUE) {
+              minLambda = 0.05,
+              from = NULL, 
+              to = NULL, 
+              edgeCorrect = TRUE,
+              includeZeroCells = TRUE) {
         
         
         ow <- makeWindow(data, window, window.length)
@@ -856,7 +865,7 @@ inhomLPair <-
         
         assoc <- rep(-sum(Rs), length(labels))
         names(assoc) <- labels
-        assoc[!(m1%in%X$marks&m2%in%X$marks)] = NA
+        if(!includeZeroCells)assoc[!(m1%in%X$marks&m2%in%X$marks)] = NA
         assoc[names(wt)] <- wt
         names(assoc) <- labels
         
