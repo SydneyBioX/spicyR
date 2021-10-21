@@ -27,6 +27,7 @@
 #' @param imageIDString The column name for imageIDString.
 #' @param phenotypeString A string which can be used to identify the columns 
 #' which contains phenotype information.
+#' @param verbose logical indicating whether to output messages.
 #'
 #' @return A SegmentedCells object
 #'
@@ -75,10 +76,11 @@ SegmentedCells <-
              cellIDString = "cellID",
              cellAnnotations = NULL,
              imageCellIDString = "imageCellID",
-             imageIDString = "imageID") {
+             imageIDString = "imageID",
+             verbose = TRUE) {
         
         if (cellTypeString == "cellType" & !"cellType" %in% colnames(cellData)) {
-            message("There is no cellType column, setting to NA")
+            if(verbose) message("There is no cellType column, setting to NA")
             cellData$cellType = NA
         }
         if (!is.null(cellTypeString)) {
@@ -113,7 +115,7 @@ SegmentedCells <-
             cellData$y <- cellData[, spatialCoords[2]]
             spatialCoords <- c("x", "y")
             if (cellIDString == "cellID" & !"cellID" %in% colnames(cellData)) {
-                message("There is no cellID. I'll create these", 
+                if(verbose) message("There is no cellID. I'll create these", 
                         "\n")
                 cellData$cellID <- paste("cell", seq_len(nrow(cellData)), 
                                          sep = "_")
@@ -136,7 +138,7 @@ SegmentedCells <-
                 cellData$imageID <- cellData[, imageIDString]
             }
             if (is.null(cellData$imageCellID)) {
-                message("There is no image specific imageCellID. I'll create these", 
+                if(verbose) message("There is no image specific imageCellID. I'll create these", 
                         "\n")
                 cellData$imageCellID <- paste("cell", seq_len(nrow(cellData)), 
                                               sep = "_")
@@ -144,7 +146,7 @@ SegmentedCells <-
             if (length(cellData$imageCellID) != nrow(cellData)) 
                 stop("The number of rows in cells does not equal the number of imageCellIDs")
             if (is.null(cellData$imageID)) {
-                message("There is no imageID. I'll assume this is only one image and create an arbitrary imageID", 
+                if(verbose) message("There is no imageID. I'll assume this is only one image and create an arbitrary imageID", 
                         "\n")
                 cellData$imageID <- "image1"
             }
@@ -163,7 +165,7 @@ SegmentedCells <-
                 cellData$imageID <- cellData[, imageIDString]
             }
             if (is.null(cellData$imageID)) {
-                message("There is no imageID. I'll assume this is only one image and create an arbitrary imageID", 
+                if(verbose) message("There is no imageID. I'll assume this is only one image and create an arbitrary imageID", 
                         "\n")
                 cellData$imageID <- "image1"
             }
