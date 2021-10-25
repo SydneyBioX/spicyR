@@ -937,7 +937,7 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor){
     z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                               count2ToWeight = as.numeric(count2))))
     #w <- 1 / sqrt(z1 - min(z1) + 1)
-    z1[which(as.numeric(count1)==0|as.numeric(count2)==0)] <- NA
+    #z1[which(as.numeric(count1)==0|as.numeric(count2)==0)] <- NA
     w <-  1/pmax(z1, quantile(z1[z1>0.1], 0.01, na.rm = TRUE))
     w <- w / mean(w, na.rm = TRUE)
     w^weightFactor
