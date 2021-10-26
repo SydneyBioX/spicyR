@@ -932,7 +932,7 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor){
         weightFunction <- rep(1, nrow(pairwiseAssoc))
         return(weightFunction)
     }
-    weightFunction <- scam::scam(log10(resSqToWeight+1)~ s(log10(count1ToWeight+1),bs="mpd")+s(log10(count2ToWeight+1), bs="mpd"), optimizer = "nlm.fd")
+    weightFunction <- scam::scam(log10(resSqToWeight+1)~ s(log10(count1ToWeight+1),bs="mpd")+s(log10(count2ToWeight+1), bs="mpd"))#, optimizer = "nlm.fd")
     
     z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                               count2ToWeight = as.numeric(count2))))
