@@ -1,7 +1,7 @@
 #' @export
 #' @rdname SegmentedCells
-#' @importClassesFrom S4Vectors DataFrame
-setClass("SegmentedCells", contains = "DataFrame")
+#' @importClassesFrom S4Vectors DFrame
+setClass("SegmentedCells", contains = "DFrame")
 
 #' @export
 #' @aliases SpicyResults,list,ANY-method
