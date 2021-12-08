@@ -147,32 +147,32 @@ signifPlot(spicyTest,
                            "B", "naiveTc", "Th", "Tc", "neutrophil", "macrophage"))
 ```
 
-## Bootstrapping with spicy
-There are multiple ways for calculating p-values for mixed effects models. We 
-have also implemented a bootstrapping approach. All that is needed is a choice 
-for the number of resamples used in the bootstrap which can be set with the 
-`nsim` parameter in `spicy()`.
+<!-- ## Bootstrapping with spicy -->
+<!-- There are multiple ways for calculating p-values for mixed effects models. We  -->
+<!-- have also implemented a bootstrapping approach. All that is needed is a choice  -->
+<!-- for the number of resamples used in the bootstrap which can be set with the  -->
+<!-- `nsim` parameter in `spicy()`. -->
 
-```{r}
-data("spicyTestBootstrap")
-```
+<!-- ```{r} -->
+<!-- data("spicyTestBootstrap") -->
+<!-- ``` -->
 
 
-```{r eval=FALSE, warning=FALSE, message=FALSE}
-spicyTestBootstrap <- spicy(diabetesData, 
-                            condition = "stage", 
-                            subject = "case",
-                            from = "beta",
-                            to = "Tc",
-                            nsim = 1000)
-```
+<!-- ```{r eval=FALSE, warning=FALSE, message=FALSE} -->
+<!-- spicyTestBootstrap <- spicy(diabetesData,  -->
+<!--                             condition = "stage",  -->
+<!--                             subject = "case", -->
+<!--                             from = "beta", -->
+<!--                             to = "Tc", -->
+<!--                             nsim = 1000) -->
+<!-- ``` -->
 
-```{r}
-spicyTestBootstrap
+<!-- ```{r} -->
+<!-- spicyTestBootstrap -->
 
-topPairs(spicyTestBootstrap)  
-```
-Indeed, we get improved statistical power compared to the previous method.
+<!-- topPairs(spicyTestBootstrap)   -->
+<!-- ``` -->
+<!-- Indeed, we get improved statistical power compared to the previous method. -->
 
 
 # sessionInfo()
