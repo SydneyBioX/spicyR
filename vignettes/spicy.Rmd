@@ -142,7 +142,7 @@ We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by
 providing it the `spicy` object obtained.
 ```{r}
 signifPlot(spicyTest, 
-           breaks=c(-3, 3, 0.5),
+           breaks=c(-3, 3, 1),
            marksToPlot = c("alpha", "beta", "gamma", "delta", 
                            "B", "naiveTc", "Th", "Tc", "neutrophil", "macrophage"))
 ```

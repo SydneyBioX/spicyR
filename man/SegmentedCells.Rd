@@ -18,7 +18,8 @@ SegmentedCells(
   cellIDString = "cellID",
   cellAnnotations = NULL,
   imageCellIDString = "imageCellID",
-  imageIDString = "imageID"
+  imageIDString = "imageID",
+  verbose = TRUE
 )
 }
 \arguments{
@@ -51,6 +52,8 @@ annotation of a cell.}
 \item{imageCellIDString}{The column name for imageCellID.}
 
 \item{imageIDString}{The column name for imageIDString.}
+
+\item{verbose}{logical indicating whether to output messages.}
 }
 \value{
 A SegmentedCells object

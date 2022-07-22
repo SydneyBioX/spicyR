@@ -30,6 +30,7 @@ spicy(
   minLambda = 0.05,
   fast = TRUE,
   edgeCorrect = TRUE,
+  includeZeroCells = FALSE,
   ...
 )
 }
@@ -82,6 +83,9 @@ when estimating concave windows.}
 inhomogeneous L-curves.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
+
+\item{includeZeroCells}{A logical indicating whether to include cells with 
+zero counts in the pairwise association calculation.}
 
 \item{...}{Other options to pass to bootstrap.}
 }

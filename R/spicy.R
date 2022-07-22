@@ -81,6 +81,17 @@ spicy <- function(cells,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
                   ...) {
+    
+    if(is(cells, "SingleCellExperiment")|is(cells,"SpatialExperiment"))
+        cells <- extractSpicyInfo(cells, 
+                                  imageID = imageID,
+                                  cellType = cellType,
+                                  spatialCoords = spatialCoords,
+                                  condition = condition,
+                                  subject = subject,
+                                  covariates = covariates)
+    
+    
     if (!is(cells, "SegmentedCells")) {
         stop('cells needs to be a SegmentedCells object')
     }
@@ -357,7 +368,12 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' @param fast A logical describing whether to use a fast approximation of the 
 #' inhomogeneous L-curves.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
+#' @param includeZeroCells A logical indicating whether to include cells with 
+#' zero counts in the pairwise association calculation.
 #' @param BPPARAM A BiocParallelParam object.
+#' @param imageID The imageID if using a SingleCellExperiment or SpatialExperiment.
+#' @param cellType The cellType if using a SingleCellExperiment or SpatialExperiment.
+#' @param spatialCoords The spatialCoords if using a SingleCellExperiment or SpatialExperiment.
 #'
 #' @return Statistic from pairwise L curve of a single image.
 #'
@@ -367,8 +383,14 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' pairAssoc <- getPairwise(diabetesData)
 #' @export
 #' @importFrom BiocParallel bplapply
-getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellType(cells)), dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM=BiocParallel::SerialParam()) {
-    cells2 <- cellSummary(cells, bind = FALSE)
+getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM=BiocParallel::SerialParam(),
+                        imageID = "imageID", cellType = "cellType", spatialCoords = c("x", "y")) {
+    
+    
+    cells2 <- prepCellSummary(cells, spatialCoords, cellType, imageID, bind = FALSE)
+    
+    if(is.null(from))from <- unique(cellType(cells))
+    if(is.null(to))to <- unique(cellType(cells))
     
     if(fast){
         pairwiseVals <- BiocParallel::bplapply(cells2,
@@ -395,6 +417,45 @@ getPairwise <- function(cells, from = unique(cellType(cells)), to = unique(cellT
         return(unlist(pairwiseVals))
     }
     
+    
+}
+
+
+
+
+#' Get proportions from a SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame.
+#'
+#' @param cells SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame
+#' @param feature The feature of interest
+#' @param imageID The imageID's
+#'
+#' @return Proportions
+#'
+#'
+#' @examples
+#' data("diabetesData")
+#' pairAssoc <- getProp(diabetesData)
+#' @export
+#' @importFrom SummarizedExperiment colData
+#' @import SpatialExperiment SingleCellExperiment
+getProp <- function(cells, feature = "cellType", imageID = "imageID") {
+    
+    if (is.data.frame(cells)) {
+        df <- cells[,c(imageID, feature)]
+    }
+    
+    if (is(cells, "SingleCellExperiment")|is(cells, "SpatialExperiment")) {
+        df <- as.data.frame(SummarizedExperiment::colData(cells))[,c(imageID, feature)]
+    }
+    
+    if (is(cells, "SegmentedCells")) {
+        cellSummary <- cellSummary(cells, bind = TRUE)
+        df <- as.data.frame(cellSummary[,c(imageID, feature)])
+    }
+    
+    tab <- table(df[,imageID], df[,feature])
+    tab <- sweep(tab,1,rowSums(tab), "/")
+    as.data.frame.matrix(tab)
     
 }
 
@@ -620,68 +681,6 @@ spatialLMBootstrap <- function(linearModels, nsim=19) {
     df
 }
 
-#' Plots result of signifPlot.
-#'
-#' @param results Data frame obtained from spicy.
-#' @param fdr TRUE if FDR correction is used.
-#' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first 
-#' number is the minimum, the second is the maximum, the third is the number of breaks.
-#' @param colors Vector of colours to use in pheatmap.
-#' @param marksToPlot Vector of marks to include in pheatmap.
-#'
-#' @return a pheatmap object
-#'
-#' @examples
-#' data(spicyTest)
-#' signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
-#' 
-#' @export
-#' @importFrom pheatmap pheatmap
-#' @importFrom grDevices colorRampPalette
-#' @importFrom stats p.adjust
-signifPlot <- function(results,
-                       fdr = FALSE,
-                       breaks = c(-5, 5, 0.5),
-                       colors = c("blue", "white", "red"),
-                       marksToPlot = NULL) {
-    pVal <- results$p.value[,2]
-    marks <- unique(results$comparisons$from)
-    
-    if (is.null(marksToPlot)) marksToPlot <- marks
-    
-    if (min(pVal,na.rm=TRUE) == 0) {
-        pVal[pVal == 0] <-
-            pVal[pVal == 0] + 10 ^ floor(log10(min(pVal[pVal > 0],na.rm = TRUE)))
-    }
-    
-    if (fdr) {
-        pVal <- p.adjust(pVal, method = "fdr")
-    }
-    
-    isGreater <- results$coefficient[,2] > 0
-    
-    pVal <- log10(pVal)
-    
-    pVal[isGreater] <- abs(pVal[isGreater])
-    
-    pVal <- matrix(pVal, nrow = length(marks))
-    colnames(pVal) <- marks
-    rownames(pVal) <- marks
-    
-    
-    breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-    pal <- colorRampPalette(colors)(length(breaks))
-    
-    heatmap <- pheatmap(
-        pVal[marksToPlot, marksToPlot],
-        color = pal,
-        breaks = breaks,
-        cluster_rows = FALSE,
-        cluster_cols = FALSE
-    )
-    
-    heatmap
-}
 
 ###########################
 #
@@ -982,4 +981,121 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
     }
     weightFunction[colnames(pairwiseAssoc)]
 }
+
+
+
+
+
+#' @importFrom SummarizedExperiment colData
+#' @import SpatialExperiment SingleCellExperiment
+prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALSE){
+    if (is.data.frame(cells)) {
+        cells <- SegmentedCells(cells, 
+                                spatialCoords = spatialCoords,
+                                cellTypeString = cellType,
+                                imageIDString = imageID)
+        
+        cellSummary <- cellSummary(cells, bind = bind)
+    }
+    
+    if (is(cells, "SingleCellExperiment")) {
+        cells <- colData(cells)
+        cells <- SegmentedCells(cells, 
+                                spatialCoords = spatialCoords,
+                                cellTypeString = cellType,
+                                imageIDString = imageID)
+        
+        cellSummary <- cellSummary(cells, bind = bind)   
+    }
+    
+    if (is(cells, "SpatialExperiment")) {
+        cells <- cbind(colData(cells), spatialCoords(cells))
+        cells <- SegmentedCells(cells, 
+                                spatialCoords = spatialCoords,
+                                cellTypeString = cellType,
+                                imageIDString = imageID)
+        
+        cellSummary <- cellSummary(cells, bind = bind)   
+    }
+    
+    if (is(cells, "SegmentedCells")) {
+        cellSummary <- cellSummary(cells, bind = bind)
+    }
+    
+    cellSummary
+}
+
+
+extractSpicyInfo <- function(cells, 
+                          imageID = imageID,
+                          cellType = cellType,
+                          spatialCoords = spatialCoords,
+                          condition = condition,
+                          subject = subject,
+                          covariates = covariates){
+    
+    extra <- c(condition, subject, covariates)
+    if (is(cells, "SingleCellExperiment")) {
+        cells <- colData(cells)
+        colnames(cells)[colnames(cells)%in%extra] <- paste0("phenotype_",colnames(cells)[colnames(cells)%in%extra])
+        cells <- SegmentedCells(cells, 
+                                spatialCoords = spatialCoords,
+                                cellTypeString = cellType,
+                                imageIDString = imageID)
+    }
+    
+    if (is(cells, "SpatialExperiment")) {
+        cells <- cbind(colData(cells), spatialCoords(cells))
+        colnames(cells)[colnames(cells)%in%extra] <- paste0("phenotype_",colnames(cells)[colnames(cells)%in%extra])
+        cells <- SegmentedCells(cells, 
+                                spatialCoords = spatialCoords,
+                                cellTypeString = cellType,
+                                imageIDString = imageID)
+    }
+    
+    
+    cells
+    
+}
+    
+
+
+#' Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram
+#'
+#' @param cells SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame
+#' @param feature The feature of interest
+#' @param imageID The imageID's
+#'
+#' @return Proportions
+#'
+#'
+#' @examples
+#' data("diabetesData")
+#' pairAssoc <- getProp(diabetesData)
+#' @export
+#' @importFrom SummarizedExperiment colData
+#' @import SpatialExperiment SingleCellExperiment
+colTest <- function(df, condition, feature = NULL, type = "wilcox"){
+    
+if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
+    df <- getProp(df, imageID = imageID, feature = feature)
+    x <- unique(as.data.frame(colData(df)[c(imageID,condition)]))
+    condition <- x$condition
+    names(condition) <- x$imageID
+    condition <- condition[rownames(df)]
+}
+    
+test <- apply(df, 2, function(x){
+    if(type == "wilcox")test <- wilcox.test(x ~ condition)
+    if(type == "ttest")test <- t.test(x ~ condition)
+    signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
+})
+
+test <- as.data.frame(t(test))
+test$cluster <- rownames(test)
+test$adjPval <- signif(p.adjust(test$pval, "fdr"),2)
+test <- test[order(test$pval),]
+test
+}
+
 

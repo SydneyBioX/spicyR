@@ -6,8 +6,8 @@
 \usage{
 getPairwise(
   cells,
-  from = unique(cellType(cells)),
-  to = unique(cellType(cells)),
+  from = NULL,
+  to = NULL,
   dist = NULL,
   window = "convex",
   window.length = NULL,
@@ -16,7 +16,11 @@ getPairwise(
   minLambda = 0.05,
   fast = TRUE,
   edgeCorrect = TRUE,
-  BPPARAM = BiocParallel::SerialParam()
+  includeZeroCells = TRUE,
+  BPPARAM = BiocParallel::SerialParam(),
+  imageID = "imageID",
+  cellType = "cellType",
+  spatialCoords = c("x", "y")
 )
 }
 \arguments{
@@ -44,6 +48,9 @@ when estimating concave windows.}
 inhomogeneous L-curves.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
+
+\item{includeZeroCells}{A logical indicating whether to include cells with 
+zero counts in the pairwise association calculation.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
 }
