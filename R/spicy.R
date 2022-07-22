@@ -434,7 +434,7 @@ getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "co
 #'
 #' @examples
 #' data("diabetesData")
-#' pairAssoc <- getProp(diabetesData)
+#' prop <- getProp(diabetesData)
 #' @export
 #' @importFrom SummarizedExperiment colData
 #' @import SpatialExperiment SingleCellExperiment
@@ -1071,7 +1071,11 @@ extractSpicyInfo <- function(cells,
 #'
 #' @examples
 #' data("diabetesData")
-#' pairAssoc <- getProp(diabetesData)
+#' props <- getProp(diabetesData)
+#' condition <- imagePheno(diabetesData)$stage
+#' names(condition) <- imagePheno(diabetesData)$imageID
+#' condition <- condition[condition%in% c("Long-duration", "Onset")]
+#' test <- colTest(props[names(condition), ], condition)
 #' @export
 #' @importFrom SummarizedExperiment colData
 #' @import SpatialExperiment SingleCellExperiment

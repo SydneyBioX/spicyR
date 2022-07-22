@@ -53,6 +53,12 @@ inhomogeneous L-curves.}
 zero counts in the pairwise association calculation.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
+
+\item{imageID}{The imageID if using a SingleCellExperiment or SpatialExperiment.}
+
+\item{cellType}{The cellType if using a SingleCellExperiment or SpatialExperiment.}
+
+\item{spatialCoords}{The spatialCoords if using a SingleCellExperiment or SpatialExperiment.}
 }
 \value{
 Statistic from pairwise L curve of a single image.

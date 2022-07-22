@@ -24,11 +24,11 @@ signifPlot(
 \item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first 
 number is the minimum, the second is the maximum, the third is the number of breaks.}
 
+\item{colours}{Vector of colours to use in pheatmap.}
+
 \item{marksToPlot}{Vector of marks to include in pheatmap.}
 
 \item{cutoff}{significance threshold for circles in bubble plot}
-
-\item{colors}{Vector of colours to use in pheatmap.}
 }
 \value{
 a pheatmap object
