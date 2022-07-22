@@ -19,8 +19,9 @@
 #' @importFrom pheatmap pheatmap
 #' @importFrom grDevices colorRampPalette
 #' @importFrom stats p.adjust
-#' @importFrom ggplot2 ggplot scale_colour_gradient2 geom_point scale_shape_manual guides labs scale_color_manual theme_classic theme element_text aes guide_legend element_blank
+#' @importFrom ggplot2 ggplot scale_colour_gradient2 geom_point scale_shape_manual guides labs scale_color_manual theme_classic theme element_text aes guide_legend element_blank guide_colourbar
 #' @importFrom ggforce geom_arc_bar geom_circle
+#' @importFrom grDevices colors
 signifPlot <- function(results,
                        fdr = FALSE,
                        type = "bubble",
@@ -124,24 +125,21 @@ labels[length(labels)] <- "attraction"
     ggplot2::scale_fill_gradient2(low =colours[1], mid = colours[2], high = colours[3], midpoint = 0, breaks = breaks, labels = labels, limits = limits) +
     ggplot2::geom_point(aes(colour = sig), size = 0) + 
     ggplot2::geom_point(aes(size = size), x = 100000, y = 10000000) + 
-    ggplot2::scale_color_manual(values = c("TRUE" = "black", "FALSE" = "white"), labels = c(sigLab, "")) + 
+    ggplot2::scale_color_manual(values = c("FALSE" = "white", "TRUE" = "black"), labels = c("", sigLab)) + 
     ggforce::geom_arc_bar(ggplot2::aes(fill = groupA, r = pmax(size/max(size)/2,0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = 0, end = pi, x = NULL, y = NULL),color = NA) + 
     ggforce::geom_arc_bar(ggplot2::aes(fill = groupB, r = pmax(size/max(size)/2, 0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = pi, end = 2*pi, x = NULL, y = NULL), colour = NA)+
     ggforce::geom_circle(data = df[df$sig=="TRUE",],aes(r = pmax(size/max(size)/2, 0.15), x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), x = NULL, y = NULL), colour = "black") + 
     #ggplot2::geom_point(ggplot2::aes(colour = groupB), shape="\u25D1") + 
     ggplot2::geom_point(data= df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000)+ 
     ggplot2::scale_shape_manual(values = shape.legend) +
-    ggplot2::guides(shape = ggplot2::guide_legend(override.aes = list(size=5))) + 
-    ggplot2::labs(colour = "Localisation", shape = "Condition") + 
     ggplot2::theme_classic() + 
     ggplot2::theme( axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0),
                     legend.box.background = ggplot2::element_blank()) +
-    ggplot2::labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = "") +
-    ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=5, shape = 1))) + 
-        guides(shape = guide_legend(order = 1),
-               fill = guide_colorbar(order = 2),
-               size = guide_legend(order = 3),
-               colour = guide_legend(order = 4)
+    ggplot2::labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = NULL, fill = "Localisation", shape = "Condition") +
+        guides(shape = ggplot2::guide_legend(order = 3, override.aes = list(size=5)),
+               fill = ggplot2::guide_colourbar(order = 4),
+               size = ggplot2::guide_legend(order = 2),
+               colour = ggplot2::guide_legend(order = 1, override.aes = list(size=5, shape = 1))
                )
     
 }

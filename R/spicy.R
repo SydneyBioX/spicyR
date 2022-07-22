@@ -380,7 +380,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #'
 #' @examples
 #' data("diabetesData")
-#' pairAssoc <- getPairwise(diabetesData)
+#' pairAssoc <- getPairwise(diabetesData[1,])
 #' @export
 #' @importFrom BiocParallel bplapply
 getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM=BiocParallel::SerialParam(),
@@ -1082,6 +1082,8 @@ extractSpicyInfo <- function(cells,
 #' test <- colTest(props[names(condition), ], condition)
 #' @export
 #' @importFrom SummarizedExperiment colData
+#' @importFrom SingleCellExperiment SingleCellExperiment
+#' @importFrom stats wilcox.test t.test
 colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = imageID){
     
 if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
