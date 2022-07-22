@@ -437,7 +437,6 @@ getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "co
 #' prop <- getProp(diabetesData)
 #' @export
 #' @importFrom SummarizedExperiment colData
-#' @import SpatialExperiment SingleCellExperiment
 getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     
     if (is.data.frame(cells)) {
@@ -987,7 +986,7 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
 
 
 #' @importFrom SummarizedExperiment colData
-#' @import SpatialExperiment SingleCellExperiment
+#' @importFrom SpatialExperiment spatialCoords
 prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALSE){
     if (is.data.frame(cells)) {
         cells <- SegmentedCells(cells, 
@@ -1062,9 +1061,11 @@ extractSpicyInfo <- function(cells,
 
 #' Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram
 #'
-#' @param cells SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame
-#' @param feature The feature of interest
-#' @param imageID The imageID's
+#' @param df A data.frame or SingleCellExperiment, SpatialExperiment
+#' @param condition The condition of interest
+#' @param type The type of test, "wilcox" or "ttest"
+#' @param feature Can be used to calculate the proportions of this feature for each image
+#' @param imageID The imageID's if presenting a SingleCellExperiment
 #'
 #' @return Proportions
 #'
@@ -1081,8 +1082,7 @@ extractSpicyInfo <- function(cells,
 #' test <- colTest(props[names(condition), ], condition)
 #' @export
 #' @importFrom SummarizedExperiment colData
-#' @import SpatialExperiment SingleCellExperiment
-colTest <- function(df, condition, feature = NULL, type = "wilcox"){
+colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = imageID){
     
 if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
     df <- getProp(df, imageID = imageID, feature = feature)

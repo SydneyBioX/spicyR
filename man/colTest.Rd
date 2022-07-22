@@ -4,14 +4,18 @@
 \alias{colTest}
 \title{Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram}
 \usage{
-colTest(df, condition, feature = NULL, type = "wilcox")
+colTest(df, condition, type = "wilcox", feature = NULL, imageID = imageID)
 }
 \arguments{
-\item{feature}{The feature of interest}
+\item{df}{A data.frame or SingleCellExperiment, SpatialExperiment}
 
-\item{cells}{SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame}
+\item{condition}{The condition of interest}
 
-\item{imageID}{The imageID's}
+\item{type}{The type of test, "wilcox" or "ttest"}
+
+\item{feature}{Can be used to calculate the proportions of this feature for each image}
+
+\item{imageID}{The imageID's if presenting a SingleCellExperiment}
 }
 \value{
 Proportions
