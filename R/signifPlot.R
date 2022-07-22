@@ -139,7 +139,7 @@ labels[length(labels)] <- "attraction"
     ggplot2::labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = "") +
     ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=5, shape = 1))) + 
         guides(shape = guide_legend(order = 1),
-               fill = guide_legend(order = 2),
+               fill = guide_colorbar(order = 2),
                size = guide_legend(order = 3),
                colour = guide_legend(order = 4)
                )
