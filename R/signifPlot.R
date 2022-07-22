@@ -106,6 +106,7 @@ df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1),
 
 if(is.null(breaks)){
     limits <- c(floor(min(c(groupA,groupB))*2)/2, ceiling(max(c(groupA,groupB))*2)/2)
+    by <- round((max(c(groupA,groupB))/2-0.01))/2
     breaks <- c(ceiling(min(c(groupA,groupB))*2)/2,floor(max(c(groupA,groupB))*2)/2,0.5)
     breaks <- c(floor(min(c(groupA,groupB))*2)/2,seq(from = breaks[1], to = breaks[2], by = breaks[3]),ceiling(max(c(groupA,groupB))*2)/2)
 } else{

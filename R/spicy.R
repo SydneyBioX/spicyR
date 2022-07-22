@@ -1070,6 +1070,9 @@ extractSpicyInfo <- function(cells,
 #'
 #'
 #' @examples
+#' 
+#' # Test for an association with long-duration diabetes
+#' # This is clearly ignoring the repeated measures...
 #' data("diabetesData")
 #' props <- getProp(diabetesData)
 #' condition <- imagePheno(diabetesData)$stage
@@ -1096,8 +1099,8 @@ test <- apply(df, 2, function(x){
 })
 
 test <- as.data.frame(t(test))
-test$cluster <- rownames(test)
 test$adjPval <- signif(p.adjust(test$pval, "fdr"),2)
+test$cluster <- rownames(test)
 test <- test[order(test$pval),]
 test
 }

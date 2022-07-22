@@ -21,5 +21,5 @@ Get proportions from a SegmentedCells, SingleCellExperiment, SpatialExperiment o
 }
 \examples{
 data("diabetesData")
-pairAssoc <- getProp(diabetesData)
+prop <- getProp(diabetesData)
 }

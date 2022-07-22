@@ -20,6 +20,13 @@ Proportions
 Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram
 }
 \examples{
+
+# Test for an association with long-duration diabetes
+# This is clearly ignoring the repeated measures...
 data("diabetesData")
-pairAssoc <- getProp(diabetesData)
+props <- getProp(diabetesData)
+condition <- imagePheno(diabetesData)$stage
+names(condition) <- imagePheno(diabetesData)$imageID
+condition <- condition[condition\%in\% c("Long-duration", "Onset")]
+test <- colTest(props[names(condition), ], condition)
 }
