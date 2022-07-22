@@ -106,8 +106,8 @@ df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1),
 
 if(is.null(breaks)){
     limits <- c(floor(min(c(groupA,groupB))*2)/2, ceiling(max(c(groupA,groupB))*2)/2)
-    by <- round((max(c(groupA,groupB))/2-0.01))/2
-    breaks <- c(ceiling(min(c(groupA,groupB))*2)/2,floor(max(c(groupA,groupB))*2)/2,0.5)
+    by <- round((max(abs(c(groupA,groupB)))/2-0.01))/2
+    breaks <- c(ceiling(min(c(groupA,groupB))*2)/2,floor(max(c(groupA,groupB))*2)/2,by)
     breaks <- c(floor(min(c(groupA,groupB))*2)/2,seq(from = breaks[1], to = breaks[2], by = breaks[3]),ceiling(max(c(groupA,groupB))*2)/2)
 } else{
     limits <- c(breaks[1], breaks[2])
@@ -137,5 +137,11 @@ labels[length(labels)] <- "attraction"
     ggplot2::theme( axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0),
                     legend.box.background = ggplot2::element_blank()) +
     ggplot2::labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = "") +
-    ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=5, shape = 1)))
+    ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=5, shape = 1))) + 
+        guides(shape = guide_legend(order = 1),
+               fill = guide_legend(order = 2),
+               size = guide_legend(order = 3),
+               colour = guide_legend(order = 4)
+               )
+    
 }
