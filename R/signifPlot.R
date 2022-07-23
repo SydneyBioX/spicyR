@@ -100,9 +100,9 @@ rownames(df) <- rownames(test$statistic)
 
 df <- df[df$cellTypeA%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
 
-shape.legend = c(NP = "\u25D6", P = "\u25D7")
+shape.legend = c(GroupA = "\u25D6", GroupB = "\u25D7")
 
-df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1), condition = c("NP", "P"))
+df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1), condition = c("GroupA", "GroupB"))
 
 
 if(is.null(breaks)){
