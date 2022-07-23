@@ -41,7 +41,7 @@ signifPlot <- function(results,
     
     if(is.null(breaks)) breaks <- c(-3,3,0.5)
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-    pal <- colorRampPalette(colors)(length(breaks))
+    pal <- colorRampPalette(colours)(length(breaks))
     
     
     pVal <- results$p.value[,2]
@@ -106,10 +106,10 @@ df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1),
 
 
 if(is.null(breaks)){
-    limits <- c(floor(min(c(groupA,groupB))*2)/2, ceiling(max(c(groupA,groupB))*2)/2)
-    by <- round((max(abs(c(groupA,groupB)))/2-0.01))/2
-    breaks <- c(ceiling(min(c(groupA,groupB))*2)/2,floor(max(c(groupA,groupB))*2)/2,by)
-    breaks <- c(floor(min(c(groupA,groupB))*2)/2,seq(from = breaks[1], to = breaks[2], by = breaks[3]),ceiling(max(c(groupA,groupB))*2)/2)
+    limits <- c(floor(min(c(groupA,groupB), na.rm = TRUE)*2)/2, ceiling(max(c(groupA,groupB), na.rm = TRUE)*2)/2)
+    by <- round((max(abs(c(groupA,groupB)), na.rm = TRUE)/2-0.01))/2
+    breaks <- c(ceiling(min(c(groupA,groupB), na.rm = TRUE)*2)/2,floor(max(c(groupA,groupB), na.rm = TRUE)*2)/2,by)
+    breaks <- c(floor(min(c(groupA,groupB), na.rm = TRUE)*2)/2,seq(from = breaks[1], to = breaks[2], by = breaks[3]),ceiling(max(c(groupA,groupB), na.rm = TRUE)*2)/2)
 } else{
     limits <- c(breaks[1], breaks[2])
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
@@ -126,9 +126,9 @@ labels[length(labels)] <- "attraction"
     ggplot2::geom_point(aes(colour = sig), size = 0) + 
     ggplot2::geom_point(aes(size = size), x = 100000, y = 10000000) + 
     ggplot2::scale_color_manual(values = c("FALSE" = "white", "TRUE" = "black"), labels = c("", sigLab)) + 
-    ggforce::geom_arc_bar(ggplot2::aes(fill = groupA, r = pmax(size/max(size)/2,0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = 0, end = pi, x = NULL, y = NULL),color = NA) + 
-    ggforce::geom_arc_bar(ggplot2::aes(fill = groupB, r = pmax(size/max(size)/2, 0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = pi, end = 2*pi, x = NULL, y = NULL), colour = NA)+
-    ggforce::geom_circle(data = df[df$sig=="TRUE",],aes(r = pmax(size/max(size)/2, 0.15), x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), x = NULL, y = NULL), colour = "black") + 
+    ggforce::geom_arc_bar(ggplot2::aes(fill = groupA, r = pmax(size/max(size, na.rm = TRUE)/2,0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = 0, end = pi, x = NULL, y = NULL),color = NA) + 
+    ggforce::geom_arc_bar(ggplot2::aes(fill = groupB, r = pmax(size/max(size, na.rm = TRUE)/2, 0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = pi, end = 2*pi, x = NULL, y = NULL), colour = NA)+
+    ggforce::geom_circle(data = df[df$sig=="TRUE",],aes(r = pmax(size/max(size, na.rm = TRUE)/2, 0.15), x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), x = NULL, y = NULL), colour = "black") + 
     #ggplot2::geom_point(ggplot2::aes(colour = groupB), shape="\u25D1") + 
     ggplot2::geom_point(data= df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000)+ 
     ggplot2::scale_shape_manual(values = shape.legend) +
