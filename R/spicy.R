@@ -30,6 +30,9 @@
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
 #' @param includeZeroCells A logical indicating whether to include cells with 
 #' zero counts in the pairwise association calculation.
+#' @param imageID The image ID if using SingleCellExperiment.
+#' @param cellType The cell type if using SingleCellExperiment.
+#' @param spatialCoords The spatial coordinates if using a SingleCellExperiment.
 #' @param ... Other options to pass to bootstrap.
 #'
 #' @return Data frame of p-values.
@@ -80,6 +83,9 @@ spicy <- function(cells,
                   fast = TRUE,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
+                  imageID = "imageID",
+                  cellType = "cellType",
+                  spatialCoords = c("x", "y"),
                   ...) {
     
     if(is(cells, "SingleCellExperiment")|is(cells,"SpatialExperiment"))
