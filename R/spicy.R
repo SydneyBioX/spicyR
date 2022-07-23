@@ -452,7 +452,8 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
         df <- as.data.frame(cellSummary[,c(imageID, feature)])
     }
     
-    tab <- table(droplevels(df[,imageID]), droplevels(df[,feature]))
+
+    tab <- table(df[,imageID], df[,feature])
     tab <- sweep(tab,1,rowSums(tab), "/")
     as.data.frame.matrix(tab)
     
