@@ -224,22 +224,22 @@ SegmentedCells <-
         df$cellMarks <- S4Vectors::split(DataFrame(), cellData$imageID)
         df$cellMorph <- S4Vectors::split(DataFrame(), cellData$imageID)
         if (any(grepl(intensityString, colnames(cellData)))) {
-            markers <- cellData[, grep(intensityString, colnames(cellData))]
+            markers <- cellData[, grep(intensityString, colnames(cellData)), drop = FALSE]
             colnames(markers) <- gsub(intensityString, "", colnames(markers))
             df$cellMarks <- S4Vectors::split(DataFrame(markers), 
                                              cellData$imageID)[rownames(df)]
         }
         if (any(grepl(morphologyString, colnames(cellData)))) {
-            morphology <- cellData[, grep(morphologyString, colnames(cellData))]
+            morphology <- cellData[, grep(morphologyString, colnames(cellData)), drop = FALSE]
             colnames(morphology) <- gsub(morphologyString, "", colnames(morphology))
             df$cellMorph <- S4Vectors::split(DataFrame(morphology), 
                                              cellData$imageID)[rownames(df)]
         }
         df$imagePheno <- S4Vectors::split(DataFrame(), cellData$imageID)
         if (any(grepl(phenotypeString, colnames(cellData)))) {
-            phenotype <- cellData[, grep(phenotypeString, colnames(cellData))]
-            colnames(phenotype) <- gsub(phenotypeString, "", colnames(phenotype))
+            phenotype <- cellData[, grep(phenotypeString, colnames(cellData)), drop = FALSE]
             phenotype <- cbind(imageID = cellData$imageID, phenotype)
+            colnames(phenotype) <- gsub(phenotypeString, "", colnames(phenotype))
             phenotype <- unique(phenotype)
             phenotype <- S4Vectors::split(DataFrame(phenotype), phenotype$imageID)
             df$imagePheno <- phenotype[rownames(df)]
