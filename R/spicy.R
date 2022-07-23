@@ -1084,10 +1084,11 @@ extractSpicyInfo <- function(cells,
 #' @importFrom SummarizedExperiment colData
 #' @importFrom SingleCellExperiment SingleCellExperiment
 #' @importFrom stats wilcox.test t.test
+#' @importFrom S4Vectors as.data.frame
 colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = imageID){
     
 if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
-    x <- unique(as.data.frame(colData(df)[c(imageID,condition)]))
+    x <- unique(S4Vectors::as.data.frame(colData(df)[c(imageID,condition)]))
     condition <- x[[condition]]
     names(condition) <- x$imageID
     
