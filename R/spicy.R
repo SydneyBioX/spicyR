@@ -452,7 +452,7 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
         df <- as.data.frame(cellSummary[,c(imageID, feature)])
     }
     
-    tab <- table(df[,imageID], df[,feature])
+    tab <- table(droplevels(df[,imageID]), droplevels(df[,feature]))
     tab <- sweep(tab,1,rowSums(tab), "/")
     as.data.frame.matrix(tab)
     
@@ -1085,10 +1085,13 @@ extractSpicyInfo <- function(cells,
 #' @importFrom SingleCellExperiment SingleCellExperiment
 #' @importFrom stats wilcox.test t.test
 #' @importFrom S4Vectors as.data.frame
-colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = imageID){
+colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = "imageID"){
     
 if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
-    x <- unique(S4Vectors::as.data.frame(colData(df)[c(imageID,condition)]))
+    if(is.null(feature))stop("'feature' is still null")
+    x <- df@colData
+    x <- x[,c(imageID,condition)]
+    x <- unique(x)
     condition <- x[[condition]]
     names(condition) <- x$imageID
     
