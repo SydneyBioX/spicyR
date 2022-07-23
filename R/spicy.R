@@ -1088,10 +1088,11 @@ colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = im
     
 if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
     x <- unique(as.data.frame(colData(df)[c(imageID,condition)]))
-    condition <- x$condition
+    condition <- x[[condition]]
     names(condition) <- x$imageID
-    condition <- condition[rownames(df)]
+    
     df <- getProp(df, imageID = imageID, feature = feature)
+    condition <- condition[rownames(df)]
 }
     
 test <- apply(df, 2, function(x){
