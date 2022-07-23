@@ -294,6 +294,11 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
             dplyr::bind_rows(x)
         }))
         
+        df <- lapply(df, function(x) {
+            rownames(x) <- names(linearModels)
+            x
+        })
+        
     }
     df
 }
