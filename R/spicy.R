@@ -282,19 +282,18 @@ cleanLM <- function(linearModels, nsim,  BPPARAM) {
             }else{
                 n <- data.frame(NA)
                 colnames(n) <- "(Intercept)"
-                coef <- list(coefficient = n, se = n, df = n, statistic = n, p.value = n)
+                coef <- list(coefficient = n, se = n, statistic = n, p.value = n)
             }
             coef
         })
         
-        df <- apply(do.call(rbind, tLm), 2, function(x){
-            x[is.na(x)] <- list(data.frame(`(Intercept)`=NA, check.names=FALSE))
-            dplyr::bind_rows(x)})
-        df <- lapply(df, function(x) {
-            x <- as.data.frame(x)
-            rownames(x) <- names(linearModels)
-            x
-        })
+        
+        df <- do.call("rbind", tLm)
+        
+        df <- suppressWarnings(apply(df, 2, function(x){
+            dplyr::bind_rows(x)
+        }))
+        
     }
     df
 }
