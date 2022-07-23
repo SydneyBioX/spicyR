@@ -1087,11 +1087,11 @@ extractSpicyInfo <- function(cells,
 colTest <- function(df, condition, type = "wilcox", feature = NULL, imageID = imageID){
     
 if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
-    df <- getProp(df, imageID = imageID, feature = feature)
     x <- unique(as.data.frame(colData(df)[c(imageID,condition)]))
     condition <- x$condition
     names(condition) <- x$imageID
     condition <- condition[rownames(df)]
+    df <- getProp(df, imageID = imageID, feature = feature)
 }
     
 test <- apply(df, 2, function(x){
