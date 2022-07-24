@@ -216,7 +216,6 @@ SegmentedCells <-
         }
         cellData$imageID <- droplevels(cellData$imageID)
         df <- DataFrame(row.names = levels(cellData$imageID))
-            cellData$cellType <- cellData[, cellTypeString]
             cellSummaryCols <- c("cellID", "imageCellID", spatialCoords, "cellType", cellAnnotations)
             cellSummary <- S4Vectors::split(DataFrame(cellData[,cellSummaryCols]), 
                                             cellData$imageID)
