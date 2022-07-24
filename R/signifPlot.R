@@ -114,9 +114,12 @@ if(is.null(breaks)){
     limits <- c(breaks[1], breaks[2])
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
 }
+  
+df$groupA <- pmax(pmin(df$groupA, limits[2]), limits[1])
+df$groupB <- pmax(pmin(df$groupB, limits[2]), limits[1])  
+  
 pal <- colorRampPalette(colours)(length(breaks))
-
-
+  
 labels <- round(breaks,1)
 labels[1] <- "avoidance"
 labels[length(labels)] <- "attraction"
