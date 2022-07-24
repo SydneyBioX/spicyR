@@ -399,8 +399,9 @@ getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "co
     
     cells2 <- prepCellSummary(cells, spatialCoords, cellType, imageID, bind = FALSE)
     
-    if(is.null(from))from <- unique(cellType(cells))
-    if(is.null(to))to <- unique(cellType(cells))
+
+    if(is.null(from))from <- levels(cells2$cellType)
+    if(is.null(to))to <- levels(cells2$cellType)
     
     if(fast){
         pairwiseVals <- BiocParallel::bplapply(cells2,
