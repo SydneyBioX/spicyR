@@ -62,7 +62,7 @@
 #'
 #' @export
 #' @rdname SegmentedCells
-#' @importFrom methods new
+#' @importFrom methods new is
 #' @importFrom S4Vectors DataFrame split
 #' @importFrom IRanges SplitDataFrameList
 SegmentedCells <-
@@ -78,6 +78,11 @@ SegmentedCells <-
              imageCellIDString = "imageCellID",
              imageIDString = "imageID",
              verbose = TRUE) {
+
+        # convert cellData to data.frame
+        if (!is(cellData, 'data.frame')) {
+           cellData <- as.data.frame(cellData)
+        }
         
         if (cellTypeString == "cellType" & !"cellType" %in% colnames(cellData)) {
             if(verbose) message("There is no cellType column, setting to NA")
