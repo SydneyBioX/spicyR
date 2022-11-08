@@ -47,8 +47,15 @@ all feedback related to the package.
 * For general questions and feedback, please contact us directly via [ellis.patrick@sydney.edu.au](mailto:ellis.patrick@sydney.edu.au).
 
 
-## Author
+## Authors
 
 * **Nicolas Canete**
 * **Ellis Patrick**  - [@TheEllisPatrick](https://twitter.com/TheEllisPatrick)
 
+## Citation
+
+<div class="oxford-citation-text">
+
+Nicolas P Canete, Sourish S Iyengar, John T Ormerod, Heeva Baharlou, Andrew N Harman, Ellis Patrick, spicyR: spatial analysis of _in situ_ cytometry data in R, _Bioinformatics_, Volume 38, Issue 11, 1 June 2022, Pages 3099–3105, [https://doi.org/10.1093/bioinformatics/btac268](https://doi.org/10.1093/bioinformatics/btac268)
+
+</div>
