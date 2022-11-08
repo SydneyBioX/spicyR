@@ -12,3 +12,5 @@ SegmentedCells.R
 doc
 Meta
 .gitattributes
+
+.vscode
