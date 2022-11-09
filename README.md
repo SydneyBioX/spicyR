@@ -1,6 +1,6 @@
 # spicyR
 
-<img src="https://raw.githubusercontent.com/ellispatrick/spicyR/master/inst/spicyR_ai_upscaled.png" align="right" width="200" />
+<img src="https://raw.githubusercontent.com/ellispatrick/spicyR/master/inst/spicyR.png" align="right" width="200" />
 
 Spatial analysis of in situ cytometry data.
 
