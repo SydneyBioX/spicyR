@@ -3,6 +3,6 @@ pkgdown: 2.0.6
 pkgdown_sha: ~
 articles:
   segmentedCells: segmentedCells.html
-  spicy: spicy.html
-last_built: 2022-11-09T06:56Z
+  spicyR: spicyR.html
+last_built: 2022-11-10T03:44Z
 
