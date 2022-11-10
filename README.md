@@ -14,7 +14,7 @@ Spatial analysis of in situ cytometry data.
 
 ## Installation
 
-For the Bioconductor release version.
+For the Bioconductor release version, run the following.
 ```r
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
