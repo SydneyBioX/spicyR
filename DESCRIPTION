@@ -16,7 +16,7 @@ Encoding: UTF-8
 Depends: R (>= 4.1)
 VignetteBuilder: knitr
 BugReports: https://github.com/ellispatrick/spicyR/issues
-Imports: ggplot2, concaveman, BiocParallel, spatstat.core, spatstat.geom, 
+Imports: ggplot2, concaveman, BiocParallel, spatstat.explore, spatstat.geom, 
         lmerTest, BiocGenerics, S4Vectors, lme4, methods, mgcv, pheatmap,
         rlang, grDevices, IRanges, stats, data.table, dplyr, tidyr, scam,
         SingleCellExperiment, SpatialExperiment, SummarizedExperiment, ggforce
