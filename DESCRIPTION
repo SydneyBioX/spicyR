@@ -11,7 +11,7 @@ Description: spicyR provides a series of functions to aid in the analysis of bot
     can deeply phenotype individual cells and their spatial location.
 License: GPL (>=2)
 biocViews: 
-    SingleCell, CellBasedAssays
+    SingleCell, CellBasedAssays, Spatial
 Encoding: UTF-8
 Depends: R (>= 4.1)
 VignetteBuilder: knitr
