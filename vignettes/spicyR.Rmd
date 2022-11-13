@@ -15,7 +15,7 @@ author:
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
   %\VignetteIndexEntry{"Introduction to spicy"}
-  %\VignetteEngine{rmarkdown::render}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
   BiocStyle::html_document
