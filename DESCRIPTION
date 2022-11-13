@@ -21,4 +21,4 @@ Imports: ggplot2, concaveman, BiocParallel, spatstat.explore, spatstat.geom,
         rlang, grDevices, IRanges, stats, data.table, dplyr, tidyr, scam,
         SingleCellExperiment, SpatialExperiment, SummarizedExperiment, ggforce
 Suggests: BiocStyle, knitr, rmarkdown, pkgdown
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.1
