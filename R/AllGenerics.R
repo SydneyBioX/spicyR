@@ -36,16 +36,16 @@ setMethod("topPairs", "SpicyResults", function(x,
                                                n = 10,
                                                adj = 'fdr',
                                                cutoff = NULL) {
-    if(!is(x,"SpicyResults")) stop("x are not results from spicy")
+    if(!methods::is(x,"SpicyResults")) stop("x are not results from spicy")
     
     if(is.null(coef)) coef <- grep('condition', colnames(x$p.value))[1]
     
-    if(is(coef,"character")&!coef%in%colnames(x$p.value)) stop("coef not a column name")
-    if(is(coef,"numeric")&!coef%in%seq_len(ncol(x$p.value))) stop("coef not a column name")
+    if(methods::is(coef,"character")&!coef%in%colnames(x$p.value)) stop("coef not a column name")
+    if(methods::is(coef,"numeric")&!coef%in%seq_len(ncol(x$p.value))) stop("coef not a column name")
     if(length(coef)>1) warning("coef needs to be length 1, taking first entry.")
     useCondition <- coef[1]
     pval <- x$p.value[[useCondition]]
-    adj.pvalue <- p.adjust(pval, adj)
+    adj.pvalue <- stats::p.adjust(pval, adj)
     
     comp <- x$comparison
     
@@ -456,7 +456,7 @@ setReplaceMethod("cellType", "SegmentedCells", function(x, imageID = NULL, value
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many cellTypes")
     }
-    if(!is(value,"factor"))value = factor(value)
+    if(!methods::is(value,"factor"))value = factor(value)
     loc$cellType <- value
     
     cellSummary(x, imageID = imageID) <- loc

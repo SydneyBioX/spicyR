@@ -35,13 +35,13 @@ signifPlot <- function(results,
     if (is.null(marksToPlot)) marksToPlot <- marks
     
     if(type == "bubble"){
-       return(bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marks))
+       return(fields::bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marks))
             
     }
     
     if(is.null(breaks)) breaks <- c(-3,3,0.5)
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
-    pal <- colorRampPalette(colours)(length(breaks))
+    pal <- grDevices::colorRampPalette(colours)(length(breaks))
     
     
     pVal <- results$p.value[,2]
@@ -52,7 +52,7 @@ signifPlot <- function(results,
     }
     
     if (fdr) {
-        pVal <- p.adjust(pVal, method = "fdr")
+        pVal <- stats::p.adjust(pVal, method = "fdr")
     }
     
     isGreater <- results$coefficient[,2] > 0
@@ -68,7 +68,7 @@ signifPlot <- function(results,
     
 
     
-    heatmap <- pheatmap(
+    heatmap <- pheatmap::pheatmap(
         pVal[marksToPlot, marksToPlot],
         color = pal,
         breaks = breaks,
@@ -118,7 +118,7 @@ if(is.null(breaks)){
 df$groupA <- pmax(pmin(df$groupA, limits[2]), limits[1])
 df$groupB <- pmax(pmin(df$groupB, limits[2]), limits[1])  
   
-pal <- colorRampPalette(colours)(length(breaks))
+pal <- grDevices::colorRampPalette(colours)(length(breaks))
   
 labels <- round(breaks,1)
 labels[1] <- "avoidance"
@@ -126,12 +126,12 @@ labels[length(labels)] <- "attraction"
 
     ggplot2::ggplot(df, ggplot2::aes(x = cellTypeA, y = cellTypeB)) + 
     ggplot2::scale_fill_gradient2(low =colours[1], mid = colours[2], high = colours[3], midpoint = 0, breaks = breaks, labels = labels, limits = limits) +
-    ggplot2::geom_point(aes(colour = sig), size = 0) + 
-    ggplot2::geom_point(aes(size = size), x = 100000, y = 10000000) + 
+    ggplot2::geom_point(ggplot2::aes(colour = sig), size = 0) + 
+    ggplot2::geom_point(ggplot2::aes(size = size), x = 100000, y = 10000000) + 
     ggplot2::scale_color_manual(values = c("FALSE" = "white", "TRUE" = "black"), labels = c("", sigLab)) + 
     ggforce::geom_arc_bar(ggplot2::aes(fill = groupA, r = pmax(size/max(size, na.rm = TRUE)/2,0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = 0, end = pi, x = NULL, y = NULL),color = NA) + 
     ggforce::geom_arc_bar(ggplot2::aes(fill = groupB, r = pmax(size/max(size, na.rm = TRUE)/2, 0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = pi, end = 2*pi, x = NULL, y = NULL), colour = NA)+
-    ggforce::geom_circle(data = df[df$sig=="TRUE",],aes(r = pmax(size/max(size, na.rm = TRUE)/2, 0.15), x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), x = NULL, y = NULL), colour = "black") + 
+    ggforce::geom_circle(data = df[df$sig=="TRUE",],ggplot2::aes(r = pmax(size/max(size, na.rm = TRUE)/2, 0.15), x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), x = NULL, y = NULL), colour = "black") + 
     #ggplot2::geom_point(ggplot2::aes(colour = groupB), shape="\u25D1") + 
     ggplot2::geom_point(data= df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000)+ 
     ggplot2::scale_shape_manual(values = shape.legend) +
@@ -139,7 +139,7 @@ labels[length(labels)] <- "attraction"
     ggplot2::theme( axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0),
                     legend.box.background = ggplot2::element_blank()) +
     ggplot2::labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = NULL, fill = "Localisation", shape = "Condition") +
-        guides(shape = ggplot2::guide_legend(order = 3, override.aes = list(size=5)),
+        ggplot2::guides(shape = ggplot2::guide_legend(order = 3, override.aes = list(size=5)),
                fill = ggplot2::guide_colourbar(order = 4),
                size = ggplot2::guide_legend(order = 2),
                colour = ggplot2::guide_legend(order = 1, override.aes = list(size=5, shape = 1))
