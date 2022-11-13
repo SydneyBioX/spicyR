@@ -35,7 +35,7 @@ signifPlot <- function(results,
     if (is.null(marksToPlot)) marksToPlot <- marks
     
     if(type == "bubble"){
-       return(fields::bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marks))
+       return(bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marks))
             
     }
     
