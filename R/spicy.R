@@ -1009,7 +1009,7 @@ prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALS
         cellSummary <- cellSummary(cells, bind = bind)
     }
     
-    if (is(cells) == "SingleCellExperiment") {
+    if (class(cells) == "SingleCellExperiment") {
         cells <- colData(cells)
         cells <- SegmentedCells(cells, 
                                 spatialCoords = spatialCoords,
@@ -1019,7 +1019,7 @@ prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALS
         cellSummary <- cellSummary(cells, bind = bind)   
     }
     
-    if (is(cells) == "SpatialExperiment") {
+    if (class(cells) == "SpatialExperiment") {
         cells <- cbind(colData(cells), spatialCoords(cells))
         cells <- SegmentedCells(cells, 
                                 spatialCoords = spatialCoords,
