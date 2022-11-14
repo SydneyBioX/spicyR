@@ -1009,7 +1009,7 @@ prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALS
         cellSummary <- cellSummary(cells, bind = bind)
     }
     
-    if (is(cells, "SingleCellExperiment")) {
+    if (is(cells) == "SingleCellExperiment") {
         cells <- colData(cells)
         cells <- SegmentedCells(cells, 
                                 spatialCoords = spatialCoords,
@@ -1019,7 +1019,7 @@ prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALS
         cellSummary <- cellSummary(cells, bind = bind)   
     }
     
-    if (is(cells, "SpatialExperiment")) {
+    if (is(cells) == "SpatialExperiment") {
         cells <- cbind(colData(cells), spatialCoords(cells))
         cells <- SegmentedCells(cells, 
                                 spatialCoords = spatialCoords,
@@ -1046,7 +1046,7 @@ extractSpicyInfo <- function(cells,
                           covariates = covariates){
     
     extra <- c(condition, subject, covariates)
-    if (is(cells, "SingleCellExperiment")) {
+    if (is(cells) == "SingleCellExperiment") {
         cells <- colData(cells)
         colnames(cells)[colnames(cells)%in%extra] <- paste0("phenotype_",colnames(cells)[colnames(cells)%in%extra])
         cells <- SegmentedCells(cells, 
@@ -1055,7 +1055,7 @@ extractSpicyInfo <- function(cells,
                                 imageIDString = imageID)
     }
     
-    if (is(cells, "SpatialExperiment")) {
+    if (is(cells) == "SpatialExperiment") {
         cells <- cbind(colData(cells), spatialCoords(cells))
         colnames(cells)[colnames(cells)%in%extra] <- paste0("phenotype_",colnames(cells)[colnames(cells)%in%extra])
         cells <- SegmentedCells(cells, 
