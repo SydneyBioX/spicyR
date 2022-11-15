@@ -44,7 +44,7 @@
 #' @importFrom rlang .data
 #' @importFrom S4Vectors as.data.frame
 #' @export
-setMethod("plot", signature(x = "SegmentedCells"), function(x, imageID=NULL) {
+setMethod("plot", methods::signature(x = "SegmentedCells"), function(x, imageID=NULL) {
     plot.SegmentedCells(x, imageID)
 })
 
@@ -55,15 +55,15 @@ plot.SegmentedCells <- function(x, imageID = NULL) {
     
     loc <- S4Vectors::as.data.frame(cellSummary(x, imageID = imageID))
     if (is.na(loc$cellType[1])) {
-        ggplot(loc, aes(x = .data$x, y = .data$y)) + geom_point() + 
-            theme_classic() + labs(x = "x", y = "y")
+        ggplot2::ggplot(loc, ggplot2::aes(x = .data$x, y = .data$y)) + ggplot2::geom_point() + 
+            ggplot2::theme_classic() + ggplot2::labs(x = "x", y = "y")
     } else {
-        ggplot(loc, aes(
+        ggplot2::ggplot(loc, ggplot2::aes(
             x = .data$x,
             y = .data$y,
             colour = .data$cellType
-        )) + geom_point() +
-            theme_classic() + labs(x = "x",
+        )) + ggplot2::geom_point() +
+            ggplot2::theme_classic() + ggplot2::labs(x = "x",
                                    y = "y",
                                    colour = "cell-type")
     }

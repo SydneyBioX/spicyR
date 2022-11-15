@@ -62,7 +62,7 @@
 #'
 #' @export
 #' @rdname SegmentedCells
-#' @importFrom methods new
+#' @importFrom methods new is
 #' @importFrom S4Vectors DataFrame split
 #' @importFrom IRanges SplitDataFrameList
 SegmentedCells <-
@@ -78,6 +78,11 @@ SegmentedCells <-
              imageCellIDString = "imageCellID",
              imageIDString = "imageID",
              verbose = TRUE) {
+
+        # convert cellData to data.frame
+        if (!methods::is(cellData, 'data.frame')) {
+           cellData <- as.data.frame(cellData)
+        }
         
         if (cellTypeString == "cellType" & !"cellType" %in% colnames(cellData)) {
             if(verbose) message("There is no cellType column, setting to NA")
@@ -90,7 +95,7 @@ SegmentedCells <-
         }
         
         
-        if(!is(cellData$cellType,"factor")){
+        if(!methods::is(cellData$cellType,"factor")){
             cellData$cellType = factor(cellData$cellType)
         }
         
@@ -150,7 +155,7 @@ SegmentedCells <-
                         "\n")
                 cellData$imageID <- "image1"
             }
-            if(!is(cellData$imageID, "factor")){
+            if(!methods::is(cellData$imageID, "factor")){
                 cellData$imageID <- factor(cellData$imageID, unique(cellData$imageID))
             }
             cellData$cellID <- as.character(cellData$cellID)
@@ -215,39 +220,38 @@ SegmentedCells <-
             spatialCoords <- c("x", "y")
         }
         cellData$imageID <- droplevels(cellData$imageID)
-        df <- DataFrame(row.names = levels(cellData$imageID))
-            cellData$cellType <- cellData[, cellTypeString]
+        df <- S4Vectors::DataFrame(row.names = levels(cellData$imageID))
             cellSummaryCols <- c("cellID", "imageCellID", spatialCoords, "cellType", cellAnnotations)
-            cellSummary <- S4Vectors::split(DataFrame(cellData[,cellSummaryCols]), 
+            cellSummary <- S4Vectors::split(S4Vectors::DataFrame(cellData[,cellSummaryCols]), 
                                             cellData$imageID)
         df$cellSummary <- cellSummary[rownames(df),]
-        df$cellMarks <- S4Vectors::split(DataFrame(), cellData$imageID)
-        df$cellMorph <- S4Vectors::split(DataFrame(), cellData$imageID)
+        df$cellMarks <- S4Vectors::split(S4Vectors::DataFrame(), cellData$imageID)
+        df$cellMorph <- S4Vectors::split(S4Vectors::DataFrame(), cellData$imageID)
         if (any(grepl(intensityString, colnames(cellData)))) {
             markers <- cellData[, grep(intensityString, colnames(cellData)), drop = FALSE]
             colnames(markers) <- gsub(intensityString, "", colnames(markers))
-            df$cellMarks <- S4Vectors::split(DataFrame(markers), 
+            df$cellMarks <- S4Vectors::split(S4Vectors::DataFrame(markers), 
                                              cellData$imageID)[rownames(df)]
         }
         if (any(grepl(morphologyString, colnames(cellData)))) {
             morphology <- cellData[, grep(morphologyString, colnames(cellData)), drop = FALSE]
             colnames(morphology) <- gsub(morphologyString, "", colnames(morphology))
-            df$cellMorph <- S4Vectors::split(DataFrame(morphology), 
+            df$cellMorph <- S4Vectors::split(S4Vectors::DataFrame(morphology), 
                                              cellData$imageID)[rownames(df)]
         }
-        df$imagePheno <- S4Vectors::split(DataFrame(), cellData$imageID)
+        df$imagePheno <- S4Vectors::split(S4Vectors::DataFrame(), cellData$imageID)
         if (any(grepl(phenotypeString, colnames(cellData)))) {
             phenotype <- cellData[, grep(phenotypeString, colnames(cellData)), drop = FALSE]
             phenotype <- cbind(imageID = cellData$imageID, phenotype)
             colnames(phenotype) <- gsub(phenotypeString, "", colnames(phenotype))
             phenotype <- unique(phenotype)
-            phenotype <- S4Vectors::split(DataFrame(phenotype), phenotype$imageID)
+            phenotype <- S4Vectors::split(S4Vectors::DataFrame(phenotype), phenotype$imageID)
             df$imagePheno <- phenotype[rownames(df)]
         }
         
-        df$images <- S4Vectors::split(DataFrame(), cellData$imageID)[rownames(df)]
-        df$masks <- S4Vectors::split(DataFrame(), cellData$imageID)[rownames(df)]
-        df <- new("SegmentedCells", df)
+        df$images <- S4Vectors::split(S4Vectors::DataFrame(), cellData$imageID)[rownames(df)]
+        df$masks <- S4Vectors::split(S4Vectors::DataFrame(), cellData$imageID)[rownames(df)]
+        df <- methods::new("SegmentedCells", df)
         df
     }
 
@@ -341,5 +345,5 @@ as.data.frame.SegmentedCells <- function(x, ...) {
 
 setAs("SegmentedCells", "data.frame", function(from) {
     from <- as.data.frame.SegmentedCells(from)
-    new("SegmentedCells", from)
+    methods::new("SegmentedCells", from)
 })

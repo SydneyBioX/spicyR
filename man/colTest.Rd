@@ -4,7 +4,7 @@
 \alias{colTest}
 \title{Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram}
 \usage{
-colTest(df, condition, type = "wilcox", feature = NULL, imageID = imageID)
+colTest(df, condition, type = "wilcox", feature = NULL, imageID = "imageID")
 }
 \arguments{
 \item{df}{A data.frame or SingleCellExperiment, SpatialExperiment}

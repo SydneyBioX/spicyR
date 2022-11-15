@@ -56,11 +56,11 @@ NULL
   .showCat("Number of image phenotypes: ", colnames(object[1, 'imagePheno'][[1]]))
 }
 
-if (!isGeneric("show"))
-  setGeneric("show", function(object)
+if (!methods::isGeneric("show"))
+  methods::setGeneric("show", function(object)
     standardGeneric("show"))
 
-setMethod("show", signature(object = "SegmentedCells"), function(object) {
+methods::setMethod("show", methods::signature(object = "SegmentedCells"), function(object) {
   .SegmentedCells_show(object)
 })
 

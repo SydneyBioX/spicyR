@@ -31,6 +31,9 @@ spicy(
   fast = TRUE,
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
+  imageID = "imageID",
+  cellType = "cellType",
+  spatialCoords = c("x", "y"),
   ...
 )
 }
@@ -86,6 +89,12 @@ inhomogeneous L-curves.}
 
 \item{includeZeroCells}{A logical indicating whether to include cells with 
 zero counts in the pairwise association calculation.}
+
+\item{imageID}{The image ID if using SingleCellExperiment.}
+
+\item{cellType}{The cell type if using SingleCellExperiment.}
+
+\item{spatialCoords}{The spatial coordinates if using a SingleCellExperiment.}
 
 \item{...}{Other options to pass to bootstrap.}
 }

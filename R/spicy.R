@@ -246,14 +246,14 @@ spicy <- function(cells,
     df$weights <- weightFunction
     df$nCells <- nCells
     
-    df <- new('SpicyResults', df)
+    df <- methods::new('SpicyResults', df)
     df
 }
 
 #' @importFrom dplyr bind_rows
 cleanLM <- function(linearModels, nsim,  BPPARAM) {
     if (length(nsim) > 0) {
-        boot <- bplapply(linearModels, spatialLMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
+        boot <- BiocParallel::bplapply(linearModels, spatialLMBootstrap, nsim = nsim, BPPARAM = BPPARAM)
         #p <- do.call(rbind, p)
         tBoot <- lapply(boot, function(coef) {
             if(length(coef)>1){
@@ -399,8 +399,9 @@ getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "co
     
     cells2 <- prepCellSummary(cells, spatialCoords, cellType, imageID, bind = FALSE)
     
-    if(is.null(from))from <- unique(cellType(cells))
-    if(is.null(to))to <- unique(cellType(cells))
+
+    if(is.null(from))from <- levels(cells2$cellType)
+    if(is.null(to))to <- levels(cells2$cellType)
     
     if(fast){
         pairwiseVals <- BiocParallel::bplapply(cells2,
@@ -470,12 +471,12 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
 }
 
 
-#' @importFrom spatstat.core Lcross
+#' @importFrom spatstat.explore Lcross
 getStat <- function(cells, from, to, dist, window, window.length) {
     pppCell <- pppGenerate(cells, window, window.length)
     
     L <- tryCatch({
-        spatstat.core::Lcross(pppCell,
+        spatstat.explore::Lcross(pppCell,
                               from = from,
                               to = to,
                               correction = "best")
@@ -509,7 +510,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         spatialData <- x@frame[toGet,]
         spatialData$weights <- spatialData$`(weights)`
         
-        mixed.lmer1 <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(formula(x),
+        mixed.lmer1 <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(stats::formula(x),
                                                                                   data = spatialData,
                                                                                   weights = weights,
                                                                                   control = lme4::lmerControl(calc.derivs = FALSE))},
@@ -551,7 +552,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
         print(colSums(apply(pval[cond], 2, p.adjust, 'fdr') < 0.05, na.rm = TRUE))
     
 }
-setMethod("show", signature(object = "SpicyResults"), function(object) {
+setMethod("show", methods::signature(object = "SpicyResults"), function(object) {
     .show_SpicyResults(object)
 })
 
@@ -595,7 +596,7 @@ spatialMEM <-
         spatialData$weights = weightFunction
         
         
-        mixed.lmer <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(formula(formula),
+        mixed.lmer <- suppressWarnings(suppressMessages(tryCatch({lmerTest::lmer(stats::formula(formula),
                                                                                  data = spatialData,
                                                                                  weights = weights)},
                                                                  error = function(e) {
@@ -640,7 +641,7 @@ spatialLM <-
             paste('spatAssoc ~ condition',
                   paste(covariates, collapse = '+'),
                   sep = "+")
-        lm1 <- tryCatch({lm(formula(formula),
+        lm1 <- tryCatch({stats::lm(stats::formula(formula),
                             data = spatialData,
                             weights = weightFunction)},
                         error = function(e) {
@@ -668,7 +669,7 @@ spatialLMBootstrap <- function(linearModels, nsim=19) {
         spatialDataBoot <- data.frame(spatAssoc = spatAssocBoot,
                                       condition = conditionBoot)
         
-        lm1 <- tryCatch({lm(spatAssoc ~ condition,
+        lm1 <- tryCatch({stats::lm(spatAssoc ~ condition,
                             data = spatialDataBoot,
                             weights = weightsBoot)},
                         error = function(e) {
@@ -763,7 +764,7 @@ pppGenerate <- function(cells, window, window.length) {
 
 
 
-#' @importFrom spatstat.core density.ppp
+#' @importFrom spatstat.explore density.ppp
 #' @importFrom spatstat.geom closepairs nearest.valid.pixel area ppp
 #' @importFrom tidyr pivot_longer
 #' @importFrom dplyr left_join
@@ -800,7 +801,7 @@ inhomLPair <-
         Rs <- unique(pmin(c(0, sort(Rs)),maxR))
         
         if(!is.null(sigma)){
-            den <- spatstat.core::density.ppp(X, sigma = sigma)
+            den <- spatstat.explore::density.ppp(X, sigma = sigma)
             den <- den / mean(den)
             den$v <- pmax(den$v, minLambda)
         }
@@ -943,11 +944,11 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor){
     }
     weightFunction <- scam::scam(log10(resSqToWeight+1)~ s(log10(count1ToWeight+1),bs="mpd")+s(log10(count2ToWeight+1), bs="mpd"))#, optimizer = "nlm.fd")
     
-    z1 <- suppressWarnings(predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
+    z1 <- suppressWarnings(stats::predict(weightFunction, data.frame(count1ToWeight = as.numeric(count1), 
                                                               count2ToWeight = as.numeric(count2))))
     #w <- 1 / sqrt(z1 - min(z1) + 1)
     #z1[which(as.numeric(count1)==0|as.numeric(count2)==0)] <- NA
-    w <-  1/pmax(z1, quantile(z1[z1>0.1], 0.01, na.rm = TRUE))
+    w <-  1/pmax(z1, stats::quantile(z1[z1>0.1], 0.01, na.rm = TRUE))
     w <- w / mean(w, na.rm = TRUE)
     w^weightFactor
 }
@@ -969,7 +970,7 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
     
     
     resSq <- apply(pairwiseAssoc, 2, function(x){
-        if(sd(x, na.rm = TRUE)>0){
+        if(stats::sd(x, na.rm = TRUE)>0){
             return((x - mean(x, na.rm = TRUE))^2)
         }else{
             return(rep(NA,length(x)))
@@ -1008,7 +1009,7 @@ prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALS
         cellSummary <- cellSummary(cells, bind = bind)
     }
     
-    if (is(cells, "SingleCellExperiment")) {
+    if (class(cells) == "SingleCellExperiment") {
         cells <- colData(cells)
         cells <- SegmentedCells(cells, 
                                 spatialCoords = spatialCoords,
@@ -1018,7 +1019,7 @@ prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALS
         cellSummary <- cellSummary(cells, bind = bind)   
     }
     
-    if (is(cells, "SpatialExperiment")) {
+    if (class(cells) == "SpatialExperiment") {
         cells <- cbind(colData(cells), spatialCoords(cells))
         cells <- SegmentedCells(cells, 
                                 spatialCoords = spatialCoords,
@@ -1045,7 +1046,7 @@ extractSpicyInfo <- function(cells,
                           covariates = covariates){
     
     extra <- c(condition, subject, covariates)
-    if (is(cells, "SingleCellExperiment")) {
+    if (class(cells) == "SingleCellExperiment") {
         cells <- colData(cells)
         colnames(cells)[colnames(cells)%in%extra] <- paste0("phenotype_",colnames(cells)[colnames(cells)%in%extra])
         cells <- SegmentedCells(cells, 
@@ -1054,7 +1055,7 @@ extractSpicyInfo <- function(cells,
                                 imageIDString = imageID)
     }
     
-    if (is(cells, "SpatialExperiment")) {
+    if (class(cells) == "SpatialExperiment") {
         cells <- cbind(colData(cells), spatialCoords(cells))
         colnames(cells)[colnames(cells)%in%extra] <- paste0("phenotype_",colnames(cells)[colnames(cells)%in%extra])
         cells <- SegmentedCells(cells, 
@@ -1111,13 +1112,13 @@ if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
 }
     
 test <- apply(df, 2, function(x){
-    if(type == "wilcox")test <- wilcox.test(x ~ condition)
-    if(type == "ttest")test <- t.test(x ~ condition)
+    if(type == "wilcox")test <- stats::wilcox.test(x ~ condition)
+    if(type == "ttest")test <- stats::t.test(x ~ condition)
     signif(c(test$estimate, tval <- test$statistic, pval = test$p.value),2)
 })
 
 test <- as.data.frame(t(test))
-test$adjPval <- signif(p.adjust(test$pval, "fdr"),2)
+test$adjPval <- signif(stats::p.adjust(test$pval, "fdr"),2)
 test$cluster <- rownames(test)
 test <- test[order(test$pval),]
 test

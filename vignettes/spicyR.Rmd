@@ -85,7 +85,7 @@ cells (alpha, beta, gamma, delta).
 
 To investigate changes in colocalisation between two different cell types, we 
 measure the level of colocalisation between two cell types by modelling with the 
-`Lcross()` function in the `spatstat` package. Specifically, the mean difference 
+`Lcross()` function in the `spatstat.explore` package. Specifically, the mean difference 
 between the obtained function and the theoretical function is used as a measure
 for the level of colocalisation. Differences of this statistic between two 
 conditions is modelled using a weighted mixed effects model, with condition as 
@@ -100,10 +100,10 @@ to see whether or not Delta cells (`to`) tend to be found around Beta cells (`fr
 in onset diabetes images compared to non-diabetic images.
 
 ```{r message=FALSE}
-spicyTestPair <- spicy(diabetesData, 
-                       condition = "stage", 
-                       subject = "case", 
-                       from = "beta", 
+spicyTestPair <- spicy(diabetesData,
+                       condition = "stage",
+                       subject = "case",
+                       from = "beta",
                        to = "delta")
 
 topPairs(spicyTestPair)
