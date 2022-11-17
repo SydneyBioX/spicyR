@@ -1105,7 +1105,7 @@ if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
     x <- x[,c(imageID,condition)]
     x <- unique(x)
     condition <- x[[condition]]
-    names(condition) <- x$imageID
+    names(condition) <- x[[imageID]]
     
     df <- getProp(df, imageID = imageID, feature = feature)
     condition <- condition[rownames(df)]
