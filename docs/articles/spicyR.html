@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.11.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.11.2</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,12 +40,6 @@
 </li>
 <li class="nav-item">
   <a class="nav-link" href="../reference/index.html">Reference</a>
-</li>
-<li class="nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
-  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="../articles/segmentedCells.html">Introduction to SegmentedCells</a>
-  </div>
 </li>
       </ul>
 <form class="form-inline my-2 my-lg-0" role="search">
@@ -83,7 +77,7 @@ Patrick</h4>
             <address class="author_afil">
       Westmead Institute for Medical Research, University of Sydney,
 AustraliaSchool of Mathematics and Statistics, University of Sydney,
-Australia<br><h4 data-toc-skip class="date">14 November 2022</h4>
+Australia<br><h4 data-toc-skip class="date">17 November 2022</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/ellispatrick/spicyR/blob/HEAD/vignettes/spicyR.Rmd" class="external-link"><code>vignettes/spicyR.Rmd</code></a></small>
       <div class="d-none name"><code>spicyR.Rmd</code></div>
@@ -95,7 +89,8 @@ Australia<br><h4 data-toc-skip class="date">14 November 2022</h4>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># load required packages</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">spicyR</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SingleCellExperiment</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -120,9 +115,9 @@ and the different conditions are modelled as a fixed effect.</p>
 dataset. We will compare the spatial distributions of cells in the
 pancreatic islets of individuals with early onset diabetes and healthy
 controls.</p>
-<p><code>diabetesData</code> is a <code>SegmentedCells</code> object
-containing single-cell data of 160 images from 8 subjects, with 20
-images per subjects.</p>
+<p><code>diabetesData_SCE</code> is a <code>SingleCellExperiment</code>
+object containing single-cell data of 160 images from 8 subjects, with
+20 images per subjects.</p>
 <p><code><a href="../reference/Accessors.html">cellSummary()</a></code> returns a <code>DataFrame</code> object
 providing the location (<code>x</code> and <code>y</code>) and cell type
 (<code>cellType</code>) of each cell and the image it belongs to
@@ -131,45 +126,19 @@ providing the location (<code>x</code> and <code>y</code>) and cell type
 providing the corresponding subject (<code>subject</code>) and condition
 (<code>condition</code>) for each image.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"diabetesData"</span><span class="op">)</span></span>
-<span><span class="va">diabetesData</span></span>
-<span><span class="co">#&gt; A SegmentedCells object with...</span></span>
-<span><span class="co">#&gt; Number of images:120</span></span>
-<span><span class="co">#&gt; Number of cells:253777</span></span>
-<span><span class="co">#&gt; Number of cell types: 16 [ ductal, acinar, ..., beta ]</span></span>
-<span><span class="co">#&gt; Number of intensities: 0 [ ]</span></span>
-<span><span class="co">#&gt; Number of morphologies: 0 [ ]</span></span>
-<span><span class="co">#&gt; Number of image phenotypes: 6 [ imageID, case, ..., stage ]</span></span>
-<span><span class="fu"><a href="../reference/Accessors.html">cellSummary</a></span><span class="op">(</span><span class="va">diabetesData</span><span class="op">)</span></span>
-<span><span class="co">#&gt; DataFrame with 253777 rows and 6 columns</span></span>
-<span><span class="co">#&gt;         imageID       cellID imageCellID         x         y cellType</span></span>
-<span><span class="co">#&gt;        &lt;factor&gt;  &lt;character&gt; &lt;character&gt; &lt;numeric&gt; &lt;numeric&gt; &lt;factor&gt;</span></span>
-<span><span class="co">#&gt; 1           P15 cell_1101219       P15_1       219         2   ductal</span></span>
-<span><span class="co">#&gt; 2           P15 cell_1101220       P15_2       277         0   acinar</span></span>
-<span><span class="co">#&gt; 3           P15 cell_1101221       P15_3        22         0   ductal</span></span>
-<span><span class="co">#&gt; 4           P15 cell_1101222       P15_4        30         6   ductal</span></span>
-<span><span class="co">#&gt; 5           P15 cell_1101223       P15_5       105         0   acinar</span></span>
-<span><span class="co">#&gt; ...         ...          ...         ...       ...       ...      ...</span></span>
-<span><span class="co">#&gt; 253773      D25  cell_295062    D25_1016       304       322   ductal</span></span>
-<span><span class="co">#&gt; 253774      D25  cell_295063    D25_1017       230       325   ductal</span></span>
-<span><span class="co">#&gt; 253775      D25  cell_295064    D25_1018       328       325   acinar</span></span>
-<span><span class="co">#&gt; 253776      D25  cell_295065    D25_1019        94       325   Tc    </span></span>
-<span><span class="co">#&gt; 253777      D25  cell_295066    D25_1020       268       325   acinar</span></span>
-<span><span class="fu"><a href="../reference/Accessors.html">imagePheno</a></span><span class="op">(</span><span class="va">diabetesData</span><span class="op">)</span></span>
-<span><span class="co">#&gt; DataFrame with 120 rows and 6 columns</span></span>
-<span><span class="co">#&gt;      imageID      case       slide        part     group         stage</span></span>
-<span><span class="co">#&gt;     &lt;factor&gt; &lt;integer&gt; &lt;character&gt; &lt;character&gt; &lt;integer&gt;      &lt;factor&gt;</span></span>
-<span><span class="co">#&gt; 1        P15      6089           P        Tail         3 Long-duration</span></span>
-<span><span class="co">#&gt; 2        Q06      6089           Q        Body         3 Long-duration</span></span>
-<span><span class="co">#&gt; 3        Q20      6089           Q        Body         3 Long-duration</span></span>
-<span><span class="co">#&gt; 4        P36      6089           P        Tail         3 Long-duration</span></span>
-<span><span class="co">#&gt; 5        P34      6089           P        Tail         3 Long-duration</span></span>
-<span><span class="co">#&gt; ...      ...       ...         ...         ...       ...           ...</span></span>
-<span><span class="co">#&gt; 116      D03      6418           D        Body         1 Long-duration</span></span>
-<span><span class="co">#&gt; 117      C13      6418           C        Tail         1 Long-duration</span></span>
-<span><span class="co">#&gt; 118      D11      6418           D        Body         1 Long-duration</span></span>
-<span><span class="co">#&gt; 119      D06      6418           D        Body         1 Long-duration</span></span>
-<span><span class="co">#&gt; 120      D25      6418           D        Body         1 Long-duration</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"diabetesData_SCE"</span><span class="op">)</span></span>
+<span><span class="va">diabetesData_SCE</span></span>
+<span><span class="co">#&gt; class: SingleCellExperiment </span></span>
+<span><span class="co">#&gt; dim: 0 253777 </span></span>
+<span><span class="co">#&gt; metadata(0):</span></span>
+<span><span class="co">#&gt; assays(0):</span></span>
+<span><span class="co">#&gt; rownames: NULL</span></span>
+<span><span class="co">#&gt; rowData names(0):</span></span>
+<span><span class="co">#&gt; colnames: NULL</span></span>
+<span><span class="co">#&gt; colData names(11): imageID cellID ... group stage</span></span>
+<span><span class="co">#&gt; reducedDimNames(0):</span></span>
+<span><span class="co">#&gt; mainExpName: NULL</span></span>
+<span><span class="co">#&gt; altExpNames(0):</span></span></code></pre></div>
 <p>In this data set, cell types include immune cell types (B cells,
 naive T cells, T Helper cells, T cytotoxic cells, neutrophils,
 macrophages) and pancreatic islet cells (alpha, beta, gamma, delta).</p>
@@ -217,8 +186,8 @@ combinations<a class="anchor" aria-label="anchor" href="#test-for-change-in-colo
 of cell types by excluding the <code>from</code> and <code>to</code>
 parameters from <code><a href="../reference/spicy.html">spicy()</a></code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">spicyTest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spicy.html">spicy</a></span><span class="op">(</span><span class="va">diabetesData</span>, </span>
-<span>                   condition <span class="op">=</span> <span class="st">"stage"</span>, </span>
+<code class="sourceCode R"><span><span class="va">spicyTest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spicy.html">spicy</a></span><span class="op">(</span><span class="va">diabetesData_SCE</span>,</span>
+<span>                   condition <span class="op">=</span> <span class="st">"stage"</span>,</span>
 <span>                   subject <span class="op">=</span> <span class="st">"case"</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"spicyTest"</span><span class="op">)</span></span></code></pre></div>
@@ -309,75 +278,77 @@ combination if cell types.</p>
 <span><span class="co">#&gt; [11] LC_MEASUREMENT=en_AU.UTF-8 LC_IDENTIFICATION=C       </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; attached base packages:</span></span>
-<span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
+<span><span class="co">#&gt; [1] stats4    stats     graphics  grDevices utils     datasets  methods  </span></span>
+<span><span class="co">#&gt; [8] base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] ggplot2_3.4.0    spicyR_1.11.1    BiocStyle_2.26.0</span></span>
+<span><span class="co">#&gt;  [1] SingleCellExperiment_1.20.0 SummarizedExperiment_1.28.0</span></span>
+<span><span class="co">#&gt;  [3] Biobase_2.58.0              GenomicRanges_1.50.1       </span></span>
+<span><span class="co">#&gt;  [5] GenomeInfoDb_1.34.3         IRanges_2.32.0             </span></span>
+<span><span class="co">#&gt;  [7] S4Vectors_0.36.0            BiocGenerics_0.44.0        </span></span>
+<span><span class="co">#&gt;  [9] MatrixGenerics_1.10.0       matrixStats_0.62.0         </span></span>
+<span><span class="co">#&gt; [11] ggplot2_3.4.0               spicyR_1.11.2              </span></span>
+<span><span class="co">#&gt; [13] BiocStyle_2.26.0           </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span><span class="co">#&gt;   [1] SpatialExperiment_1.8.0     minqa_1.2.5                </span></span>
-<span><span class="co">#&gt;   [3] colorspace_2.0-3            deldir_1.0-6               </span></span>
-<span><span class="co">#&gt;   [5] rjson_0.2.21                ellipsis_0.3.2             </span></span>
-<span><span class="co">#&gt;   [7] rprojroot_2.0.3             scuttle_1.8.0              </span></span>
-<span><span class="co">#&gt;   [9] XVector_0.38.0              GenomicRanges_1.50.1       </span></span>
-<span><span class="co">#&gt;  [11] fs_1.5.2                    spatstat.data_3.0-0        </span></span>
-<span><span class="co">#&gt;  [13] farver_2.1.1                fansi_1.0.3                </span></span>
-<span><span class="co">#&gt;  [15] codetools_0.2-18            splines_4.2.2              </span></span>
-<span><span class="co">#&gt;  [17] R.methodsS3_1.8.2           sparseMatrixStats_1.10.0   </span></span>
-<span><span class="co">#&gt;  [19] cachem_1.0.6                knitr_1.40                 </span></span>
-<span><span class="co">#&gt;  [21] polyclip_1.10-4             jsonlite_1.8.3             </span></span>
-<span><span class="co">#&gt;  [23] nloptr_2.0.3                R.oo_1.25.0                </span></span>
-<span><span class="co">#&gt;  [25] pheatmap_1.0.12             spatstat.sparse_3.0-0      </span></span>
-<span><span class="co">#&gt;  [27] ggforce_0.4.1               HDF5Array_1.26.0           </span></span>
-<span><span class="co">#&gt;  [29] BiocManager_1.30.19         compiler_4.2.2             </span></span>
-<span><span class="co">#&gt;  [31] dqrng_0.3.0                 assertthat_0.2.1           </span></span>
-<span><span class="co">#&gt;  [33] Matrix_1.5-3                fastmap_1.1.0              </span></span>
-<span><span class="co">#&gt;  [35] limma_3.54.0                cli_3.4.1                  </span></span>
-<span><span class="co">#&gt;  [37] tweenr_2.0.2                htmltools_0.5.3            </span></span>
-<span><span class="co">#&gt;  [39] tools_4.2.2                 lmerTest_3.1-3             </span></span>
-<span><span class="co">#&gt;  [41] gtable_0.3.1                glue_1.6.2                 </span></span>
-<span><span class="co">#&gt;  [43] GenomeInfoDbData_1.2.9      dplyr_1.0.10               </span></span>
-<span><span class="co">#&gt;  [45] Rcpp_1.0.9                  Biobase_2.58.0             </span></span>
-<span><span class="co">#&gt;  [47] jquerylib_0.1.4             pkgdown_2.0.6              </span></span>
-<span><span class="co">#&gt;  [49] vctrs_0.5.0                 rhdf5filters_1.10.0        </span></span>
-<span><span class="co">#&gt;  [51] spatstat.explore_3.0-5      nlme_3.1-160               </span></span>
-<span><span class="co">#&gt;  [53] DelayedMatrixStats_1.20.0   spatstat.random_3.0-1      </span></span>
-<span><span class="co">#&gt;  [55] xfun_0.34                   stringr_1.4.1              </span></span>
-<span><span class="co">#&gt;  [57] beachmat_2.14.0             lme4_1.1-31                </span></span>
-<span><span class="co">#&gt;  [59] lifecycle_1.0.3             goftest_1.2-3              </span></span>
-<span><span class="co">#&gt;  [61] scam_1.2-13                 edgeR_3.40.0               </span></span>
-<span><span class="co">#&gt;  [63] zlibbioc_1.44.0             MASS_7.3-58.1              </span></span>
-<span><span class="co">#&gt;  [65] scales_1.2.1                ragg_1.2.4                 </span></span>
-<span><span class="co">#&gt;  [67] MatrixGenerics_1.10.0       spatstat.utils_3.0-1       </span></span>
-<span><span class="co">#&gt;  [69] parallel_4.2.2              SummarizedExperiment_1.28.0</span></span>
-<span><span class="co">#&gt;  [71] rhdf5_2.42.0                RColorBrewer_1.1-3         </span></span>
-<span><span class="co">#&gt;  [73] SingleCellExperiment_1.20.0 yaml_2.3.6                 </span></span>
-<span><span class="co">#&gt;  [75] memoise_2.0.1               sass_0.4.2                 </span></span>
-<span><span class="co">#&gt;  [77] stringi_1.7.8               highr_0.9                  </span></span>
-<span><span class="co">#&gt;  [79] S4Vectors_0.36.0            desc_1.4.2                 </span></span>
-<span><span class="co">#&gt;  [81] BiocGenerics_0.44.0         boot_1.3-28                </span></span>
-<span><span class="co">#&gt;  [83] BiocParallel_1.32.1         GenomeInfoDb_1.34.2        </span></span>
-<span><span class="co">#&gt;  [85] rlang_1.0.6                 pkgconfig_2.0.3            </span></span>
-<span><span class="co">#&gt;  [87] systemfonts_1.0.4           matrixStats_0.62.0         </span></span>
-<span><span class="co">#&gt;  [89] bitops_1.0-7                evaluate_0.18              </span></span>
-<span><span class="co">#&gt;  [91] lattice_0.20-45             tensor_1.5                 </span></span>
-<span><span class="co">#&gt;  [93] purrr_0.3.5                 Rhdf5lib_1.20.0            </span></span>
-<span><span class="co">#&gt;  [95] labeling_0.4.2              tidyselect_1.2.0           </span></span>
-<span><span class="co">#&gt;  [97] magrittr_2.0.3              bookdown_0.30              </span></span>
-<span><span class="co">#&gt;  [99] R6_2.5.1                    IRanges_2.32.0             </span></span>
-<span><span class="co">#&gt; [101] magick_2.7.3                generics_0.1.3             </span></span>
-<span><span class="co">#&gt; [103] DelayedArray_0.24.0         DBI_1.1.3                  </span></span>
-<span><span class="co">#&gt; [105] pillar_1.8.1                withr_2.5.0                </span></span>
-<span><span class="co">#&gt; [107] mgcv_1.8-41                 abind_1.4-5                </span></span>
-<span><span class="co">#&gt; [109] RCurl_1.98-1.9              tibble_3.1.8               </span></span>
-<span><span class="co">#&gt; [111] DropletUtils_1.18.0         utf8_1.2.2                 </span></span>
-<span><span class="co">#&gt; [113] spatstat.geom_3.0-3         rmarkdown_2.18             </span></span>
-<span><span class="co">#&gt; [115] locfit_1.5-9.6              grid_4.2.2                 </span></span>
-<span><span class="co">#&gt; [117] data.table_1.14.4           digest_0.6.30              </span></span>
-<span><span class="co">#&gt; [119] tidyr_1.2.1                 numDeriv_2016.8-1.1        </span></span>
-<span><span class="co">#&gt; [121] R.utils_2.12.2              textshaping_0.3.6          </span></span>
-<span><span class="co">#&gt; [123] stats4_4.2.2                munsell_0.5.0              </span></span>
-<span><span class="co">#&gt; [125] concaveman_1.1.0            bslib_0.4.1</span></span></code></pre></div>
+<span><span class="co">#&gt;   [1] SpatialExperiment_1.8.0   minqa_1.2.5              </span></span>
+<span><span class="co">#&gt;   [3] colorspace_2.0-3          deldir_1.0-6             </span></span>
+<span><span class="co">#&gt;   [5] rjson_0.2.21              ellipsis_0.3.2           </span></span>
+<span><span class="co">#&gt;   [7] rprojroot_2.0.3           scuttle_1.8.0            </span></span>
+<span><span class="co">#&gt;   [9] XVector_0.38.0            fs_1.5.2                 </span></span>
+<span><span class="co">#&gt;  [11] spatstat.data_3.0-0       farver_2.1.1             </span></span>
+<span><span class="co">#&gt;  [13] fansi_1.0.3               codetools_0.2-18         </span></span>
+<span><span class="co">#&gt;  [15] splines_4.2.2             R.methodsS3_1.8.2        </span></span>
+<span><span class="co">#&gt;  [17] sparseMatrixStats_1.10.0  cachem_1.0.6             </span></span>
+<span><span class="co">#&gt;  [19] knitr_1.40                polyclip_1.10-4          </span></span>
+<span><span class="co">#&gt;  [21] jsonlite_1.8.3            nloptr_2.0.3             </span></span>
+<span><span class="co">#&gt;  [23] R.oo_1.25.0               pheatmap_1.0.12          </span></span>
+<span><span class="co">#&gt;  [25] spatstat.sparse_3.0-0     ggforce_0.4.1            </span></span>
+<span><span class="co">#&gt;  [27] HDF5Array_1.26.0          BiocManager_1.30.19      </span></span>
+<span><span class="co">#&gt;  [29] compiler_4.2.2            dqrng_0.3.0              </span></span>
+<span><span class="co">#&gt;  [31] assertthat_0.2.1          Matrix_1.5-3             </span></span>
+<span><span class="co">#&gt;  [33] fastmap_1.1.0             limma_3.54.0             </span></span>
+<span><span class="co">#&gt;  [35] cli_3.4.1                 tweenr_2.0.2             </span></span>
+<span><span class="co">#&gt;  [37] htmltools_0.5.3           tools_4.2.2              </span></span>
+<span><span class="co">#&gt;  [39] lmerTest_3.1-3            gtable_0.3.1             </span></span>
+<span><span class="co">#&gt;  [41] glue_1.6.2                GenomeInfoDbData_1.2.9   </span></span>
+<span><span class="co">#&gt;  [43] dplyr_1.0.10              Rcpp_1.0.9               </span></span>
+<span><span class="co">#&gt;  [45] jquerylib_0.1.4           pkgdown_2.0.6            </span></span>
+<span><span class="co">#&gt;  [47] vctrs_0.5.0               rhdf5filters_1.10.0      </span></span>
+<span><span class="co">#&gt;  [49] spatstat.explore_3.0-5    nlme_3.1-160             </span></span>
+<span><span class="co">#&gt;  [51] DelayedMatrixStats_1.20.0 spatstat.random_3.0-1    </span></span>
+<span><span class="co">#&gt;  [53] xfun_0.34                 stringr_1.4.1            </span></span>
+<span><span class="co">#&gt;  [55] beachmat_2.14.0           lme4_1.1-31              </span></span>
+<span><span class="co">#&gt;  [57] lifecycle_1.0.3           goftest_1.2-3            </span></span>
+<span><span class="co">#&gt;  [59] scam_1.2-13               edgeR_3.40.0             </span></span>
+<span><span class="co">#&gt;  [61] zlibbioc_1.44.0           MASS_7.3-58.1            </span></span>
+<span><span class="co">#&gt;  [63] scales_1.2.1              ragg_1.2.4               </span></span>
+<span><span class="co">#&gt;  [65] spatstat.utils_3.0-1      parallel_4.2.2           </span></span>
+<span><span class="co">#&gt;  [67] rhdf5_2.42.0              RColorBrewer_1.1-3       </span></span>
+<span><span class="co">#&gt;  [69] yaml_2.3.6                memoise_2.0.1            </span></span>
+<span><span class="co">#&gt;  [71] sass_0.4.2                stringi_1.7.8            </span></span>
+<span><span class="co">#&gt;  [73] highr_0.9                 desc_1.4.2               </span></span>
+<span><span class="co">#&gt;  [75] boot_1.3-28               BiocParallel_1.32.1      </span></span>
+<span><span class="co">#&gt;  [77] rlang_1.0.6               pkgconfig_2.0.3          </span></span>
+<span><span class="co">#&gt;  [79] systemfonts_1.0.4         bitops_1.0-7             </span></span>
+<span><span class="co">#&gt;  [81] evaluate_0.18             lattice_0.20-45          </span></span>
+<span><span class="co">#&gt;  [83] tensor_1.5                purrr_0.3.5              </span></span>
+<span><span class="co">#&gt;  [85] Rhdf5lib_1.20.0           labeling_0.4.2           </span></span>
+<span><span class="co">#&gt;  [87] tidyselect_1.2.0          magrittr_2.0.3           </span></span>
+<span><span class="co">#&gt;  [89] bookdown_0.30             R6_2.5.1                 </span></span>
+<span><span class="co">#&gt;  [91] magick_2.7.3              generics_0.1.3           </span></span>
+<span><span class="co">#&gt;  [93] DelayedArray_0.24.0       DBI_1.1.3                </span></span>
+<span><span class="co">#&gt;  [95] pillar_1.8.1              withr_2.5.0              </span></span>
+<span><span class="co">#&gt;  [97] mgcv_1.8-41               abind_1.4-5              </span></span>
+<span><span class="co">#&gt;  [99] RCurl_1.98-1.9            tibble_3.1.8             </span></span>
+<span><span class="co">#&gt; [101] DropletUtils_1.18.0       utf8_1.2.2               </span></span>
+<span><span class="co">#&gt; [103] spatstat.geom_3.0-3       rmarkdown_2.18           </span></span>
+<span><span class="co">#&gt; [105] locfit_1.5-9.6            grid_4.2.2               </span></span>
+<span><span class="co">#&gt; [107] data.table_1.14.4         digest_0.6.30            </span></span>
+<span><span class="co">#&gt; [109] tidyr_1.2.1               numDeriv_2016.8-1.1      </span></span>
+<span><span class="co">#&gt; [111] R.utils_2.12.2            textshaping_0.3.6        </span></span>
+<span><span class="co">#&gt; [113] munsell_0.5.0             concaveman_1.1.0         </span></span>
+<span><span class="co">#&gt; [115] bslib_0.4.1</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
