@@ -1108,7 +1108,7 @@ if(is(df, "SingleCellExperiment")|is(df, "SpatialExperiment")){
     names(condition) <- x$imageID
     
     df <- getProp(df, imageID = imageID, feature = feature)
-    condition <- droplevels(condition[rownames(df)])
+    condition <- condition[rownames(df)]
 }
     
 test <- apply(df, 2, function(x){
