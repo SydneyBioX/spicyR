@@ -99,7 +99,7 @@ to see whether or not Delta cells (`to`) tend to be found around Beta cells (`fr
 in onset diabetes images compared to non-diabetic images.
 
 ```{r message=FALSE}
-spicyTestPair <- spicy(diabetesData,
+spicyTestPair <- spicy(diabetesData_SCE,
                        condition = "stage",
                        subject = "case",
                        from = "beta",
@@ -131,7 +131,7 @@ data("spicyTest")
 
 ```{r}
 spicyTest
-topPairs(spicyTest)  
+topPairs(spicyTest)
 ```
 
 Again, we obtain a `spicy` object which outlines the result of the mixed effects 
@@ -140,39 +140,11 @@ models performed for each pairwise combination if cell types.
 We can represent this as a heatmap using the `spatialMEMMultiPlot()` function by 
 providing it the `spicy` object obtained.
 ```{r}
-signifPlot(spicyTest, 
+signifPlot(spicyTest,
            breaks=c(-3, 3, 1),
            marksToPlot = c("alpha", "beta", "gamma", "delta", 
                            "B", "naiveTc", "Th", "Tc", "neutrophil", "macrophage"))
 ```
-
-<!-- ## Bootstrapping with spicy -->
-<!-- There are multiple ways for calculating p-values for mixed effects models. We  -->
-<!-- have also implemented a bootstrapping approach. All that is needed is a choice  -->
-<!-- for the number of resamples used in the bootstrap which can be set with the  -->
-<!-- `nsim` parameter in `spicy()`. -->
-
-<!-- ```{r} -->
-<!-- data("spicyTestBootstrap") -->
-<!-- ``` -->
-
-
-<!-- ```{r eval=FALSE, warning=FALSE, message=FALSE} -->
-<!-- spicyTestBootstrap <- spicy(diabetesData,  -->
-<!--                             condition = "stage",  -->
-<!--                             subject = "case", -->
-<!--                             from = "beta", -->
-<!--                             to = "Tc", -->
-<!--                             nsim = 1000) -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- spicyTestBootstrap -->
-
-<!-- topPairs(spicyTestBootstrap)   -->
-<!-- ``` -->
-<!-- Indeed, we get improved statistical power compared to the previous method. -->
-
 
 # sessionInfo()
 
