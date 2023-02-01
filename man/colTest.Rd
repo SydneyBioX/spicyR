@@ -4,7 +4,7 @@
 \alias{colTest}
 \title{Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram}
 \usage{
-colTest(df, condition, type = "wilcox", feature = NULL, imageID = "imageID")
+colTest(df, condition, type = "ttest", feature = NULL, imageID = "imageID")
 }
 \arguments{
 \item{df}{A data.frame or SingleCellExperiment, SpatialExperiment}
@@ -31,6 +31,6 @@ data("diabetesData")
 props <- getProp(diabetesData)
 condition <- imagePheno(diabetesData)$stage
 names(condition) <- imagePheno(diabetesData)$imageID
-condition <- condition[condition\%in\% c("Long-duration", "Onset")]
+condition <- condition[condition \%in\% c("Long-duration", "Onset")]
 test <- colTest(props[names(condition), ], condition)
 }

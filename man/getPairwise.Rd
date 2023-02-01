@@ -24,7 +24,7 @@ getPairwise(
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the 
+\item{cells}{A SegmentedCells or data frame that contains at least the
 variables x and y, giving the location coordinates of each cell, and cellType.}
 
 \item{from}{The 'from' cellType for generating the L curve.}
@@ -35,7 +35,7 @@ variables x and y, giving the location coordinates of each cell, and cellType.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
-\item{window.length}{A tuning parameter for controlling the level of concavity 
+\item{window.length}{A tuning parameter for controlling the level of concavity
 when estimating concave windows.}
 
 \item{Rs}{A vector of the radii that the measures of association should be calculated.}
@@ -44,12 +44,12 @@ when estimating concave windows.}
 
 \item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 
-\item{fast}{A logical describing whether to use a fast approximation of the 
+\item{fast}{A logical describing whether to use a fast approximation of the
 inhomogeneous L-curves.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
 
-\item{includeZeroCells}{A logical indicating whether to include cells with 
+\item{includeZeroCells}{A logical indicating whether to include cells with
 zero counts in the pairwise association calculation.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
@@ -68,5 +68,5 @@ Get statistic from pairwise L curve of a single image.
 }
 \examples{
 data("diabetesData")
-pairAssoc <- getPairwise(diabetesData[1,])
+pairAssoc <- getPairwise(diabetesData[1, ])
 }

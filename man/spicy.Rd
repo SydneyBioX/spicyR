@@ -38,7 +38,7 @@ spicy(
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the 
+\item{cells}{A SegmentedCells or data frame that contains at least the
 variables x and y, giving the location coordinates of each cell, and cellType.}
 
 \item{condition}{Vector of conditions to be tested corresponding to each image
@@ -47,7 +47,7 @@ if cells is a data frame.}
 \item{subject}{Vector of subject IDs corresponding to each image if cells is
 a data frame.}
 
-\item{covariates}{Vector of covariate names that should be included in the 
+\item{covariates}{Vector of covariate names that should be included in the
 mixed effects model as fixed effects.}
 
 \item{from}{vector of cell types which you would like to compare to the to vector}
@@ -56,7 +56,7 @@ mixed effects model as fixed effects.}
 
 \item{dist}{The distance at which the statistic is obtained.}
 
-\item{integrate}{Should the statistic be the integral from 0 to dist, or the 
+\item{integrate}{Should the statistic be the integral from 0 to dist, or the
 value of the L curve at dist.}
 
 \item{nsim}{Number of simulations to perform. If empty, the p-value from lmerTest is used.}
@@ -71,7 +71,7 @@ value of the L curve at dist.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
-\item{window.length}{A tuning parameter for controlling the level of concavity 
+\item{window.length}{A tuning parameter for controlling the level of concavity
 when estimating concave windows.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
@@ -82,12 +82,12 @@ when estimating concave windows.}
 
 \item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 
-\item{fast}{A logical describing whether to use a fast approximation of the 
+\item{fast}{A logical describing whether to use a fast approximation of the
 inhomogeneous L-curves.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
 
-\item{includeZeroCells}{A logical indicating whether to include cells with 
+\item{includeZeroCells}{A logical indicating whether to include cells with
 zero counts in the pairwise association calculation.}
 
 \item{imageID}{The image ID if using SingleCellExperiment.}
@@ -108,17 +108,19 @@ Performs spatial tests on spatial cytometry data.
 data("diabetesData")
 
 # Test with random effect for patient on only one pairwise combination of cell types.
-spicy(diabetesData, condition = "stage", subject = "case", 
-      from = "Tc", to = "Th")
+spicy(diabetesData,
+    condition = "stage", subject = "case",
+    from = "Tc", to = "Th"
+)
 
 # Test all pairwise combination of cell types without random effect of patient.
-#spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
+# spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
 
 # Test all pairwise combination of cell types with random effect of patient.
-#spicy(diabetesData, condition = "condition", subject = "subject")
+# spicy(diabetesData, condition = "condition", subject = "subject")
 
-# Test all pairwise combination of cell types with random effect of patient using 
+# Test all pairwise combination of cell types with random effect of patient using
 # a bootstrap to calculate significance.
-#spicy(diabetesData, condition = "stage", subject = "case", nsim = 10000)
+# spicy(diabetesData, condition = "stage", subject = "case", nsim = 10000)
 
 }
