@@ -1,4 +1,4 @@
-#' Plots result of signifPlot.
+R #' Plots result of signifPlot.
 #'
 #' @param results Data frame obtained from spicy.
 #' @param type Where to make a bubble plot or heatmap.
@@ -30,12 +30,20 @@ signifPlot <- function(results,
                        marksToPlot = NULL,
                        cutoff = 0.05) {
     
+    
      
     marks <- unique(results$comparisons$from)
+    
+    if ("fromName" %in% names(results$comparisons)) {
+      marks <- unique(c(results$comparisons$to,
+                        results$comparisons$from))
+    }
+
+    
     if (is.null(marksToPlot)) marksToPlot <- marks
     
     if(type == "bubble"){
-       return(bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marks))
+       return(bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marksToPlot))
             
     }
     
@@ -95,10 +103,18 @@ sig <- test$p.value[,2] < cutoff
 sigLab <- paste0("fdr < ",cutoff)
 }
 
+
+
 df <- data.frame(cellTypeA, cellTypeB, groupA, groupB, size, stat = test$statistic[,2], pvalue = test$p.value[,2], sig = factor(sig))
 rownames(df) <- rownames(test$statistic)
 
-df <- df[df$cellTypeA%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
+
+if("fromName" %in% names(test$comparisons)) {
+  df$cellTypeAName <- factor(test$comparisons$fromName)
+  df <- df[df$cellTypeAName%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
+} else{
+  df <- df[df$cellTypeA%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
+}
 
 shape.legend = c(GroupA = "\u25D6", GroupB = "\u25D7")
 
