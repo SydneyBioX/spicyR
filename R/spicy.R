@@ -221,10 +221,10 @@ spicy <- function(cells,
       mutate(from = paste(fromName, parent, sep = "__")) |>
       select(-parent)
     
+    weights = FALSE
+    message("Cell count weighting set to FALSE for Konditional results")
     
   }
-  
-  
   
   weightFunction <- getWeightFunction(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor)
   
