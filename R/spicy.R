@@ -604,7 +604,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
   if (nrow(pval) == 1) {
     print(sum(pval[cond] < 0.05, na.rm = TRUE))
   }
-  if (nrows(pval) > 1) {
+  if (nrow(pval) > 1) {
     print(colSums(apply(pval[cond], 2, p.adjust, "fdr") < 0.05, na.rm = TRUE))
   }
 }
