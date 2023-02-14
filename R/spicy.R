@@ -1,35 +1,53 @@
 #' Performs spatial tests on spatial cytometry data.
 #'
-#' @param cells A SegmentedCells or data frame that contains at least the
-#' variables x and y, giving the location coordinates of each cell, and cellType.
-#' @param condition Vector of conditions to be tested corresponding to each image
-#'  if cells is a data frame.
+#' @param cells
+#'   A SegmentedCells or data frame that contains at least the  variables x and
+#'   y, giving the location coordinates of each cell, and cellType.
+#' @param condition
+#'   Vector of conditions to be tested corresponding to each image if cells is
+#'   a data frame.
 #' @param subject Vector of subject IDs corresponding to each image if cells is
-#'  a data frame.
+#'   a data frame.
 #' @param covariates Vector of covariate names that should be included in the
-#' mixed effects model as fixed effects.
-#' @param from vector of cell types which you would like to compare to the to vector
-#' @param to vector of cell types which you would like to compare to the from vector
+#'   mixed effects model as fixed effects.
+#' @param from
+#'   vector of cell types which you would like to compare to the to vector
+#' @param to
+#'   vector of cell types which you would like to compare to the from vector
 #' @param dist The distance at which the statistic is obtained.
+#' @param alternateResult an alternative result to be used of comparison
 #' @param integrate Should the statistic be the integral from 0 to dist, or the
 #' value of the L curve at dist.
-#' @param nsim Number of simulations to perform. If empty, the p-value from lmerTest is used.
+#' @param nsim
+#'   Number of simulations to perform. If empty, the p-value from lmerTest
+#'   is used.
 #' @param verbose logical indicating whether to output messages.
-#' @param weights logical indicating whether to include weights based on cell counts.
-#' @param weightsByPair logical indicating whether weights should be calculated for each cell type pair.
-#' @param weightFactor numeric that controls the convexity of the weight function.
-#' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
-#' @param window.length A tuning parameter for controlling the level of concavity
-#' when estimating concave windows.
+#' @param weights
+#'   logical indicating whether to include weights based on cell counts.
+#' @param weightsByPair
+#'   logical indicating whether weights should be calculated for each cell type
+#'   pair.
+#' @param weightFactor
+#'   numeric that controls the convexity of the weight function.
+#' @param window
+#'   Should the window around the regions be 'square', 'convex' or 'concave'.
+#' @param window.length
+#'   A tuning parameter for controlling the level of concavity when estimating
+#'   concave windows.
 #' @param BPPARAM A BiocParallelParam object.
-#' @param sigma A numeric variable used for scaling when fitting inhomogeneous L-curves.
-#' @param minLambda Minimum value for density for scaling when fitting inhomogeneous L-curves.
-#' @param Rs A vector of the radii that the measures of association should be calculated.
-#' @param fast A logical describing whether to use a fast approximation of the
-#' inhomogeneous L-curves.
+#' @param sigma
+#'   A numeric variable used for scaling when fitting inhomogeneous L-curves.
+#' @param minLambda
+#'   Minimum value for density for scaling when fitting inhomogeneous L-curves.
+#' @param Rs
+#'   A vector of radii that the measures of association should be calculated.
+#' @param fast
+#'   A logical describing whether to use a fast approximation of the
+#'   inhomogeneous L-curves.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
-#' @param includeZeroCells A logical indicating whether to include cells with
-#' zero counts in the pairwise association calculation.
+#' @param includeZeroCells
+#'   A logical indicating whether to include cells with zero counts in the
+#'   pairwise association calculation.
 #' @param imageID The image ID if using SingleCellExperiment.
 #' @param cellType The cell type if using SingleCellExperiment.
 #' @param spatialCoords The spatial coordinates if using a SingleCellExperiment.
