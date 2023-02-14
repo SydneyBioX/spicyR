@@ -116,6 +116,9 @@ if("fromName" %in% names(test$comparisons)) {
   df <- df[df$cellTypeA%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
 }
 
+df$cellTypeA = droplevels(df$cellTypeA)
+df$cellTypeB = droplevels(df$cellTypeB)
+
 shape.legend = c(GroupA = "\u25D6", GroupB = "\u25D7")
 
 df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1), condition = c("GroupA", "GroupB"))
@@ -134,6 +137,7 @@ if(is.null(breaks)){
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
 }
   
+
 df$groupA <- pmax(pmin(df$groupA, limits[2]), limits[1])
 df$groupB <- pmax(pmin(df$groupB, limits[2]), limits[1])  
   
