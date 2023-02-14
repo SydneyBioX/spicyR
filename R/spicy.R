@@ -260,6 +260,7 @@ spicy <- function(cells,
         pheno = as.data.frame(imagePheno(cells))
       )
     
+    
     mixed.lmer <- mapply(
       spatialMEM,
       spatAssoc = pairwiseAssoc,
@@ -269,6 +270,7 @@ spicy <- function(cells,
       MoreArgs = MoreArgs2,
       SIMPLIFY = FALSE
     )
+    
     
     mixed.lmer <- lapply(mixed.lmer, function(x) {
       if (is(x, "lmerModLmerTest")) {
@@ -602,7 +604,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
   if (nrow(pval) == 1) {
     print(sum(pval[cond] < 0.05, na.rm = TRUE))
   }
-  if (nrow(pval) > 1) {
+  if (nrows(pval) > 1) {
     print(colSums(apply(pval[cond], 2, p.adjust, "fdr") < 0.05, na.rm = TRUE))
   }
 }
@@ -633,12 +635,15 @@ spatialMEM <-
     # if (sum(filter) < 3)
     #     return(NA)
     
+    
     spatialData <-
-      data.frame(spatAssoc,
-                 condition = pheno[, condition],
-                 subject = pheno[, subject],
-                 pheno[covariates]
+      data.frame("spatAssoc" = spatAssoc,
+                 "condition" = pheno[, condition],
+                 "subject" = pheno[, subject],
+                 "covariates" = pheno[covariates]
       )
+
+    names(spatialData)[names(spatialData) == "covariates"] = covariates
     
     formula <- "spatAssoc ~ condition + (1|subject)"
     
@@ -649,9 +654,9 @@ spatialMEM <-
               sep = "+"
         )
     }
+  
     spatialData$weights <- weightFunction
-    
-    
+
     mixed.lmer <- suppressWarnings(suppressMessages(tryCatch(
       {
         lmerTest::lmer(stats::formula(formula),
@@ -685,9 +690,13 @@ spatialLM <-
     count1 <- cellCounts[, from]
     count2 <- cellCounts[, to]
     
-    # print(pheno)
+
     spatialData <-
-      data.frame(spatAssoc, condition = pheno[, condition], pheno[, covariates])
+      data.frame("spatAssoc" = spatAssoc,
+                 "condition" = pheno[, condition],
+                 "covariates" = pheno[, covariates])
+    
+    names(spatialData)[names(spatialData) == "covariates"] = covariates
     # spatialData <- spatialData[filter, ]
     # count1 <- count1[filter]
     # count2 <- count2[filter]
@@ -703,6 +712,7 @@ spatialLM <-
               sep = "+"
         )
     }
+    
     lm1 <- tryCatch(
       {
         stats::lm(stats::formula(formula),
@@ -726,7 +736,7 @@ spatialLM <-
 #' @importFrom stats sd coef
 spatialLMBootstrap <- function(linearModels, nsim = 19) {
   functionToReplicate <- function(x) {
-    toGet <- sample(nrow(x$model), replace = TRUE)
+    toGet <- sample(nrows(x$model), replace = TRUE)
     
     spatAssocBoot <- x$model$spatAssoc[toGet]
     conditionBoot <- x$model$condition[toGet]
@@ -1001,6 +1011,7 @@ borderEdge <- function(X, maxD) {
 #' @importFrom scam scam
 #' @importFrom stats quantile
 calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
+
   count1 <- as.vector(nCells[, M1])
   count2 <- as.vector(nCells[, M2])
   rS <- as.vector(rS)
@@ -1032,6 +1043,8 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
 
 #' @importFrom BiocParallel bpmapply
 getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor) {
+  
+  
   if (!weights) {
     # weightFunction <- sapply(colnames(pairwiseAssoc), function(x){NULL}, simplify = FALSE, USE.NAMES = TRUE)
     # return(weightFunction)
@@ -1053,6 +1066,7 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
   if (weightsByPair) {
     weightFunction <- BiocParallel::bpmapply(calcWeights, rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM = BPPARAM, MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE)
   } else {
+    browser()
     weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor)
     pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
     weightFunction <- split(weightFunction, pair)
