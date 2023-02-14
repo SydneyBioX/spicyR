@@ -57,7 +57,8 @@ mixed effects model as fixed effects.}
 
 \item{dist}{The distance at which the statistic is obtained.}
 
-\item{alternateResult}{an alternative result to be used of comparison}
+\item{alternateResult}{An alternative result in the form of a data matrix to be used for
+comparison.}
 
 \item{integrate}{Should the statistic be the integral from 0 to dist, or the
 value of the L curve at dist.}

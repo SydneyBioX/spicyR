@@ -15,7 +15,9 @@
 #' @param to
 #'   vector of cell types which you would like to compare to the from vector
 #' @param dist The distance at which the statistic is obtained.
-#' @param alternateResult an alternative result to be used of comparison
+#' @param alternateResult
+#'   An alternative result in the form of a data matrix to be used for
+#'   comparison.
 #' @param integrate Should the statistic be the integral from 0 to dist, or the
 #' value of the L curve at dist.
 #' @param nsim
