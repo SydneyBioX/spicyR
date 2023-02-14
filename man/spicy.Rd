@@ -16,6 +16,7 @@ spicy(
   from = NULL,
   to = NULL,
   dist = NULL,
+  alternateResult = NULL,
   integrate = TRUE,
   nsim = NULL,
   verbose = TRUE,
