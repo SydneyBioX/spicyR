@@ -1066,7 +1066,6 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
   if (weightsByPair) {
     weightFunction <- BiocParallel::bpmapply(calcWeights, rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM = BPPARAM, MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE)
   } else {
-    browser()
     weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor)
     pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
     weightFunction <- split(weightFunction, pair)
