@@ -14,3 +14,22 @@
         colData = colData,
     )
 }
+
+isKonditional <- function(konditionalResult){
+    
+    colNames = c(
+        "imageID",
+        "test",
+        "original",
+        "konditional",
+        "r",
+        "weightQuantile",
+        "inhom",
+        "edge",
+        "includeZeroCells",
+        "window",
+        "window.length"
+    )
+    
+    return(all(colNames %in% names(konditionalResult)))
+}

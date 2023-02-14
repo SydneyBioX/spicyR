@@ -176,13 +176,13 @@ spicy <- function(cells,
   }
   
   
-  if(!is.null(alternateResult) & !Statial:::isKonditional(alternateResult)) {
+  if(!is.null(alternateResult) & !isKonditional(alternateResult)) {
     pairwiseAssoc <- alternateResult
   }
   
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
   
-  if(!is.null(alternateResult) & Statial:::isKonditional(alternateResult)) {
+  if(!is.null(alternateResult) & isKonditional(alternateResult)) {
     
     pairwiseAssoc <- konditionalResult %>%
       select(imageID, test, konditional) %>%
