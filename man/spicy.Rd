@@ -16,6 +16,7 @@ spicy(
   from = NULL,
   to = NULL,
   dist = NULL,
+  alternateResult = NULL,
   integrate = TRUE,
   nsim = NULL,
   verbose = TRUE,
@@ -38,11 +39,11 @@ spicy(
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the
-variables x and y, giving the location coordinates of each cell, and cellType.}
+\item{cells}{A SegmentedCells or data frame that contains at least the  variables x and
+y, giving the location coordinates of each cell, and cellType.}
 
-\item{condition}{Vector of conditions to be tested corresponding to each image
-if cells is a data frame.}
+\item{condition}{Vector of conditions to be tested corresponding to each image if cells is
+a data frame.}
 
 \item{subject}{Vector of subject IDs corresponding to each image if cells is
 a data frame.}
@@ -56,29 +57,34 @@ mixed effects model as fixed effects.}
 
 \item{dist}{The distance at which the statistic is obtained.}
 
+\item{alternateResult}{An alternative result in the form of a data matrix to be used for
+comparison.}
+
 \item{integrate}{Should the statistic be the integral from 0 to dist, or the
 value of the L curve at dist.}
 
-\item{nsim}{Number of simulations to perform. If empty, the p-value from lmerTest is used.}
+\item{nsim}{Number of simulations to perform. If empty, the p-value from lmerTest
+is used.}
 
 \item{verbose}{logical indicating whether to output messages.}
 
 \item{weights}{logical indicating whether to include weights based on cell counts.}
 
-\item{weightsByPair}{logical indicating whether weights should be calculated for each cell type pair.}
+\item{weightsByPair}{logical indicating whether weights should be calculated for each cell type
+pair.}
 
 \item{weightFactor}{numeric that controls the convexity of the weight function.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
-\item{window.length}{A tuning parameter for controlling the level of concavity
-when estimating concave windows.}
+\item{window.length}{A tuning parameter for controlling the level of concavity when estimating
+concave windows.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
 
 \item{sigma}{A numeric variable used for scaling when fitting inhomogeneous L-curves.}
 
-\item{Rs}{A vector of the radii that the measures of association should be calculated.}
+\item{Rs}{A vector of radii that the measures of association should be calculated.}
 
 \item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 
@@ -87,8 +93,8 @@ inhomogeneous L-curves.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
 
-\item{includeZeroCells}{A logical indicating whether to include cells with
-zero counts in the pairwise association calculation.}
+\item{includeZeroCells}{A logical indicating whether to include cells with zero counts in the
+pairwise association calculation.}
 
 \item{imageID}{The image ID if using SingleCellExperiment.}
 

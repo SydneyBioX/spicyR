@@ -30,12 +30,20 @@ signifPlot <- function(results,
                        marksToPlot = NULL,
                        cutoff = 0.05) {
     
+    
      
     marks <- unique(results$comparisons$from)
+    
+    if ("fromName" %in% names(results$comparisons)) {
+      marks <- unique(c(results$comparisons$to,
+                        results$comparisons$from))
+    }
+
+    
     if (is.null(marksToPlot)) marksToPlot <- marks
     
     if(type == "bubble"){
-       return(bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marks))
+       return(bubblePlot(results, fdr, breaks,  colours = colours, cutoff = cutoff, marksToPlot = marksToPlot))
             
     }
     
@@ -95,10 +103,21 @@ sig <- test$p.value[,2] < cutoff
 sigLab <- paste0("fdr < ",cutoff)
 }
 
+
+
 df <- data.frame(cellTypeA, cellTypeB, groupA, groupB, size, stat = test$statistic[,2], pvalue = test$p.value[,2], sig = factor(sig))
 rownames(df) <- rownames(test$statistic)
 
-df <- df[df$cellTypeA%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
+
+if("fromName" %in% names(test$comparisons)) {
+  df$cellTypeAName <- factor(test$comparisons$fromName)
+  df <- df[df$cellTypeAName%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
+} else{
+  df <- df[df$cellTypeA%in% marksToPlot & df$cellTypeB%in% marksToPlot,]
+}
+
+df$cellTypeA = droplevels(df$cellTypeA)
+df$cellTypeB = droplevels(df$cellTypeB)
 
 shape.legend = c(GroupA = "\u25D6", GroupB = "\u25D7")
 
@@ -106,15 +125,19 @@ df.shape = data.frame(cellTypeA = c(NA,NA), cellTypeB = c(NA,NA), size = c(1,1),
 
 
 if(is.null(breaks)){
-    limits <- c(floor(min(c(groupA,groupB), na.rm = TRUE)*2)/2, ceiling(max(c(groupA,groupB), na.rm = TRUE)*2)/2)
-    by <- round((max(abs(c(groupA,groupB)), na.rm = TRUE)/2-0.01))/2
-    breaks <- c(ceiling(min(c(groupA,groupB), na.rm = TRUE)*2)/2,floor(max(c(groupA,groupB), na.rm = TRUE)*2)/2,by)
-    breaks <- c(floor(min(c(groupA,groupB), na.rm = TRUE)*2)/2,seq(from = breaks[1], to = breaks[2], by = breaks[3]),ceiling(max(c(groupA,groupB), na.rm = TRUE)*2)/2)
+  
+  groupAB = c(groupA, groupB)
+  
+  limits = c(min(groupAB, na.rm = TRUE), max(groupAB, na.rm = TRUE)) |> 
+    round(1)
+  
+  breaks = seq(from = limits[1], to = limits[2], by = diff(limits)/5)
 } else{
     limits <- c(breaks[1], breaks[2])
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
 }
   
+
 df$groupA <- pmax(pmin(df$groupA, limits[2]), limits[1])
 df$groupB <- pmax(pmin(df$groupB, limits[2]), limits[1])  
   
