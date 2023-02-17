@@ -204,7 +204,7 @@ spicy <- function(cells,
   
   if(!is.null(alternateResult) & isKonditional(alternateResult)) {
     
-    pairwiseAssoc <- konditionalResult %>%
+    pairwiseAssoc <- alternateResult %>%
       select(imageID, test, konditional) %>%
       pivot_wider(names_from = test, values_from = konditional) |>
       column_to_rownames("imageID")
