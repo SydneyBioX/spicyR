@@ -221,6 +221,9 @@ spicy <- function(cells,
       mutate(from = paste(fromName, parent, sep = "__")) |>
       select(-parent)
     
+    m1 = comparisons$fromName
+    m2 = comparisons$to
+    
     weights = FALSE
     message("Cell count weighting set to FALSE for Konditional results")
     
@@ -422,7 +425,7 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
     df <- suppressWarnings(apply(df, 2, function(x) {
       dplyr::bind_rows(x)
     }))
-    
+
     df <- lapply(df, function(x) {
       rownames(x) <- names(mixed.lmer)
       x
