@@ -1182,7 +1182,7 @@ extractSpicyInfo <- function(cells,
 #'
 #' @param df A data.frame or SingleCellExperiment, SpatialExperiment
 #' @param condition The condition of interest
-#' @param type The type of test, "wilcox" or "ttest"
+#' @param type The type of test, "wilcox", "ttest" or "survival".
 #' @param feature Can be used to calculate the proportions of this feature for each image
 #' @param imageID The imageID's if presenting a SingleCellExperiment
 #'
@@ -1204,9 +1204,16 @@ extractSpicyInfo <- function(cells,
 #' @importFrom SingleCellExperiment SingleCellExperiment
 #' @importFrom stats wilcox.test t.test
 #' @importFrom S4Vectors as.data.frame
-colTest <- function(df, condition, type = "ttest", feature = NULL, imageID = "imageID") {
+colTest <- function(df, condition, type = NULL, feature = NULL, imageID = "imageID") {
   if (is(df, "SingleCellExperiment") | is(df, "SpatialExperiment")) {
     if (is.null(feature)) stop("'feature' is still null")
+
+    if (is.null(type) && length(condition) == 1) type <- "ttest"
+    else if (is.null(type) && length(condition) == 2) type <- "survival"
+    else if (is.null(type)) {
+      stop("Invalid nuber of columns in condition. Must 1 or 2 (survival).")
+    }
+
     x <- df@colData
     x <- x[, c(imageID, condition)]
     x <- unique(x)
@@ -1215,15 +1222,33 @@ colTest <- function(df, condition, type = "ttest", feature = NULL, imageID = "im
     
     df <- getProp(df, imageID = imageID, feature = feature)
     condition <- condition[rownames(df)]
+  } else {
+    stopifnot(
+      "Number of oberservation does not match between df and outcome" = {
+        dim(df)[1] == dim(condition)[1]
+      }
+    )
+
+    if (is.null(type) && (is.atomic(condition) || dim(condition)[2] == 1)) {
+      type <- "ttest"
+    } else if (is.null(type) && dim(condition)[2] == 2) type <- "survival"
+    else if (is.null(type)) {
+      stop("Invalid nuber of columns in condition. Must 1 or 2 (survival).")
+    }
   }
-  
-  test <- apply(df, 2, function(x) {
-    if (type == "wilcox") test <- stats::wilcox.test(x ~ condition)
-    if (type == "ttest") test <- stats::t.test(x ~ condition)
-    signif(c(test$estimate, tval <- test$statistic, pval = test$p.value), 2)
-  })
-  
-  test <- as.data.frame(t(test))
+
+  if (type == "survival") {
+    test <- ClassifyR::colCoxTests(df, condition)
+    test <- signif(test, 2)
+    names(test)[names(test) == 'p.value'] <- 'pval'
+  } else {
+    test <- apply(df, 2, function(x) {
+      if (type == "wilcox") test <- stats::wilcox.test(x ~ condition)
+      else if (type == "ttest") test <- stats::t.test(x ~ condition)
+      signif(c(test$estimate, tval <- test$statistic, pval = test$p.value), 2)
+    })
+  }
+  if(type != "survival")  test <- as.data.frame(t(test))
   test$adjPval <- signif(stats::p.adjust(test$pval, "fdr"), 2)
   test$cluster <- rownames(test)
   test <- test[order(test$pval), ]
