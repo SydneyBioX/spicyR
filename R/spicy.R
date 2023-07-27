@@ -1204,6 +1204,7 @@ extractSpicyInfo <- function(cells,
 #' @importFrom SingleCellExperiment SingleCellExperiment
 #' @importFrom stats wilcox.test t.test
 #' @importFrom S4Vectors as.data.frame
+#' @importFrom ClassifyR colCoxTests
 colTest <- function(df, condition, type = NULL, feature = NULL, imageID = "imageID") {
   if (is(df, "SingleCellExperiment") | is(df, "SpatialExperiment")) {
     if (is.null(feature)) stop("'feature' is still null")
