@@ -1,75 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>/404.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/404.html</loc>
   </url>
   <url>
-    <loc>/articles/deprecated/segmentedCells.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/articles/deprecated/segmentedCells.html</loc>
   </url>
   <url>
-    <loc>/articles/index.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/articles/index.html</loc>
   </url>
   <url>
-    <loc>/articles/segmentedCells.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/articles/segmentedCells.html</loc>
   </url>
   <url>
-    <loc>/articles/spicy.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/articles/spicyR.html</loc>
   </url>
   <url>
-    <loc>/articles/spicyR.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/authors.html</loc>
   </url>
   <url>
-    <loc>/authors.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/index.html</loc>
   </url>
   <url>
-    <loc>/index.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/Accessors.html</loc>
   </url>
   <url>
-    <loc>/reference/Accessors.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/SegmentedCells.html</loc>
   </url>
   <url>
-    <loc>/reference/SegmentedCells.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/as.data.frame.SegmentedCells.html</loc>
   </url>
   <url>
-    <loc>/reference/as.data.frame.SegmentedCells.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/colTest.html</loc>
   </url>
   <url>
-    <loc>/reference/colTest.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/diabetesData.html</loc>
   </url>
   <url>
-    <loc>/reference/diabetesData.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/diabetesData_SCE.html</loc>
   </url>
   <url>
-    <loc>/reference/diabetesData_SCE.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/getPairwise.html</loc>
   </url>
   <url>
-    <loc>/reference/getPairwise.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/getProp.html</loc>
   </url>
   <url>
-    <loc>/reference/getProp.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/index.html</loc>
   </url>
   <url>
-    <loc>/reference/index.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/plot-SegmentedCells.html</loc>
   </url>
   <url>
-    <loc>/reference/plot-SegmentedCells.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/show-SegmentedCells.html</loc>
   </url>
   <url>
-    <loc>/reference/show-SegmentedCells.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/signifPlot.html</loc>
   </url>
   <url>
-    <loc>/reference/signifPlot.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/spicy.html</loc>
   </url>
   <url>
-    <loc>/reference/spicy.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/spicyTest.html</loc>
   </url>
   <url>
-    <loc>/reference/spicyTest.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/spicyTestBootstrap.html</loc>
   </url>
   <url>
-    <loc>/reference/spicyTestBootstrap.html</loc>
-  </url>
-  <url>
-    <loc>/reference/topPairs.html</loc>
+    <loc>https://ellispatrick.github.io/spicyR/reference/topPairs.html</loc>
   </url>
 </urlset>
