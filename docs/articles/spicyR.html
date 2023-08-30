@@ -77,7 +77,7 @@ Patrick</h4>
             <address class="author_afil">
       Westmead Institute for Medical Research, University of Sydney,
 AustraliaSchool of Mathematics and Statistics, University of Sydney,
-Australia<br><h4 data-toc-skip class="date">10 August 2023</h4>
+Australia<br><h4 data-toc-skip class="date">30 August 2023</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/ellispatrick/spicyR/blob/HEAD/vignettes/spicyR.Rmd" class="external-link"><code>vignettes/spicyR.Rmd</code></a></small>
       <div class="d-none name"><code>spicyR.Rmd</code></div>
@@ -119,13 +119,6 @@ controls.</p>
 <p><code>diabetesData_SCE</code> is a <code>SingleCellExperiment</code>
 object containing single-cell data of 160 images from 8 subjects, with
 20 images per subjects.</p>
-<p><code><a href="../reference/Accessors.html">cellSummary()</a></code> returns a <code>DataFrame</code> object
-providing the location (<code>x</code> and <code>y</code>) and cell type
-(<code>cellType</code>) of each cell and the image it belongs to
-(<code>imageID</code>).</p>
-<p><code><a href="../reference/Accessors.html">imagePheno()</a></code> returns a <code>tibble</code> object
-providing the corresponding subject (<code>subject</code>) and condition
-(<code>condition</code>) for each image.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"diabetesData_SCE"</span><span class="op">)</span></span>
 <span><span class="va">diabetesData_SCE</span></span>
@@ -147,19 +140,19 @@ macrophages) and pancreatic islet cells (alpha, beta, gamma, delta).</p>
 <div class="section level2">
 <h2 id="mixed-effects-modelling">Mixed Effects Modelling<a class="anchor" aria-label="anchor" href="#mixed-effects-modelling"></a>
 </h2>
-<p>To investigate changes in colocalisation between two different cell
-types, we measure the level of colocalisation between two cell types by
-modelling with the <code>Lcross()</code> function in the
-<code>spatstat.explore</code> package. Specifically, the mean difference
-between the obtained function and the theoretical function is used as a
-measure for the level of colocalisation. Differences of this statistic
-between two conditions is modelled using a weighted mixed effects model,
-with condition as the fixed effect and subject as the random effect.
-spicyTestBootstrap ## Testing for change in colocalisation for a
-specific pair of cells</p>
-<p>Firstly, we can see whether one cell type tends to be around another
-cell type in one condition compared to the other. This can be done using
-the <code><a href="../reference/spicy.html">spicy()</a></code> function, where we include
+<p>To investigate changes in localisation between two different cell
+types, we measure the level of localisation between two cell types by
+modelling with the L-function. Specifically, the mean difference between
+the obtained function and the theoretical function is used as a measure
+for the level of localisation. Differences of this statistic between two
+conditions is modelled using a weighted mixed effects model, with
+condition as the fixed effect and subject as the random effect.</p>
+<div class="section level3">
+<h3 id="testing-for-change-in-localisation-for-a-specific-pair-of-cells">Testing for change in localisation for a specific pair of cells<a class="anchor" aria-label="anchor" href="#testing-for-change-in-localisation-for-a-specific-pair-of-cells"></a>
+</h3>
+<p>Firstly, we can test whether one cell type tends to be more localised
+with another cell type in one condition compared to the other. This can
+be done using the <code><a href="../reference/spicy.html">spicy()</a></code> function, where we include
 <code>condition</code>, and <code>subject</code>. In this example, we
 want to see whether or not Delta cells (<code>to</code>) tend to be
 found around Beta cells (<code>from</code>) in onset diabetes images
@@ -179,11 +172,12 @@ compared to non-diabetic images.</p>
 <p>We obtain a <code>spicy</code> object which details the results of
 the mixed effects modelling performed. As the <code>coefficient</code>
 in <code>spicyTest</code> is positive, we find that Th cells cells are
-more likely to be found around beta cells in the onset diabetes group
+more likely to be found near beta cells in the onset diabetes group
 compared to the non-diabetic control.</p>
+</div>
 <div class="section level3">
-<h3 id="test-for-change-in-colocalisation-for-all-pairwise-cell-combinations">Test for change in colocalisation for all pairwise cell
-combinations<a class="anchor" aria-label="anchor" href="#test-for-change-in-colocalisation-for-all-pairwise-cell-combinations"></a>
+<h3 id="test-for-change-in-localisation-for-all-pairwise-cell-combinations">Test for change in localisation for all pairwise cell
+combinations<a class="anchor" aria-label="anchor" href="#test-for-change-in-localisation-for-all-pairwise-cell-combinations"></a>
 </h3>
 <p>Here, we can perform what we did above for all pairwise combinations
 of cell types by excluding the <code>from</code> and <code>to</code>
@@ -202,12 +196,12 @@ parameters from <code><a href="../reference/spicy.html">spicy()</a></code>.</p>
 <span><span class="co">#&gt;                          intercept coefficient      p.value adj.pvalue</span></span>
 <span><span class="co">#&gt; beta__delta           1.815458e+02  -48.735693 0.0005033247 0.07169649</span></span>
 <span><span class="co">#&gt; delta__beta           1.817943e+02  -48.166076 0.0005601288 0.07169649</span></span>
-<span><span class="co">#&gt; B__unknown            1.442519e-15   11.770938 0.0052338392 0.42051606</span></span>
+<span><span class="co">#&gt; B__unknown            2.885037e-15   11.770938 0.0052338392 0.42051606</span></span>
 <span><span class="co">#&gt; delta__delta          2.089550e+02  -52.061196 0.0125129422 0.42051606</span></span>
 <span><span class="co">#&gt; unknown__macrophage   1.007337e+01  -15.826919 0.0207410908 0.42051606</span></span>
-<span><span class="co">#&gt; unknown__B            3.687095e-15   12.142848 0.0225855401 0.42051606</span></span>
+<span><span class="co">#&gt; unknown__B            5.899351e-15   12.142848 0.0225855404 0.42051606</span></span>
 <span><span class="co">#&gt; macrophage__unknown   1.004424e+01  -14.471666 0.0244668075 0.42051606</span></span>
-<span><span class="co">#&gt; B__Th                 4.714437e-15   26.847934 0.0245039854 0.42051606</span></span>
+<span><span class="co">#&gt; B__Th                 6.285916e-15   26.847934 0.0245039854 0.42051606</span></span>
 <span><span class="co">#&gt; otherimmune__naiveTc -9.292508e+00   33.584755 0.0255812944 0.42051606</span></span>
 <span><span class="co">#&gt; ductal__ductal        1.481580e+01   -8.632569 0.0266935703 0.42051606</span></span>
 <span><span class="co">#&gt;                             from         to</span></span>
@@ -225,7 +219,7 @@ parameters from <code><a href="../reference/spicy.html">spicy()</a></code>.</p>
 result of the mixed effects models performed for each pairwise
 combination if cell types.</p>
 <p>We can represent this as a heatmap using the
-<code>spatialMEMMultiPlot()</code> function by providing it the
+<code><a href="../reference/signifPlot.html">signifPlot()</a></code> function by providing it the
 <code>spicy</code> object obtained.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/signifPlot.html">signifPlot</a></span><span class="op">(</span></span>
@@ -244,101 +238,99 @@ combination if cell types.</p>
 </h2>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; R version 4.3.1 (2023-06-16)</span></span>
-<span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu (64-bit)</span></span>
-<span><span class="co">#&gt; Running under: Debian GNU/Linux 12 (bookworm)</span></span>
+<span><span class="co">#&gt; R version 4.3.1 (2023-06-16 ucrt)</span></span>
+<span><span class="co">#&gt; Platform: x86_64-w64-mingw32/x64 (64-bit)</span></span>
+<span><span class="co">#&gt; Running under: Windows 11 x64 (build 22621)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Matrix products: default</span></span>
-<span><span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 </span></span>
-<span><span class="co">#&gt; LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.21.so;  LAPACK version 3.11.0</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; locale:</span></span>
-<span><span class="co">#&gt;  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       </span></span>
-<span><span class="co">#&gt;  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   </span></span>
-<span><span class="co">#&gt;  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          </span></span>
-<span><span class="co">#&gt; [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   </span></span>
+<span><span class="co">#&gt; [1] LC_COLLATE=English_Australia.utf8  LC_CTYPE=English_Australia.utf8   </span></span>
+<span><span class="co">#&gt; [3] LC_MONETARY=English_Australia.utf8 LC_NUMERIC=C                      </span></span>
+<span><span class="co">#&gt; [5] LC_TIME=English_Australia.utf8    </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; time zone: Australia/Sydney</span></span>
-<span><span class="co">#&gt; tzcode source: system (glibc)</span></span>
+<span><span class="co">#&gt; tzcode source: internal</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; attached base packages:</span></span>
 <span><span class="co">#&gt; [1] stats4    stats     graphics  grDevices utils     datasets  methods  </span></span>
 <span><span class="co">#&gt; [8] base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt;  [1] SingleCellExperiment_1.23.0 SummarizedExperiment_1.31.1</span></span>
-<span><span class="co">#&gt;  [3] Biobase_2.61.0              GenomicRanges_1.53.1       </span></span>
-<span><span class="co">#&gt;  [5] GenomeInfoDb_1.37.2         IRanges_2.35.2             </span></span>
-<span><span class="co">#&gt;  [7] S4Vectors_0.39.1            BiocGenerics_0.47.0        </span></span>
-<span><span class="co">#&gt;  [9] MatrixGenerics_1.13.1       matrixStats_1.0.0          </span></span>
-<span><span class="co">#&gt; [11] ggplot2_3.4.2               spicyR_1.12.1              </span></span>
-<span><span class="co">#&gt; [13] BiocStyle_2.29.1           </span></span>
+<span><span class="co">#&gt;  [1] SingleCellExperiment_1.22.0 SummarizedExperiment_1.30.2</span></span>
+<span><span class="co">#&gt;  [3] Biobase_2.60.0              GenomicRanges_1.52.0       </span></span>
+<span><span class="co">#&gt;  [5] GenomeInfoDb_1.36.2         IRanges_2.34.0             </span></span>
+<span><span class="co">#&gt;  [7] S4Vectors_0.38.1            BiocGenerics_0.46.0        </span></span>
+<span><span class="co">#&gt;  [9] MatrixGenerics_1.12.3       matrixStats_1.0.0          </span></span>
+<span><span class="co">#&gt; [11] ggplot2_3.4.3               spicyR_1.12.1              </span></span>
+<span><span class="co">#&gt; [13] BiocStyle_2.28.0           </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span><span class="co">#&gt;   [1] RColorBrewer_1.1-3          jsonlite_1.8.7             </span></span>
-<span><span class="co">#&gt;   [3] MultiAssayExperiment_1.27.0 magrittr_2.0.3             </span></span>
-<span><span class="co">#&gt;   [5] spatstat.utils_3.0-3        magick_2.7.4               </span></span>
-<span><span class="co">#&gt;   [7] farver_2.1.1                nloptr_2.0.3               </span></span>
-<span><span class="co">#&gt;   [9] rmarkdown_2.23              fs_1.6.3                   </span></span>
-<span><span class="co">#&gt;  [11] zlibbioc_1.47.0             ragg_1.2.5                 </span></span>
-<span><span class="co">#&gt;  [13] vctrs_0.6.3                 memoise_2.0.1              </span></span>
-<span><span class="co">#&gt;  [15] minqa_1.2.5                 spatstat.explore_3.2-1     </span></span>
-<span><span class="co">#&gt;  [17] DelayedMatrixStats_1.23.0   RCurl_1.98-1.12            </span></span>
-<span><span class="co">#&gt;  [19] rstatix_0.7.2               htmltools_0.5.5            </span></span>
-<span><span class="co">#&gt;  [21] S4Arrays_1.1.5              broom_1.0.5                </span></span>
-<span><span class="co">#&gt;  [23] Rhdf5lib_1.23.0             SparseArray_1.1.11         </span></span>
-<span><span class="co">#&gt;  [25] rhdf5_2.45.1                sass_0.4.7                 </span></span>
-<span><span class="co">#&gt;  [27] bslib_0.5.0                 desc_1.4.2                 </span></span>
+<span><span class="co">#&gt;   [1] RColorBrewer_1.1-3          rstudioapi_0.15.0          </span></span>
+<span><span class="co">#&gt;   [3] jsonlite_1.8.7              MultiAssayExperiment_1.26.0</span></span>
+<span><span class="co">#&gt;   [5] magrittr_2.0.3              spatstat.utils_3.0-3       </span></span>
+<span><span class="co">#&gt;   [7] magick_2.7.4                farver_2.1.1               </span></span>
+<span><span class="co">#&gt;   [9] nloptr_2.0.3                rmarkdown_2.24             </span></span>
+<span><span class="co">#&gt;  [11] fs_1.6.3                    zlibbioc_1.46.0            </span></span>
+<span><span class="co">#&gt;  [13] ragg_1.2.5                  vctrs_0.6.3                </span></span>
+<span><span class="co">#&gt;  [15] memoise_2.0.1               minqa_1.2.5                </span></span>
+<span><span class="co">#&gt;  [17] spatstat.explore_3.2-1      DelayedMatrixStats_1.22.5  </span></span>
+<span><span class="co">#&gt;  [19] RCurl_1.98-1.12             rstatix_0.7.2              </span></span>
+<span><span class="co">#&gt;  [21] htmltools_0.5.5             S4Arrays_1.0.4             </span></span>
+<span><span class="co">#&gt;  [23] broom_1.0.5                 Rhdf5lib_1.22.0            </span></span>
+<span><span class="co">#&gt;  [25] rhdf5_2.44.0                sass_0.4.7                 </span></span>
+<span><span class="co">#&gt;  [27] bslib_0.5.1                 desc_1.4.2                 </span></span>
 <span><span class="co">#&gt;  [29] plyr_1.8.8                  cachem_1.0.8               </span></span>
 <span><span class="co">#&gt;  [31] lifecycle_1.0.3             pkgconfig_2.0.3            </span></span>
-<span><span class="co">#&gt;  [33] Matrix_1.5-3                R6_2.5.1                   </span></span>
+<span><span class="co">#&gt;  [33] Matrix_1.6-0                R6_2.5.1                   </span></span>
 <span><span class="co">#&gt;  [35] fastmap_1.1.1               GenomeInfoDbData_1.2.10    </span></span>
-<span><span class="co">#&gt;  [37] digest_0.6.33               numDeriv_2016.8-1.1        </span></span>
+<span><span class="co">#&gt;  [37] digest_0.6.31               numDeriv_2016.8-1.1        </span></span>
 <span><span class="co">#&gt;  [39] colorspace_2.1-0            tensor_1.5                 </span></span>
 <span><span class="co">#&gt;  [41] rprojroot_2.0.3             dqrng_0.3.0                </span></span>
 <span><span class="co">#&gt;  [43] textshaping_0.3.6           ggpubr_0.6.0               </span></span>
-<span><span class="co">#&gt;  [45] beachmat_2.17.14            labeling_0.4.2             </span></span>
-<span><span class="co">#&gt;  [47] spatstat.sparse_3.0-2       fansi_1.0.4                </span></span>
+<span><span class="co">#&gt;  [45] beachmat_2.16.0             labeling_0.4.2             </span></span>
+<span><span class="co">#&gt;  [47] fansi_1.0.4                 spatstat.sparse_3.0-2      </span></span>
 <span><span class="co">#&gt;  [49] polyclip_1.10-4             abind_1.4-5                </span></span>
-<span><span class="co">#&gt;  [51] mgcv_1.9-0                  compiler_4.3.1             </span></span>
+<span><span class="co">#&gt;  [51] mgcv_1.8-42                 compiler_4.3.1             </span></span>
 <span><span class="co">#&gt;  [53] withr_2.5.0                 backports_1.4.1            </span></span>
-<span><span class="co">#&gt;  [55] BiocParallel_1.35.3         carData_3.0-5              </span></span>
-<span><span class="co">#&gt;  [57] highr_0.10                  HDF5Array_1.29.3           </span></span>
+<span><span class="co">#&gt;  [55] BiocParallel_1.34.2         carData_3.0-5              </span></span>
+<span><span class="co">#&gt;  [57] highr_0.10                  HDF5Array_1.28.1           </span></span>
 <span><span class="co">#&gt;  [59] ggforce_0.4.1               R.utils_2.12.2             </span></span>
 <span><span class="co">#&gt;  [61] ggsignif_0.6.4              MASS_7.3-60                </span></span>
-<span><span class="co">#&gt;  [63] concaveman_1.1.0            DelayedArray_0.27.10       </span></span>
+<span><span class="co">#&gt;  [63] concaveman_1.1.0            DelayedArray_0.26.3        </span></span>
 <span><span class="co">#&gt;  [65] rjson_0.2.21                tools_4.3.1                </span></span>
 <span><span class="co">#&gt;  [67] goftest_1.2-3               R.oo_1.25.0                </span></span>
 <span><span class="co">#&gt;  [69] glue_1.6.2                  nlme_3.1-162               </span></span>
-<span><span class="co">#&gt;  [71] rhdf5filters_1.13.5         grid_4.3.1                 </span></span>
-<span><span class="co">#&gt;  [73] ClassifyR_3.5.8             reshape2_1.4.4             </span></span>
-<span><span class="co">#&gt;  [75] generics_0.1.3              spatstat.data_3.0-1        </span></span>
-<span><span class="co">#&gt;  [77] gtable_0.3.3                R.methodsS3_1.8.2          </span></span>
+<span><span class="co">#&gt;  [71] rhdf5filters_1.12.1         grid_4.3.1                 </span></span>
+<span><span class="co">#&gt;  [73] ClassifyR_3.4.9             reshape2_1.4.4             </span></span>
+<span><span class="co">#&gt;  [75] generics_0.1.3              gtable_0.3.4               </span></span>
+<span><span class="co">#&gt;  [77] spatstat.data_3.0-1         R.methodsS3_1.8.2          </span></span>
 <span><span class="co">#&gt;  [79] tidyr_1.3.0                 data.table_1.14.8          </span></span>
 <span><span class="co">#&gt;  [81] car_3.1-2                   utf8_1.2.3                 </span></span>
-<span><span class="co">#&gt;  [83] XVector_0.41.1              spatstat.geom_3.2-4        </span></span>
+<span><span class="co">#&gt;  [83] XVector_0.40.0              spatstat.geom_3.2-1        </span></span>
 <span><span class="co">#&gt;  [85] pillar_1.9.0                stringr_1.5.0              </span></span>
-<span><span class="co">#&gt;  [87] limma_3.57.7                splines_4.3.1              </span></span>
+<span><span class="co">#&gt;  [87] limma_3.56.2                splines_4.3.1              </span></span>
 <span><span class="co">#&gt;  [89] dplyr_1.1.2                 tweenr_2.0.2               </span></span>
 <span><span class="co">#&gt;  [91] lattice_0.21-8              deldir_1.0-9               </span></span>
 <span><span class="co">#&gt;  [93] survival_3.5-5              tidyselect_1.2.0           </span></span>
-<span><span class="co">#&gt;  [95] locfit_1.5-9.8              scuttle_1.11.2             </span></span>
-<span><span class="co">#&gt;  [97] knitr_1.43                  bookdown_0.34              </span></span>
-<span><span class="co">#&gt;  [99] edgeR_3.43.8                xfun_0.39                  </span></span>
-<span><span class="co">#&gt; [101] statmod_1.5.0               DropletUtils_1.21.0        </span></span>
-<span><span class="co">#&gt; [103] pheatmap_1.0.12             scam_1.2-14                </span></span>
-<span><span class="co">#&gt; [105] stringi_1.7.12              yaml_2.3.7                 </span></span>
-<span><span class="co">#&gt; [107] boot_1.3-28.1               evaluate_0.21              </span></span>
-<span><span class="co">#&gt; [109] codetools_0.2-19            tibble_3.2.1               </span></span>
-<span><span class="co">#&gt; [111] BiocManager_1.30.21.1       cli_3.6.1                  </span></span>
-<span><span class="co">#&gt; [113] systemfonts_1.0.4           munsell_0.5.0              </span></span>
-<span><span class="co">#&gt; [115] jquerylib_0.1.4             Rcpp_1.0.11                </span></span>
-<span><span class="co">#&gt; [117] spatstat.random_3.1-5       parallel_4.3.1             </span></span>
-<span><span class="co">#&gt; [119] pkgdown_2.0.7               sparseMatrixStats_1.13.0   </span></span>
-<span><span class="co">#&gt; [121] bitops_1.0-7                lme4_1.1-34                </span></span>
-<span><span class="co">#&gt; [123] SpatialExperiment_1.11.0    lmerTest_3.1-3             </span></span>
-<span><span class="co">#&gt; [125] scales_1.2.1                purrr_1.0.1                </span></span>
-<span><span class="co">#&gt; [127] crayon_1.5.2                rlang_1.1.1</span></span></code></pre></div>
+<span><span class="co">#&gt;  [95] locfit_1.5-9.8              scuttle_1.10.1             </span></span>
+<span><span class="co">#&gt;  [97] knitr_1.43                  bookdown_0.35              </span></span>
+<span><span class="co">#&gt;  [99] edgeR_3.42.4                xfun_0.39                  </span></span>
+<span><span class="co">#&gt; [101] DropletUtils_1.20.0         pheatmap_1.0.12            </span></span>
+<span><span class="co">#&gt; [103] scam_1.2-14                 stringi_1.7.12             </span></span>
+<span><span class="co">#&gt; [105] yaml_2.3.7                  boot_1.3-28.1              </span></span>
+<span><span class="co">#&gt; [107] evaluate_0.21               codetools_0.2-19           </span></span>
+<span><span class="co">#&gt; [109] tibble_3.2.1                BiocManager_1.30.22        </span></span>
+<span><span class="co">#&gt; [111] cli_3.6.1                   systemfonts_1.0.4          </span></span>
+<span><span class="co">#&gt; [113] munsell_0.5.0               jquerylib_0.1.4            </span></span>
+<span><span class="co">#&gt; [115] Rcpp_1.0.10                 spatstat.random_3.1-5      </span></span>
+<span><span class="co">#&gt; [117] parallel_4.3.1              pkgdown_2.0.7              </span></span>
+<span><span class="co">#&gt; [119] sparseMatrixStats_1.12.0    bitops_1.0-7               </span></span>
+<span><span class="co">#&gt; [121] lme4_1.1-34                 SpatialExperiment_1.10.0   </span></span>
+<span><span class="co">#&gt; [123] lmerTest_3.1-3              scales_1.2.1               </span></span>
+<span><span class="co">#&gt; [125] purrr_1.0.2                 crayon_1.5.2               </span></span>
+<span><span class="co">#&gt; [127] rlang_1.1.1</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>

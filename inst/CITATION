@@ -7,7 +7,7 @@ bibentry(bibtype = "Article",
                     person("John", "Ormerod"),
                     person("Heeva", "Baharlou"),
                     person("Andrew", "Harman"),
-                    person("Ellis", "Patrick"),
+                    person("Ellis", "Patrick")
                     ),
          year = "2022",
          volume = "38",
