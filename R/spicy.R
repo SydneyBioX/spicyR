@@ -20,9 +20,6 @@
 #'   comparison.
 #' @param integrate Should the statistic be the integral from 0 to dist, or the
 #' value of the L curve at dist.
-#' @param nsim
-#'   Number of simulations to perform. If empty, the p-value from lmerTest
-#'   is used.
 #' @param verbose logical indicating whether to output messages.
 #' @param weights
 #'   logical indicating whether to include weights based on cell counts.
@@ -43,9 +40,6 @@
 #'   Minimum value for density for scaling when fitting inhomogeneous L-curves.
 #' @param Rs
 #'   A vector of radii that the measures of association should be calculated.
-#' @param fast
-#'   A logical describing whether to use a fast approximation of the
-#'   inhomogeneous L-curves.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
 #' @param includeZeroCells
 #'   A logical indicating whether to include cells with zero counts in the
@@ -53,7 +47,13 @@
 #' @param imageID The image ID if using SingleCellExperiment.
 #' @param cellType The cell type if using SingleCellExperiment.
 #' @param spatialCoords The spatial coordinates if using a SingleCellExperiment.
-#' @param ... Other options to pass to bootstrap.
+#' @param fast
+#'   (DEPRECIATED, DO NOT USE) A logical describing whether to use a fast approximation of the
+#'   inhomogeneous L-curves.
+#' @param nsim
+#'   (DEPRECIATED, DO NOT USE). Number of simulations to perform. If empty, the p-value from lmerTest
+#'   is used.
+#' @param ... Other options.
 #'
 #' @return Data frame of p-values.
 #' @export
@@ -73,9 +73,6 @@
 #' # Test all pairwise combination of cell types with random effect of patient.
 #' # spicy(diabetesData, condition = "condition", subject = "subject")
 #'
-#' # Test all pairwise combination of cell types with random effect of patient using
-#' # a bootstrap to calculate significance.
-#' # spicy(diabetesData, condition = "stage", subject = "case", nsim = 10000)
 #'
 #' @aliases
 #' spicy
@@ -92,7 +89,6 @@ spicy <- function(cells,
                   dist = NULL,
                   alternateResult = NULL,
                   integrate = TRUE,
-                  nsim = NULL,
                   verbose = TRUE,
                   weights = TRUE,
                   weightsByPair = FALSE,
@@ -103,12 +99,13 @@ spicy <- function(cells,
                   sigma = NULL,
                   Rs = NULL,
                   minLambda = 0.05,
-                  fast = TRUE,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
                   imageID = "imageID",
                   cellType = "cellType",
                   spatialCoords = c("x", "y"),
+                  fast = TRUE,
+                  nsim = NULL,
                   ...) {
   
   
@@ -447,8 +444,6 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' @param Rs A vector of the radii that the measures of association should be calculated.
 #' @param sigma A numeric variable used for scaling when fitting inhomogeneous L-curves.
 #' @param minLambda Minimum value for density for scaling when fitting inhomogeneous L-curves.
-#' @param fast A logical describing whether to use a fast approximation of the
-#' inhomogeneous L-curves.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
 #' @param includeZeroCells A logical indicating whether to include cells with
 #' zero counts in the pairwise association calculation.
@@ -456,7 +451,8 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' @param imageID The imageID if using a SingleCellExperiment or SpatialExperiment.
 #' @param cellType The cellType if using a SingleCellExperiment or SpatialExperiment.
 #' @param spatialCoords The spatialCoords if using a SingleCellExperiment or SpatialExperiment.
-#'
+#' @param fast (DEPRECIATED, DO NOT USE) A logical describing whether to use a fast approximation of the
+#' inhomogeneous L-curves.
 #' @return Statistic from pairwise L curve of a single image.
 #'
 #'
@@ -465,8 +461,8 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' pairAssoc <- getPairwise(diabetesData[1, ])
 #' @export
 #' @importFrom BiocParallel bplapply
-getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, fast = TRUE, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM = BiocParallel::SerialParam(),
-                        imageID = "imageID", cellType = "cellType", spatialCoords = c("x", "y")) {
+getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM = BiocParallel::SerialParam(),
+                        imageID = "imageID", cellType = "cellType", spatialCoords = c("x", "y"), fast = TRUE) {
   cells2 <- prepCellSummary(cells, spatialCoords, cellType, imageID, bind = FALSE)
   
   

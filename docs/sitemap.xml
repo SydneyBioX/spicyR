@@ -25,9 +25,6 @@
     <loc>https://ellispatrick.github.io/spicyR/reference/Accessors.html</loc>
   </url>
   <url>
-    <loc>https://ellispatrick.github.io/spicyR/reference/SegmentedCells.html</loc>
-  </url>
-  <url>
     <loc>https://ellispatrick.github.io/spicyR/reference/as.data.frame.SegmentedCells.html</loc>
   </url>
   <url>
@@ -50,6 +47,9 @@
   </url>
   <url>
     <loc>https://ellispatrick.github.io/spicyR/reference/plot-SegmentedCells.html</loc>
+  </url>
+  <url>
+    <loc>https://ellispatrick.github.io/spicyR/reference/SegmentedCells.html</loc>
   </url>
   <url>
     <loc>https://ellispatrick.github.io/spicyR/reference/show-SegmentedCells.html</loc>

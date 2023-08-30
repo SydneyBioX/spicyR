@@ -99,7 +99,7 @@ cellTypeB <- factor(test$comparisons$to)
 sig <- test$p.value[,2] < cutoff
 sigLab <- paste0("p-value < ",cutoff)
 if(fdr){
-sig <- test$p.value[,2] < cutoff   
+sig <- p.adjust(test$p.value[,2], "fdr") < cutoff   
 sigLab <- paste0("fdr < ",cutoff)
 }
 
