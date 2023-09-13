@@ -63,8 +63,8 @@
 #'
 #' # Test with random effect for patient on only one pairwise combination of cell types.
 #' spicy(diabetesData,
-#'     condition = "stage", subject = "case",
-#'     from = "Tc", to = "Th"
+#'   condition = "stage", subject = "case",
+#'   from = "Tc", to = "Th"
 #' )
 #'
 #' # Test all pairwise combination of cell types without random effect of patient.
@@ -72,7 +72,6 @@
 #'
 #' # Test all pairwise combination of cell types with random effect of patient.
 #' # spicy(diabetesData, condition = "condition", subject = "subject")
-#'
 #'
 #' @aliases
 #' spicy
@@ -107,26 +106,23 @@ spicy <- function(cells,
                   fast = TRUE,
                   nsim = NULL,
                   ...) {
-  
-  
-  
   if (is(cells, "SingleCellExperiment") | is(cells, "SpatialExperiment")) {
     cells <- extractSpicyInfo(cells,
-                              imageID = imageID,
-                              cellType = cellType,
-                              spatialCoords = spatialCoords,
-                              condition = condition,
-                              subject = subject,
-                              covariates = covariates
+      imageID = imageID,
+      cellType = cellType,
+      spatialCoords = spatialCoords,
+      condition = condition,
+      subject = subject,
+      covariates = covariates
     )
   }
-  
-  
+
+
   if (!is(cells, "SegmentedCells")) {
     stop("cells needs to be a SegmentedCells object")
   }
-  
-  
+
+
   if (is.null(from) | is.null(to)) {
     if (is.null(from)) {
       from <- as.character(unique(cellType(cells)))
@@ -134,10 +130,10 @@ spicy <- function(cells,
     if (is.null(to)) {
       to <- as.character(unique(cellType(cells)))
     }
-    
+
     # from <- as.character(unique(from))
     # to <- as.character(unique(to))
-    
+
     m1 <- rep(from, times = length(to))
     m2 <- rep(to, each = length(from))
     labels <- paste(m1, m2, sep = "__")
@@ -147,67 +143,66 @@ spicy <- function(cells,
     labels <- paste(m1, m2, sep = "__")
     if (any(duplicated(labels))) stop("There are duplicated from-to pairs")
   }
-  
-  
+
+
   if (any((!to %in% cellType(cells)) |
-          (!from %in% cellType(cells)))) {
+    (!from %in% cellType(cells)))) {
     stop("to and from need to be cell type in your SegmentedCells")
   }
-  
+
   nCells <- table(imageID(cells), cellType(cells))
-  
-  
+
+
   ## Find pairwise associations
-  
-  if(is.null(alternateResult)) {
+
+  if (is.null(alternateResult)) {
     if (fast) {
       pairwiseAssoc <- getPairwise(cells,
-                                   Rs = Rs,
-                                   sigma = sigma,
-                                   window = window,
-                                   window.length = window.length,
-                                   minLambda = minLambda,
-                                   from = from,
-                                   to = to,
-                                   fast = fast,
-                                   edgeCorrect = edgeCorrect,
-                                   includeZeroCells = includeZeroCells,
-                                   BPPARAM = BPPARAM
+        Rs = Rs,
+        sigma = sigma,
+        window = window,
+        window.length = window.length,
+        minLambda = minLambda,
+        from = from,
+        to = to,
+        fast = fast,
+        edgeCorrect = edgeCorrect,
+        includeZeroCells = includeZeroCells,
+        BPPARAM = BPPARAM
       )
       pairwiseAssoc <- as.data.frame(pairwiseAssoc)
       pairwiseAssoc <- pairwiseAssoc[labels]
     } else {
       MoreArgs1 <- list(cells = cells, dist = dist, window = window, window.length = window.length, fast = FALSE)
-      
+
       if (verbose) {
         message("Calculating pairwise spatial associations")
       }
-      
+
       pairwiseAssoc <- mapply(getPairwise,
-                              from = m1,
-                              to = m2,
-                              MoreArgs = MoreArgs1
+        from = m1,
+        to = m2,
+        MoreArgs = MoreArgs1
       )
       colnames(pairwiseAssoc) <- labels
     }
   }
-  
-  
-  if(!is.null(alternateResult) & !isKonditional(alternateResult)) {
+
+
+  if (!is.null(alternateResult) & !isKonditional(alternateResult)) {
     pairwiseAssoc <- alternateResult
   }
-  
+
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
-  
-  if(!is.null(alternateResult) & isKonditional(alternateResult)) {
-    
+
+  if (!is.null(alternateResult) & isKonditional(alternateResult)) {
     pairwiseAssoc <- alternateResult %>%
       select(imageID, test, konditional) %>%
       pivot_wider(names_from = test, values_from = konditional) |>
       column_to_rownames("imageID")
-    
+
     labels <- names(pairwiseAssoc)
-    
+
     comparisons <- data.frame(labels) |>
       separate(
         col = labels,
@@ -217,27 +212,26 @@ spicy <- function(cells,
       mutate(labels = paste(fromName, to, parent, sep = "__")) |>
       mutate(from = paste(fromName, parent, sep = "__")) |>
       select(-parent)
-    
-    m1 = comparisons$fromName
-    m2 = comparisons$to
-    
-    weights = FALSE
+
+    m1 <- comparisons$fromName
+    m2 <- comparisons$to
+
+    weights <- FALSE
     message("Cell count weighting set to FALSE for Konditional results")
-    
   }
-  
+
   weightFunction <- getWeightFunction(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor)
-  
+
   pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
   names(pairwiseAssoc) <- labels
-  
-  
+
+
   ## Linear model
   if (is.null(subject) & !is.null(condition)) {
     if (verbose) {
       message("Testing for spatial differences across conditions")
     }
-    
+
     MoreArgs2 <-
       list(
         cells = cells,
@@ -246,8 +240,8 @@ spicy <- function(cells,
         cellCounts = table(imageID(cells), cellType(cells)),
         pheno = as.data.frame(imagePheno(cells))
       )
-    
-    
+
+
     linearModels <- mapply(
       spatialLM,
       spatAssoc = pairwiseAssoc,
@@ -257,11 +251,11 @@ spicy <- function(cells,
       MoreArgs = MoreArgs2,
       SIMPLIFY = FALSE
     )
-    
+
     df <- cleanLM(linearModels, nsim, BPPARAM = BPPARAM)
   }
-  
-  
+
+
   ## Mixed effects model
   if ((!is.null(subject)) & !is.null(condition)) {
     if (verbose) {
@@ -269,7 +263,7 @@ spicy <- function(cells,
         "Testing for spatial differences across conditions accounting for multiple images per subject"
       )
     }
-    
+
     MoreArgs2 <-
       list(
         cells = cells,
@@ -279,8 +273,8 @@ spicy <- function(cells,
         cellCounts = table(imageID(cells), cellType(cells)),
         pheno = as.data.frame(imagePheno(cells))
       )
-    
-    
+
+
     mixed.lmer <- mapply(
       spatialMEM,
       spatAssoc = pairwiseAssoc,
@@ -290,8 +284,8 @@ spicy <- function(cells,
       MoreArgs = MoreArgs2,
       SIMPLIFY = FALSE
     )
-    
-    
+
+
     mixed.lmer <- lapply(mixed.lmer, function(x) {
       if (is(x, "lmerModLmerTest")) {
         if (x@devcomp$cmp["REML"] == -Inf) {
@@ -300,18 +294,18 @@ spicy <- function(cells,
       }
       x
     })
-    
+
     df <- cleanMEM(mixed.lmer, nsim, BPPARAM = BPPARAM)
   }
-  
-  
-  
+
+
+
   df$pairwiseAssoc <- pairwiseAssoc
   df$comparisons <- comparisons
-  
+
   df$weights <- weightFunction
   df$nCells <- nCells
-  
+
   df <- methods::new("SpicyResults", df)
   df
 }
@@ -334,8 +328,8 @@ cleanLM <- function(linearModels, nsim, BPPARAM) {
       }
       coef
     })
-    
-    
+
+
     df <- apply(do.call(rbind, tBoot), 2, function(x) {
       do.call(rbind, x)
     })
@@ -356,14 +350,14 @@ cleanLM <- function(linearModels, nsim, BPPARAM) {
       }
       coef
     })
-    
-    
+
+
     df <- do.call("rbind", tLm)
-    
+
     df <- suppressWarnings(apply(df, 2, function(x) {
       dplyr::bind_rows(x)
     }))
-    
+
     df <- lapply(df, function(x) {
       rownames(x) <- names(linearModels)
       x
@@ -391,8 +385,8 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
       }
       coef
     })
-    
-    
+
+
     df <- apply(do.call(rbind, tBoot), 2, function(x) {
       do.call(rbind, x)
     })
@@ -416,9 +410,9 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
       }
       coef
     })
-    
+
     df <- do.call("rbind", tLmer)
-    
+
     df <- suppressWarnings(apply(df, 2, function(x) {
       dplyr::bind_rows(x)
     }))
@@ -464,34 +458,34 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "convex", window.length = NULL, Rs = c(20, 50, 100), sigma = NULL, minLambda = 0.05, edgeCorrect = TRUE, includeZeroCells = TRUE, BPPARAM = BiocParallel::SerialParam(),
                         imageID = "imageID", cellType = "cellType", spatialCoords = c("x", "y"), fast = TRUE) {
   cells2 <- prepCellSummary(cells, spatialCoords, cellType, imageID, bind = FALSE)
-  
-  
+
+
   if (is.null(from)) from <- levels(cells2$cellType)
   if (is.null(to)) to <- levels(cells2$cellType)
-  
+
   if (fast) {
     pairwiseVals <- BiocParallel::bplapply(cells2,
-                                           inhomLPair,
-                                           Rs = Rs,
-                                           sigma = sigma,
-                                           window = window,
-                                           window.length = window.length,
-                                           minLambda = minLambda,
-                                           from = from,
-                                           to = to,
-                                           edgeCorrect = edgeCorrect,
-                                           includeZeroCells = includeZeroCells,
-                                           BPPARAM = BPPARAM
+      inhomLPair,
+      Rs = Rs,
+      sigma = sigma,
+      window = window,
+      window.length = window.length,
+      minLambda = minLambda,
+      from = from,
+      to = to,
+      edgeCorrect = edgeCorrect,
+      includeZeroCells = includeZeroCells,
+      BPPARAM = BPPARAM
     )
     return(do.call("rbind", pairwiseVals))
   } else {
     pairwiseVals <- lapply(cells2,
-                           getStat,
-                           from = from,
-                           to = to,
-                           dist = dist, window, window.length
+      getStat,
+      from = from,
+      to = to,
+      dist = dist, window, window.length
     )
-    
+
     return(unlist(pairwiseVals))
   }
 }
@@ -517,17 +511,17 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
   if (is.data.frame(cells)) {
     df <- cells[, c(imageID, feature)]
   }
-  
+
   if (is(cells, "SingleCellExperiment") | is(cells, "SpatialExperiment")) {
     df <- as.data.frame(SummarizedExperiment::colData(cells))[, c(imageID, feature)]
   }
-  
+
   if (is(cells, "SegmentedCells")) {
     cellSummary <- cellSummary(cells, bind = TRUE)
     df <- as.data.frame(cellSummary[, c(imageID, feature)])
   }
-  
-  
+
+
   tab <- table(df[, imageID], df[, feature])
   tab <- sweep(tab, 1, rowSums(tab), "/")
   as.data.frame.matrix(tab)
@@ -537,28 +531,28 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
 #' @importFrom spatstat.explore Lcross
 getStat <- function(cells, from, to, dist, window, window.length) {
   pppCell <- pppGenerate(cells, window, window.length)
-  
+
   L <- tryCatch(
     {
       spatstat.explore::Lcross(pppCell,
-                               from = from,
-                               to = to,
-                               correction = "best"
+        from = from,
+        to = to,
+        correction = "best"
       )
     },
     error = function(e) {
-      
+
     }
   )
-  
+
   if (!is(L, "fv")) {
     return(NA)
   }
-  
+
   if (is.null(dist)) {
     dist <- max(L$r)
   }
-  
+
   theo <- L$theo[L$r <= dist]
   iso <- L$iso[L$r <= dist]
   mean(iso - theo)
@@ -573,16 +567,16 @@ getStat <- function(cells, from, to, dist, window, window.length) {
 spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
   functionToReplicate <- function(x) {
     toGet <- sample(nrow(x@frame), replace = TRUE)
-    
+
     spatialData <- x@frame[toGet, ]
     spatialData$weights <- spatialData$`(weights)`
-    
+
     mixed.lmer1 <- suppressWarnings(suppressMessages(tryCatch(
       {
         lmerTest::lmer(stats::formula(x),
-                       data = spatialData,
-                       weights = weights,
-                       control = lme4::lmerControl(calc.derivs = FALSE)
+          data = spatialData,
+          weights = weights,
+          control = lme4::lmerControl(calc.derivs = FALSE)
         )
       },
       error = function(e) {}
@@ -590,7 +584,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
     if (!is(mixed.lmer1, "lmerMod")) {
       return(rep(NA, ncol(coef(mixed.lmer)[[1]])))
     }
-    
+
     summary(mixed.lmer1)$coef[, "t value"]
   }
   if (!is(mixed.lmer, "lmerMod")) {
@@ -602,7 +596,7 @@ spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
   # s1 <- sweep(stats,2,sign(fe),"*")
   # pval <- colMeans(s1 < 0, na.rm = TRUE)*2 #+ colMeans(sweep(s1,2,2*abs(summary(mixed.lmer)$coef[, "t value"]),">"))
   pval <- mapply(pmin, colMeans(stats < 0, na.rm = TRUE), colMeans(stats > 0, na.rm = TRUE), MoreArgs = list(na.rm = TRUE)) * 2
-  
+
   df <-
     data.frame(
       coefficient = fe,
@@ -646,52 +640,53 @@ spatialMEM <-
            cellCounts,
            pheno) {
     spatAssoc[is.na(spatAssoc)] <- 0
-    
+
     count1 <- cellCounts[, from]
     count2 <- cellCounts[, to]
     # filter <- !is.na(spatAssoc)
     #
     # if (sum(filter) < 3)
     #     return(NA)
-    
-    
+
+
     spatialData <-
-      data.frame("spatAssoc" = spatAssoc,
-                 "condition" = pheno[, condition],
-                 "subject" = pheno[, subject],
-                 "covariates" = pheno[covariates]
+      data.frame(
+        "spatAssoc" = spatAssoc,
+        "condition" = pheno[, condition],
+        "subject" = pheno[, subject],
+        "covariates" = pheno[covariates]
       )
 
-    names(spatialData)[names(spatialData) == "covariates"] = covariates
-    
+    names(spatialData)[names(spatialData) == "covariates"] <- covariates
+
     formula <- "spatAssoc ~ condition + (1|subject)"
-    
+
     if (!is.null(covariates)) {
       formula <-
         paste("spatAssoc ~ condition + (1|subject)",
-              paste(covariates, collapse = "+"),
-              sep = "+"
+          paste(covariates, collapse = "+"),
+          sep = "+"
         )
     }
-  
+
     spatialData$weights <- weightFunction
 
     mixed.lmer <- suppressWarnings(suppressMessages(tryCatch(
       {
         lmerTest::lmer(stats::formula(formula),
-                       data = spatialData,
-                       weights = weights
+          data = spatialData,
+          weights = weights
         )
       },
       error = function(e) {
-        
+
       }
     )))
     if (!is(mixed.lmer, "lmerMod")) {
       return(NA)
     }
-    
-    
+
+
     mixed.lmer
   }
 
@@ -708,47 +703,49 @@ spatialLM <-
            pheno) {
     count1 <- cellCounts[, from]
     count2 <- cellCounts[, to]
-    
+
 
     spatialData <-
-      data.frame("spatAssoc" = spatAssoc,
-                 "condition" = pheno[, condition],
-                 "covariates" = pheno[, covariates])
-    
-    names(spatialData)[names(spatialData) == "covariates"] = covariates
+      data.frame(
+        "spatAssoc" = spatAssoc,
+        "condition" = pheno[, condition],
+        "covariates" = pheno[, covariates]
+      )
+
+    names(spatialData)[names(spatialData) == "covariates"] <- covariates
     # spatialData <- spatialData[filter, ]
     # count1 <- count1[filter]
     # count2 <- count2[filter]
     # print(spatialData)
-    
-    
+
+
     formula <- "spatAssoc ~ condition"
-    
+
     if (!is.null(covariates)) {
       formula <-
         paste("spatAssoc ~ condition",
-              paste(covariates, collapse = "+"),
-              sep = "+"
+          paste(covariates, collapse = "+"),
+          sep = "+"
         )
     }
-    
+
     lm1 <- tryCatch(
       {
         stats::lm(stats::formula(formula),
-                  data = spatialData,
-                  weights = weightFunction
+          data = spatialData,
+          weights = weightFunction
         )
       },
       error = function(e) {
-        
+
       }
     )
-    
+
     if (!is(lm1, "lm")) {
       return(NA)
     }
-    
-    
+
+
     lm1
   }
 
@@ -756,41 +753,41 @@ spatialLM <-
 spatialLMBootstrap <- function(linearModels, nsim = 19) {
   functionToReplicate <- function(x) {
     toGet <- sample(nrows(x$model), replace = TRUE)
-    
+
     spatAssocBoot <- x$model$spatAssoc[toGet]
     conditionBoot <- x$model$condition[toGet]
     weightsBoot <- x$weights[toGet]
-    
+
     spatialDataBoot <- data.frame(
       spatAssoc = spatAssocBoot,
       condition = conditionBoot
     )
-    
+
     lm1 <- tryCatch(
       {
         stats::lm(spatAssoc ~ condition,
-                  data = spatialDataBoot,
-                  weights = weightsBoot
+          data = spatialDataBoot,
+          weights = weightsBoot
         )
       },
       error = function(e) {
-        
+
       }
     )
     if (!is(lm1, "lm")) {
       return(NA)
     }
-    
+
     lm1$coefficients[2]
   }
   if (!is(linearModels, "lm")) {
     return(NA)
   }
   stats <- replicate(nsim, functionToReplicate(x = linearModels))
-  
+
   df <- coef(summary(linearModels))
-  
-  
+
+
   pval <- pmin(mean(stats < 0, na.rm = TRUE), mean(stats > 0, na.rm = TRUE), na.rm = TRUE) * 2
   df[2, 4] <- pval
   df
@@ -813,7 +810,7 @@ makeWindow <-
     data <- data.frame(data)
     ow <-
       spatstat.geom::owin(xrange = range(data$x), yrange = range(data$y))
-    
+
     if (window == "convex") {
       p <- spatstat.geom::ppp(data$x, data$y, ow)
       ow <- spatstat.geom::convexhull(p)
@@ -835,8 +832,8 @@ makeWindow <-
         }))
       ch <-
         concaveman::concaveman(bigDat,
-                               length_threshold = window.length,
-                               concavity = 1
+          length_threshold = window.length,
+          concavity = 1
         )
       poly <- as.data.frame(ch[nrow(ch):1, ])
       colnames(poly) <- c("x", "y")
@@ -862,7 +859,7 @@ pppGenerate <- function(cells, window, window.length) {
     window = ow,
     marks = cells$cellType
   )
-  
+
   pppCell
 }
 
@@ -883,8 +880,8 @@ inhomLPair <- function(data,
                        edgeCorrect = TRUE,
                        includeZeroCells = TRUE) {
   ow <- makeWindow(data, window, window.length)
-  
-  
+
+
   X <-
     spatstat.geom::ppp(
       x = data$x,
@@ -892,41 +889,41 @@ inhomLPair <- function(data,
       window = ow,
       marks = data$cellType
     )
-  
+
   if (is.null(Rs)) {
     Rs <- c(20, 50, 100)
   }
   # if (is.null(sigma))
   #     sigma = 100000
-  
+
   maxR <- min(ow$xrange[2] - ow$xrange[1], ow$yrange[2] - ow$yrange[1]) / 2.01
   Rs <- unique(pmin(c(0, sort(Rs)), maxR))
-  
+
   if (!is.null(sigma)) {
     den <- spatstat.explore::density.ppp(X, sigma = sigma)
     den <- den / mean(den)
     den$v <- pmax(den$v, minLambda)
   }
-  
+
   if (is.null(from)) from <- levels(data$cellType)
   if (is.null(to)) to <- levels(data$cellType)
-  
+
   use <- data$cellType %in% c(from, to)
   data <- data[use, ]
   X <- X[use, ]
-  
-  
+
+
   p <- spatstat.geom::closepairs(X, max(Rs), what = "ijd", distinct = FALSE)
-  
+
   n <- X$n
   p$j <- data$cellID[p$j]
   p$i <- data$cellID[p$i]
-  
+
   cT <- data$cellType
   names(cT) <- data$cellID
-  
+
   p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
-  
+
   # inhom density
   p$wt <- rep(1, length(p$d))
   if (!is.null(sigma)) {
@@ -936,15 +933,15 @@ inhomLPair <- function(data,
     p$wt <- 1 / w[p$j] * mean(w)
     rm(np)
   }
-  
-  
+
+
   lam <- table(data$cellType) / spatstat.geom::area(X)
   # p$wt <- as.numeric(p$wt/lam[cT[p$j]])
-  
+
   p$cellTypeJ <- cT[p$j]
   p$cellTypeI <- cT[p$i]
   p$i <- factor(p$i, levels = data$cellID)
-  
+
   if (edgeCorrect) {
     edge <- sapply(Rs[-1], function(x) borderEdge(X, x), simplify = FALSE)
     edge <- do.call("cbind", edge)
@@ -957,30 +954,30 @@ inhomLPair <- function(data,
     p <- as.data.frame(p)
     p$value <- 1
   }
-  
-  
+
+
   p$d <- factor(p$d, levels = Rs[-1])
-  
+
   p <- p[p$i != p$j, ]
-  
+
   use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
   p <- p[use, ]
-  
+
   r <- inhomL(p, lam, X, Rs)
-  
+
   wt <- r$wt
   names(wt) <- paste(r$cellTypeI, r$cellTypeJ, sep = "__")
-  
+
   m1 <- rep(from, times = length(to))
   m2 <- rep(to, each = length(from))
   labels <- paste(m1, m2, sep = "__")
-  
+
   assoc <- rep(-sum(Rs), length(labels))
   names(assoc) <- labels
   if (!includeZeroCells) assoc[!(m1 %in% X$marks & m2 %in% X$marks)] <- NA
   assoc[names(wt)] <- wt
   names(assoc) <- labels
-  
+
   assoc
 }
 
@@ -999,9 +996,9 @@ inhomL <-
     r <- r[, wt := cumsum(wt), by = list(cellTypeI, cellTypeJ)]
     r <- r[, list(wt = sum(sqrt(wt / pi))), by = .(cellTypeI, cellTypeJ)]
     r$wt <- r$wt - sum(Rs)
-    
+
     r <- as.data.frame(r)
-    
+
     r
   }
 
@@ -1023,14 +1020,13 @@ borderEdge <- function(X, maxD) {
     areas <- unlist(lapply(circs, spatstat.geom::area)) / (pi * maxD^2)
     e[inB] <- areas
   }
-  
+
   e
 }
 
 #' @importFrom scam scam
 #' @importFrom stats quantile
 calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
-
   count1 <- as.vector(nCells[, M1])
   count2 <- as.vector(nCells[, M2])
   rS <- as.vector(rS)
@@ -1045,7 +1041,7 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
     return(weightFunction)
   }
   weightFunction <- scam::scam(log10(resSqToWeight + 1) ~ s(log10(count1ToWeight + 1), bs = "mpd") + s(log10(count2ToWeight + 1), bs = "mpd")) # , optimizer = "nlm.fd")
-  
+
   z1 <- suppressWarnings(stats::predict(weightFunction, data.frame(
     count1ToWeight = as.numeric(count1),
     count2ToWeight = as.numeric(count2)
@@ -1062,8 +1058,6 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
 
 #' @importFrom BiocParallel bpmapply
 getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor) {
-  
-  
   if (!weights) {
     # weightFunction <- sapply(colnames(pairwiseAssoc), function(x){NULL}, simplify = FALSE, USE.NAMES = TRUE)
     # return(weightFunction)
@@ -1072,8 +1066,8 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
     weightFunction <- split(weightFunction, pair)
     return(weightFunction)
   }
-  
-  
+
+
   resSq <- apply(pairwiseAssoc, 2, function(x) {
     if (stats::sd(x, na.rm = TRUE) > 0) {
       return((x - mean(x, na.rm = TRUE))^2)
@@ -1081,7 +1075,7 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
       return(rep(NA, length(x)))
     }
   })
-  
+
   if (weightsByPair) {
     weightFunction <- BiocParallel::bpmapply(calcWeights, rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM = BPPARAM, MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE)
   } else {
@@ -1102,40 +1096,40 @@ getWeightFunction <- function(pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, w
 prepCellSummary <- function(cells, spatialCoords, cellType, imageID, bind = FALSE) {
   if (is.data.frame(cells)) {
     cells <- SegmentedCells(cells,
-                            spatialCoords = spatialCoords,
-                            cellTypeString = cellType,
-                            imageIDString = imageID
+      spatialCoords = spatialCoords,
+      cellTypeString = cellType,
+      imageIDString = imageID
     )
-    
+
     cellSummary <- cellSummary(cells, bind = bind)
   }
-  
+
   if (class(cells) == "SingleCellExperiment") {
     cells <- colData(cells)
     cells <- SegmentedCells(cells,
-                            spatialCoords = spatialCoords,
-                            cellTypeString = cellType,
-                            imageIDString = imageID
+      spatialCoords = spatialCoords,
+      cellTypeString = cellType,
+      imageIDString = imageID
     )
-    
+
     cellSummary <- cellSummary(cells, bind = bind)
   }
-  
+
   if (class(cells) == "SpatialExperiment") {
     cells <- cbind(colData(cells), spatialCoords(cells))
     cells <- SegmentedCells(cells,
-                            spatialCoords = spatialCoords,
-                            cellTypeString = cellType,
-                            imageIDString = imageID
+      spatialCoords = spatialCoords,
+      cellTypeString = cellType,
+      imageIDString = imageID
     )
-    
+
     cellSummary <- cellSummary(cells, bind = bind)
   }
-  
+
   if (is(cells, "SegmentedCells")) {
     cellSummary <- cellSummary(cells, bind = bind)
   }
-  
+
   cellSummary
 }
 
@@ -1152,23 +1146,23 @@ extractSpicyInfo <- function(cells,
     cells <- colData(cells)
     colnames(cells)[colnames(cells) %in% extra] <- paste0("phenotype_", colnames(cells)[colnames(cells) %in% extra])
     cells <- SegmentedCells(cells,
-                            spatialCoords = spatialCoords,
-                            cellTypeString = cellType,
-                            imageIDString = imageID
+      spatialCoords = spatialCoords,
+      cellTypeString = cellType,
+      imageIDString = imageID
     )
   }
-  
+
   if (class(cells) == "SpatialExperiment") {
     cells <- cbind(colData(cells), spatialCoords(cells))
     colnames(cells)[colnames(cells) %in% extra] <- paste0("phenotype_", colnames(cells)[colnames(cells) %in% extra])
     cells <- SegmentedCells(cells,
-                            spatialCoords = spatialCoords,
-                            cellTypeString = cellType,
-                            imageIDString = imageID
+      spatialCoords = spatialCoords,
+      cellTypeString = cellType,
+      imageIDString = imageID
     )
   }
-  
-  
+
+
   cells
 }
 
@@ -1205,9 +1199,11 @@ colTest <- function(df, condition, type = NULL, feature = NULL, imageID = "image
   if (is(df, "SingleCellExperiment") | is(df, "SpatialExperiment")) {
     if (is.null(feature)) stop("'feature' is still null")
 
-    if (is.null(type) && length(condition) == 1) type <- "ttest"
-    else if (is.null(type) && length(condition) == 2) type <- "survival"
-    else if (is.null(type)) {
+    if (is.null(type) && length(condition) == 1) {
+      type <- "ttest"
+    } else if (is.null(type) && length(condition) == 2) {
+      type <- "survival"
+    } else if (is.null(type)) {
       stop("Invalid nuber of columns in condition. Must 1 or 2 (survival).")
     }
 
@@ -1216,7 +1212,7 @@ colTest <- function(df, condition, type = NULL, feature = NULL, imageID = "image
     x <- unique(x)
     condition <- x[[condition]]
     names(condition) <- x[[imageID]]
-    
+
     df <- getProp(df, imageID = imageID, feature = feature)
     condition <- condition[rownames(df)]
   } else {
@@ -1228,8 +1224,9 @@ colTest <- function(df, condition, type = NULL, feature = NULL, imageID = "image
 
     if (is.null(type) && (is.atomic(condition) || dim(condition)[2] == 1)) {
       type <- "ttest"
-    } else if (is.null(type) && dim(condition)[2] == 2) type <- "survival"
-    else if (is.null(type)) {
+    } else if (is.null(type) && dim(condition)[2] == 2) {
+      type <- "survival"
+    } else if (is.null(type)) {
       stop("Invalid nuber of columns in condition. Must 1 or 2 (survival).")
     }
   }
@@ -1237,15 +1234,16 @@ colTest <- function(df, condition, type = NULL, feature = NULL, imageID = "image
   if (type == "survival") {
     test <- ClassifyR::colCoxTests(df, condition)
     test <- signif(test, 2)
-    names(test)[names(test) == 'p.value'] <- 'pval'
+    names(test)[names(test) == "p.value"] <- "pval"
   } else {
     test <- apply(df, 2, function(x) {
-      if (type == "wilcox") test <- stats::wilcox.test(x ~ condition)
-      else if (type == "ttest") test <- stats::t.test(x ~ condition)
+      if (type == "wilcox") {
+        test <- stats::wilcox.test(x ~ condition)
+      } else if (type == "ttest") test <- stats::t.test(x ~ condition)
       signif(c(test$estimate, tval <- test$statistic, pval = test$p.value), 2)
     })
   }
-  if(type != "survival")  test <- as.data.frame(t(test))
+  if (type != "survival") test <- as.data.frame(t(test))
   test$adjPval <- signif(stats::p.adjust(test$pval, "fdr"), 2)
   test$cluster <- rownames(test)
   test <- test[order(test$pval), ]
