@@ -15,8 +15,7 @@
 #' @param to
 #'   vector of cell types which you would like to compare to the from vector
 #' @param alternateResult
-#'   An alternative result in the form of a data matrix to be used for
-#'   comparison.
+#'   An pairwise association statistic between each combination of celltypes in each image.
 #' @param verbose logical indicating whether to output messages.
 #' @param weights
 #'   logical indicating whether to include weights based on cell counts.
@@ -72,6 +71,7 @@
 #' @importFrom mgcv gam ti
 #' @importFrom BiocParallel SerialParam
 #' @importFrom scam scam
+#' @importFrom rlang .data
 spicy <- function(cells,
                   condition = NULL,
                   subject = NULL,
@@ -104,10 +104,10 @@ spicy <- function(cells,
       subject = subject,
       covariates = covariates
     )
-  }
+  } # TODO: Decrecate segementedCells
 
   if (!is(cells, "SegmentedCells")) {
-    stop("cells needs to be a SegmentedCells object")
+    stop("cells needs to be a SegmentedCells object") # TODO: Make this error informative.
   }
 
 
@@ -164,22 +164,26 @@ spicy <- function(cells,
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
 
   if (!is.null(alternateResult) && isKonditional(alternateResult)) {
-    pairwiseAssoc <- alternateResult %>%
-      select(imageID, test, konditional) %>%
-      pivot_wider(names_from = test, values_from = konditional) |>
-      column_to_rownames("imageID")
+    pairwiseAssoc <- alternateResult |>
+      dplyr::select(.data$imageID, .data$test, .data$konditional) |>
+      tidyr::pivot_wider(
+        names_from = .data$test, values_from = .data$konditional
+      ) |>
+      tibble::column_to_rownames("imageID")
 
     labels <- names(pairwiseAssoc)
 
     comparisons <- data.frame(labels) |>
-      separate(
+      tidyr::separate(
         col = labels,
         into = c("fromName", "to", "parent"),
         sep = "__"
       ) |>
-      mutate(labels = paste(fromName, to, parent, sep = "__")) |>
-      mutate(from = paste(fromName, parent, sep = "__")) |>
-      select(-parent)
+      dplyr::mutate(
+        labels = paste(.data$fromName, .data$to, .data$parent, sep = "__")
+      ) |>
+      dplyr::mutate(from = paste(.data$fromName, .data$parent, sep = "__")) |>
+      dplyr::select(-.data$parent)
 
     m1 <- comparisons$fromName
     m2 <- comparisons$to
@@ -268,7 +272,7 @@ spicy <- function(cells,
     df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
   }
 
-
+  df$condition <- condition  # TODO: Add an index 
 
   df$pairwiseAssoc <- pairwiseAssoc
   df$comparisons <- comparisons
@@ -504,8 +508,8 @@ spatialMEM <-
            pheno) {
     spatAssoc[is.na(spatAssoc)] <- 0
 
-    count1 <- cellCounts[, from]
-    count2 <- cellCounts[, to]
+    # count1 <- cellCounts[, from]
+    # count2 <- cellCounts[, to]
 
     spatialData <-
       data.frame(
@@ -533,7 +537,7 @@ spatialMEM <-
       {
         lmerTest::lmer(stats::formula(formula),
           data = spatialData,
-          weights = weights # TODO: weights does not exist or is a funciton.
+          weights = spatialData$weights # TODO: weights does not exist or is a funciton.
         )
       },
       error = function(e) {
@@ -586,7 +590,7 @@ spatialLM <-
       {
         stats::lm(stats::formula(formula),
           data = spatialData,
-          weights = weightFunction
+          weights = weightFunction # TODO: check that this works correctly
         )
       },
       error = function(e) {
@@ -665,6 +669,7 @@ makeWindow <-
 #' @importFrom spatstat.geom closepairs nearest.valid.pixel area ppp
 #' @importFrom tidyr pivot_longer
 #' @importFrom dplyr left_join
+#' @importFrom rlang .data
 inhomLPair <- function(data,
                        Rs = c(20, 50, 100),
                        sigma = NULL,
@@ -709,7 +714,6 @@ inhomLPair <- function(data,
 
   p <- spatstat.geom::closepairs(X, max(Rs), what = "ijd", distinct = FALSE)
 
-  n <- X$n
   p$j <- data$cellID[p$j]
   p$i <- data$cellID[p$i]
 
@@ -741,7 +745,7 @@ inhomLPair <- function(data,
     edge <- as.data.frame(edge)
     colnames(edge) <- Rs[-1]
     edge$i <- data$cellID
-    edge <- tidyr::pivot_longer(edge, -i, names_to = "d")
+    edge <- tidyr::pivot_longer(edge, -.data$i, names_to = "d")
     p <- dplyr::left_join(as.data.frame(p), edge, c("i", "d"))
   } else {
     p <- as.data.frame(p)
@@ -781,14 +785,14 @@ inhomL <-
   function(p, lam, X, Rs) {
     r <- data.table::as.data.table(p)
     r$wt <- r$wt / r$value / as.numeric(lam[r$cellTypeJ]) / as.numeric(lam[r$cellTypeI]) / spatstat.geom::area(X) # nolint
-    r <- r[, j := NULL]
-    r <- r[, value := NULL]
-    r <- r[, i := NULL]
-    data.table::setkey(r, d, cellTypeI, cellTypeJ)
+    r <- r[, j := NULL] # nolint
+    r <- r[, value := NULL] # nolint
+    r <- r[, i := NULL] # nolint
+    data.table::setkey(r, d, cellTypeI, cellTypeJ) # nolint
     r <- r[data.table::CJ(d, cellTypeI, cellTypeJ, unique = TRUE)][, lapply(.SD, sum), by = .(d, cellTypeI, cellTypeJ)][is.na(wt), wt := 0] # nolint
-    r <- r[, wt := cumsum(wt), by = list(cellTypeI, cellTypeJ)]
-    r <- r[, list(wt = sum(sqrt(wt / pi))), by = .(cellTypeI, cellTypeJ)]
-    r$wt <- r$wt - sum(Rs)
+    r <- r[, wt := cumsum(wt), by = list(cellTypeI, cellTypeJ)] # nolint
+    r <- r[, list(wt = sum(sqrt(wt / pi))), by = .(cellTypeI, cellTypeJ)] # nolint
+    r$wt <- r$wt - sum(Rs) # nolint
 
     r <- as.data.frame(r)
 
@@ -832,7 +836,7 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
   count2ToWeight <- count2[toWeight]
   if (length(count1ToWeight) <= 20) {
     warning("A cell type pair is seen less than 20 times, not using weights for this pair.") # nolint
-    weightFunction <- rep(1, nrow(pairwiseAssoc))
+    weightFunction <- rep(1, length(count1))
     return(weightFunction)
   }
   weightFunction <- scam::scam(
@@ -1055,7 +1059,7 @@ colTest <- function(
       } else if (type == "ttest") {
         test <- stats::t.test(x ~ condition)
       }
-      signif(c(test$estimate, tval <- test$statistic, pval = test$p.value), 2)
+      signif(c(test$estimate, tval = test$statistic, pval = test$p.value), 2)
     })
   }
   if (type != "survival") test <- as.data.frame(t(test))
