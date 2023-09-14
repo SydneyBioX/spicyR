@@ -47,9 +47,6 @@
 #' @param imageID The image ID if using SingleCellExperiment.
 #' @param cellType The cell type if using SingleCellExperiment.
 #' @param spatialCoords The spatial coordinates if using a SingleCellExperiment.
-#' @param fast
-#'   (DEPRECIATED, DO NOT USE) A logical describing whether to use a fast approximation of the
-#'   inhomogeneous L-curves.
 #' @param nsim
 #'   (DEPRECIATED, DO NOT USE). Number of simulations to perform. If empty, the p-value from lmerTest
 #'   is used.
@@ -103,7 +100,6 @@ spicy <- function(cells,
                   imageID = "imageID",
                   cellType = "cellType",
                   spatialCoords = c("x", "y"),
-                  fast = TRUE,
                   nsim = NULL,
                   ...) {
   if (is(cells, "SingleCellExperiment") | is(cells, "SpatialExperiment")) {
@@ -156,7 +152,6 @@ spicy <- function(cells,
   ## Find pairwise associations
 
   if (is.null(alternateResult)) {
-    if (fast) {
       pairwiseAssoc <- getPairwise(cells,
         Rs = Rs,
         sigma = sigma,
@@ -165,27 +160,12 @@ spicy <- function(cells,
         minLambda = minLambda,
         from = from,
         to = to,
-        fast = fast,
         edgeCorrect = edgeCorrect,
         includeZeroCells = includeZeroCells,
         BPPARAM = BPPARAM
       )
       pairwiseAssoc <- as.data.frame(pairwiseAssoc)
       pairwiseAssoc <- pairwiseAssoc[labels]
-    } else {
-      MoreArgs1 <- list(cells = cells, dist = dist, window = window, window.length = window.length, fast = FALSE)
-
-      if (verbose) {
-        message("Calculating pairwise spatial associations")
-      }
-
-      pairwiseAssoc <- mapply(getPairwise,
-        from = m1,
-        to = m2,
-        MoreArgs = MoreArgs1
-      )
-      colnames(pairwiseAssoc) <- labels
-    }
   }
 
 
@@ -445,8 +425,6 @@ cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
 #' @param imageID The imageID if using a SingleCellExperiment or SpatialExperiment.
 #' @param cellType The cellType if using a SingleCellExperiment or SpatialExperiment.
 #' @param spatialCoords The spatialCoords if using a SingleCellExperiment or SpatialExperiment.
-#' @param fast (DEPRECIATED, DO NOT USE) A logical describing whether to use a fast approximation of the
-#' inhomogeneous L-curves.
 #' @return Statistic from pairwise L curve of a single image.
 #'
 #'
@@ -463,7 +441,6 @@ getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "co
   if (is.null(from)) from <- levels(cells2$cellType)
   if (is.null(to)) to <- levels(cells2$cellType)
 
-  if (fast) {
     pairwiseVals <- BiocParallel::bplapply(cells2,
       inhomLPair,
       Rs = Rs,
@@ -478,16 +455,8 @@ getPairwise <- function(cells, from = NULL, to = NULL, dist = NULL, window = "co
       BPPARAM = BPPARAM
     )
     return(do.call("rbind", pairwiseVals))
-  } else {
-    pairwiseVals <- lapply(cells2,
-      getStat,
-      from = from,
-      to = to,
-      dist = dist, window, window.length
-    )
 
-    return(unlist(pairwiseVals))
-  }
+  unlist(pairwiseVals)
 }
 
 
