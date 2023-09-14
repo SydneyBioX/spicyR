@@ -18,7 +18,6 @@ spicy(
   dist = NULL,
   alternateResult = NULL,
   integrate = TRUE,
-  nsim = NULL,
   verbose = TRUE,
   weights = TRUE,
   weightsByPair = FALSE,
@@ -29,7 +28,6 @@ spicy(
   sigma = NULL,
   Rs = NULL,
   minLambda = 0.05,
-  fast = TRUE,
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
   imageID = "imageID",
@@ -63,9 +61,6 @@ comparison.}
 \item{integrate}{Should the statistic be the integral from 0 to dist, or the
 value of the L curve at dist.}
 
-\item{nsim}{Number of simulations to perform. If empty, the p-value from lmerTest
-is used.}
-
 \item{verbose}{logical indicating whether to output messages.}
 
 \item{weights}{logical indicating whether to include weights based on cell counts.}
@@ -88,9 +83,6 @@ concave windows.}
 
 \item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 
-\item{fast}{A logical describing whether to use a fast approximation of the
-inhomogeneous L-curves.}
-
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
 
 \item{includeZeroCells}{A logical indicating whether to include cells with zero counts in the
@@ -102,7 +94,7 @@ pairwise association calculation.}
 
 \item{spatialCoords}{The spatial coordinates if using a SingleCellExperiment.}
 
-\item{...}{Other options to pass to bootstrap.}
+\item{...}{Other options.}
 }
 \value{
 Data frame of p-values.
@@ -113,20 +105,18 @@ Performs spatial tests on spatial cytometry data.
 \examples{
 data("diabetesData")
 
-# Test with random effect for patient on only one pairwise combination of cell types.
+# Test with random effect for patient on a pairwise combination of cell
+# types.
 spicy(diabetesData,
-    condition = "stage", subject = "case",
-    from = "Tc", to = "Th"
+  condition = "stage", subject = "case",
+  from = "Tc", to = "Th"
 )
 
-# Test all pairwise combination of cell types without random effect of patient.
+# Test all pairwise combinations of cell types without random effect of
+# patient.
 # spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
 
 # Test all pairwise combination of cell types with random effect of patient.
 # spicy(diabetesData, condition = "condition", subject = "subject")
-
-# Test all pairwise combination of cell types with random effect of patient using
-# a bootstrap to calculate significance.
-# spicy(diabetesData, condition = "stage", subject = "case", nsim = 10000)
 
 }

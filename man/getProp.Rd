@@ -2,7 +2,8 @@
 % Please edit documentation in R/spicy.R
 \name{getProp}
 \alias{getProp}
-\title{Get proportions from a SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame.}
+\title{Get proportions from a SegmentedCells, SingleCellExperiment,
+SpatialExperiment or data.frame.}
 \usage{
 getProp(cells, feature = "cellType", imageID = "imageID")
 }
@@ -17,7 +18,8 @@ getProp(cells, feature = "cellType", imageID = "imageID")
 Proportions
 }
 \description{
-Get proportions from a SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame.
+Get proportions from a SegmentedCells, SingleCellExperiment,
+SpatialExperiment or data.frame.
 }
 \examples{
 data("diabetesData")

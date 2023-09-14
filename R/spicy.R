@@ -47,9 +47,6 @@
 #' @param imageID The image ID if using SingleCellExperiment.
 #' @param cellType The cell type if using SingleCellExperiment.
 #' @param spatialCoords The spatial coordinates if using a SingleCellExperiment.
-#' @param nsim
-#'   (DEPRECIATED, DO NOT USE). Number of simulations to perform. If empty, the p-value from lmerTest # nolint: line_length_linter.
-#'   is used.
 #' @param ... Other options.
 #'
 #' @return Data frame of p-values.
@@ -102,7 +99,6 @@ spicy <- function(cells,
                   imageID = "imageID",
                   cellType = "cellType",
                   spatialCoords = c("x", "y"),
-                  nsim = NULL,
                   ...) {
   if (is(cells, "SingleCellExperiment") || is(cells, "SpatialExperiment")) {
     cells <- extractSpicyInfo(cells,
@@ -232,7 +228,7 @@ spicy <- function(cells,
       SIMPLIFY = FALSE
     )
 
-    df <- cleanLM(linearModels, nsim, BPPARAM = BPPARAM)
+    df <- cleanLM(linearModels, BPPARAM = BPPARAM)
   }
 
 
@@ -275,7 +271,7 @@ spicy <- function(cells,
       x
     })
 
-    df <- cleanMEM(mixed.lmer, nsim, BPPARAM = BPPARAM)
+    df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
   }
 
 
@@ -294,121 +290,65 @@ spicy <- function(cells,
 
 
 #' @importFrom dplyr bind_rows
-cleanLM <- function(linearModels, nsim, BPPARAM) {
-  if (length(nsim) > 0) {
-    boot <- BiocParallel::bplapply(
-      linearModels, spatialLMBootstrap,
-      nsim = nsim, BPPARAM = BPPARAM
-    )
-    tBoot <- lapply(boot, function(coef) {
-      if (length(coef) > 1) {
-        coef <- as.data.frame(t(coef))
-        coef <-
-          split(coef, c("coefficient", "se", "statistic", "p.value"))
-      } else {
-        coef <- list(coefficient = NA, se = NA, statistic = NA, p.value = NA)
-      }
-      coef
-    })
+cleanLM <- function(linearModels, BPPARAM) {
+  tLm <- lapply(linearModels, function(LM) {
+    if (is(LM, "lm")) {
+      coef <- as.data.frame(t(summary(LM)$coef))
+      coef <-
+        split(coef, c("coefficient", "se", "statistic", "p.value"))
+    } else {
+      n <- data.frame(NA)
+      colnames(n) <- "(Intercept)"
+      coef <- list(coefficient = n, se = n, statistic = n, p.value = n)
+    }
+    coef
+  })
 
 
-    df <- apply(do.call(rbind, tBoot), 2, function(x) {
-      do.call(rbind, x)
-    })
-    df <- lapply(df, function(x) {
-      rownames(x) <- names(linearModels)
-      x
-    })
-  } else {
-    tLm <- lapply(linearModels, function(LM) {
-      if (is(LM, "lm")) {
-        coef <- as.data.frame(t(summary(LM)$coef))
-        coef <-
-          split(coef, c("coefficient", "se", "statistic", "p.value"))
-      } else {
-        n <- data.frame(NA)
-        colnames(n) <- "(Intercept)"
-        coef <- list(coefficient = n, se = n, statistic = n, p.value = n)
-      }
-      coef
-    })
+  df <- do.call("rbind", tLm)
 
+  df <- suppressWarnings(apply(df, 2, function(x) {
+    dplyr::bind_rows(x)
+  }))
 
-    df <- do.call("rbind", tLm)
-
-    df <- suppressWarnings(apply(df, 2, function(x) {
-      dplyr::bind_rows(x)
-    }))
-
-    df <- lapply(df, function(x) {
-      rownames(x) <- names(linearModels)
-      x
-    })
-  }
+  df <- lapply(df, function(x) {
+    rownames(x) <- names(linearModels)
+    x
+  })
   df
 }
 
 
 #' @importFrom dplyr bind_rows
-cleanMEM <- function(mixed.lmer, nsim, BPPARAM) {
-  if (length(nsim) > 0) {
-    boot <- BiocParallel::bplapply(
-      mixed.lmer, spatialMEMBootstrap,
-      nsim = nsim, BPPARAM = BPPARAM
-    )
-    tBoot <- lapply(boot, function(coef) {
-      if (length(coef) > 1) {
-        coef <- as.data.frame(t(coef))
-        coef <-
-          split(coef, c("coefficient", "se", "statistic", "p.value"))
-      } else {
-        n <- data.frame(NA)
-        colnames(n) <- "(Intercept)"
-        coef <- list(
-          coefficient = n, df = n, p.value = n, se = n, statistic = n
+cleanMEM <- function(mixed.lmer, BPPARAM) {
+  tLmer <- lapply(mixed.lmer, function(lmer) {
+    if (is(lmer, "lmerMod")) {
+      coef <- as.data.frame(t(summary(lmer)$coef))
+      coef <-
+        split(
+          coef,
+          c("coefficient", "se", "df", "statistic", "p.value")
         )
-      }
-      coef
-    })
+    } else {
+      n <- data.frame(NA)
+      colnames(n) <- "(Intercept)"
+      coef <- list(
+        coefficient = n, df = n, p.value = n, se = n, statistic = n
+      )
+    }
+    coef
+  })
 
+  df <- do.call("rbind", tLmer)
 
-    df <- apply(do.call(rbind, tBoot), 2, function(x) {
-      do.call(rbind, x)
-    })
-    df <- lapply(df, function(x) {
-      rownames(x) <- names(mixed.lmer)
-      x
-    })
-  } else {
-    tLmer <- lapply(mixed.lmer, function(lmer) {
-      if (is(lmer, "lmerMod")) {
-        coef <- as.data.frame(t(summary(lmer)$coef))
-        coef <-
-          split(
-            coef,
-            c("coefficient", "se", "df", "statistic", "p.value")
-          )
-      } else {
-        n <- data.frame(NA)
-        colnames(n) <- "(Intercept)"
-        coef <- list(
-          coefficient = n, df = n, p.value = n, se = n, statistic = n
-        )
-      }
-      coef
-    })
+  df <- suppressWarnings(apply(df, 2, function(x) {
+    dplyr::bind_rows(x)
+  }))
 
-    df <- do.call("rbind", tLmer)
-
-    df <- suppressWarnings(apply(df, 2, function(x) {
-      dplyr::bind_rows(x)
-    }))
-
-    df <- lapply(df, function(x) {
-      rownames(x) <- names(mixed.lmer)
-      x
-    })
-  }
+  df <- lapply(df, function(x) {
+    rownames(x) <- names(mixed.lmer)
+    x
+  })
   df
 }
 
@@ -566,57 +506,6 @@ getStat <- function(cells, from, to, dist, window, window.length) {
   mean(iso - theo)
 }
 
-# Performs bootstrapping to estimate p-value.
-
-#' @importFrom lme4 fixef
-#' @importFrom lmerTest lmer
-#' @importFrom lme4 lmerControl
-#' @importFrom stats formula weights sd
-spatialMEMBootstrap <- function(mixed.lmer, nsim = 19) {
-  functionToReplicate <- function(x) {
-    toGet <- sample(nrow(x@frame), replace = TRUE)
-
-    spatialData <- x@frame[toGet, ]
-    spatialData$weights <- spatialData$`(weights)`
-
-    mixed.lmer1 <- suppressWarnings(suppressMessages(tryCatch(
-      {
-        lmerTest::lmer(stats::formula(x),
-          data = spatialData,
-          weights = weights,
-          control = lme4::lmerControl(calc.derivs = FALSE)
-        )
-      },
-      error = function(e) {}
-    )))
-    if (!is(mixed.lmer1, "lmerMod")) {
-      return(rep(NA, ncol(coef(mixed.lmer)[[1]])))
-    }
-
-    summary(mixed.lmer1)$coef[, "t value"]
-  }
-  if (!is(mixed.lmer, "lmerMod")) {
-    return(NA)
-  }
-  stats <- replicate(nsim, functionToReplicate(x = mixed.lmer))
-  stats <- t(stats)
-  fe <- lme4::fixef(mixed.lmer)
-  pval <- mapply(
-    pmin,
-    colMeans(stats < 0, na.rm = TRUE),
-    colMeans(stats > 0, na.rm = TRUE),
-    MoreArgs = list(na.rm = TRUE)
-  ) * 2
-
-  df <-
-    data.frame(
-      coefficient = fe,
-      se = apply(stats, 2, stats::sd, na.rm = TRUE),
-      statistic = fe / apply(stats, 2, stats::sd, na.rm = TRUE),
-      p.value = pval
-    )
-  df
-}
 
 #' @importFrom stats p.adjust
 .show_SpicyResults <- function(df) {
@@ -751,54 +640,6 @@ spatialLM <-
 
     lm1
   }
-
-#' @importFrom stats sd coef
-spatialLMBootstrap <- function(linearModels, nsim = 19) {
-  functionToReplicate <- function(x) {
-    toGet <- sample(nrows(x$model), replace = TRUE)
-
-    spatAssocBoot <- x$model$spatAssoc[toGet]
-    conditionBoot <- x$model$condition[toGet]
-    weightsBoot <- x$weights[toGet]
-
-    spatialDataBoot <- data.frame(
-      spatAssoc = spatAssocBoot,
-      condition = conditionBoot
-    )
-
-    lm1 <- tryCatch(
-      {
-        stats::lm(spatAssoc ~ condition,
-          data = spatialDataBoot,
-          weights = weightsBoot
-        )
-      },
-      error = function(e) {
-
-      }
-    )
-    if (!is(lm1, "lm")) {
-      return(NA)
-    }
-
-    lm1$coefficients[2]
-  }
-  if (!is(linearModels, "lm")) {
-    return(NA)
-  }
-  stats <- replicate(nsim, functionToReplicate(x = linearModels))
-
-  df <- coef(summary(linearModels))
-
-
-  pval <- pmin(
-    mean(stats < 0, na.rm = TRUE), mean(stats > 0, na.rm = TRUE),
-    na.rm = TRUE
-  ) * 2
-  df[2, 4] <- pval
-  df
-}
-
 
 ###########################
 #
@@ -993,7 +834,7 @@ inhomLPair <- function(data,
 inhomL <-
   function(p, lam, X, Rs) {
     r <- data.table::as.data.table(p)
-    r$wt <- r$wt / r$value / as.numeric(lam[r$cellTypeJ]) / as.numeric(lam[r$cellTypeI]) / spatstat.geom::area(X) # nolint 
+    r$wt <- r$wt / r$value / as.numeric(lam[r$cellTypeJ]) / as.numeric(lam[r$cellTypeI]) / spatstat.geom::area(X) # nolint
     r <- r[, j := NULL]
     r <- r[, value := NULL]
     r <- r[, i := NULL]
@@ -1110,6 +951,7 @@ getWeightFunction <- function(
 
 #' @importFrom SummarizedExperiment colData
 #' @importFrom SpatialExperiment spatialCoords
+#' @importFrom methods is
 prepCellSummary <- function(
     cells, spatialCoords, cellType, imageID, bind = FALSE) {
   if (is.data.frame(cells)) {
@@ -1122,7 +964,7 @@ prepCellSummary <- function(
     cellSummary <- cellSummary(cells, bind = bind)
   }
 
-  if (class(cells) == "SingleCellExperiment") {
+  if (is(cells, "SingleCellExperiment")) {
     cells <- colData(cells)
     cells <- SegmentedCells(cells,
       spatialCoords = spatialCoords,
@@ -1133,7 +975,7 @@ prepCellSummary <- function(
     cellSummary <- cellSummary(cells, bind = bind)
   }
 
-  if (class(cells) == "SpatialExperiment") {
+  if (is(cells, "SpatialExperiment")) {
     cells <- cbind(colData(cells), spatialCoords(cells))
     cells <- SegmentedCells(cells,
       spatialCoords = spatialCoords,
@@ -1160,7 +1002,7 @@ extractSpicyInfo <- function(cells,
                              subject = subject,
                              covariates = covariates) {
   extra <- c(condition, subject, covariates)
-  if (class(cells) == "SingleCellExperiment") {
+  if (is(cells, "SingleCellExperiment")) {
     cells <- colData(cells)
     colnames(cells)[colnames(cells) %in% extra] <- paste0(
       "phenotype_", colnames(cells)[colnames(cells) %in% extra]
@@ -1172,7 +1014,7 @@ extractSpicyInfo <- function(cells,
     )
   }
 
-  if (class(cells) == "SpatialExperiment") {
+  if (is(cells, "SpatialExperiment")) {
     cells <- cbind(colData(cells), spatialCoords(cells))
     colnames(cells)[colnames(cells) %in% extra] <- paste0(
       "phenotype_", colnames(cells)[colnames(cells) %in% extra]

@@ -38,18 +38,3 @@
 #' @aliases 
 #' spicyTest
 "spicyTest"
-
-
-
-#' Results from spicy with bootstrap for diabetesData
-#'
-#' Results from the call:
-#' spicyTestBootstrap <- spicy(diabetesData, 
-#'                            condition = "condition", 
-#'                            subject = "subject", 
-#'                            nsim = 199)
-#'
-#' @format spicyTestBootstrap a spicy object
-#' @aliases 
-#' spicyTestBootstrap
-"spicyTestBootstrap"

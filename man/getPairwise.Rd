@@ -14,7 +14,6 @@ getPairwise(
   Rs = c(20, 50, 100),
   sigma = NULL,
   minLambda = 0.05,
-  fast = TRUE,
   edgeCorrect = TRUE,
   includeZeroCells = TRUE,
   BPPARAM = BiocParallel::SerialParam(),
@@ -25,7 +24,8 @@ getPairwise(
 }
 \arguments{
 \item{cells}{A SegmentedCells or data frame that contains at least the
-variables x and y, giving the location coordinates of each cell, and cellType.}
+variables x and y, giving the location coordinates of each cell, and
+cellType.}
 
 \item{from}{The 'from' cellType for generating the L curve.}
 
@@ -38,14 +38,13 @@ variables x and y, giving the location coordinates of each cell, and cellType.}
 \item{window.length}{A tuning parameter for controlling the level of concavity
 when estimating concave windows.}
 
-\item{Rs}{A vector of the radii that the measures of association should be calculated.}
+\item{Rs}{A vector of the radii that the measures of association should be
+calculated.}
 
 \item{sigma}{A numeric variable used for scaling when fitting inhomogeneous L-curves.}
 
-\item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
-
-\item{fast}{A logical describing whether to use a fast approximation of the
-inhomogeneous L-curves.}
+\item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous
+L-curves.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
 

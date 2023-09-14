@@ -25,7 +25,6 @@ Imports:
     lmerTest,
     BiocGenerics,
     S4Vectors,
-    lme4,
     methods,
     mgcv,
     pheatmap,

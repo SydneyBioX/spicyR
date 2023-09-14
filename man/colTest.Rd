@@ -2,7 +2,8 @@
 % Please edit documentation in R/spicy.R
 \name{colTest}
 \alias{colTest}
-\title{Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram}
+\title{Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data
+frame}
 \usage{
 colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
 }
@@ -21,7 +22,8 @@ colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
 Proportions
 }
 \description{
-Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data fram
+Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data
+frame
 }
 \examples{
 
