@@ -15,9 +15,7 @@ spicy(
   covariates = NULL,
   from = NULL,
   to = NULL,
-  dist = NULL,
   alternateResult = NULL,
-  integrate = TRUE,
   verbose = TRUE,
   weights = TRUE,
   weightsByPair = FALSE,
@@ -53,13 +51,8 @@ mixed effects model as fixed effects.}
 
 \item{to}{vector of cell types which you would like to compare to the from vector}
 
-\item{dist}{The distance at which the statistic is obtained.}
-
 \item{alternateResult}{An alternative result in the form of a data matrix to be used for
 comparison.}
-
-\item{integrate}{Should the statistic be the integral from 0 to dist, or the
-value of the L curve at dist.}
 
 \item{verbose}{logical indicating whether to output messages.}
 

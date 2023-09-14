@@ -8,7 +8,6 @@ getPairwise(
   cells,
   from = NULL,
   to = NULL,
-  dist = NULL,
   window = "convex",
   window.length = NULL,
   Rs = c(20, 50, 100),
@@ -30,8 +29,6 @@ cellType.}
 \item{from}{The 'from' cellType for generating the L curve.}
 
 \item{to}{The 'to' cellType for generating the L curve.}
-
-\item{dist}{The distance at which the statistic is obtained.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 

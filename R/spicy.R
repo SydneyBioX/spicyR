@@ -14,12 +14,9 @@
 #'   vector of cell types which you would like to compare to the to vector
 #' @param to
 #'   vector of cell types which you would like to compare to the from vector
-#' @param dist The distance at which the statistic is obtained.
 #' @param alternateResult
 #'   An alternative result in the form of a data matrix to be used for
 #'   comparison.
-#' @param integrate Should the statistic be the integral from 0 to dist, or the
-#' value of the L curve at dist.
 #' @param verbose logical indicating whether to output messages.
 #' @param weights
 #'   logical indicating whether to include weights based on cell counts.
@@ -81,9 +78,7 @@ spicy <- function(cells,
                   covariates = NULL,
                   from = NULL,
                   to = NULL,
-                  dist = NULL,
                   alternateResult = NULL,
-                  integrate = TRUE,
                   verbose = TRUE,
                   weights = TRUE,
                   weightsByPair = FALSE,
@@ -110,7 +105,6 @@ spicy <- function(cells,
       covariates = covariates
     )
   }
-
 
   if (!is(cells, "SegmentedCells")) {
     stop("cells needs to be a SegmentedCells object")
@@ -359,7 +353,6 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #'     cellType.
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
-#' @param dist The distance at which the statistic is obtained.
 #' @param window
 #'     Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length
@@ -395,7 +388,6 @@ getPairwise <- function(
     cells,
     from = NULL,
     to = NULL,
-    dist = NULL,
     window = "convex",
     window.length = NULL,
     Rs = c(20, 50, 100),
@@ -476,37 +468,6 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
 }
 
 
-#' @importFrom spatstat.explore Lcross
-getStat <- function(cells, from, to, dist, window, window.length) {
-  pppCell <- pppGenerate(cells, window, window.length)
-
-  L <- tryCatch(
-    {
-      spatstat.explore::Lcross(pppCell,
-        from = from,
-        to = to,
-        correction = "best"
-      )
-    },
-    error = function(e) {
-
-    }
-  )
-
-  if (!is(L, "fv")) {
-    return(NA)
-  }
-
-  if (is.null(dist)) {
-    dist <- max(L$r)
-  }
-
-  theo <- L$theo[L$r <= dist]
-  iso <- L$iso[L$r <= dist]
-  mean(iso - theo)
-}
-
-
 #' @importFrom stats p.adjust
 .show_SpicyResults <- function(df) {
   pval <- as.data.frame(df$p.value)
@@ -572,7 +533,7 @@ spatialMEM <-
       {
         lmerTest::lmer(stats::formula(formula),
           data = spatialData,
-          weights = weights
+          weights = weights # TODO: weights does not exist or is a funciton.
         )
       },
       error = function(e) {
@@ -697,21 +658,6 @@ makeWindow <-
     ow
   }
 
-
-
-
-#' @importFrom spatstat.geom ppp
-pppGenerate <- function(cells, window, window.length) {
-  ow <- makeWindow(cells, window, window.length)
-  pppCell <- spatstat.geom::ppp(
-    cells$x,
-    cells$y,
-    window = ow,
-    marks = cells$cellType
-  )
-
-  pppCell
-}
 
 
 
