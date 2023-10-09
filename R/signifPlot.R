@@ -88,8 +88,15 @@ signifPlot <- function(results,
 
 bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), cutoff = 0.05, marksToPlot) {
   size <- -log10(test$p.value[, 2])
-  groupA <- test$coefficient[, 1] * sqrt(pi) * 2 / sqrt(10) / 100
-  groupB <- (test$coefficient[, 1] + test$coefficient[, 2]) * sqrt(pi) * 2 / sqrt(10) / 100
+
+  if (test$alternateResult) {
+    groupA <- test$coefficient[, 1]
+    groupB <- (test$coefficient[, 1] + test$coefficient[, 2])
+  } else {
+    groupA <- test$coefficient[, 1] * sqrt(pi) * 2 / sqrt(10) / 100
+    groupB <- (test$coefficient[, 1] + test$coefficient[, 2]) * sqrt(pi) * 2 / sqrt(10) / 100
+    midpoint <- 0
+  }
   cellTypeA <- factor(test$comparisons$from)
   cellTypeB <- factor(test$comparisons$to)
 
@@ -121,7 +128,22 @@ bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), c
   df.shape <- data.frame(cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1), condition = c("GroupA", "GroupB"))
 
 
-  if (is.null(breaks)) {
+  if (test$alternateResult) {
+    groupAB <- c(groupA, groupB)
+
+    limits <- c(min(groupAB, na.rm = TRUE), max(groupAB, na.rm = TRUE))
+
+    range <- limits[2] - limits[1]
+    breaks <- c(
+      limits[1] + range / 5,
+      limits[1] + 2 * (range / 5),
+      limits[1] + 3 * (range / 5),
+      limits[1] + 4 * (range / 5),
+      limits[2]
+    )
+
+    midpoint <- limits[1] + 3 * (range / 5)
+  } else if (is.null(breaks)) {
     groupAB <- c(groupA, groupB)
 
     limits <- c(min(groupAB, na.rm = TRUE), max(groupAB, na.rm = TRUE)) |>
@@ -139,31 +161,62 @@ bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), c
 
   pal <- grDevices::colorRampPalette(colours)(length(breaks))
 
-  labels <- round(breaks, 1)
+  labels <- round(breaks, 3)
   labels[1] <- "avoidance"
   labels[length(labels)] <- "attraction"
 
   ggplot2::ggplot(df, ggplot2::aes(x = cellTypeA, y = cellTypeB)) +
-    ggplot2::scale_fill_gradient2(low = colours[1], mid = colours[2], high = colours[3], midpoint = 0, breaks = breaks, labels = labels, limits = limits) +
+    ggplot2::scale_fill_gradient2(
+      low = colours[1], mid = colours[2], high = colours[3],
+      midpoint = midpoint, breaks = breaks, labels = labels, limits = limits
+    ) +
     ggplot2::geom_point(ggplot2::aes(colour = sig), size = 0) +
     ggplot2::geom_point(ggplot2::aes(size = size), x = 100000, y = 10000000) +
-    ggplot2::scale_color_manual(values = c("FALSE" = "white", "TRUE" = "black"), labels = c("", sigLab)) +
-    ggforce::geom_arc_bar(ggplot2::aes(fill = groupA, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = 0, end = pi, x = NULL, y = NULL), color = NA) +
-    ggforce::geom_arc_bar(ggplot2::aes(fill = groupB, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15), r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), start = pi, end = 2 * pi, x = NULL, y = NULL), colour = NA) +
-    ggforce::geom_circle(data = df[df$sig == "TRUE", ], ggplot2::aes(r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15), x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB), x = NULL, y = NULL), colour = "black") +
-    # ggplot2::geom_point(ggplot2::aes(colour = groupB), shape="\u25D1") +
-    ggplot2::geom_point(data = df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000) +
+    ggplot2::scale_color_manual(
+      values = c("FALSE" = "white", "TRUE" = "black"), labels = c("", sigLab)
+    ) +
+    ggforce::geom_arc_bar(
+      ggplot2::aes(
+        fill = groupA, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
+        start = 0, end = pi, x = NULL, y = NULL
+      ),
+      color = NA
+    ) +
+    ggforce::geom_arc_bar(
+      ggplot2::aes(
+        fill = groupB, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
+        start = pi, end = 2 * pi, x = NULL, y = NULL
+      ),
+      colour = NA
+    ) +
+    ggforce::geom_circle(
+      data = df[df$sig == "TRUE", ], ggplot2::aes(
+        r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
+        x = NULL, y = NULL
+      ), colour = "black"
+    ) +
+    ggplot2::geom_point(
+      data = df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000
+    ) +
     ggplot2::scale_shape_manual(values = shape.legend) +
     ggplot2::theme_classic() +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0),
       legend.box.background = ggplot2::element_blank()
     ) +
-    ggplot2::labs(x = "Cell type i", y = "Cell type j", size = "-log10 p-value", colour = NULL, fill = "Localisation", shape = "Condition") +
+    ggplot2::labs(
+      x = "Cell type i", y = "Cell type j", size = "-log10 p-value",
+      colour = NULL, fill = "Localisation", shape = "Condition"
+    ) +
     ggplot2::guides(
       shape = ggplot2::guide_legend(order = 3, override.aes = list(size = 5)),
       fill = ggplot2::guide_colourbar(order = 4),
       size = ggplot2::guide_legend(order = 2),
-      colour = ggplot2::guide_legend(order = 1, override.aes = list(size = 5, shape = 1))
+      colour = ggplot2::guide_legend(
+        order = 1, override.aes = list(size = 5, shape = 1)
+      )
     )
 }
