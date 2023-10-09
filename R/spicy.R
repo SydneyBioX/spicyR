@@ -280,6 +280,12 @@ spicy <- function(cells,
   df$weights <- weightFunction
   df$nCells <- nCells
 
+  if (!is.null(alternateResult)) {
+    df$alternateResult <- TRUE
+  } else {
+    df$alternateResult <- FALSE
+  }
+
   df <- methods::new("SpicyResults", df)
   df
 }
