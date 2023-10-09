@@ -958,17 +958,6 @@ extractSpicyInfo <- function(cells,
                              subject = subject,
                              covariates = covariates) {
   extra <- c(condition, subject, covariates)
-  if (is(cells, "SingleCellExperiment")) {
-    cells <- colData(cells)
-    colnames(cells)[colnames(cells) %in% extra] <- paste0(
-      "phenotype_", colnames(cells)[colnames(cells) %in% extra]
-    )
-    cells <- SegmentedCells(cells,
-      spatialCoords = spatialCoords,
-      cellTypeString = cellType,
-      imageIDString = imageID
-    )
-  }
 
   if (is(cells, "SpatialExperiment")) {
     cells <- cbind(colData(cells), spatialCoords(cells))
@@ -982,6 +971,17 @@ extractSpicyInfo <- function(cells,
     )
   }
 
+  if (is(cells, "SingleCellExperiment")) {
+    cells <- colData(cells)
+    colnames(cells)[colnames(cells) %in% extra] <- paste0(
+      "phenotype_", colnames(cells)[colnames(cells) %in% extra]
+    )
+    cells <- SegmentedCells(cells,
+      spatialCoords = spatialCoords,
+      cellTypeString = cellType,
+      imageIDString = imageID
+    )
+  }
 
   cells
 }
