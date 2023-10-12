@@ -89,6 +89,10 @@ signifPlot <- function(results,
 bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), cutoff = 0.05, marksToPlot) {
   size <- -log10(test$p.value[, 2])
 
+  if (is.null(test$alternateResult)) {
+    test$alternateResult <- FALSE
+  }
+
   if (test$alternateResult) {
     groupA <- test$coefficient[, 1]
     groupB <- (test$coefficient[, 1] + test$coefficient[, 2])
