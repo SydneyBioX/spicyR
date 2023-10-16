@@ -31,13 +31,6 @@ library(BiocStyle)
 ```
 
 
-```{r warning=FALSE, message=FALSE}
-# load required packages
-library(spicyR)
-library(ggplot2)
-library(SingleCellExperiment)
-```
- 
 # Installation
 
 ```{r, eval = FALSE}
@@ -47,6 +40,14 @@ if (!require("BiocManager")) {
 BiocManager::install("spicyR")
 ```
 
+```{r warning=FALSE, message=FALSE}
+# load required packages
+library(spicyR)
+library(ggplot2)
+library(SingleCellExperiment)
+library(SpatialExperiment)
+library(imcRtools)
+```
 
 # Overview
 This guide will provide a step-by-step guide on how mixed effects models can be 
@@ -56,11 +57,11 @@ Here, the subject is modelled as a random effect, and the different conditions
 are modelled as a fixed effect.
 
 # Example data
-Here, we use a subset of the Damond et al 2019 imaging mass cytometry dataset. We will compare 
+Here, we use a subset of the Damond et al., 2019 imaging mass cytometry dataset. We will compare 
 the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
 
 `diabetesData_SCE` is a `SingleCellExperiment` object containing single-cell data of 160 images 
-from 8 subjects, with 20 images per subjects.
+from 8 subjects, with 20 images per subject.
 
 
 ```{r}
@@ -124,10 +125,13 @@ topPairs(spicyTest)
 ```
 
 Again, we obtain a `spicy` object which outlines the result of the mixed effects 
-models performed for each pairwise combination if cell types.
+models performed for each pairwise combination of cell types.
 
-We can represent this as a heatmap using the `signifPlot()` function by 
-providing it the `spicy` object obtained.
+We can represent this as a bubble plot using the `signifPlot()` function by 
+providing it the `spicy` object obtained. Here, we can observe that the most
+significant relationships occur between pancreatic beta and delta cells, suggesting
+that the 2 cell types are far more localised during diabetes onset compared to
+non-diabetics.
 ```{r}
 signifPlot(
   spicyTest,
@@ -135,6 +139,65 @@ signifPlot(
   marksToPlot = c(
     "alpha", "beta", "gamma", "delta",
     "B", "naiveTc", "Th", "Tc", "neutrophil", "macrophage"
+  )
+)
+```
+`spicyR` can also be applied to custom distance or abundance metrics. Here, we
+provide an example where we apply the `spicy` function to a custom abundance
+metric.
+
+We first obtain the custom abundance metric by converting the a `SpatialExperiment`
+object from the existing `SingleCellExperiment` object. A KNN interactions graph
+is then generated with the function `buildSpatialGraph` from the `imcRtools` package.
+This generates a `colPairs` object inside of the SpatialExperiment object.
+`spicyR` provides a convenient function for converting the `colPairs` object
+into an abundance dataframe, effectively calculating the average number of nearby cells
+types for every cell type. 
+For example, if there exists on average 5 neutrophils for every macrophage in
+image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
+
+`spicy` can take any input of pairwise cell type combinations across 
+multiple images and run a mixed effects model to determine collective differences
+across conditions. 
+```{r}
+diabetesData_SPE <- SpatialExperiment(diabetesData_SCE,
+                                      colData = colData(diabetesData_SCE)) 
+
+spatialCoords(diabetesData_SPE) <- data.frame(colData(diabetesData_SPE)$x, colData(diabetesData_SPE)$y) |> as.matrix()
+spatialCoordsNames(diabetesData_SPE) <- c("x", "y")
+
+diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE, img_id = "imageID", type = "knn", k = 20, coords = c("x", "y"))
+
+pairAbundances <- convPairs(diabetesData_SPE,
+                  colPair = "knn_interaction_graph")
+
+head(pairAbundances)
+```
+
+`spicy` can take any input of pairwise cell type combinations across 
+multiple images and run a mixed effects model to determine collective differences
+across conditions. To check out other custom distance metrics which can be used,
+feel free to check out the `Statial` package.
+```{r}
+spicyTestColPairs <- spicy(
+  diabetesData_SPE,
+  condition = "stage",
+  subject = "case",
+  alternateResult = pairAbundances,
+  weights = FALSE
+)
+
+topPairs(spicyTestColPairs)
+```
+
+Again, we can present this `spicy` object as a bubble plot using the 
+`signifPlot()` function by providing it with the `spicy` object.
+```{r}
+signifPlot(
+  spicyTestColPairs,
+  marksToPlot = c(
+    "alpha", "acinar", "ductal", "naiveTc", "neutrophil", "Tc",
+    "Th", "otherimmune"
   )
 )
 ```

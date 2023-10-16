@@ -21,7 +21,7 @@ signifPlot(
 
 \item{type}{Where to make a bubble plot or heatmap.}
 
-\item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first 
+\item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first
 number is the minimum, the second is the maximum, the third is the number of breaks.}
 
 \item{colours}{Vector of colours to use in pheatmap.}
@@ -38,6 +38,6 @@ Plots result of signifPlot.
 }
 \examples{
 data(spicyTest)
-signifPlot(spicyTest, breaks=c(-3, 3, 0.5))
+signifPlot(spicyTest, breaks = c(-3, 3, 0.5))
 
 }

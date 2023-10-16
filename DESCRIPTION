@@ -41,5 +41,5 @@ Imports:
     SummarizedExperiment,
     ggforce,
     ClassifyR
-Suggests: BiocStyle, knitr, rmarkdown, pkgdown
+Suggests: BiocStyle, knitr, rmarkdown, pkgdown, imcRtools
 RoxygenNote: 7.2.3

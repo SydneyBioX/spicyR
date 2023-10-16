@@ -51,8 +51,7 @@ mixed effects model as fixed effects.}
 
 \item{to}{vector of cell types which you would like to compare to the from vector}
 
-\item{alternateResult}{An alternative result in the form of a data matrix to be used for
-comparison.}
+\item{alternateResult}{An pairwise association statistic between each combination of celltypes in each image.}
 
 \item{verbose}{logical indicating whether to output messages.}
 
