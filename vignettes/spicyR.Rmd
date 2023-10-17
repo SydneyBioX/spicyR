@@ -105,8 +105,8 @@ topPairs(spicyTestPair)
 
 We obtain a `spicy` object which details the results of the mixed effects 
 modelling performed. As the `coefficient` in `spicyTest` is positive, we find 
-that Th cells cells are more likely to be found near beta cells in the onset
-diabetes group compared to the non-diabetic control.
+that delta cells cells are significantly less likely to be found near beta cells
+in the onset diabetes group compared to the non-diabetic control.
 
 ## Test for change in localisation for all pairwise cell combinations
 
@@ -142,6 +142,8 @@ signifPlot(
   )
 )
 ```
+## Mixed effects modelling for custom metrics
+
 `spicyR` can also be applied to custom distance or abundance metrics. Here, we
 provide an example where we apply the `spicy` function to a custom abundance
 metric.
@@ -150,9 +152,9 @@ We first obtain the custom abundance metric by converting the a `SpatialExperime
 object from the existing `SingleCellExperiment` object. A KNN interactions graph
 is then generated with the function `buildSpatialGraph` from the `imcRtools` package.
 This generates a `colPairs` object inside of the SpatialExperiment object.
-`spicyR` provides a convenient function for converting the `colPairs` object
-into an abundance dataframe, effectively calculating the average number of nearby cells
-types for every cell type. 
+`spicyR` provides the function `convPairs` for converting a `colPairs` object stored
+within a `SingleCellExperiment` object into an abundance matrix by effectively 
+calculating the average number of nearby cells types for every cell type. 
 For example, if there exists on average 5 neutrophils for every macrophage in
 image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
 

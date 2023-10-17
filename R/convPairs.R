@@ -76,7 +76,7 @@ convPairs <- function(cells,
         dplyr::count(),
       by = c("cellType_from" = cellType, "imageID" = imageID)
     ) |>
-    # calculate the assiciation
+    # calculate the association
     dplyr::mutate(association = n_close / n) |>
     dplyr::select(-n_close, -n) |>
     # wrangle the data into the correct format for spicy
@@ -90,22 +90,19 @@ convPairs <- function(cells,
     tibble::column_to_rownames(imageID)
   
   
-  # Hot fix for when no cell type relationships exist
-  # Given vector
+  # Hot fix for spicy input when no cell type interactions exist for a pairwise 
+  # relation.
   vector <- cells$cellType |> unique()
   
-  # Initialize an empty vector to store the pairwise combinations
   pairwise_vector <- c()
   
-  # Iterate through each element of the original vector
   for (i in vector) {
     for (j in vector) {
-      # Concatenate the pairwise elements with "__" in between and append to the result vector
       pairwise_vector <- c(pairwise_vector, paste(i, j, sep = "__"))
     }
   }
   
-  tmp <- setdiff(pairwise_vector, colnames(all_pairs))
+  tmp <- dplyr::setdiff(pairwise_vector, colnames(all_pairs))
   df <- data.frame(matrix(0, nrow = nrow(all_pairs), ncol = length(tmp)))
   colnames(df) <- tmp
   
