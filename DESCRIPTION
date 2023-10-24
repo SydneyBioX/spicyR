@@ -40,6 +40,7 @@ Imports:
     SpatialExperiment,
     SummarizedExperiment,
     ggforce,
-    ClassifyR
+    ClassifyR,
+    tibble
 Suggests: BiocStyle, knitr, rmarkdown, pkgdown, imcRtools
 RoxygenNote: 7.2.3

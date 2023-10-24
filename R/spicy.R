@@ -72,6 +72,7 @@
 #' @importFrom BiocParallel SerialParam
 #' @importFrom scam scam
 #' @importFrom rlang .data
+#' @importFrom tibble rownames_to_column
 spicy <- function(cells,
                   condition = NULL,
                   subject = NULL,
@@ -154,11 +155,16 @@ spicy <- function(cells,
     )
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
+    
+    pairwiseAssocDF <- pairwiseAssoc
   }
 
 
   if (!is.null(alternateResult) && !isKonditional(alternateResult)) {
     pairwiseAssoc <- alternateResult
+    
+    weights <- FALSE
+    message("Cell count weighting set to FALSE for alternate results")
   }
 
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
@@ -282,8 +288,12 @@ spicy <- function(cells,
 
   if (!is.null(alternateResult)) {
     df$alternateResult <- TRUE
+    df$dataframe <- dplyr::inner_join(alternateResult |> tibble::rownames_to_column("imageID"),
+                               as.data.frame(imagePheno(cells)), by = "imageID")
   } else {
     df$alternateResult <- FALSE
+    df$dataframe <- dplyr::inner_join(pairwiseAssocDF |> tibble::rownames_to_column("imageID"),
+                               as.data.frame(imagePheno(cells)), by = "imageID")
   }
 
   df <- methods::new("SpicyResults", df)
