@@ -142,6 +142,22 @@ signifPlot(
   )
 )
 ```
+If we're interested and wish to examine a specific cell type-cell type 
+relationship in more detail, we can use `spicyBoxPlot`, specifying the relationship
+we want to examine.
+
+In the bubble plot above, we can see that the most significant relationship is
+between beta and delta islet cells in the pancreas. To examine this further, we
+can specify either `from = beta` and `to = delta` or `rank = 1` parameters in 
+`spicyBoxPlot`.
+
+```{r}
+spicyBoxPlot(results = spicyTest,
+             # from = "beta",
+             # to = "delta",
+             rank = 1)
+```
+
 ## Mixed effects modelling for custom metrics
 
 `spicyR` can also be applied to custom distance or abundance metrics. Here, we
