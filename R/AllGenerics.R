@@ -67,10 +67,10 @@ setMethod("topPairs", "SpicyResults", function(x,
             return(results[seq_len(pmin(n, nrow(results))), ])
         if (is.null(n) &
             !is.null(cutoff))
-            return(results[which(results$adj.pvalue <= 0.05), ])
+            return(results[which(results$adj.pvalue <= cutoff), ])
         if ((!is.null(n)) &
             (!is.null(cutoff)))
-            return(results[which(results$adj.pvalue <= 0.05&seq_len(nrow(results))<=n), ])
+            return(results[which(results$adj.pvalue <= cutoff & seq_len(nrow(results))<=n), ])
     }
     
 })
