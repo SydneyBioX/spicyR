@@ -278,7 +278,7 @@ spicy <- function(cells,
     df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
   }
 
-  df$condition <- condition  # TODO: Add an index 
+  df$condition <- as.data.frame(imagePheno(cells))[condition][,1]
 
   df$pairwiseAssoc <- pairwiseAssoc
   df$comparisons <- comparisons
