@@ -9,6 +9,7 @@ signifPlot(
   fdr = FALSE,
   type = "bubble",
   breaks = NULL,
+  comparisonGroup = NULL,
   colours = c("#4575B4", "white", "#D73027"),
   marksToPlot = NULL,
   cutoff = 0.05
@@ -22,7 +23,10 @@ signifPlot(
 \item{type}{Where to make a bubble plot or heatmap.}
 
 \item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first
-number is the minimum, the second is the maximum, the third is the number of breaks.}
+number is the minimum, the second is the maximum, the third is the
+number of breaks.}
+
+\item{comparisonGroup}{A string specifying the name of the outcome group to compare with the base group.}
 
 \item{colours}{Vector of colours to use in pheatmap.}
 

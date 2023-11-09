@@ -72,7 +72,6 @@
 #' @importFrom BiocParallel SerialParam
 #' @importFrom scam scam
 #' @importFrom rlang .data
-#' @importFrom tibble rownames_to_column
 spicy <- function(cells,
                   condition = NULL,
                   subject = NULL,
@@ -287,16 +286,7 @@ spicy <- function(cells,
   df$nCells <- nCells
   
   df$imageIDs <- as.data.frame(imagePheno(cells))[imageID][,1]
-
-  if (!is.null(alternateResult)) {
-    df$alternateResult <- TRUE
-    df$dataframe <- dplyr::inner_join(alternateResult |> tibble::rownames_to_column("imageID"),
-                               as.data.frame(imagePheno(cells)), by = "imageID")
-  } else {
-    df$alternateResult <- FALSE
-    df$dataframe <- dplyr::inner_join(pairwiseAssocDF |> tibble::rownames_to_column("imageID"),
-                               as.data.frame(imagePheno(cells)), by = "imageID")
-  }
+  df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
 
   df <- methods::new("SpicyResults", df)
   df

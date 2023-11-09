@@ -23,16 +23,9 @@ a ggplot2 boxplot
 Plots boxplot for a specified cell-cell relationship
 }
 \examples{
-data(diabetesData_SCE)
+data(spicyTest)
 
-spicyTestPair <- spicy(
-  diabetesData_SCE,
-  condition = "stage",
-  subject = "case",
-  from = "beta",
-  to = "delta"
-)
-spicyBoxPlot(spicyTestPair,
+spicyBoxPlot(spicyTest,
              rank = 1)
 
 }

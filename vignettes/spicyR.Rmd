@@ -189,7 +189,7 @@ diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE, img_id = "ima
 pairAbundances <- convPairs(diabetesData_SPE,
                   colPair = "knn_interaction_graph")
 
-head(pairAbundances)
+head(pairAbundances["delta__delta"])
 ```
 
 `spicy` can take any input of pairwise cell type combinations across 
