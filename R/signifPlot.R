@@ -4,7 +4,9 @@
 #' @param type Where to make a bubble plot or heatmap.
 #' @param fdr TRUE if FDR correction is used.
 #' @param breaks Vector of 3 numbers giving breaks used in pheatmap. The first
-#' number is the minimum, the second is the maximum, the third is the number of breaks.
+#'     number is the minimum, the second is the maximum, the third is the
+#'     number of breaks.
+#' @param comparisonGroup A string specifying the name of the outcome group to compare with the base group.
 #' @param colours Vector of colours to use in pheatmap.
 #' @param marksToPlot Vector of marks to include in pheatmap.
 #' @param cutoff significance threshold for circles in bubble plot
@@ -19,16 +21,26 @@
 #' @importFrom pheatmap pheatmap
 #' @importFrom grDevices colorRampPalette
 #' @importFrom stats p.adjust
-#' @importFrom ggplot2 ggplot scale_colour_gradient2 geom_point scale_shape_manual guides labs scale_color_manual theme_classic theme element_text aes guide_legend element_blank guide_colourbar
+#' @importFrom ggplot2
+#'     ggplot scale_colour_gradient2 geom_point scale_shape_manual guides labs
+#'     scale_color_manual theme_classic theme element_text aes guide_legend
+#'     element_blank guide_colourbar
 #' @importFrom ggforce geom_arc_bar geom_circle
 #' @importFrom grDevices colors
 signifPlot <- function(results,
                        fdr = FALSE,
                        type = "bubble",
                        breaks = NULL,
+                       comparisonGroup = NULL,
                        colours = c("#4575B4", "white", "#D73027"),
                        marksToPlot = NULL,
                        cutoff = 0.05) {
+
+  if (is.null(comparisonGroup)) {
+    coef <- 2
+  } else {
+    coef <- which(levels(results$condition) == comparisonGroup)
+  }
   marks <- unique(results$comparisons$from)
 
   if ("fromName" %in% names(results$comparisons)) {
@@ -42,7 +54,12 @@ signifPlot <- function(results,
   if (is.null(marksToPlot)) marksToPlot <- marks
 
   if (type == "bubble") {
-    return(bubblePlot(results, fdr, breaks, colours = colours, cutoff = cutoff, marksToPlot = marksToPlot))
+    return(
+      bubblePlot(
+        results, fdr, breaks, coef,
+        colours = colours, cutoff = cutoff, marksToPlot = marksToPlot
+      )
+    )
   }
 
   if (is.null(breaks)) breaks <- c(-3, 3, 0.5)
@@ -50,7 +67,7 @@ signifPlot <- function(results,
   pal <- grDevices::colorRampPalette(colours)(length(breaks))
 
 
-  pVal <- results$p.value[, 2]
+  pVal <- results$p.value[, coef]
 
   if (min(pVal, na.rm = TRUE) == 0) {
     pVal[pVal == 0] <-
@@ -61,7 +78,7 @@ signifPlot <- function(results,
     pVal <- stats::p.adjust(pVal, method = "fdr")
   }
 
-  isGreater <- results$coefficient[, 2] > 0
+  isGreater <- results$coefficient[, coef] > 0
 
   pVal <- log10(pVal)
 
@@ -86,8 +103,10 @@ signifPlot <- function(results,
 }
 
 
-bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), cutoff = 0.05, marksToPlot) {
-  size <- -log10(test$p.value[, 2])
+bubblePlot <- function(
+    test, fdr, breaks, coef,
+    colours = c("blue", "white", "red"), cutoff = 0.05, marksToPlot) {
+  size <- -log10(test$p.value[, coef])
 
   if (is.null(test$alternateResult)) {
     test$alternateResult <- FALSE
@@ -95,31 +114,37 @@ bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), c
 
   if (test$alternateResult) {
     groupA <- test$coefficient[, 1]
-    groupB <- (test$coefficient[, 1] + test$coefficient[, 2])
+    groupB <- (test$coefficient[, 1] + test$coefficient[, coef])
   } else {
     groupA <- test$coefficient[, 1] * sqrt(pi) * 2 / sqrt(10) / 100
-    groupB <- (test$coefficient[, 1] + test$coefficient[, 2]) * sqrt(pi) * 2 / sqrt(10) / 100
+    groupB <- (
+      test$coefficient[, 1] + test$coefficient[, coef]
+    ) * sqrt(pi) * 2 / sqrt(10) / 100
     midpoint <- 0
   }
   cellTypeA <- factor(test$comparisons$from)
   cellTypeB <- factor(test$comparisons$to)
 
-  sig <- test$p.value[, 2] < cutoff
+  sig <- test$p.value[, coef] < cutoff
   sigLab <- paste0("p-value < ", cutoff)
   if (fdr) {
-    sig <- p.adjust(test$p.value[, 2], "fdr") < cutoff
+    sig <- p.adjust(test$p.value[, coef], "fdr") < cutoff
     sigLab <- paste0("fdr < ", cutoff)
   }
 
 
 
-  df <- data.frame(cellTypeA, cellTypeB, groupA, groupB, size, stat = test$statistic[, 2], pvalue = test$p.value[, 2], sig = factor(sig))
+  df <- data.frame(
+    cellTypeA, cellTypeB, groupA, groupB, size,
+    stat = test$statistic[, coef], pvalue = test$p.value[, coef],
+    sig = factor(sig)
+  )
   rownames(df) <- rownames(test$statistic)
 
 
   if ("fromName" %in% names(test$comparisons)) {
     df$cellTypeAName <- factor(test$comparisons$fromName)
-    df <- df[df$cellTypeAName %in% marksToPlot & df$cellTypeB %in% marksToPlot, ]
+    df <- df[df$cellTypeAName %in% marksToPlot & df$cellTypeB %in% marksToPlot, ] # nolint
   } else {
     df <- df[df$cellTypeA %in% marksToPlot & df$cellTypeB %in% marksToPlot, ]
   }
@@ -127,9 +152,17 @@ bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), c
   df$cellTypeA <- droplevels(df$cellTypeA)
   df$cellTypeB <- droplevels(df$cellTypeB)
 
-  shape.legend <- c(GroupA = "\u25D6", GroupB = "\u25D7")
+  shape.legend <- setNames(
+    c("\u25D6", "\u25D7"),
+    c(levels(test$condition)[1], levels(test$condition)[coef])
+  )
 
-  df.shape <- data.frame(cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1), condition = c("GroupA", "GroupB"))
+  df.shape <- data.frame(
+    cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
+    condition = c(
+      levels(test$condition)[1], levels(test$condition)[coef]
+    )
+  )
 
 
   if (test$alternateResult) {
@@ -163,7 +196,7 @@ bubblePlot <- function(test, fdr, breaks, colours = c("blue", "white", "red"), c
   df$groupA <- pmax(pmin(df$groupA, limits[2]), limits[1])
   df$groupB <- pmax(pmin(df$groupB, limits[2]), limits[1])
 
-  pal <- grDevices::colorRampPalette(colours)(length(breaks))
+  pal <- grDevices::colorRampPalette(colours)(length(breaks)) # nolint
 
   labels <- round(breaks, 3)
   labels[1] <- "avoidance"
