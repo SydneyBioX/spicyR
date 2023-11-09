@@ -9,16 +9,9 @@
 #' @return a ggplot2 boxplot
 #'
 #' @examples
-#' data(diabetesData_SCE)
+#' data(spicyTest)
 #' 
-#' spicyTestPair <- spicy(
-#'   diabetesData_SCE,
-#'   condition = "stage",
-#'   subject = "case",
-#'   from = "beta",
-#'   to = "delta"
-#' )
-#' spicyBoxPlot(spicyTestPair,
+#' spicyBoxPlot(spicyTest,
 #'              rank = 1)
 #'
 #' @export
@@ -28,14 +21,9 @@ spicyBoxPlot <- function(results,
                          from = NULL,
                          to = NULL,
                          rank = NULL) {
-  condition <- results$condition
   
   if(is.null(c(from, to, rank))) {
     stop("Please specify either a pairwse relationship or rank")
-  }
-  
-  if(is.null(condition)) {
-    stop("Please specify condition column")
   }
   
   pVal <- results$p.value
@@ -53,18 +41,21 @@ spicyBoxPlot <- function(results,
     pairName <- rownames(pVal)[rank]
   }
   
+  df <- data.frame(imageID = results$imageID, 
+                   pairwiseAssoc = results$pairwiseAssoc[pairName],
+                   condition = results$condition)
+  
   if(results$alternateResult) {
     ylabel <- "Alternate Result"
   } else {
     ylabel <- "L Function"
   }
   
-  ggplot2::ggplot(results$dataframe, ggplot2::aes_string(x = condition, y = pairName, fill = condition)) +
+  ggplot2::ggplot(df, ggplot2::aes(x = condition, y = .data[[pairName]], fill = condition, label = imageID)) +
     ggplot2::geom_boxplot() +
     # ggplot2::geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.5) +
     ggplot2::ggtitle("Boxplot of Pairwise Assocations across Conditions") +
     ggplot2::xlab("Condition") + 
     ggplot2::ylab(ylabel) +
     ggplot2::theme_classic()
-  
 }

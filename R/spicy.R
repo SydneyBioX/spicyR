@@ -285,6 +285,8 @@ spicy <- function(cells,
 
   df$weights <- weightFunction
   df$nCells <- nCells
+  
+  df$imageIDs <- as.data.frame(imagePheno(cells))[imageID][,1]
 
   if (!is.null(alternateResult)) {
     df$alternateResult <- TRUE
