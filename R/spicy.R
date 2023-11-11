@@ -285,7 +285,7 @@ spicy <- function(cells,
   df$weights <- weightFunction
   df$nCells <- nCells
   
-  df$imageIDs <- as.data.frame(imagePheno(cells))[imageID][,1]
+  df$imageIDs <- as.data.frame(imagePheno(cells))["imageID"][,1]
   df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
 
   df <- methods::new("SpicyResults", df)
