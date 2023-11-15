@@ -120,9 +120,14 @@ spicyTest <- spicy(
   subject = "case"
 )
 
-spicyTest
 topPairs(spicyTest)
 ```
+We can also examine the L-function metrics of individual images by using the
+convenient `bind()` function on our spicyTest results object.
+```{r}
+bind(spicyTest)
+```
+
 
 Again, we obtain a `spicy` object which outlines the result of the mixed effects 
 models performed for each pairwise combination of cell types.
