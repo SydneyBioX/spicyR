@@ -1093,6 +1093,11 @@ colTest <- function(
 #' @export
 #'
 #' @examples
+#' 
+#' data(spicyTest)
+#' df <- bind(spicyTest)
+#' 
+#' @export
 bind <- function(results,
                  pairName = NULL) {
   if(is.null(pairName)) {
