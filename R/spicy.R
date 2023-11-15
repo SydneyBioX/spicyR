@@ -160,8 +160,6 @@ spicy <- function(cells,
     )
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
-    
-    pairwiseAssocDF <- pairwiseAssoc
   }
 
 
@@ -284,6 +282,7 @@ spicy <- function(cells,
   }
   
   df$condition <- conditionVector
+  df$subject <- as.data.frame(imagePheno(cells))[subject][,1]
 
   df$pairwiseAssoc <- pairwiseAssoc
   df$comparisons <- comparisons
@@ -293,7 +292,7 @@ spicy <- function(cells,
   
   df$imageIDs <- as.data.frame(imagePheno(cells))["imageID"][,1]
   df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
-
+  
   df <- methods::new("SpicyResults", df)
   df
 }
@@ -1082,3 +1081,31 @@ colTest <- function(
   test <- test[order(test$pval), ]
   test
 }
+
+#' Produces a dataframe showing L-function metric for each imageID entry.
+#'
+#' @param results 
+#'  Spicy test result obtained from spicy.
+#' @param pairName
+#'  A string specifying the pairwise interaction of interest. If NULL, all 
+#'  pairwise interactions are shown. 
+#' @return
+#' @export
+#'
+#' @examples
+bind <- function(results,
+                 pairName = NULL) {
+  if(is.null(pairName)) {
+    df <- data.frame(imageID = results$imageID, 
+                     do.call(cbind, results$pairwiseAssoc),
+                     subject = results$subject,
+                     condition = results$condition)
+  } else {
+    df <- data.frame(imageID = results$imageID, 
+                     results$pairwiseAssoc[pairName],
+                     subject = results$subject,
+                     condition = results$condition)
+  }
+  return(df)
+}
+
