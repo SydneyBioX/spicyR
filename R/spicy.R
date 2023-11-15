@@ -135,8 +135,14 @@ spicy <- function(cells,
   }
 
   nCells <- table(imageID(cells), cellType(cells))
-
-
+  
+  conditionVector <- as.data.frame(imagePheno(cells))[condition][,1]
+  
+  if(!is.factor(conditionVector)) {
+    conditionVector <- as.factor(conditionVector)
+    warning(paste0("Coercing condition into factor. Using ", condition, " = ", levels(conditionVector)[1], " as base comparison group. If this is not the desired base group, please convert cells$", condition ," into a factor and change the order of levels(cells$", condition,") so that the base group is at index 1."))
+  }
+  
   ## Find pairwise associations
 
   if (is.null(alternateResult)) {
@@ -276,8 +282,8 @@ spicy <- function(cells,
 
     df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
   }
-
-  df$condition <- as.data.frame(imagePheno(cells))[condition][,1]
+  
+  df$condition <- conditionVector
 
   df$pairwiseAssoc <- pairwiseAssoc
   df$comparisons <- comparisons
