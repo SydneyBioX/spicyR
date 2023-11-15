@@ -293,9 +293,6 @@ spicy <- function(cells,
   df$imageIDs <- as.data.frame(imagePheno(cells))["imageID"][,1]
   df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
   
-  df$dataframe <- dplyr::inner_join(pairwiseAssocDF |> tibble::rownames_to_column("imageID"),
-                                    as.data.frame(imagePheno(cells)), by = "imageID")
-
   df <- methods::new("SpicyResults", df)
   df
 }
