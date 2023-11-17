@@ -282,7 +282,10 @@ spicy <- function(cells,
   }
   
   df$condition <- conditionVector
-  df$subject <- as.data.frame(imagePheno(cells))[subject][,1]
+  
+  if(!is.null(subject)) {
+    df$subject <- as.data.frame(imagePheno(cells))[subject][,1]    
+  }
 
   df$pairwiseAssoc <- pairwiseAssoc
   df$comparisons <- comparisons
@@ -1101,17 +1104,20 @@ colTest <- function(
 #' @export
 bind <- function(results,
                  pairName = NULL) {
-  if(is.null(pairName)) {
-    df <- data.frame(imageID = results$imageID, 
-                     do.call(cbind, results$pairwiseAssoc),
-                     subject = results$subject,
-                     condition = results$condition)
-  } else {
-    df <- data.frame(imageID = results$imageID, 
-                     results$pairwiseAssoc[pairName],
-                     subject = results$subject,
-                     condition = results$condition)
+
+  df <- data.frame(imageID = results$imageID,
+                   condition = results$condition)
+  
+  if (!is.null(results$subject)) {
+    df <- cbind(df, subject = results$subject)
   }
+  
+  if (is.null(pairName)) {
+    df <- cbind(df, do.call(cbind, results$pairwiseAssoc))
+  } else {
+    df <- cbind(df, results$pairwiseAssoc[[pairName]])
+  }
+  
   return(df)
 }
 
