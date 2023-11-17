@@ -1087,16 +1087,17 @@ colTest <- function(
 #' @param results 
 #'  Spicy test result obtained from spicy.
 #' @param pairName
-#'  A string specifying the pairwise interaction of interest. If NULL, all 
-#'  pairwise interactions are shown. 
-#' @return
+#'  A string specifying the pairwise interaction of interest. If NULL, all
+#'  pairwise interactions are shown.
+#'
+#' @return A data.frame containing the colData related to the results.
 #' @export
 #'
 #' @examples
-#' 
+#'
 #' data(spicyTest)
 #' df <- bind(spicyTest)
-#' 
+#'
 #' @export
 bind <- function(results,
                  pairName = NULL) {
