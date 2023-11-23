@@ -5,7 +5,7 @@
 \alias{topPairs,SpicyResults-method}
 \title{A table of the significant results from spicy tests}
 \usage{
-topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL)
+topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL, figures = NULL)
 }
 \arguments{
 \item{x}{The output from spicy.}
@@ -17,6 +17,8 @@ topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL)
 \item{adj}{Which p-value adjustment method to use, argument for p.adjust().}
 
 \item{cutoff}{A p-value threshold to extract significant pairs.}
+
+\item{figures}{Round to `signif` significant figures.}
 }
 \value{
 A data.frame
