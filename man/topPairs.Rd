@@ -18,7 +18,7 @@ topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL, figures = NULL)
 
 \item{cutoff}{A p-value threshold to extract significant pairs.}
 
-\item{figures}{Round to `signif` significant figures.}
+\item{figures}{Round to `figures` significant figures.}
 }
 \value{
 A data.frame

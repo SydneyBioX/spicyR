@@ -12,7 +12,7 @@
 #' @param n Extract the top n most significant pairs.
 #' @param adj Which p-value adjustment method to use, argument for p.adjust().
 #' @param cutoff A p-value threshold to extract significant pairs.
-#' @param figures Round to `signif` significant figures.
+#' @param figures Round to `figures` significant figures.
 #'
 #' @return A data.frame
 #'

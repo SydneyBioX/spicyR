@@ -35,8 +35,7 @@
 #' 
 #' @export
 #' @importFrom SingleCellExperiment colPairs colData
-#' 
-
+#' @importFrom tibble rownames_to_column column_to_rownames
 convPairs <- function(cells,
                       colPair,
                       cellType = "cellType",

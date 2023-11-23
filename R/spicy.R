@@ -72,6 +72,7 @@
 #' @importFrom BiocParallel SerialParam
 #' @importFrom scam scam
 #' @importFrom rlang .data
+#' @importFrom tibble column_to_rownames
 spicy <- function(cells,
                   condition = NULL,
                   subject = NULL,
