@@ -891,8 +891,12 @@ getWeightFunction <- function(
 
 
   resSq <- apply(pairwiseAssoc, 2, function(x) {
-    if (stats::sd(x, na.rm = TRUE) > 0) {
-      return((x - mean(x, na.rm = TRUE))^2)
+    if (sum(!is.na(x)) > 1) {
+      if (stats::sd(x, na.rm = TRUE) > 0) {
+        return((x - mean(x, na.rm = TRUE))^2)
+      } else {
+        return(rep(NA, length(x)))
+      }
     } else {
       return(rep(NA, length(x)))
     }
