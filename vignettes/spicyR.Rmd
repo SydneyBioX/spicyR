@@ -87,9 +87,13 @@ the fixed effect and subject as the random effect.
 
 Firstly, we can test whether one cell type tends to be more localised with another cell type 
 in one condition compared to the other. This can be done using the `spicy()` 
-function, where we include `condition`, and `subject`. In this example, we want 
-to see whether or not Delta cells (`to`) tend to be found around Beta cells (`from`)
-in onset diabetes images compared to non-diabetic images.
+function, where we include `condition`, and `subject`. 
+
+In this example, we want to see whether or not Delta cells (`to`) tend to be found around Beta cells (`from`)
+in onset diabetes images compared to non-diabetic images. However, given that there are 3 conditions, we can specify the desired
+conditions by setting the order of our `condition` factor. `spicy()` will choose the first level of the factor as 
+the base condition and the second level as the comparison condition. `spicy()` will also naturally coerce the `condition` column into a 
+factor if not already a factor. 
 
 ```{r message=FALSE}
 spicyTestPair <- spicy(
