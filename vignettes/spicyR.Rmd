@@ -125,7 +125,7 @@ topPairs(spicyTest)
 We can also examine the L-function metrics of individual images by using the
 convenient `bind()` function on our spicyTest results object.
 ```{r}
-bind(spicyTest)
+bind(spicyTest)[1:5, 1:5]
 ```
 
 
