@@ -42,5 +42,12 @@ Imports:
     ggforce,
     ClassifyR,
     tibble
-Suggests: BiocStyle, knitr, rmarkdown, pkgdown, imcRtools
+Suggests: 
+    BiocStyle,
+    knitr,
+    rmarkdown,
+    pkgdown,
+    imcRtools,
+    testthat (>= 3.0.0)
 RoxygenNote: 7.2.3
+Config/testthat/edition: 3
