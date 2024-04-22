@@ -453,6 +453,15 @@ setMethod("cellType", "SegmentedCells", function(x, imageID = NULL) {
     }
     BiocGenerics::do.call("rbind", x$cellSummary)$cellType
 })
+setMethod("cellType", "SummarizedExperiment", function(x, imageID = NULL) {
+    # janky fix to avoid issues with lazy evaluation
+    imageID1 <- imageID
+    colData(x) %>%
+        data.frame %>%
+        filter(if (!is.null(imageID1)) imageID == imageID1 else TRUE) %>%
+        .[["cellType"]]
+})
+
 
 #' @export
 setGeneric("cellType<-", function(x, imageID = NULL, value)
