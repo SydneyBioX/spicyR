@@ -966,12 +966,12 @@ prepCellSummary <- function(
 
 
 extractSpicyInfo <- function(cells,
-                             imageID = imageID,
-                             cellType = cellType,
-                             spatialCoords = spatialCoords,
-                             condition = condition,
-                             subject = subject,
-                             covariates = covariates) {
+                             imageID = "imageID",
+                             cellType = "cellType",
+                             spatialCoords = c("x", "y"),
+                             condition = NULL,
+                             subject = NULL,
+                             covariates = NULL) {
   extra <- c(condition, subject, covariates)
 
   if (is(cells, "SpatialExperiment")) {
