@@ -33,3 +33,8 @@ isKonditional <- function(konditionalResult){
     
     return(all(colNames %in% names(konditionalResult)))
 }
+
+normaliseSE <- function(cells) {
+    warning("SummarizedExperiment normalisation not implemented!")
+    cells
+}

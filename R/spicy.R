@@ -96,16 +96,11 @@ spicy <- function(cells,
                   cellType = "cellType",
                   spatialCoords = c("x", "y"),
                   ...) {
-  if (is(cells, "SingleCellExperiment") || is(cells, "SpatialExperiment")) {
-    cells <- extractSpicyInfo(cells,
-      imageID = imageID,
-      cellType = cellType,
-      spatialCoords = spatialCoords,
-      condition = condition,
-      subject = subject,
-      covariates = covariates
-    )
-  } # TODO: Decrecate segementedCells
+
+  if (is(cells, "SummarizedExperiment")){
+    # TODO: normalise imageID, cellType and spatialCoords.
+    # cells <- normaliseSE(cells)
+  }
 
   if (is.null(from) || is.null(to)) {
     if (is.null(from)) {
