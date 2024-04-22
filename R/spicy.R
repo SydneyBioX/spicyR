@@ -107,11 +107,6 @@ spicy <- function(cells,
     )
   } # TODO: Decrecate segementedCells
 
-  if (!is(cells, "SegmentedCells")) {
-    stop("cells needs to be a SegmentedCells object") # TODO: Make this error informative.
-  }
-
-
   if (is.null(from) || is.null(to)) {
     if (is.null(from)) {
       from <- as.character(unique(cellType(cells)))
