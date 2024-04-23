@@ -240,8 +240,22 @@ setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TR
             BiocGenerics::do.call("rbind", x$cellSummary)
         ))
     }
-    
 })
+setMethod("cellSummary", "data.frame", function(x,
+                                               imageID = NULL,
+                                               bind = TRUE) {
+    x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::select(imageID, cellID, imageCellID, x, y, cellType) %>%
+        dplyr::mutate(imageID = as.factor(imageID)) %>%
+        S4Vectors::DataFrame() %>%
+        {
+            if (bind) . else S4Vectors::split(., .$imageID)
+        }
+})
+
 
 
 #' @importFrom methods slot slot<-
@@ -292,9 +306,18 @@ setMethod("imageID", "SegmentedCells", function(x, imageID = NULL) {
         x <- x[imageID,]
     }
     
-    factor(rep(rownames(x), unlist(lapply(x$cellSummary, nrow))),
-           rownames(x))
 })
+#' @importFrom dplyr select filter pull
+#' @importFrom rlang !!
+#' @importFrom magrittr %>%
+setMethod("imageID", "data.frame", function(x, imageID = NULL) {
+    x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::pull(imageID)
+})
+
 
 
 
@@ -453,13 +476,15 @@ setMethod("cellType", "SegmentedCells", function(x, imageID = NULL) {
     }
     BiocGenerics::do.call("rbind", x$cellSummary)$cellType
 })
-setMethod("cellType", "SummarizedExperiment", function(x, imageID = NULL) {
-    # janky fix to avoid issues with lazy evaluation
-    imageID1 <- imageID
-    colData(x) %>%
-        data.frame %>%
-        filter(if (!is.null(imageID1)) imageID == imageID1 else TRUE) %>%
-        .[["cellType"]]
+#' @importFrom dplyr select filter pull
+#' @importFrom rlang !!
+#' @importFrom magrittr %>%
+setMethod("cellType", "data.frame", function(x, imageID = NULL) {
+    x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::pull(cellType)
 })
 
 
@@ -554,6 +579,28 @@ setMethod("imagePheno", "SegmentedCells", function(x,
         return(BiocGenerics::do.call("rbind", x$imagePheno))
     }
 })
+#' @importFrom dplyr select filter distinct mutate
+#' @importFrom rlang !!
+#' @importFrom magrittr %>%
+#' @importFrom S4Vectors DataFrame
+setMethod("imagePheno", "data.frame", function(x,
+                                               imageID = NULL,
+                                               bind = TRUE,
+                                               expand = FALSE) {
+    x <- x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::select(-cellID, -imageCellID, -x, -y, -cellType) %>%
+        dplyr::mutate(imageID = as.factor(imageID)) %>%
+        {
+            if (expand) . else dplyr::distinct(.)
+        } %>%
+        S4Vectors::DataFrame()
+    if (expand) rownames(x) <- x$imageID
+    x
+})
+
 
 
 #' @export
