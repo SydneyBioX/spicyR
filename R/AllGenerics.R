@@ -8,7 +8,7 @@
 #' A table of the significant results from spicy tests
 #'
 #' @param x The output from spicy.
-#' @param coef Which coefficient to list. 
+#' @param coef Which coefficient to list.
 #' @param n Extract the top n most significant pairs.
 #' @param adj Which p-value adjustment method to use, argument for p.adjust().
 #' @param cutoff A p-value threshold to extract significant pairs.
@@ -29,23 +29,24 @@
 setGeneric("topPairs", function(x,
                                 coef = NULL,
                                 n = 10,
-                                adj = 'fdr',
+                                adj = "fdr",
                                 cutoff = NULL,
-                                figures = NULL)
-    standardGeneric("topPairs"))
+                                figures = NULL) {
+    standardGeneric("topPairs")
+})
 setMethod("topPairs", "SpicyResults", function(x,
                                                coef = NULL,
                                                n = 10,
-                                               adj = 'fdr',
+                                               adj = "fdr",
                                                cutoff = NULL,
                                                figures = NULL) {
-    if(!methods::is(x,"SpicyResults")) stop("x are not results from spicy")
+    if (!methods::is(x, "SpicyResults")) stop("x are not results from spicy")
 
-    if(is.null(coef)) coef <- grep('condition', colnames(x$p.value))[1]
+    if (is.null(coef)) coef <- grep("condition", colnames(x$p.value))[1]
 
-    if(methods::is(coef,"character")&!coef%in%colnames(x$p.value)) stop("coef not a column name")
-    if(methods::is(coef,"numeric")&!coef%in%seq_len(ncol(x$p.value))) stop("coef not a column name")
-    if(length(coef)>1) warning("coef needs to be length 1, taking first entry.")
+    if (methods::is(coef, "character") & !coef %in% colnames(x$p.value)) stop("coef not a column name")
+    if (methods::is(coef, "numeric") & !coef %in% seq_len(ncol(x$p.value))) stop("coef not a column name")
+    if (length(coef) > 1) warning("coef needs to be length 1, taking first entry.")
     useCondition <- coef[1]
     pval <- x$p.value[[useCondition]]
     adj.pvalue <- stats::p.adjust(pval, adj)
@@ -66,15 +67,19 @@ setMethod("topPairs", "SpicyResults", function(x,
         results <- results[order(results$p.value), ]
 
         if (is.null(cutoff) &&
-            !is.null(n))
+            !is.null(n)) {
             results <- results[seq_len(pmin(n, nrow(results))), ]
+        }
         if (is.null(n) &&
-            !is.null(cutoff))
+            !is.null(cutoff)) {
             results <- results[which(results$adj.pvalue <= cutoff), ]
+        }
         if ((!is.null(n)) &&
-            (!is.null(cutoff)))
+            (!is.null(cutoff))) {
             results <- results[which(
-                results$adj.pvalue <= cutoff & seq_len(nrow(results)) <= n), ]
+                results$adj.pvalue <= cutoff & seq_len(nrow(results)) <= n
+            ), ]
+        }
     }
     if (!is.null(figures) && is.numeric(figures)) {
         results <- results |> dplyr::mutate(
@@ -130,8 +135,8 @@ setMethod("topPairs", "SpicyResults", function(x,
 #' @section Descriptions:
 #' \describe{
 #' \item{`cellSummary`:}{
-#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as 
-#' well as `cellID`, `imageID` and `cellType`. imageID can be used to select 
+#' Retrieves the DataFrame containing `x` and `y` coordinates of each cell as
+#' well as `cellID`, `imageID` and `cellType`. imageID can be used to select
 #' specific images and bind=FALSE outputs the information as a list split by imageID.
 #' }
 #'
@@ -145,7 +150,7 @@ setMethod("topPairs", "SpicyResults", function(x,
 #'
 #' \item{`imagePheno`:}{
 #' Retrieves the DataFrame containing the phenotype information for each image.
-#'  Using expand = TRUE will produce a DataFrame with the number of rows equal 
+#'  Using expand = TRUE will produce a DataFrame with the number of rows equal
 #'  to the number of cells.
 #' }
 #' }
@@ -159,11 +164,11 @@ setMethod("topPairs", "SpicyResults", function(x,
 #'
 #' set.seed(51773)
 #'
-#' n = 10
+#' n <- 10
 #'
 #' cells <- data.frame(row.names = seq_len(n))
 #' cells$ObjectNumber <- seq_len(n)
-#' cells$ImageNumber <- rep(1:2,c(n/2,n/2))
+#' cells$ImageNumber <- rep(1:2, c(n / 2, n / 2))
 #' cells$AreaShape_Center_X <- runif(n)
 #' cells$AreaShape_Center_Y <- runif(n)
 #' cells$AreaShape_round <- rexp(n)
@@ -175,8 +180,8 @@ setMethod("topPairs", "SpicyResults", function(x,
 #'
 #' ### Cluster cell types
 #' intensities <- cellMarks(cellExp)
-#' kM <- kmeans(intensities,2)
-#' cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
+#' kM <- kmeans(intensities, 2)
+#' cellType(cellExp) <- paste("cluster", kM$cluster, sep = "")
 #'
 #' cellSummary(cellExp, imageID = 1)
 #'
@@ -224,19 +229,22 @@ setMethod("topPairs", "SpicyResults", function(x,
 
 #' @export
 #' @importFrom BiocGenerics do.call rbind
-setGeneric("cellSummary", function(x, imageID = NULL, bind = TRUE)
-    standardGeneric("cellSummary"))
+setGeneric("cellSummary", function(x, imageID = NULL, bind = TRUE) {
+    standardGeneric("cellSummary")
+})
 setMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     if (bind == FALSE) {
         return(x$cellSummary)
     }
     if (bind == TRUE) {
         return(cbind(
-            imageID = factor(rep(rownames(x), unlist(lapply(x[, "cellSummary"], nrow))),
-                             rownames(x)),
+            imageID = factor(
+                rep(rownames(x), unlist(lapply(x[, "cellSummary"], nrow))),
+                rownames(x)
+            ),
             BiocGenerics::do.call("rbind", x$cellSummary)
         ))
     }
@@ -259,7 +267,7 @@ setMethod("cellSummary", "data.frame", function(x,
 
 
 #' @importFrom methods slot slot<-
-.putData <- function(object,variable, value, image = NULL){
+.putData <- function(object, variable, value, image = NULL) {
     methods::slot(object, "listData")[[variable]] <- value
     object
 }
@@ -267,23 +275,26 @@ setMethod("cellSummary", "data.frame", function(x,
 
 #' @export
 #' @importFrom S4Vectors split
-setGeneric("cellSummary<-", function(x, imageID = NULL, value)
-    standardGeneric("cellSummary<-"))
+setGeneric("cellSummary<-", function(x, imageID = NULL, value) {
+    standardGeneric("cellSummary<-")
+})
 setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, value) {
-
-    if (is.null(imageID))
+    if (is.null(imageID)) {
         imageID <- rownames(x)
+    }
     if (nrow(value) == length(imageID)) {
-        if(any(!colnames(x[1,1][[1]])%in%colnames(value[[1]]))){
-            stop("There are colnames of value that aren't in cellSummary")}
+        if (any(!colnames(x[1, 1][[1]]) %in% colnames(value[[1]]))) {
+            stop("There are colnames of value that aren't in cellSummary")
+        }
         x <- .putData(x, "cellSummary", value, imageID)
         return(x)
     }
-    
+
     if (nrow(value) == length(imageID(x, imageID))) {
-        colNames <- colnames(x[1,1][[1]])
-        if(any(!colNames%in%colnames(value))){
-            stop("There are colnames of value that aren't in cellSummary")}
+        colNames <- colnames(x[1, 1][[1]])
+        if (any(!colNames %in% colnames(value))) {
+            stop("There are colnames of value that aren't in cellSummary")
+        }
         value <- value[, colNames]
         by <-
             rep(imageID, unlist(lapply(x[imageID, "cellSummary"], nrow)))
@@ -299,13 +310,18 @@ setReplaceMethod("cellSummary", "SegmentedCells", function(x, imageID = NULL, va
 ### Get imageIDs for each cell, not sure if this should also report rownames(df)
 
 #' @export
-setGeneric("imageID", function(x, imageID = NULL)
-    standardGeneric("imageID"))
+setGeneric("imageID", function(x, imageID = NULL) {
+    standardGeneric("imageID")
+})
 setMethod("imageID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
-    
+
+    factor(
+        rep(rownames(x), unlist(lapply(x$cellSummary, nrow))),
+        rownames(x)
+    )
 })
 #' @importFrom dplyr select filter pull
 #' @importFrom rlang !!
@@ -326,25 +342,27 @@ setMethod("imageID", "data.frame", function(x, imageID = NULL) {
 
 #' @export
 #' @importFrom BiocGenerics do.call rbind
-setGeneric("cellID", function(x, imageID = NULL)
-    standardGeneric("cellID"))
+setGeneric("cellID", function(x, imageID = NULL) {
+    standardGeneric("cellID")
+})
 setMethod("cellID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     BiocGenerics::do.call("rbind", x$cellSummary)$cellID
 })
 
 #' @export
-setGeneric("cellID<-", function(x, value)
-    standardGeneric("cellID<-"))
+setGeneric("cellID<-", function(x, value) {
+    standardGeneric("cellID<-")
+})
 setReplaceMethod("cellID", "SegmentedCells", function(x, value) {
     loc <- cellSummary(x)
-    
+
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many cellIDs")
     }
-    
+
     loc$cellID <- value
     cellSummary(x) <- loc
 })
@@ -355,27 +373,29 @@ setReplaceMethod("cellID", "SegmentedCells", function(x, value) {
 ### Get imageCellID
 
 #' @export
-setGeneric("imageCellID", function(x, imageID = NULL)
-    standardGeneric("imageCellID"))
+setGeneric("imageCellID", function(x, imageID = NULL) {
+    standardGeneric("imageCellID")
+})
 setMethod("imageCellID", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     BiocGenerics::do.call("rbind", x$cellSummary)$imageCellID
 })
 
 #' @export
-setGeneric("imageCellID<-", function(x, value)
-    standardGeneric("imageCellID<-"))
+setGeneric("imageCellID<-", function(x, value) {
+    standardGeneric("imageCellID<-")
+})
 setReplaceMethod("imageCellID", "SegmentedCells", function(x, value) {
     loc <- cellSummary(x)
-    
+
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many imageCellIDs")
     }
-    
+
     loc$imageCellID <- value
-    
+
     cellSummary(x) <- loc
 })
 
@@ -385,11 +405,12 @@ setReplaceMethod("imageCellID", "SegmentedCells", function(x, value) {
 ### Get marker intensity information
 
 #' @export
-setGeneric("cellMarks", function(x, imageID = NULL, bind = TRUE)
-    standardGeneric("cellMarks"))
+setGeneric("cellMarks", function(x, imageID = NULL, bind = TRUE) {
+    standardGeneric("cellMarks")
+})
 setMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     if (bind == FALSE) {
         return(x$cellMarks)
@@ -397,20 +418,21 @@ setMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, bind = TRUE
     if (bind == TRUE) {
         return(BiocGenerics::do.call("rbind", x$cellMarks))
     }
-    
 })
 
 #' @export
-setGeneric("cellMarks<-", function(x, imageID = NULL, value)
-    standardGeneric("cellMarks<-"))
+setGeneric("cellMarks<-", function(x, imageID = NULL, value) {
+    standardGeneric("cellMarks<-")
+})
 setReplaceMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, value) {
-    if (is.null(imageID))
+    if (is.null(imageID)) {
         imageID <- rownames(x)
+    }
     if (nrow(value) == length(imageID)) {
         x <- .putData(x, "cellMarks", value, imageID)
         return(x)
     }
-    
+
     if (nrow(value) == length(imageID(x))) {
         by <- rep(rownames(x), unlist(lapply(x$cellMarks, nrow)))
         by <- factor(by, levels = unique(by))
@@ -426,11 +448,12 @@ setReplaceMethod("cellMarks", "SegmentedCells", function(x, imageID = NULL, valu
 ### Get morphology information
 
 #' @export
-setGeneric("cellMorph", function(x, imageID = NULL, bind = TRUE)
-    standardGeneric("cellMorph"))
+setGeneric("cellMorph", function(x, imageID = NULL, bind = TRUE) {
+    standardGeneric("cellMorph")
+})
 setMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL, bind = TRUE) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     if (bind == FALSE) {
         return(x$cellMorph)
@@ -438,21 +461,22 @@ setMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL, bind = TRUE
     if (bind == TRUE) {
         return(BiocGenerics::do.call("rbind", x$cellMorph))
     }
-    
 })
 
 #' @export
-setGeneric("cellMorph<-", function(x, imageID = NULL, value)
-    standardGeneric("cellMorph<-"))
+setGeneric("cellMorph<-", function(x, imageID = NULL, value) {
+    standardGeneric("cellMorph<-")
+})
 setReplaceMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL,
-                                                     value) {
-    if (is.null(imageID))
+                                                         value) {
+    if (is.null(imageID)) {
         imageID <- rownames(x)
+    }
     if (nrow(value) == length(imageID)) {
         x <- .putData(x, "cellMorph", value, imageID)
         return(x)
     }
-    
+
     if (nrow(value) == length(imageID(x, imageID))) {
         by <- rep(rownames(x), unlist(lapply(x$cellMorph, nrow)))
         by <- factor(by, levels = unique(by))
@@ -468,11 +492,12 @@ setReplaceMethod("cellMorph", "SegmentedCells", function(x, imageID = NULL,
 ### Get cell type information
 
 #' @export
-setGeneric("cellType", function(x, imageID = NULL)
-    standardGeneric("cellType"))
+setGeneric("cellType", function(x, imageID = NULL) {
+    standardGeneric("cellType")
+})
 setMethod("cellType", "SegmentedCells", function(x, imageID = NULL) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     BiocGenerics::do.call("rbind", x$cellSummary)$cellType
 })
@@ -489,19 +514,21 @@ setMethod("cellType", "data.frame", function(x, imageID = NULL) {
 
 
 #' @export
-setGeneric("cellType<-", function(x, imageID = NULL, value)
-    standardGeneric("cellType<-"))
+setGeneric("cellType<-", function(x, imageID = NULL, value) {
+    standardGeneric("cellType<-")
+})
 setReplaceMethod("cellType", "SegmentedCells", function(x, imageID = NULL, value) {
-    if (is.null(imageID))
+    if (is.null(imageID)) {
         imageID <- rownames(x)
+    }
     loc <- cellSummary(x, imageID = imageID)
-    
+
     if (nrow(loc) != length(value)) {
         stop("There is not enough or too many cellTypes")
     }
-    if(!methods::is(value,"factor"))value = factor(value)
+    if (!methods::is(value, "factor")) value <- factor(value)
     loc$cellType <- value
-    
+
     cellSummary(x, imageID = imageID) <- loc
     x
 })
@@ -511,37 +538,40 @@ setReplaceMethod("cellType", "SegmentedCells", function(x, imageID = NULL, value
 ### Get cell type information
 
 #' @export
-setGeneric("cellAnnotation", function(x, variable, imageID = NULL)
-    standardGeneric("cellAnnotation"))
+setGeneric("cellAnnotation", function(x, variable, imageID = NULL) {
+    standardGeneric("cellAnnotation")
+})
 setMethod("cellAnnotation", "SegmentedCells", function(x, variable, imageID = NULL) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     cS <- cellSummary(x, bind = TRUE)
-    if(!variable%in%colnames(cS))stop("variable not in cellSummary")
-    cS[,variable]
+    if (!variable %in% colnames(cS)) stop("variable not in cellSummary")
+    cS[, variable]
 })
 
 #' @export
-setGeneric("cellAnnotation<-", function(x, variable, imageID = NULL, value)
-    standardGeneric("cellAnnotation<-"))
+setGeneric("cellAnnotation<-", function(x, variable, imageID = NULL, value) {
+    standardGeneric("cellAnnotation<-")
+})
 setReplaceMethod("cellAnnotation", "SegmentedCells", function(x, variable, imageID = NULL, value) {
-    if (is.null(imageID))
+    if (is.null(imageID)) {
         imageID <- rownames(x)
-    loc <- cellSummary(x, bind = TRUE)
-    if(length(variable)!=1)stop("Sorry, I can only add one variable at a time currently")
-    if(!variable%in%colnames(loc)){
-        message(c("Creating variable ", variable))
-        loc[,variable] = NA
     }
-    
-    
-    if (sum(loc$imageID%in%imageID) != length(value)) {
+    loc <- cellSummary(x, bind = TRUE)
+    if (length(variable) != 1) stop("Sorry, I can only add one variable at a time currently")
+    if (!variable %in% colnames(loc)) {
+        message(c("Creating variable ", variable))
+        loc[, variable] <- NA
+    }
+
+
+    if (sum(loc$imageID %in% imageID) != length(value)) {
         stop("You are trying to put too much or too little into ", variable)
     }
-    loc[loc$imageID%in%imageID, variable] <- value
+    loc[loc$imageID %in% imageID, variable] <- value
     by <- factor(loc$imageID, rownames(x))
-    loc <- loc[, colnames(loc)!="imageID"]
+    loc <- loc[, colnames(loc) != "imageID"]
     loc <- S4Vectors::split(loc, by)
     x <- .putData(x, "cellSummary", loc, imageID)
     return(x)
@@ -555,26 +585,26 @@ setReplaceMethod("cellAnnotation", "SegmentedCells", function(x, variable, image
 
 #' @export
 setGeneric("imagePheno", function(x,
-                                 imageID = NULL,
-                                 bind = TRUE,
-                                 expand = FALSE)
-    standardGeneric("imagePheno"))
+                                  imageID = NULL,
+                                  bind = TRUE,
+                                  expand = FALSE) {
+    standardGeneric("imagePheno")
+})
 setMethod("imagePheno", "SegmentedCells", function(x,
-                                                  imageID = NULL,
-                                                  bind = TRUE,
-                                                  expand = FALSE) {
+                                                   imageID = NULL,
+                                                   bind = TRUE,
+                                                   expand = FALSE) {
     if (!is.null(imageID)) {
-        x <- x[imageID,]
+        x <- x[imageID, ]
     }
     if (expand) {
         pheno <- BiocGenerics::do.call("rbind", x$imagePheno)
         rownames(pheno) <- pheno$imageID
-        if(dim(pheno)[1]>0){
-            return(pheno[imageID(x),])
-            }else{
+        if (dim(pheno)[1] > 0) {
+            return(pheno[imageID(x), ])
+        } else {
             return(pheno)
-            }
-        
+        }
     } else {
         return(BiocGenerics::do.call("rbind", x$imagePheno))
     }
@@ -604,44 +634,47 @@ setMethod("imagePheno", "data.frame", function(x,
 
 
 #' @export
-setGeneric("imagePheno<-", function(x, imageID = NULL, value)
-    standardGeneric("imagePheno<-"))
+setGeneric("imagePheno<-", function(x, imageID = NULL, value) {
+    standardGeneric("imagePheno<-")
+})
 setReplaceMethod("imagePheno", "SegmentedCells", function(x, imageID = NULL, value) {
-    if (is.null(imageID))
+    if (is.null(imageID)) {
         imageID <- as.character(rownames(x))
+    }
     value$imageID <- as.character(value$imageID)
-    use <- intersect(imageID,value$imageID)
+    use <- intersect(imageID, value$imageID)
     rownames(value) <- value$imageID
-    value <- S4Vectors::split(value[use,], factor(use, levels = use))
+    value <- S4Vectors::split(value[use, ], factor(use, levels = use))
     x <- .putData(x, "imagePheno", value, use)
-    x[unique(use),]
+    x[unique(use), ]
 })
 
 
 
 #' @export
-setGeneric("filterCells", function(x, select)
-    standardGeneric("filterCells"))
+setGeneric("filterCells", function(x, select) {
+    standardGeneric("filterCells")
+})
 setMethod("filterCells", "SegmentedCells", function(x, select) {
     imageID <- imageID(x)
     df <- cellSummary(x, bind = TRUE)
-    if (length(select) != nrow(df))
+    if (length(select) != nrow(df)) {
         stop("length of select must equal nrow of SegmentedCells")
-    loc <- S4Vectors::split(df[select,], imageID[select])
+    }
+    loc <- S4Vectors::split(df[select, ], imageID[select])
     x <- .putData(x, "cellSummary", loc, imageID)
 
     df <- cellMarks(x, bind = TRUE)
-    if(length(select) == nrow(df)){
-    loc <- S4Vectors::split(df[select,], imageID[select])
-    x <- .putData(x, "cellMarks", loc, imageID)
+    if (length(select) == nrow(df)) {
+        loc <- S4Vectors::split(df[select, ], imageID[select])
+        x <- .putData(x, "cellMarks", loc, imageID)
     }
-    
+
     df <- cellMorph(x, bind = TRUE)
-    if(length(select) == nrow(df)){
-    loc <- S4Vectors::split(df[select,], imageID[select])
-    x <- .putData(x, "cellMorph", loc, imageID)
+    if (length(select) == nrow(df)) {
+        loc <- S4Vectors::split(df[select, ], imageID[select])
+        x <- .putData(x, "cellMorph", loc, imageID)
     }
-    
+
     x
 })
-
