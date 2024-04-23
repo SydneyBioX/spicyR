@@ -198,7 +198,7 @@ spicy <- function(cells,
     m2 <- comparisons$to
 
     weights <- FALSE
-    message("Cell count weighting set to FALSE for Konditional results")
+    cli::cli_inform("Cell count weighting set to FALSE for Konditional results")
   }
 
   weightFunction <- getWeightFunction(
@@ -648,7 +648,7 @@ makeWindow <-
       ow <- spatstat.geom::convexhull(p)
     }
     if (window == "concave") {
-      message("Concave windows are temperamental. Try choosing values of window.length > and < 1 if you have problems.") # nolint
+      cli::cli_inform("Concave windows are temperamental. Try choosing values of window.length > and < 1 if you have problems.") # nolint
       if (is.null(window.length)) {
         window.length <- (max(data$x) - min(data$x)) / 20
       } else {
