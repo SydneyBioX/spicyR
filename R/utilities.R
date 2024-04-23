@@ -1,8 +1,7 @@
-
 # a function to convert SegmentedCells to
 # to a SingleCellExperiment
 .as_SingleCellExperiment <- function(data) {
-    if  (!is(data, "SegmentedCells")) {
+    if (!is(data, "SegmentedCells")) {
         stop("This function only does SegmentedCells -> SingleCellExperiment")
     }
 
@@ -15,9 +14,8 @@
     )
 }
 
-isKonditional <- function(konditionalResult){
-    
-    colNames = c(
+isKonditional <- function(konditionalResult) {
+    colNames <- c(
         "imageID",
         "test",
         "original",
@@ -30,11 +28,61 @@ isKonditional <- function(konditionalResult){
         "window",
         "window.length"
     )
-    
+
     return(all(colNames %in% names(konditionalResult)))
 }
 
-normaliseSE <- function(cells) {
-    warning("SummarizedExperiment normalisation not implemented!")
+#' @importFrom SummarizedExperiment colData
+#' @importFrom magrittr %>%
+#' @importFrom SpatialExperiment spatialCoords
+.format_data <- function(cells, imageIDCol, cellTypeCol, spatialCoordCols) {
+    if (is(cells, "SpatialExperiment")) {
+        cells <- cells %>%
+            colData() %>%
+            data.frame() %>%
+            cbind(spatialCoords(cells) %>% data.frame())
+        spatialCoordCols <- names(spatialCoords(cells))
+    } else if (is(cells, "SingleCellExperiment")) {
+        cells <- cells %>%
+            colData() %>%
+            data.frame()
+    } else {
+        stop(
+            "`cells` is an unsupported subclass of SummarizedExperiment. ",
+            "SingleCellExperiment and SpatialExperiment",
+            " are currently supported."
+        )
+    }
+
+    cells <- cells %>%
+        dplyr::rename(
+            imageID = !!imageIDCol,
+            cellType = !!cellTypeCol,
+            x = spatialCoordCols[1],
+            y = spatialCoordCols[2]
+        )
+    # create cellID if it does not exist
+    if (is.null(cells$cellID)) {
+        cli::cli_inform(
+            "No column called cellID. Creating one."
+        )
+        cells <- dplyr::mutate(
+            cells,
+            cellID = paste0("cell", "_", dplyr::row_number())
+        )
+    }
+
+    # create imageCellID if it does not exist
+    if (is.null(cells$imageCellID)) {
+        cli::cli_inform(
+            "No column called imageCellID. Creating one."
+        )
+        cells <- cells %>%
+            dplyr::group_by(imageID) %>%
+            dplyr::mutate(
+                imageCellID = paste0(imageID, "_", dplyr::row_number())
+            ) %>%
+            dplyr::ungroup()
+    }
     cells
 }
