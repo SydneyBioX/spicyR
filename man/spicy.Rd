@@ -16,7 +16,7 @@ spicy(
   from = NULL,
   to = NULL,
   alternateResult = NULL,
-  verbose = TRUE,
+  verbose = FALSE,
   weights = TRUE,
   weightsByPair = FALSE,
   weightFactor = 1,
