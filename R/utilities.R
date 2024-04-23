@@ -37,11 +37,12 @@ isKonditional <- function(konditionalResult) {
 #' @importFrom SpatialExperiment spatialCoords
 .format_data <- function(cells, imageIDCol, cellTypeCol, spatialCoordCols) {
     if (is(cells, "SpatialExperiment")) {
+        spatialCoordCols <- names(spatialCoords(cells))
         cells <- cells %>%
             colData() %>%
             data.frame() %>%
+            dplyr::select(-dplyr::any_of(c("x", "y"))) %>%
             cbind(spatialCoords(cells) %>% data.frame())
-        spatialCoordCols <- names(spatialCoords(cells))
     } else if (is(cells, "SingleCellExperiment")) {
         cells <- cells %>%
             colData() %>%
