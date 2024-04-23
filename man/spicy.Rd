@@ -28,9 +28,9 @@ spicy(
   minLambda = 0.05,
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
-  imageID = "imageID",
-  cellType = "cellType",
-  spatialCoords = c("x", "y"),
+  imageIDCol = "imageID",
+  cellTypeCol = "cellType",
+  spatialCoordCols = c("x", "y"),
   ...
 )
 }
@@ -80,13 +80,13 @@ concave windows.}
 \item{includeZeroCells}{A logical indicating whether to include cells with zero counts in the
 pairwise association calculation.}
 
+\item{...}{Other options.}
+
 \item{imageID}{The image ID if using SingleCellExperiment.}
 
 \item{cellType}{The cell type if using SingleCellExperiment.}
 
 \item{spatialCoords}{The spatial coordinates if using a SingleCellExperiment.}
-
-\item{...}{Other options.}
 }
 \value{
 Data frame of p-values.

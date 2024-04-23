@@ -101,8 +101,8 @@ Methods to access various components of the `SegmentedCells` object.
 
 \describe{
 \item{`cellSummary`:}{
-Retrieves the DataFrame containing `x` and `y` coordinates of each cell as 
-well as `cellID`, `imageID` and `cellType`. imageID can be used to select 
+Retrieves the DataFrame containing `x` and `y` coordinates of each cell as
+well as `cellID`, `imageID` and `cellType`. imageID can be used to select
 specific images and bind=FALSE outputs the information as a list split by imageID.
 }
 
@@ -116,7 +116,7 @@ Retrieves the DataFrame containing intensity of gene or protein markers.
 
 \item{`imagePheno`:}{
 Retrieves the DataFrame containing the phenotype information for each image.
- Using expand = TRUE will produce a DataFrame with the number of rows equal 
+ Using expand = TRUE will produce a DataFrame with the number of rows equal
  to the number of cells.
 }
 }
@@ -127,11 +127,11 @@ Retrieves the DataFrame containing the phenotype information for each image.
 
 set.seed(51773)
 
-n = 10
+n <- 10
 
 cells <- data.frame(row.names = seq_len(n))
 cells$ObjectNumber <- seq_len(n)
-cells$ImageNumber <- rep(1:2,c(n/2,n/2))
+cells$ImageNumber <- rep(1:2, c(n / 2, n / 2))
 cells$AreaShape_Center_X <- runif(n)
 cells$AreaShape_Center_Y <- runif(n)
 cells$AreaShape_round <- rexp(n)
@@ -143,8 +143,8 @@ cellExp <- SegmentedCells(cells, cellProfiler = TRUE)
 
 ### Cluster cell types
 intensities <- cellMarks(cellExp)
-kM <- kmeans(intensities,2)
-cellType(cellExp) <- paste('cluster',kM$cluster, sep = '')
+kM <- kmeans(intensities, 2)
+cellType(cellExp) <- paste("cluster", kM$cluster, sep = "")
 
 cellSummary(cellExp, imageID = 1)
 

@@ -16,13 +16,13 @@ getPairwise(
   edgeCorrect = TRUE,
   includeZeroCells = TRUE,
   BPPARAM = BiocParallel::SerialParam(),
-  imageID = "imageID",
-  cellType = "cellType",
-  spatialCoords = c("x", "y")
+  imageIDCol = "imageID",
+  cellTypeCol = "cellType",
+  spatialCoordCols = c("x", "y")
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the
+\item{cells}{A SummarizedExperiment that contains at least the
 variables x and y, giving the location coordinates of each cell, and
 cellType.}
 
@@ -50,11 +50,13 @@ zero counts in the pairwise association calculation.}
 
 \item{BPPARAM}{A BiocParallelParam object.}
 
-\item{imageID}{The imageID if using a SingleCellExperiment or SpatialExperiment.}
+\item{imageIDCol}{The name of the imageID column if using a SingleCellExperiment or
+SpatialExperiment.}
 
-\item{cellType}{The cellType if using a SingleCellExperiment or SpatialExperiment.}
+\item{cellTypeCol}{The name of the cellType column if using a SingleCellExperiment or
+SpatialExperiment.}
 
-\item{spatialCoords}{The spatialCoords if using a SingleCellExperiment or SpatialExperiment.}
+\item{spatialCoordCols}{The names of the spatialCoords column if using a SingleCellExperiment.}
 }
 \value{
 Statistic from pairwise L curve of a single image.
