@@ -80,7 +80,7 @@ spicy <- function(cells,
                   from = NULL,
                   to = NULL,
                   alternateResult = NULL,
-                  verbose = TRUE,
+                  verbose = FALSE,
                   weights = TRUE,
                   weightsByPair = FALSE,
                   weightFactor = 1,
@@ -166,8 +166,10 @@ spicy <- function(cells,
   if (!is.null(alternateResult) && !isKonditional(alternateResult)) {
     pairwiseAssoc <- alternateResult
 
-    weights <- FALSE
-    cli::cli_inform("Cell count weighting set to FALSE for alternate results")
+    if (weights) {
+      cli::cli_inform("Cell count weighting set to FALSE for alternate results")
+      weights <- FALSE
+    }
   }
 
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
@@ -197,8 +199,12 @@ spicy <- function(cells,
     m1 <- comparisons$fromName
     m2 <- comparisons$to
 
-    weights <- FALSE
-    cli::cli_inform("Cell count weighting set to FALSE for Konditional results")
+    if (weights) {
+      weights <- FALSE
+      cli::cli_inform(
+        "Cell count weighting set to FALSE for Konditional results"
+      )
+    }
   }
 
   weightFunction <- getWeightFunction(
@@ -421,7 +427,6 @@ getPairwise <- function(
     imageIDCol = "imageID",
     cellTypeCol = "cellType",
     spatialCoordCols = c("x", "y")) {
-
   if (is(cells, "SummarizedExperiment")) {
     cells <- .format_data(
       cells, imageIDCol, cellTypeCol, spatialCoordCols
