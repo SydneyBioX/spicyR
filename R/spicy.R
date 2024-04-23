@@ -92,14 +92,14 @@ spicy <- function(cells,
                   minLambda = 0.05,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
-                  imageID = "imageID",
-                  cellType = "cellType",
-                  spatialCoords = c("x", "y"),
+                  imageIDCol = "imageID",
+                  cellTypeCol = "cellType",
+                  spatialCoordCols = c("x", "y"),
                   ...) {
-
-  if (is(cells, "SummarizedExperiment")){
-    # TODO: normalise imageID, cellType and spatialCoords.
-    # cells <- normaliseSE(cells)
+  if (is(cells, "SummarizedExperiment")) {
+    cells <- .format_data(
+      cells, imageIDCol, cellTypeCol, spatialCoordCols
+    )
   }
 
   if (is.null(from) || is.null(to)) {
@@ -126,14 +126,23 @@ spicy <- function(cells,
   }
 
   nCells <- table(imageID(cells), cellType(cells))
-  
-  conditionVector <- as.data.frame(imagePheno(cells))[condition][,1]
-  
-  if(!is.factor(conditionVector)) {
+
+  conditionVector <- as.data.frame(imagePheno(cells))[condition][, 1]
+
+  if (!is.factor(conditionVector)) {
     conditionVector <- as.factor(conditionVector)
-    warning(paste0("Coercing condition into factor. Using ", condition, " = ", levels(conditionVector)[1], " as base comparison group. If this is not the desired base group, please convert cells$", condition ," into a factor and change the order of levels(cells$", condition,") so that the base group is at index 1."))
+    cli::cli_inform(
+      paste0(
+        "Coercing condition into factor. Using ",
+        condition, " = ", levels(conditionVector)[1],
+        " as base comparison group. If this is not the desired base group,",
+        " please convert cells$",
+        condition, " into a factor and change the order of levels(cells$",
+        condition, ") so that the base group is at index 1."
+      )
+    )
   }
-  
+
   ## Find pairwise associations
 
   if (is.null(alternateResult)) {
@@ -156,9 +165,9 @@ spicy <- function(cells,
 
   if (!is.null(alternateResult) && !isKonditional(alternateResult)) {
     pairwiseAssoc <- alternateResult
-    
+
     weights <- FALSE
-    message("Cell count weighting set to FALSE for alternate results")
+    cli::cli_inform("Cell count weighting set to FALSE for alternate results")
   }
 
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
@@ -203,7 +212,7 @@ spicy <- function(cells,
   ## Linear model
   if (is.null(subject) && !is.null(condition)) {
     if (verbose) {
-      message("Testing for spatial differences across conditions")
+      cli::cli_inform("Testing for spatial differences across conditions")
     }
 
     MoreArgs2 <-
@@ -233,7 +242,7 @@ spicy <- function(cells,
   ## Mixed effects model
   if ((!is.null(subject)) && !is.null(condition)) {
     if (verbose) {
-      message(
+      cli::cli_inform(
         "Testing for spatial differences across conditions accounting for multiple images per subject" # nolint
       )
     }
@@ -271,11 +280,11 @@ spicy <- function(cells,
 
     df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
   }
-  
+
   df$condition <- conditionVector
-  
-  if(!is.null(subject)) {
-    df$subject <- as.data.frame(imagePheno(cells))[subject][,1]    
+
+  if (!is.null(subject)) {
+    df$subject <- as.data.frame(imagePheno(cells))[subject][, 1]
   }
 
   df$pairwiseAssoc <- pairwiseAssoc
@@ -283,10 +292,10 @@ spicy <- function(cells,
 
   df$weights <- weightFunction
   df$nCells <- nCells
-  
-  df$imageIDs <- as.data.frame(imagePheno(cells))["imageID"][,1]
+
+  df$imageIDs <- as.data.frame(imagePheno(cells))["imageID"][, 1]
   df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
-  
+
   df <- methods::new("SpicyResults", df)
   df
 }
@@ -359,7 +368,7 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 
 #' Get statistic from pairwise L curve of a single image.
 #'
-#' @param cells A SegmentedCells or data frame that contains at least the
+#' @param cells A SummarizedExperiment that contains at least the
 #'     variables x and y, giving the location coordinates of each cell, and
 #'     cellType.
 #' @param from The 'from' cellType for generating the L curve.
@@ -381,12 +390,14 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #' @param includeZeroCells A logical indicating whether to include cells with
 #' zero counts in the pairwise association calculation.
 #' @param BPPARAM A BiocParallelParam object.
-#' @param imageID
-#'     The imageID if using a SingleCellExperiment or SpatialExperiment.
-#' @param cellType
-#'     The cellType if using a SingleCellExperiment or SpatialExperiment.
-#' @param spatialCoords
-#'     The spatialCoords if using a SingleCellExperiment or SpatialExperiment.
+#' @param imageIDCol
+#'     The name of the imageID column if using a SingleCellExperiment or
+#'     SpatialExperiment.
+#' @param cellTypeCol
+#'     The name of the cellType column if using a SingleCellExperiment or
+#'     SpatialExperiment.
+#' @param spatialCoordCols
+#'     The names of the spatialCoords column if using a SingleCellExperiment.
 #' @return Statistic from pairwise L curve of a single image.
 #'
 #'
@@ -407,13 +418,17 @@ getPairwise <- function(
     edgeCorrect = TRUE,
     includeZeroCells = TRUE,
     BPPARAM = BiocParallel::SerialParam(),
-    imageID = "imageID",
-    cellType = "cellType",
-    spatialCoords = c("x", "y")) {
-  cells2 <- prepCellSummary(
-    cells, spatialCoords, cellType, imageID,
-    bind = FALSE
-  )
+    imageIDCol = "imageID",
+    cellTypeCol = "cellType",
+    spatialCoordCols = c("x", "y")) {
+
+  if (is(cells, "SummarizedExperiment")) {
+    cells <- .format_data(
+      cells, imageIDCol, cellTypeCol, spatialCoordCols
+    )
+  }
+
+  cells2 <- cellSummary(cells, bind = FALSE)
 
 
   if (is.null(from)) from <- levels(cells2$cellType)
@@ -440,11 +455,9 @@ getPairwise <- function(
 
 
 
-#' Get proportions from a SegmentedCells, SingleCellExperiment,
-#' SpatialExperiment or data.frame.
+#' Get proportions from a SummarizedExperiment.
 #'
-#' @param cells
-#'     SegmentedCells, SingleCellExperiment, SpatialExperiment or data.frame
+#' @param cells A SingleCellExperiment, SpatialExperiment or data.frame.
 #' @param feature The feature of interest
 #' @param imageID The imageID's
 #'
@@ -915,43 +928,7 @@ getWeightFunction <- function(
 #' @importFrom methods is
 prepCellSummary <- function(
     cells, spatialCoords, cellType, imageID, bind = FALSE) {
-  if (is.data.frame(cells)) {
-    cells <- SegmentedCells(cells,
-      spatialCoords = spatialCoords,
-      cellTypeString = cellType,
-      imageIDString = imageID
-    )
-
-    cellSummary <- cellSummary(cells, bind = bind)
-  }
-
-  if (is(cells, "SingleCellExperiment")) {
-    cells <- colData(cells)
-    cells <- SegmentedCells(cells,
-      spatialCoords = spatialCoords,
-      cellTypeString = cellType,
-      imageIDString = imageID
-    )
-
-    cellSummary <- cellSummary(cells, bind = bind)
-  }
-
-  if (is(cells, "SpatialExperiment")) {
-    cells <- cbind(colData(cells), spatialCoords(cells))
-    cells <- SegmentedCells(cells,
-      spatialCoords = spatialCoords,
-      cellTypeString = cellType,
-      imageIDString = imageID
-    )
-
-    cellSummary <- cellSummary(cells, bind = bind)
-  }
-
-  if (is(cells, "SegmentedCells")) {
-    cellSummary <- cellSummary(cells, bind = bind)
-  }
-
-  cellSummary
+  cellSummary(cells, bind = bind)
 }
 
 
@@ -1082,7 +1059,7 @@ colTest <- function(
 
 #' Produces a dataframe showing L-function metric for each imageID entry.
 #'
-#' @param results 
+#' @param results
 #'  Spicy test result obtained from spicy.
 #' @param pairName
 #'  A string specifying the pairwise interaction of interest. If NULL, all
@@ -1099,20 +1076,20 @@ colTest <- function(
 #' @export
 bind <- function(results,
                  pairName = NULL) {
+  df <- data.frame(
+    imageID = results$imageID,
+    condition = results$condition
+  )
 
-  df <- data.frame(imageID = results$imageID,
-                   condition = results$condition)
-  
   if (!is.null(results$subject)) {
     df <- cbind(df, subject = results$subject)
   }
-  
+
   if (is.null(pairName)) {
     df <- cbind(df, do.call(cbind, results$pairwiseAssoc))
   } else {
     df <- cbind(df, results$pairwiseAssoc[[pairName]])
   }
-  
+
   return(df)
 }
-
