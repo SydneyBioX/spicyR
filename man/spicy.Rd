@@ -10,11 +10,14 @@
 \usage{
 spicy(
   cells,
-  condition = NULL,
+  condition,
   subject = NULL,
   covariates = NULL,
   from = NULL,
   to = NULL,
+  imageIDCol = "imageID",
+  cellTypeCol = "cellType",
+  spatialCoordCols = c("x", "y"),
   alternateResult = NULL,
   verbose = FALSE,
   weights = TRUE,
@@ -28,9 +31,6 @@ spicy(
   minLambda = 0.05,
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
-  imageIDCol = "imageID",
-  cellTypeCol = "cellType",
-  spatialCoordCols = c("x", "y"),
   ...
 )
 }
@@ -38,8 +38,7 @@ spicy(
 \item{cells}{A SummarizedExperiment or data frame that contains at least the  variables
 x and y, giving the location coordinates of each cell, and cellType.}
 
-\item{condition}{Vector of conditions to be tested corresponding to each image if cells is
-a data frame.}
+\item{condition}{Vector of conditions to be tested corresponding to each image.}
 
 \item{subject}{Vector of subject IDs corresponding to each image if cells is
 a data frame.}
@@ -50,6 +49,12 @@ mixed effects model as fixed effects.}
 \item{from}{vector of cell types which you would like to compare to the to vector}
 
 \item{to}{vector of cell types which you would like to compare to the from vector}
+
+\item{imageIDCol}{The image ID if using SingleCellExperiment.}
+
+\item{cellTypeCol}{The cell type if using SingleCellExperiment.}
+
+\item{spatialCoordCols}{The spatial coordinates if using a SingleCellExperiment.}
 
 \item{alternateResult}{An pairwise association statistic between each combination of celltypes in
 each image.}
@@ -82,12 +87,6 @@ concave windows.}
 pairwise association calculation.}
 
 \item{...}{Other options.}
-
-\item{imageID}{The image ID if using SingleCellExperiment.}
-
-\item{cellType}{The cell type if using SingleCellExperiment.}
-
-\item{spatialCoords}{The spatial coordinates if using a SingleCellExperiment.}
 }
 \value{
 Data frame of p-values.
@@ -107,9 +106,13 @@ spicy(diabetesData,
 
 # Test all pairwise combinations of cell types without random effect of
 # patient.
-# spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
+\dontrun{
+spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
+}
 
 # Test all pairwise combination of cell types with random effect of patient.
-# spicy(diabetesData, condition = "condition", subject = "subject")
+\dontrun{
+spicy(diabetesData, condition = "condition", subject = "subject")
+}
 
 }

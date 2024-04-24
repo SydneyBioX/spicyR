@@ -4,8 +4,7 @@
 #'   A SummarizedExperiment or data frame that contains at least the  variables
 #'   x and y, giving the location coordinates of each cell, and cellType.
 #' @param condition
-#'   Vector of conditions to be tested corresponding to each image if cells is
-#'   a data frame.
+#'   Vector of conditions to be tested corresponding to each image.
 #' @param subject Vector of subject IDs corresponding to each image if cells is
 #'   a data frame.
 #' @param covariates Vector of covariate names that should be included in the
@@ -14,6 +13,10 @@
 #'   vector of cell types which you would like to compare to the to vector
 #' @param to
 #'   vector of cell types which you would like to compare to the from vector
+#' @param imageIDCol The image ID if using SingleCellExperiment.
+#' @param cellTypeCol The cell type if using SingleCellExperiment.
+#' @param spatialCoordCols
+#'   The spatial coordinates if using a SingleCellExperiment.
 #' @param alternateResult
 #'   An pairwise association statistic between each combination of celltypes in
 #'   each image.
@@ -41,9 +44,6 @@
 #' @param includeZeroCells
 #'   A logical indicating whether to include cells with zero counts in the
 #'   pairwise association calculation.
-#' @param imageIDCol The image ID if using SingleCellExperiment.
-#' @param cellTypeCol The cell type if using SingleCellExperiment.
-#' @param spatialCoordCols The spatial coordinates if using a SingleCellExperiment.
 #' @param ... Other options.
 #'
 #' @return Data frame of p-values.
@@ -61,10 +61,14 @@
 #'
 #' # Test all pairwise combinations of cell types without random effect of
 #' # patient.
-#' # spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
+#' \dontrun{
+#' spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
+#' }
 #'
 #' # Test all pairwise combination of cell types with random effect of patient.
-#' # spicy(diabetesData, condition = "condition", subject = "subject")
+#' \dontrun{
+#' spicy(diabetesData, condition = "condition", subject = "subject")
+#' }
 #'
 #' @aliases
 #' spicy
@@ -80,6 +84,9 @@ spicy <- function(cells,
                   covariates = NULL,
                   from = NULL,
                   to = NULL,
+                  imageIDCol = "imageID",
+                  cellTypeCol = "cellType",
+                  spatialCoordCols = c("x", "y"),
                   alternateResult = NULL,
                   verbose = FALSE,
                   weights = TRUE,
@@ -93,11 +100,7 @@ spicy <- function(cells,
                   minLambda = 0.05,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
-                  imageIDCol = "imageID",
-                  cellTypeCol = "cellType",
-                  spatialCoordCols = c("x", "y"),
                   ...) {
-
   if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
     cells <- .format_data(
       cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose
