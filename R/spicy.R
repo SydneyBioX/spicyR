@@ -41,9 +41,9 @@
 #' @param includeZeroCells
 #'   A logical indicating whether to include cells with zero counts in the
 #'   pairwise association calculation.
-#' @param imageID The image ID if using SingleCellExperiment.
-#' @param cellType The cell type if using SingleCellExperiment.
-#' @param spatialCoords The spatial coordinates if using a SingleCellExperiment.
+#' @param imageIDCol The image ID if using SingleCellExperiment.
+#' @param cellTypeCol The cell type if using SingleCellExperiment.
+#' @param spatialCoordCols The spatial coordinates if using a SingleCellExperiment.
 #' @param ... Other options.
 #'
 #' @return Data frame of p-values.
@@ -75,7 +75,7 @@
 #' @importFrom rlang .data
 #' @importFrom tibble column_to_rownames
 spicy <- function(cells,
-                  condition = NULL,
+                  condition,
                   subject = NULL,
                   covariates = NULL,
                   from = NULL,
@@ -97,6 +97,7 @@ spicy <- function(cells,
                   cellTypeCol = "cellType",
                   spatialCoordCols = c("x", "y"),
                   ...) {
+
   if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
     cells <- .format_data(
       cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose
