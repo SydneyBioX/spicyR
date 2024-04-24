@@ -35,8 +35,8 @@ spicy(
 )
 }
 \arguments{
-\item{cells}{A SegmentedCells or data frame that contains at least the  variables x and
-y, giving the location coordinates of each cell, and cellType.}
+\item{cells}{A SummarizedExperiment or data frame that contains at least the  variables
+x and y, giving the location coordinates of each cell, and cellType.}
 
 \item{condition}{Vector of conditions to be tested corresponding to each image if cells is
 a data frame.}
@@ -51,7 +51,8 @@ mixed effects model as fixed effects.}
 
 \item{to}{vector of cell types which you would like to compare to the from vector}
 
-\item{alternateResult}{An pairwise association statistic between each combination of celltypes in each image.}
+\item{alternateResult}{An pairwise association statistic between each combination of celltypes in
+each image.}
 
 \item{verbose}{logical indicating whether to output messages.}
 
