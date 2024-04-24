@@ -39,7 +39,9 @@ isKonditional <- function(konditionalResult) {
 #' @importFrom SpatialExperiment spatialCoords
 .format_data <- function(
     cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose) {
-    if (is(cells, "SpatialExperiment")) {
+    if (is(cells, "data.frame")) {
+        # pass
+    } else if (is(cells, "SpatialExperiment")) {
         spatialCoordCols <- names(spatialCoords(cells))
         cells <- cells %>%
             colData() %>%
@@ -51,11 +53,35 @@ isKonditional <- function(konditionalResult) {
             colData() %>%
             data.frame()
     } else {
-        stop(
-            "`cells` is an unsupported subclass of SummarizedExperiment. ",
-            "SingleCellExperiment and SpatialExperiment",
-            " are currently supported."
+        temp <- tryCatch(
+            expr = {
+                as.data.frame(cells)
+            }, error = NULL
         )
+        if (is.null(temp)) {
+            cli::cli_abort(
+                c(
+                    "x" = "{.var cells} is an unsupported class: {.cls {class(cells)}}. \n", # nolint
+                    "i" = "data.frame (or coercible), SingleCellExperiment and SpatialExperiment are currently supported." # nolint
+                )
+            )
+        } else {
+            cells <- temp
+        }
+    }
+
+    for (col in c(
+        imageIDCol = imageIDCol,
+        cellTypeCol = cellTypeCol,
+        spatialCoordCols_x = spatialCoordCols[1],
+        spatialCoordCols_y = spatialCoordCols[2]
+    )) {
+        if (!col %in% colnames(cells)) {
+            cli::cli_abort(c(
+                "x" = "Specified {.var {names(col)}} ({.emph {col}}) is not in {.var cells}.", # nolint
+                "i" = "{.code names(cells)}: {names(cells)}"
+            ))
+        }
     }
 
     cells <- cells %>%
