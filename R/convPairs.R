@@ -1,40 +1,44 @@
 #' Converts colPairs object into an abundance matrix based on number of nearby
 #' interactions for every cell type.
 #'
-#' @param cells 
+#' @param cells
 #'   A SingleCellExperiment that contains objects in the colPairs slot.
-#' @param colPair 
-#'   The name of the object in the colPairs slot for which the dataframe is 
+#' @param colPair
+#'   The name of the object in the colPairs slot for which the dataframe is
 #'   constructed from.
 #' @param imageID The image ID if using SingleCellExperiment.
 #' @param cellType The cell type if using SingleCellExperiment.
 #'
 #' @return Matrix of abundances
 #' @export
-#' 
+#'
 #' @examples
 #' data("diabetesData_SCE")
-#' 
+#'
 #' diabetesData_SPE <- SpatialExperiment::SpatialExperiment(diabetesData_SCE,
-#'   colData = SingleCellExperiment::colData(diabetesData_SCE))
+#'   colData = SingleCellExperiment::colData(diabetesData_SCE)
+#' )
 #' SpatialExperiment::spatialCoords(diabetesData_SPE) <- data.frame(
-#'   SingleCellExperiment::colData(diabetesData_SPE)$x, 
-#'   SingleCellExperiment::colData(diabetesData_SPE)$y) |> 
-#'     as.matrix()
-#'     
+#'   SingleCellExperiment::colData(diabetesData_SPE)$x,
+#'   SingleCellExperiment::colData(diabetesData_SPE)$y
+#' ) |>
+#'   as.matrix()
+#'
 #' SpatialExperiment::spatialCoordsNames(diabetesData_SPE) <- c("x", "y")
-#' 
-#' diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE, 
-#'   img_id = "imageID", 
-#'   type = "knn", 
-#'   k = 20, 
-#'   coords = c("x", "y"))
-#' 
+#'
+#' diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE,
+#'   img_id = "imageID",
+#'   type = "knn",
+#'   k = 20,
+#'   coords = c("x", "y")
+#' )
+#'
 #' pairAbundances <- convPairs(diabetesData_SPE,
-#'   colPair = "knn_interaction_graph")
-#' 
+#'   colPair = "knn_interaction_graph"
+#' )
+#'
 #' @export
-#' @importFrom SingleCellExperiment colPairs colData
+#' @importFrom SingleCellExperiment colPair colData
 #' @importFrom tibble rownames_to_column column_to_rownames
 convPairs <- function(cells,
                       colPair,
@@ -87,25 +91,25 @@ convPairs <- function(cells,
       names_from = test, values_from = association, values_fill = 0
     ) |>
     tibble::column_to_rownames(imageID)
-  
-  
-  # Hot fix for spicy input when no cell type interactions exist for a pairwise 
+
+
+  # Hot fix for spicy input when no cell type interactions exist for a pairwise
   # relation.
   vector <- cells$cellType |> unique()
-  
+
   pairwise_vector <- c()
-  
+
   for (i in vector) {
     for (j in vector) {
       pairwise_vector <- c(pairwise_vector, paste(i, j, sep = "__"))
     }
   }
-  
+
   tmp <- dplyr::setdiff(pairwise_vector, colnames(all_pairs))
   df <- data.frame(matrix(0, nrow = nrow(all_pairs), ncol = length(tmp)))
   colnames(df) <- tmp
-  
+
   all_pairs <- cbind(all_pairs, df)
-  
+
   return(all_pairs)
 }

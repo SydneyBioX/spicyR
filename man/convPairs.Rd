@@ -10,7 +10,7 @@ convPairs(cells, colPair, cellType = "cellType", imageID = "imageID")
 \arguments{
 \item{cells}{A SingleCellExperiment that contains objects in the colPairs slot.}
 
-\item{colPair}{The name of the object in the colPairs slot for which the dataframe is 
+\item{colPair}{The name of the object in the colPairs slot for which the dataframe is
 constructed from.}
 
 \item{cellType}{The cell type if using SingleCellExperiment.}
@@ -28,21 +28,25 @@ interactions for every cell type.
 data("diabetesData_SCE")
 
 diabetesData_SPE <- SpatialExperiment::SpatialExperiment(diabetesData_SCE,
-  colData = SingleCellExperiment::colData(diabetesData_SCE))
+  colData = SingleCellExperiment::colData(diabetesData_SCE)
+)
 SpatialExperiment::spatialCoords(diabetesData_SPE) <- data.frame(
-  SingleCellExperiment::colData(diabetesData_SPE)$x, 
-  SingleCellExperiment::colData(diabetesData_SPE)$y) |> 
-    as.matrix()
-    
+  SingleCellExperiment::colData(diabetesData_SPE)$x,
+  SingleCellExperiment::colData(diabetesData_SPE)$y
+) |>
+  as.matrix()
+
 SpatialExperiment::spatialCoordsNames(diabetesData_SPE) <- c("x", "y")
 
-diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE, 
-  img_id = "imageID", 
-  type = "knn", 
-  k = 20, 
-  coords = c("x", "y"))
+diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE,
+  img_id = "imageID",
+  type = "knn",
+  k = 20,
+  coords = c("x", "y")
+)
 
 pairAbundances <- convPairs(diabetesData_SPE,
-  colPair = "knn_interaction_graph")
+  colPair = "knn_interaction_graph"
+)
 
 }
