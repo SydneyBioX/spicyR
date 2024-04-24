@@ -1,8 +1,8 @@
 #' Performs spatial tests on spatial cytometry data.
 #'
 #' @param cells
-#'   A SegmentedCells or data frame that contains at least the  variables x and
-#'   y, giving the location coordinates of each cell, and cellType.
+#'   A SummarizedExperiment or data frame that contains at least the  variables
+#'   x and y, giving the location coordinates of each cell, and cellType.
 #' @param condition
 #'   Vector of conditions to be tested corresponding to each image if cells is
 #'   a data frame.
@@ -15,7 +15,8 @@
 #' @param to
 #'   vector of cell types which you would like to compare to the from vector
 #' @param alternateResult
-#'   An pairwise association statistic between each combination of celltypes in each image.
+#'   An pairwise association statistic between each combination of celltypes in
+#'   each image.
 #' @param verbose logical indicating whether to output messages.
 #' @param weights
 #'   logical indicating whether to include weights based on cell counts.
@@ -96,9 +97,9 @@ spicy <- function(cells,
                   cellTypeCol = "cellType",
                   spatialCoordCols = c("x", "y"),
                   ...) {
-  if (is(cells, "SummarizedExperiment")) {
+  if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
     cells <- .format_data(
-      cells, imageIDCol, cellTypeCol, spatialCoordCols
+      cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose
     )
   }
 

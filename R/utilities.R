@@ -32,10 +32,13 @@ isKonditional <- function(konditionalResult) {
     return(all(colNames %in% names(konditionalResult)))
 }
 
+#' A format SummarizedExperiment and data.frame objects into a canonical form.
+#'
 #' @importFrom SummarizedExperiment colData
 #' @importFrom magrittr %>%
 #' @importFrom SpatialExperiment spatialCoords
-.format_data <- function(cells, imageIDCol, cellTypeCol, spatialCoordCols) {
+.format_data <- function(
+    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose) {
     if (is(cells, "SpatialExperiment")) {
         spatialCoordCols <- names(spatialCoords(cells))
         cells <- cells %>%
@@ -64,9 +67,11 @@ isKonditional <- function(konditionalResult) {
         )
     # create cellID if it does not exist
     if (is.null(cells$cellID)) {
-        cli::cli_inform(
-            "No column called cellID. Creating one."
-        )
+        if (verbose) {
+            cli::cli_inform(
+                "No column called cellID. Creating one."
+            )
+        }
         cells <- dplyr::mutate(
             cells,
             cellID = paste0("cell", "_", dplyr::row_number())
@@ -75,9 +80,11 @@ isKonditional <- function(konditionalResult) {
 
     # create imageCellID if it does not exist
     if (is.null(cells$imageCellID)) {
-        cli::cli_inform(
-            "No column called imageCellID. Creating one."
-        )
+        if (verbose) {
+            cli::cli_inform(
+                "No column called imageCellID. Creating one."
+            )
+        }
         cells <- cells %>%
             dplyr::group_by(imageID) %>%
             dplyr::mutate(
