@@ -65,9 +65,8 @@ isKonditional <- function(konditionalResult) {
                     "i" = "data.frame (or coercible), SingleCellExperiment and SpatialExperiment are currently supported." # nolint
                 )
             )
-        } else {
-            cells <- temp
         }
+        cells <- temp
     }
 
     for (col in c(
