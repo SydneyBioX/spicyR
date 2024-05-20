@@ -25,14 +25,18 @@ Converts colPairs object into an abundance matrix based on number of nearby
 interactions for every cell type.
 }
 \examples{
-data("diabetesData_SCE")
+data("diabetesData")
+images <- c("A09", "A11", "A16", "A17")
+diabetesData <- diabetesData[
+  , SummarizedExperiment::colData(diabetesData)$imageID \%in\% images
+]
 
-diabetesData_SPE <- SpatialExperiment::SpatialExperiment(diabetesData_SCE,
-  colData = SingleCellExperiment::colData(diabetesData_SCE)
+diabetesData_SPE <- SpatialExperiment::SpatialExperiment(diabetesData,
+  colData = SummarizedExperiment::colData(diabetesData)
 )
 SpatialExperiment::spatialCoords(diabetesData_SPE) <- data.frame(
-  SingleCellExperiment::colData(diabetesData_SPE)$x,
-  SingleCellExperiment::colData(diabetesData_SPE)$y
+  SummarizedExperiment::colData(diabetesData_SPE)$x,
+  SummarizedExperiment::colData(diabetesData_SPE)$y
 ) |>
   as.matrix()
 

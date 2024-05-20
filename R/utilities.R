@@ -108,3 +108,54 @@ isKonditional <- function(konditionalResult) {
     }
     cells
 }
+
+getCellSummary <- function(
+    data,
+    imageID = NULL,
+    bind = TRUE) {
+    data %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::select(imageID, cellID, imageCellID, x, y, cellType) %>%
+        dplyr::mutate(imageID = as.factor(imageID)) %>%
+        S4Vectors::DataFrame() %>%
+        {
+            if (bind) . else S4Vectors::split(., .$imageID)
+        }
+}
+
+
+getImageID <- function(x, imageID = NULL) {
+    x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::pull(imageID)
+}
+
+getCellType <- function(x, imageID = NULL) {
+    x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::pull(cellType)
+}
+
+getImagePheno <- function(x,
+                          imageID = NULL,
+                          bind = TRUE,
+                          expand = FALSE) {
+    x <- x %>%
+        dplyr::filter(
+            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+        ) %>%
+        dplyr::select(-cellID, -imageCellID, -x, -y, -cellType) %>%
+        dplyr::mutate(imageID = as.factor(imageID)) %>%
+        {
+            if (expand) . else dplyr::distinct(.)
+        } %>%
+        S4Vectors::DataFrame()
+    if (expand) rownames(x) <- x$imageID
+    x
+}

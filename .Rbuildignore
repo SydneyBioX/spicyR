@@ -4,3 +4,4 @@
 ^Meta$
 ^docs$
 ^\.vscode$
+^_pkgdown\.yml$

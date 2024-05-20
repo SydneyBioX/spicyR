@@ -2,10 +2,11 @@ Package: spicyR
 Type: Package
 Title: Spatial analysis of in situ cytometry data
 Version: 1.15.4
-Authors@R: c(person("Nicolas", "Canete", email = "nicolas.canete@sydney.edu.au",
-    role = c("aut")),
-    person("Ellis", "Patrick", email = "ellis.patrick@sydney.edu.au",
-    role = c("aut", "cre")))
+Authors@R: c(
+    person("Nicolas", "Canete", , "nicolas.canete@sydney.edu.au", role = "aut"),
+    person("Ellis", "Patrick", , "ellis.patrick@sydney.edu.au", role = c("aut", "cre")),
+    person("Nicholas", "Robertson", , "nicholas.robertson@sydney.edu.au", role = "ctb")
+  )
 Description: The spicyR package provides a framework for performing inference on changes in spatial relationships between pairs of cell types for cell-resolution spatial omics technologies. spicyR consists of three primary steps: (i) summarizing the degree of spatial localization between pairs of cell types for each image; (ii) modelling the variability in localization summary statistics as a function of cell counts and (iii) testing for changes in spatial localizations associated with a response variable.  
 License: GPL (>=2)
 LazyData: true
@@ -23,14 +24,12 @@ Imports:
     spatstat.explore,
     spatstat.geom,
     lmerTest,
-    BiocGenerics,
     S4Vectors,
     methods,
     mgcv,
     pheatmap,
     rlang,
     grDevices,
-    IRanges,
     stats,
     data.table,
     dplyr,

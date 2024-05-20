@@ -3,7 +3,7 @@ test_that(
     {
         load(system.file("testdata/original_result.rda", package = "spicyR"))
         expect_equal(
-            suppressWarnings(spicy(diabetesData_SCE,
+            suppressWarnings(spicy(diabetesData,
                 condition = "stage", subject = "case",
                 from = "Tc", to = "Th"
             )),

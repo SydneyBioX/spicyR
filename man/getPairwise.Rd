@@ -66,5 +66,9 @@ Get statistic from pairwise L curve of a single image.
 }
 \examples{
 data("diabetesData")
-pairAssoc <- getPairwise(diabetesData[1, ])
+# Subset by imageID for fast example
+selected_cells <- diabetesData[
+  , SummarizedExperiment::colData(diabetesData)$imageID == "A09"
+]
+pairAssoc <- getPairwise(selected_cells)
 }

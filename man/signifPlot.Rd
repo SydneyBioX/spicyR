@@ -42,6 +42,7 @@ Plots result of signifPlot.
 }
 \examples{
 data(spicyTest)
+
 signifPlot(spicyTest, breaks = c(-3, 3, 0.5))
 
 }

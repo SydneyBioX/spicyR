@@ -15,6 +15,7 @@
 #'
 #' @examples
 #' data(spicyTest)
+#'
 #' signifPlot(spicyTest, breaks = c(-3, 3, 0.5))
 #'
 #' @export
@@ -27,6 +28,7 @@
 #'     element_blank guide_colourbar
 #' @importFrom ggforce geom_arc_bar geom_circle
 #' @importFrom grDevices colors
+#' @importFrom stats setNames
 signifPlot <- function(results,
                        fdr = FALSE,
                        type = "bubble",
@@ -152,7 +154,7 @@ bubblePlot <- function(
   df$cellTypeA <- droplevels(df$cellTypeA)
   df$cellTypeB <- droplevels(df$cellTypeB)
 
-  shape.legend <- setNames(
+  shape.legend <- stats::setNames(
     c("\u25D6", "\u25D7"),
     c(levels(test$condition)[1], levels(test$condition)[coef])
   )

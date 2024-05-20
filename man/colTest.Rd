@@ -30,9 +30,12 @@ frame
 # Test for an association with long-duration diabetes
 # This is clearly ignoring the repeated measures...
 data("diabetesData")
+diabetesData <- spicyR:::.format_data(
+  diabetesData, "imageID", "cellType", c("x", "y"), FALSE
+)
 props <- getProp(diabetesData)
-condition <- imagePheno(diabetesData)$stage
-names(condition) <- imagePheno(diabetesData)$imageID
+condition <- spicyR:::getImagePheno(diabetesData)$stage
+names(condition) <- spicyR:::getImagePheno(diabetesData)$imageID
 condition <- condition[condition \%in\% c("Long-duration", "Onset")]
 test <- colTest(props[names(condition), ], condition)
 }

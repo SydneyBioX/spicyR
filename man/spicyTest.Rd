@@ -8,7 +8,7 @@
 spicyTest a spicy object
 }
 \usage{
-spicyTest
+data("spicyTest")
 }
 \description{
 Results from the call:

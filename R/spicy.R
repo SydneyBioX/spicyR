@@ -109,10 +109,10 @@ spicy <- function(cells,
 
   if (is.null(from) || is.null(to)) {
     if (is.null(from)) {
-      from <- as.character(unique(cellType(cells)))
+      from <- as.character(unique(getCellType(cells)))
     }
     if (is.null(to)) {
-      to <- as.character(unique(cellType(cells)))
+      to <- as.character(unique(getCellType(cells)))
     }
 
     m1 <- rep(from, times = length(to))
@@ -126,13 +126,13 @@ spicy <- function(cells,
   }
 
 
-  if (any((!to %in% cellType(cells)) | (!from %in% cellType(cells)))) {
-    stop("to and from need to be cell type in your SegmentedCells")
+  if (any((!to %in% getCellType(cells)) | (!from %in% getCellType(cells)))) {
+    stop("to and from need to be cell type in your data")
   }
 
-  nCells <- table(imageID(cells), cellType(cells))
+  nCells <- table(getImageID(cells), getCellType(cells))
 
-  conditionVector <- as.data.frame(imagePheno(cells))[condition][, 1]
+  conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
 
   if (!is.factor(conditionVector)) {
     conditionVector <- as.factor(conditionVector)
@@ -231,8 +231,8 @@ spicy <- function(cells,
         cells = cells,
         condition = condition,
         covariates = covariates,
-        cellCounts = table(imageID(cells), cellType(cells)),
-        pheno = as.data.frame(imagePheno(cells))
+        cellCounts = table(getImageID(cells), getCellType(cells)),
+        pheno = as.data.frame(getImagePheno(cells))
       )
 
 
@@ -264,8 +264,8 @@ spicy <- function(cells,
         subject = subject,
         condition = condition,
         covariates = covariates,
-        cellCounts = table(imageID(cells), cellType(cells)),
-        pheno = as.data.frame(imagePheno(cells))
+        cellCounts = table(getImageID(cells), getCellType(cells)),
+        pheno = as.data.frame(getImagePheno(cells))
       )
 
 
@@ -295,7 +295,7 @@ spicy <- function(cells,
   df$condition <- conditionVector
 
   if (!is.null(subject)) {
-    df$subject <- as.data.frame(imagePheno(cells))[subject][, 1]
+    df$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
   }
 
   df$pairwiseAssoc <- pairwiseAssoc
@@ -304,7 +304,7 @@ spicy <- function(cells,
   df$weights <- weightFunction
   df$nCells <- nCells
 
-  df$imageIDs <- as.data.frame(imagePheno(cells))["imageID"][, 1]
+  df$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
   df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
 
   df <- methods::new("SpicyResults", df)
@@ -414,7 +414,11 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #'
 #' @examples
 #' data("diabetesData")
-#' pairAssoc <- getPairwise(diabetesData[1, ])
+#' # Subset by imageID for fast example
+#' selected_cells <- diabetesData[
+#'   , SummarizedExperiment::colData(diabetesData)$imageID == "A09"
+#' ]
+#' pairAssoc <- getPairwise(selected_cells)
 #' @export
 #' @importFrom BiocParallel bplapply
 getPairwise <- function(
@@ -438,7 +442,7 @@ getPairwise <- function(
     )
   }
 
-  cells2 <- cellSummary(cells, bind = FALSE)
+  cells2 <- getCellSummary(cells, bind = FALSE)
 
 
   if (is.null(from)) from <- levels(cells2$cellType)
@@ -488,11 +492,6 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     df <- as.data.frame(
       SummarizedExperiment::colData(cells)
     )[, c(imageID, feature)]
-  }
-
-  if (is(cells, "SegmentedCells")) {
-    cellSummary <- cellSummary(cells, bind = TRUE)
-    df <- as.data.frame(cellSummary[, c(imageID, feature)])
   }
 
 
@@ -938,45 +937,9 @@ getWeightFunction <- function(
 #' @importFrom methods is
 prepCellSummary <- function(
     cells, spatialCoords, cellType, imageID, bind = FALSE) {
-  cellSummary(cells, bind = bind)
+  getCellSummary(cells, bind = bind)
 }
 
-
-extractSpicyInfo <- function(cells,
-                             imageID = "imageID",
-                             cellType = "cellType",
-                             spatialCoords = c("x", "y"),
-                             condition = NULL,
-                             subject = NULL,
-                             covariates = NULL) {
-  extra <- c(condition, subject, covariates)
-
-  if (is(cells, "SpatialExperiment")) {
-    cells <- cbind(colData(cells), spatialCoords(cells))
-    colnames(cells)[colnames(cells) %in% extra] <- paste0(
-      "phenotype_", colnames(cells)[colnames(cells) %in% extra]
-    )
-    cells <- SegmentedCells(cells,
-      spatialCoords = spatialCoords,
-      cellTypeString = cellType,
-      imageIDString = imageID
-    )
-  }
-
-  if (is(cells, "SingleCellExperiment")) {
-    cells <- colData(cells)
-    colnames(cells)[colnames(cells) %in% extra] <- paste0(
-      "phenotype_", colnames(cells)[colnames(cells) %in% extra]
-    )
-    cells <- SegmentedCells(cells,
-      spatialCoords = spatialCoords,
-      cellTypeString = cellType,
-      imageIDString = imageID
-    )
-  }
-
-  cells
-}
 
 
 
@@ -998,9 +961,12 @@ extractSpicyInfo <- function(cells,
 #' # Test for an association with long-duration diabetes
 #' # This is clearly ignoring the repeated measures...
 #' data("diabetesData")
+#' diabetesData <- spicyR:::.format_data(
+#'   diabetesData, "imageID", "cellType", c("x", "y"), FALSE
+#' )
 #' props <- getProp(diabetesData)
-#' condition <- imagePheno(diabetesData)$stage
-#' names(condition) <- imagePheno(diabetesData)$imageID
+#' condition <- spicyR:::getImagePheno(diabetesData)$stage
+#' names(condition) <- spicyR:::getImagePheno(diabetesData)$imageID
 #' condition <- condition[condition %in% c("Long-duration", "Onset")]
 #' test <- colTest(props[names(condition), ], condition)
 #' @export

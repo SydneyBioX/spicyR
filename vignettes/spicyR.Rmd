@@ -60,13 +60,13 @@ are modelled as a fixed effect.
 Here, we use a subset of the Damond et al., 2019 imaging mass cytometry dataset. We will compare 
 the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
 
-`diabetesData_SCE` is a `SingleCellExperiment` object containing single-cell data of 160 images 
+`diabetesData` is a `SingleCellExperiment` object containing single-cell data of 160 images 
 from 8 subjects, with 20 images per subject.
 
 
 ```{r}
-data("diabetesData_SCE")
-diabetesData_SCE
+data("diabetesData")
+diabetesData
 ```
 
 In this data set, cell types include immune cell types (B cells, naive T cells,
@@ -97,7 +97,7 @@ factor if not already a factor.
 
 ```{r message=FALSE}
 spicyTestPair <- spicy(
-  diabetesData_SCE,
+  diabetesData,
   condition = "stage",
   subject = "case",
   from = "beta",
@@ -119,7 +119,7 @@ types by excluding the `from` and `to` parameters from `spicy()`.
 
 ```{r message=FALSE}
 spicyTest <- spicy(
-  diabetesData_SCE,
+  diabetesData,
   condition = "stage",
   subject = "case"
 )
@@ -187,8 +187,8 @@ image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1
 multiple images and run a mixed effects model to determine collective differences
 across conditions. 
 ```{r}
-diabetesData_SPE <- SpatialExperiment(diabetesData_SCE,
-                                      colData = colData(diabetesData_SCE)) 
+diabetesData_SPE <- SpatialExperiment(diabetesData,
+                                      colData = colData(diabetesData)) 
 
 spatialCoords(diabetesData_SPE) <- data.frame(colData(diabetesData_SPE)$x, colData(diabetesData_SPE)$y) |> as.matrix()
 spatialCoordsNames(diabetesData_SPE) <- c("x", "y")

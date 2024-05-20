@@ -1,7 +1,7 @@
 test_that("Data formatting works of different formats.", {
   diabetesData_SPE <- SpatialExperiment::SpatialExperiment(
-    diabetesData_SCE,
-    colData = SummarizedExperiment::colData(diabetesData_SCE)
+    diabetesData,
+    colData = SummarizedExperiment::colData(diabetesData)
   )
 
   SpatialExperiment::spatialCoords(diabetesData_SPE) <- data.frame(
@@ -15,13 +15,13 @@ test_that("Data formatting works of different formats.", {
   )
   expect_no_error(
     .format_data(
-      SummarizedExperiment::colData(diabetesData_SCE),
+      SummarizedExperiment::colData(diabetesData),
       "imageID", "cellType", c("x", "y"), FALSE
     )
   )
   expect_no_error(
     .format_data(
-      SummarizedExperiment::colData(diabetesData_SCE) %>%
+      SummarizedExperiment::colData(diabetesData) %>%
         as.data.frame() %>%
         select(-cellID, -imageCellID),
       "imageID", "cellType", c("x", "y"), FALSE
@@ -34,12 +34,12 @@ test_that(
   {
     expect_error(
       .format_data(
-        diabetesData_SCE, "imageIDs", "cellType", c("x", "y"), FALSE
+        diabetesData, "imageIDs", "cellType", c("x", "y"), FALSE
       )
     )
     expect_error(
       .format_data(
-        diabetesData_SCE, "imageID", "cellType", c("x", "b"), FALSE
+        diabetesData, "imageID", "cellType", c("x", "b"), FALSE
       )
     )
   }
