@@ -26,7 +26,6 @@ Imports:
     lmerTest,
     S4Vectors,
     methods,
-    mgcv,
     pheatmap,
     rlang,
     grDevices,

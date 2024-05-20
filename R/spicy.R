@@ -73,7 +73,6 @@
 #' @aliases
 #' spicy
 #' spicy,spicy-method
-#' @importFrom mgcv gam ti
 #' @importFrom BiocParallel SerialParam
 #' @importFrom scam scam
 #' @importFrom rlang .data
