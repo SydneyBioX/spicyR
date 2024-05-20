@@ -43,6 +43,8 @@ Plots result of signifPlot.
 \examples{
 data(spicyTest)
 
-signifPlot(spicyTest, breaks = c(-3, 3, 0.5))
+p <- signifPlot(spicyTest, breaks = c(-3, 3, 0.5))
+# plot includes unicode characters, do not use defualt pdf device
+ggplot2::ggsave(p, filename = tempfile(), device = cairo_pdf)
 
 }
