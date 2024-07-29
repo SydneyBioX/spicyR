@@ -16,7 +16,7 @@ Encoding: UTF-8
 Depends: R (>= 4.1)
 VignetteBuilder: knitr
 BugReports: https://github.com/SydneyBioX/spicyR/issues
-URL: https://ellispatrick.github.io/spicyR/ https://github.com/SydneyBioX/spicyR
+URL: https://ellispatrick.github.io/spicyR/ https://github.com/SydneyBioX/spicyR, https://sydneybiox.github.io/spicyR/
 Imports: 
     ggplot2,
     concaveman,
