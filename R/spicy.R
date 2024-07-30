@@ -146,6 +146,16 @@ spicy <- function(cells,
       )
     )
   }
+  
+  ## Check whether the subject parameter has a one-to-one mapping with image
+  if (!is.null(subject)) {
+    if (nrow(unique(cells[, subject])) == nrow(unique(cells[, imageIDCol]))) {
+      subject <- NULL
+      cli::cli_inform("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a linear model instead of mixed model.")
+    }  
+  }
+  
+  
 
   ## Find pairwise associations
 
