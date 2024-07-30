@@ -12,6 +12,10 @@ author:
   affiliation:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
+- name: Alex Qin
+  affiliation:
+  - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+  - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 vignette: >
   %\VignetteIndexEntry{"Introduction to spicy"}

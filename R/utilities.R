@@ -146,16 +146,17 @@ getImagePheno <- function(x,
                           imageID = NULL,
                           bind = TRUE,
                           expand = FALSE) {
-    x <- x %>%
-        dplyr::filter(
-            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
-        ) %>%
-        dplyr::select(-cellID, -imageCellID, -x, -y, -cellType) %>%
-        dplyr::mutate(imageID = as.factor(imageID)) %>%
-        {
-            if (expand) . else dplyr::distinct(.)
-        } %>%
-        S4Vectors::DataFrame()
-    if (expand) rownames(x) <- x$imageID
+    x <- x[!duplicated(x$imageID),]
+    # x <- x %>%
+    #     dplyr::filter(
+    #         if (!is.null(!!imageID)) imageID == !!imageID else TRUE
+    #     ) %>%
+    #     dplyr::select(-cellID, -imageCellID, -x, -y, -cellType) %>%
+    #     dplyr::mutate(imageID = as.factor(imageID)) %>%
+    #     {
+    #         if (expand) . else dplyr::distinct(.)
+    #     } %>%
+    #     S4Vectors::DataFrame()
+    # if (expand) rownames(x) <- x$imageID
     x
 }
