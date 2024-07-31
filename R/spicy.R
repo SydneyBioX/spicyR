@@ -447,7 +447,7 @@ getPairwise <- function(
     spatialCoordCols = c("x", "y")) {
   if (is(cells, "SummarizedExperiment")) {
     cells <- .format_data(
-      cells, imageIDCol, cellTypeCol, spatialCoordCols
+      cells, imageIDCol, cellTypeCol, spatialCoordCols, FALSE
     )
   }
 

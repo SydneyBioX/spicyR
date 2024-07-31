@@ -27,7 +27,7 @@ isKonditional <- function(konditionalResult) {
 #' @importFrom cli cli_abort cli_inform
 #' @noRd
 .format_data <- function(
-    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose) {
+    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose = FALSE) {
     if (is(cells, "data.frame")) {
         # pass
     } else if (is(cells, "SpatialExperiment")) {
