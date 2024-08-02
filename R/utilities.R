@@ -118,7 +118,7 @@ getCellSummary <- function(
             if (!is.null(!!imageID)) imageID == !!imageID else TRUE
         ) %>%
         dplyr::select(imageID, cellID, imageCellID, x, y, cellType) %>%
-        dplyr::mutate(imageID = as.factor(imageID)) %>%
+        dplyr::mutate(imageID = factor(imageID, levels = unique(imageID))) %>%
         S4Vectors::DataFrame() %>%
         {
             if (bind) . else S4Vectors::split(., .$imageID)
