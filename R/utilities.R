@@ -147,6 +147,8 @@ getImagePheno <- function(x,
                           bind = TRUE,
                           expand = FALSE) {
     x <- x[!duplicated(x$imageID),]
+    x <- x %>%
+      dplyr::mutate(imageID = factor(imageID, levels = unique(imageID)))
     # x <- x %>%
     #     dplyr::filter(
     #         if (!is.null(!!imageID)) imageID == !!imageID else TRUE
