@@ -777,28 +777,48 @@ inhomLPair <- function(data,
   p$cellTypeI <- cT[p$i]
   p$i <- factor(p$i, levels = data$cellID)
 
+  
   if (edgeCorrect) {
-    edge <- sapply(Rs[-1], function(x) borderEdge(X, x), simplify = FALSE)
-    edge <- do.call("cbind", edge)
+    rList <- sapply(Rs[-1], function(x){
+    p2 <- p
+    edge <-  borderEdge(X, x)
     edge <- as.data.frame(edge)
-    colnames(edge) <- Rs[-1]
+    colnames(edge) <- x
     edge$i <- data$cellID
     edge <- tidyr::pivot_longer(edge, -.data$i, names_to = "d")
-    p <- dplyr::left_join(as.data.frame(p), edge, c("i", "d"))
+    p2 <- as.data.frame(p2)
+    p2 <- p2[as.numeric(as.character(p2$d))<=x,]
+    p2$d <- as.character(x)
+    p2 <- dplyr::left_join(p2, edge, c("i", "d"))
+    p2$d <- factor(p2$d, levels = x)
+    p2 <- p2[p2$i != p2$j, ]
+    use <- p2$cellTypeI %in% from & p2$cellTypeJ %in% to
+    p2 <- p2[use, ]
+    inhomL(p2, lam, X, x)
+    
+    }, simplify = FALSE)
+     #browser()
+     r <- do.call("rbind", rList)
+  
+     r <- dplyr::group_by(r, cellTypeI, cellTypeJ)
+     r <- dplyr::summarise(r, wt = mean(wt))
+    
   } else {
     p <- as.data.frame(p)
     p$value <- 1
+    
+    p$d <- factor(p$d, levels = Rs[-1])
+    
+    p <- p[p$i != p$j, ]
+    
+    use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
+    p <- p[use, ]
+    
+    r <- inhomL(p, lam, X, Rs)
   }
 
 
-  p$d <- factor(p$d, levels = Rs[-1])
 
-  p <- p[p$i != p$j, ]
-
-  use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
-  p <- p[use, ]
-
-  r <- inhomL(p, lam, X, Rs)
 
   wt <- r$wt
   names(wt) <- paste(r$cellTypeI, r$cellTypeJ, sep = "__")
