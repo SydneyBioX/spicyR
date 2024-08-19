@@ -106,6 +106,19 @@ isKonditional <- function(konditionalResult) {
             ) %>%
             dplyr::ungroup()
     }
+    
+    # Check if imageID is a factor, if not make it as factor whilst keeping order
+    if(class(cells$imageID) != "factor") {
+      cells <- cells %>%
+        dplyr::mutate(imageID = factor(imageID, levels = unique(imageID)))
+    }
+    
+    # Check if imageID is a factor, if not make it as factor whilst keeping order
+    if(class(cells$cellType) != "factor") {
+      cells <- cells %>%
+        dplyr::mutate(cellType = factor(cellType, levels = unique(cellType)))
+    }
+    
     cells
 }
 
