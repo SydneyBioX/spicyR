@@ -71,7 +71,7 @@ isKonditional <- function(konditionalResult) {
             ))
         }
     }
-
+  
     cells <- cells %>%
         dplyr::rename(
             imageID = !!imageIDCol,
@@ -79,6 +79,23 @@ isKonditional <- function(konditionalResult) {
             x = spatialCoordCols[1],
             y = spatialCoordCols[2]
         )
+    
+    # Check if imageID is a factor, if not make it as factor whilst keeping order
+    if(class(cells$imageID) != "factor") {
+      cells <- cells %>%
+        dplyr::mutate(imageID = factor(imageID, levels = unique(imageID)))
+    }
+    
+    # Check if imageID is a factor, if not make it as factor whilst keeping order
+    if(class(cells$cellType) != "factor") {
+      cells <- cells %>%
+        dplyr::mutate(cellType = factor(cellType, levels = unique(cellType)))
+    }
+    
+    # Order the cells by imageID. This is important for when the data is split downstream
+    cells <- cells[order(cells$imageID),]  
+    
+    
     # create cellID if it does not exist
     if (is.null(cells$cellID)) {
         if (verbose) {
@@ -107,18 +124,6 @@ isKonditional <- function(konditionalResult) {
             dplyr::ungroup()
     }
     
-    # Check if imageID is a factor, if not make it as factor whilst keeping order
-    if(class(cells$imageID) != "factor") {
-      cells <- cells %>%
-        dplyr::mutate(imageID = factor(imageID, levels = unique(imageID)))
-    }
-    
-    # Check if imageID is a factor, if not make it as factor whilst keeping order
-    if(class(cells$cellType) != "factor") {
-      cells <- cells %>%
-        dplyr::mutate(cellType = factor(cellType, levels = unique(cellType)))
-    }
-    
     cells
 }
 
@@ -131,7 +136,7 @@ getCellSummary <- function(
             if (!is.null(!!imageID)) imageID == !!imageID else TRUE
         ) %>%
         dplyr::select(imageID, cellID, imageCellID, x, y, cellType) %>%
-        dplyr::mutate(imageID = factor(imageID, levels = unique(imageID))) %>%
+        # dplyr::mutate(imageID = factor(imageID, levels = unique(imageID))) %>%
         S4Vectors::DataFrame() %>%
         {
             if (bind) . else S4Vectors::split(., .$imageID)
