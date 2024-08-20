@@ -39,7 +39,8 @@
 #' @param minLambda
 #'   Minimum value for density for scaling when fitting inhomogeneous L-curves.
 #' @param Rs
-#'   A vector of radii that the measures of association should be calculated.
+#'   A vector of radii that the measures of association should be calculated. If
+#'   NULL, Rs = c(20, 50, 100) is specified by default.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
 #' @param includeZeroCells
 #'   A logical indicating whether to include cells with zero counts in the
