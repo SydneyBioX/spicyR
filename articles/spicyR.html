@@ -67,7 +67,7 @@ Qin</h4>
             <address class="author_afil">
       Westmead Institute for Medical Research, University of Sydney,
 AustraliaSchool of Mathematics and Statistics, University of Sydney,
-Australia<br><h4 data-toc-skip class="date">20 August 2024</h4>
+Australia<br><h4 data-toc-skip class="date">21 August 2024</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/SydneyBioX/spicyR/blob/devel/vignettes/spicyR.Rmd" class="external-link"><code>vignettes/spicyR.Rmd</code></a></small>
       <div class="d-none name"><code>spicyR.Rmd</code></div>
@@ -166,8 +166,8 @@ base condition and the second level as the comparison condition.
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">spicyTestPair</span><span class="op">)</span></span>
-<span><span class="co">#&gt;             intercept coefficient     p.value  adj.pvalue from    to</span></span>
-<span><span class="co">#&gt; beta__delta  182.2128   -34.00085 0.008724782 0.008724782 beta delta</span></span></code></pre></div>
+<span><span class="co">#&gt;             intercept coefficient    p.value adj.pvalue from    to</span></span>
+<span><span class="co">#&gt; beta__delta   60.9221   -7.998767 0.05427664 0.05427664 beta delta</span></span></code></pre></div>
 <p>We obtain a <code>spicy</code> object which details the results of
 the mixed effects modelling performed. As the <code>coefficient</code>
 in <code>spicyTest</code> is positive, we find that delta cells cells
@@ -190,38 +190,38 @@ parameters from <code><a href="../reference/spicy.html">spicy()</a></code>.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">spicyTest</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                          intercept coefficient      p.value adj.pvalue</span></span>
-<span><span class="co">#&gt; beta__delta           1.815457e+02  -48.736479 0.0005032491 0.07169646</span></span>
-<span><span class="co">#&gt; delta__beta           1.817943e+02  -48.166076 0.0005601286 0.07169646</span></span>
-<span><span class="co">#&gt; B__unknown           -1.442506e-15   11.770769 0.0052340673 0.42052603</span></span>
-<span><span class="co">#&gt; delta__delta          2.089550e+02  -52.061196 0.0125129204 0.42052603</span></span>
-<span><span class="co">#&gt; unknown__macrophage   1.007336e+01  -15.826911 0.0207411810 0.42052603</span></span>
-<span><span class="co">#&gt; unknown__B           -2.212263e-15   12.142843 0.0225856400 0.42052603</span></span>
-<span><span class="co">#&gt; macrophage__unknown   1.004422e+01  -14.471640 0.0244668217 0.42052603</span></span>
-<span><span class="co">#&gt; B__Th                 4.714404e-15   26.847613 0.0245045799 0.42052603</span></span>
-<span><span class="co">#&gt; otherimmune__naiveTc -9.292507e+00   33.584768 0.0255811877 0.42052603</span></span>
-<span><span class="co">#&gt; ductal__ductal        1.481580e+01   -8.632552 0.0266937176 0.42052603</span></span>
+<span><span class="co">#&gt; beta__delta           6.081500e+01  -15.433244 0.0006616410 0.09171134</span></span>
+<span><span class="co">#&gt; delta__beta           6.090722e+01  -15.276364 0.0007164949 0.09171134</span></span>
+<span><span class="co">#&gt; B__Th                 2.553231e-15   10.480124 0.0127535339 0.42316692</span></span>
+<span><span class="co">#&gt; delta__delta          7.021912e+01  -16.358092 0.0155005315 0.42316692</span></span>
+<span><span class="co">#&gt; Th__B                 2.990836e-15   10.003451 0.0173028442 0.42316692</span></span>
+<span><span class="co">#&gt; B__unknown           -1.049944e-15    4.584274 0.0182158635 0.42316692</span></span>
+<span><span class="co">#&gt; otherimmune__naiveTc -3.179087e+00   11.944638 0.0200221235 0.42316692</span></span>
+<span><span class="co">#&gt; unknown__macrophage   4.339584e+00   -5.274671 0.0222620877 0.42316692</span></span>
+<span><span class="co">#&gt; unknown__B           -1.077521e-15    4.680750 0.0244004305 0.42316692</span></span>
+<span><span class="co">#&gt; macrophage__unknown   4.305429e+00   -4.886438 0.0249693456 0.42316692</span></span>
 <span><span class="co">#&gt;                             from         to</span></span>
 <span><span class="co">#&gt; beta__delta                 beta      delta</span></span>
 <span><span class="co">#&gt; delta__beta                delta       beta</span></span>
-<span><span class="co">#&gt; B__unknown                     B    unknown</span></span>
+<span><span class="co">#&gt; B__Th                          B         Th</span></span>
 <span><span class="co">#&gt; delta__delta               delta      delta</span></span>
+<span><span class="co">#&gt; Th__B                         Th          B</span></span>
+<span><span class="co">#&gt; B__unknown                     B    unknown</span></span>
+<span><span class="co">#&gt; otherimmune__naiveTc otherimmune    naiveTc</span></span>
 <span><span class="co">#&gt; unknown__macrophage      unknown macrophage</span></span>
 <span><span class="co">#&gt; unknown__B               unknown          B</span></span>
-<span><span class="co">#&gt; macrophage__unknown   macrophage    unknown</span></span>
-<span><span class="co">#&gt; B__Th                          B         Th</span></span>
-<span><span class="co">#&gt; otherimmune__naiveTc otherimmune    naiveTc</span></span>
-<span><span class="co">#&gt; ductal__ductal            ductal     ductal</span></span></code></pre></div>
+<span><span class="co">#&gt; macrophage__unknown   macrophage    unknown</span></span></code></pre></div>
 <p>We can also examine the L-function metrics of individual images by
 using the convenient <code><a href="../reference/bind.html">bind()</a></code> function on our spicyTest
 results object.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bind.html">bind</a></span><span class="op">(</span><span class="va">spicyTest</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
 <span><span class="co">#&gt;   imageID condition subject ductal__ductal stromal__ductal</span></span>
-<span><span class="co">#&gt; 1     A09     Onset    6362      3.5882456        2.221666</span></span>
-<span><span class="co">#&gt; 2     A11     Onset    6362      3.5803460       -5.070033</span></span>
-<span><span class="co">#&gt; 3     A16     Onset    6362     29.8249524        7.859502</span></span>
-<span><span class="co">#&gt; 4     A17     Onset    6362     30.8885146       20.136107</span></span>
-<span><span class="co">#&gt; 5     A25     Onset    6362      0.9820586       -3.173230</span></span></code></pre></div>
+<span><span class="co">#&gt; 1     A09     Onset    6362       2.252319       1.5935122</span></span>
+<span><span class="co">#&gt; 2     A11     Onset    6362       2.199264      -0.8389297</span></span>
+<span><span class="co">#&gt; 3     A16     Onset    6362      11.056609       3.2865555</span></span>
+<span><span class="co">#&gt; 4     A17     Onset    6362      11.402243       8.0533783</span></span>
+<span><span class="co">#&gt; 5     A25     Onset    6362       1.325912      -0.1260980</span></span></code></pre></div>
 <p>Again, we obtain a <code>spicy</code> object which outlines the
 result of the mixed effects models performed for each pairwise
 combination of cell types.</p>
@@ -427,10 +427,10 @@ using the <code><a href="../reference/signifPlot.html">signifPlot()</a></code> f
 <span><span class="co">#&gt;  [71] EBImage_4.46.0              dplyr_1.1.4                </span></span>
 <span><span class="co">#&gt;  [73] HDF5Array_1.32.1            scam_1.2-17                </span></span>
 <span><span class="co">#&gt;  [75] shinydashboard_0.7.2        withr_3.0.1                </span></span>
-<span><span class="co">#&gt;  [77] numDeriv_2016.8-1.1         BiocManager_1.30.23        </span></span>
+<span><span class="co">#&gt;  [77] numDeriv_2016.8-1.1         BiocManager_1.30.24        </span></span>
 <span><span class="co">#&gt;  [79] fastmap_1.2.0               boot_1.3-30                </span></span>
 <span><span class="co">#&gt;  [81] rhdf5filters_1.16.0         fansi_1.0.6                </span></span>
-<span><span class="co">#&gt;  [83] digest_0.6.36               R6_2.5.1                   </span></span>
+<span><span class="co">#&gt;  [83] digest_0.6.37               R6_2.5.1                   </span></span>
 <span><span class="co">#&gt;  [85] mime_0.12                   textshaping_0.4.0          </span></span>
 <span><span class="co">#&gt;  [87] colorspace_2.1-1            tensor_1.5                 </span></span>
 <span><span class="co">#&gt;  [89] jpeg_0.1-10                 spatstat.data_3.1-2        </span></span>
@@ -445,7 +445,7 @@ using the <code><a href="../reference/signifPlot.html">signifPlot()</a></code> f
 <span><span class="co">#&gt; [107] scales_1.3.0                ggupset_0.4.0              </span></span>
 <span><span class="co">#&gt; [109] png_0.1-8                   spatstat.univar_3.0-0      </span></span>
 <span><span class="co">#&gt; [111] knitr_1.48                  tzdb_0.4.0                 </span></span>
-<span><span class="co">#&gt; [113] reshape2_1.4.4              rjson_0.2.21               </span></span>
+<span><span class="co">#&gt; [113] reshape2_1.4.4              rjson_0.2.22               </span></span>
 <span><span class="co">#&gt; [115] nlme_3.1-164                nloptr_2.1.1               </span></span>
 <span><span class="co">#&gt; [117] proxy_0.4-27                cachem_1.1.0               </span></span>
 <span><span class="co">#&gt; [119] rhdf5_2.48.0                stringr_1.5.1              </span></span>
