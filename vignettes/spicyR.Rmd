@@ -17,6 +17,7 @@ author:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
+abstract: "Perform linear and mixed-effects models to assess and visualise changes in cell localisation across disease conditions."
 vignette: >
   %\VignetteIndexEntry{"Introduction to spicy"}
   %\VignetteEngine{knitr::rmarkdown}
@@ -54,18 +55,15 @@ library(imcRtools)
 ```
 
 # Overview
-This guide will provide a step-by-step guide on how mixed effects models can be 
-applied to multiple segmented and labelled images to identify how the 
-localisation of different cell types can change across different conditions. 
-Here, the subject is modelled as a random effect, and the different conditions 
-are modelled as a fixed effect.
+
+This guide provides step-by-step instructions to apply mixed effects models to multiple segmented and labelled images to assess how the localisation of different cell types changes across different disease conditions. The subject is modelled as a random effect, and the different disease conditions are modelled as a fixed effect.
+
 
 # Example data
-Here, we use a subset of the Damond et al., 2019 imaging mass cytometry dataset. We will compare 
-the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
 
-`diabetesData` is a `SingleCellExperiment` object containing single-cell data of 160 images 
-from 8 subjects, with 20 images per subject.
+We use a subset of the Damond et al., (2019) imaging mass cytometry dataset. We compare the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
+
+The data is stored as a `SingleCellExperiment` object and contains single-cell data of 160 images from 8 subjects, with 20 images per subject.
 
 
 ```{r}
@@ -73,31 +71,34 @@ data("diabetesData")
 diabetesData
 ```
 
-In this data set, cell types include immune cell types (B cells, naive T cells,
-T Helper cells, T cytotoxic cells, neutrophils, macrophages) and pancreatic islet
-cells (alpha, beta, gamma, delta).
+The cell types in this data set include immune cell types (B cells, naive T cells, T Helper cells, T cytotoxic cells, neutrophils, macrophages) and pancreatic islet cells (alpha, beta, gamma, delta).
 
 # Mixed Effects Modelling
 
 To investigate changes in localisation between two different cell types, we 
 measure the level of localisation between two cell types by modelling with the 
-L-function. Specifically, the mean difference 
-between the obtained function and the theoretical function is used as a measure
-for the level of localisation. Differences of this statistic between two 
-conditions is modelled using a weighted mixed effects model, with condition as 
-the fixed effect and subject as the random effect.
+L-function. The L-function is a variance-stabilised K-function given by the equation
 
-## Testing for change in localisation for a specific pair of cells
+$$
+\widehat{L_{ij}} (r) = \sqrt{\frac{\widehat{K_{ij}}(r)}{\pi}}
+$$
 
-Firstly, we can test whether one cell type tends to be more localised with another cell type 
-in one condition compared to the other. This can be done using the `spicy()` 
-function, where we include `condition`, and `subject`. 
+with $\widehat{K_{ij}}$ defined as 
 
-In this example, we want to see whether or not Delta cells (`to`) tend to be found around Beta cells (`from`)
-in onset diabetes images compared to non-diabetic images. However, given that there are 3 conditions, we can specify the desired
-conditions by setting the order of our `condition` factor. `spicy()` will choose the first level of the factor as 
-the base condition and the second level as the comparison condition. `spicy()` will also naturally coerce the `condition` column into a 
-factor if not already a factor. 
+$$
+\widehat{K_{ij}} (r) = \frac{|W|}{n_i n_j} \sum_{n_i} \sum_{n_j} 1 \{d_{ij} \leq r \} e_{ij} (r)
+$$
+
+where $\widehat{K_{ij}}$ summarises the degree of co-localisation of cell type $j$ with cell type $i$, $n_i$ and $n_j$ are the number of cells of type $i$ and $j$, $|W|$ is the image area, $d_{ij}$ is the distance between two cells and $e_{ij} (r)$ is an edge correcting factor.
+
+Specifically, the mean difference between the obtained function and the theoretical function is used as a measure for the level of localisation. Differences of this statistic between two  conditions is modelled using a weighted mixed effects model, with condition as the fixed effect and subject as the random effect.
+
+## Test for change in localisation for a specific pair of cells
+
+Firstly, we can test whether one cell type tends to be more localised with another cell type in one condition compared to the other. This can be done using the `spicy()` function, where we specify `condition`, and `subject`. 
+
+In this example, we want to see whether or not delta cells (`to`) tend to be found around beta cells (`from`) in onset diabetes images compared to non-diabetic images. Given that there are 3 conditions, we can specify the desired conditions by setting the order of our `condition` factor. `spicy()` will choose the first level of the factor as the base condition and the second level as the comparison condition. `spicy()` will also naturally coerce the `condition` column into a factor if it is not already a factor. The column containing cell type annotations can be specified using the `cellTypeCol` argument. By default, `spicy()` uses the column named `cellType` in the `SingleCellExperiment` object.
+
 
 ```{r message=FALSE}
 spicyTestPair <- spicy(
@@ -112,14 +113,14 @@ topPairs(spicyTestPair)
 ```
 
 We obtain a `spicy` object which details the results of the mixed effects 
-modelling performed. As the `coefficient` in `spicyTest` is positive, we find 
-that delta cells cells are significantly less likely to be found near beta cells
-in the onset diabetes group compared to the non-diabetic control.
+modelling performed. The `topPairs()` function can be used to obtain the associated coefficients and p-value.
+
+As the `coefficient` in `spicyTestPair` is negative, we find that delta cells are significantly less likely to be found near beta cells in the onset diabetes group compared to the non-diabetic control.
 
 ## Test for change in localisation for all pairwise cell combinations
 
-Here, we can perform what we did above for all pairwise combinations of cell 
-types by excluding the `from` and `to` parameters from `spicy()`.
+We can perform what we did above for all pairwise combinations of cell 
+types by excluding the `from` and `to` parameters in `spicy()`.
 
 ```{r message=FALSE}
 spicyTest <- spicy(
@@ -130,8 +131,10 @@ spicyTest <- spicy(
 
 topPairs(spicyTest)
 ```
+
 We can also examine the L-function metrics of individual images by using the
-convenient `bind()` function on our spicyTest results object.
+convenient `bind()` function on our `spicyTest` results object.
+
 ```{r}
 bind(spicyTest)[1:5, 1:5]
 ```
@@ -140,11 +143,8 @@ bind(spicyTest)[1:5, 1:5]
 Again, we obtain a `spicy` object which outlines the result of the mixed effects 
 models performed for each pairwise combination of cell types.
 
-We can represent this as a bubble plot using the `signifPlot()` function by 
-providing it the `spicy` object obtained. Here, we can observe that the most
-significant relationships occur between pancreatic beta and delta cells, suggesting
-that the 2 cell types are far more localised during diabetes onset compared to
-non-diabetics.
+The results can be represented as a bubble plot using the `signifPlot()` function. Here, we can observe that the most significant relationships occur between pancreatic beta and delta cells, suggesting that the two cell types are far more localised during diabetes onset compared to non-diabetics.
+
 ```{r}
 signifPlot(
   spicyTest,
@@ -155,14 +155,9 @@ signifPlot(
   )
 )
 ```
-If we're interested and wish to examine a specific cell type-cell type 
-relationship in more detail, we can use `spicyBoxPlot`, specifying the relationship
-we want to examine.
 
-In the bubble plot above, we can see that the most significant relationship is
-between beta and delta islet cells in the pancreas. To examine this further, we
-can specify either `from = beta` and `to = delta` or `rank = 1` parameters in 
-`spicyBoxPlot`.
+To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxplot()` and specify either `from = beta` and `to = delta` or `rank = 1`.
+
 
 ```{r}
 spicyBoxPlot(results = spicyTest,
@@ -173,23 +168,10 @@ spicyBoxPlot(results = spicyTest,
 
 ## Mixed effects modelling for custom metrics
 
-`spicyR` can also be applied to custom distance or abundance metrics. Here, we
-provide an example where we apply the `spicy` function to a custom abundance
-metric.
+`spicyR` can also be applied to custom distance or abundance metrics. We first obtain the custom abundance metric by converting the existing `SingleCellExperiment` object into a `SpatialExperiment` object. A kNN interactions graph is then generated with the function `buildSpatialGraph` from the `imcRtools` package. This generates a `colPairs` object inside of the `SpatialExperiment` object.
 
-We first obtain the custom abundance metric by converting the a `SpatialExperiment`
-object from the existing `SingleCellExperiment` object. A KNN interactions graph
-is then generated with the function `buildSpatialGraph` from the `imcRtools` package.
-This generates a `colPairs` object inside of the SpatialExperiment object.
-`spicyR` provides the function `convPairs` for converting a `colPairs` object stored
-within a `SingleCellExperiment` object into an abundance matrix by effectively 
-calculating the average number of nearby cells types for every cell type. 
-For example, if there exists on average 5 neutrophils for every macrophage in
-image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
+`spicyR` provides the function `convPairs` for converting a `colPairs` object into an abundance matrix by calculating the average number of nearby cells types for every cell type for a given `k`. For example, if there exists on average 5 neutrophils for every macrophage in image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
 
-`spicy` can take any input of pairwise cell type combinations across 
-multiple images and run a mixed effects model to determine collective differences
-across conditions. 
 ```{r}
 diabetesData_SPE <- SpatialExperiment(diabetesData,
                                       colData = colData(diabetesData)) 
@@ -207,8 +189,8 @@ head(pairAbundances["delta__delta"])
 
 `spicy` can take any input of pairwise cell type combinations across 
 multiple images and run a mixed effects model to determine collective differences
-across conditions. To check out other custom distance metrics which can be used,
-feel free to check out the `Statial` package.
+across conditions. The `Statial` package contains other custom distance metrics which can be used with `spicy`.
+
 ```{r}
 spicyTestColPairs <- spicy(
   diabetesData_SPE,
@@ -221,8 +203,6 @@ spicyTestColPairs <- spicy(
 topPairs(spicyTestColPairs)
 ```
 
-Again, we can present this `spicy` object as a bubble plot using the 
-`signifPlot()` function by providing it with the `spicy` object.
 ```{r}
 signifPlot(
   spicyTestColPairs,
