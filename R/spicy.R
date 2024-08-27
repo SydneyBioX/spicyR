@@ -5,6 +5,8 @@
 #'   x and y, giving the location coordinates of each cell, and cellType.
 #' @param condition
 #'   Vector of conditions to be tested corresponding to each image.
+#' @param survOutcome
+#'   Vector of `Surv` objects to be tested corresponding to each image.
 #' @param subject Vector of subject IDs corresponding to each image if cells is
 #'   a data frame.
 #' @param covariates Vector of covariate names that should be included in the
@@ -79,7 +81,8 @@
 #' @importFrom rlang .data
 #' @importFrom tibble column_to_rownames
 spicy <- function(cells,
-                  condition,
+                  condition = NULL,
+                  survOutcome = NULL,
                   subject = NULL,
                   covariates = NULL,
                   from = NULL,
@@ -131,22 +134,29 @@ spicy <- function(cells,
   }
 
   nCells <- table(getImageID(cells), getCellType(cells))
-
-  conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
-
-  if (!is.factor(conditionVector)) {
-    conditionVector <- as.factor(conditionVector)
-    cli::cli_inform(
-      paste0(
-        "Coercing condition into factor. Using ",
-        condition, " = ", levels(conditionVector)[1],
-        " as base comparison group. If this is not the desired base group,",
-        " please convert cells$",
-        condition, " into a factor and change the order of levels(cells$",
-        condition, ") so that the base group is at index 1."
-      )
-    )
+  
+  if(is.null(condition) && is.null(survOutcome)) {
+    cli::cli_inform("Please specify either a condition or survOutcome")
   }
+
+  if(!is.null(condition)){
+    conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
+    
+    if (!is.factor(conditionVector)) {
+      conditionVector <- as.factor(conditionVector)
+      cli::cli_inform(
+        paste0(
+          "Coercing condition into factor. Using ",
+          condition, " = ", levels(conditionVector)[1],
+          " as base comparison group. If this is not the desired base group,",
+          " please convert cells$",
+          condition, " into a factor and change the order of levels(cells$",
+          condition, ") so that the base group is at index 1."
+        )
+      )
+    }
+  }
+
   
   ## Check whether the subject parameter has a one-to-one mapping with image
   if (!is.null(subject)) {
@@ -217,17 +227,36 @@ spicy <- function(cells,
     if (weights) {
       weights <- FALSE
       cli::cli_inform(
-        "Cell count weighting set to FALSE for Konditional results"
+        "Cell count weighting set to FALSE for Kontextual results"
       )
     }
   }
-
+  
   weightFunction <- getWeightFunction(
     pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor
   )
-
+  
+  # Matrix needed for survival analysis
+  pairwiseAssocMatrix = pairwiseAssoc
+  
   pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
   names(pairwiseAssoc) <- labels
+  
+  spicyResult = list()
+  
+  ## Survival model
+  if(!is.null(survOutcome)){
+    
+    survivalResult = spatialSurv(
+      measurementMat = pairwiseAssocMatrix,
+      outcome = survOutcome,
+      weights = weightFunction
+    )
+    
+    spicyResult$survivalOutcome = survOutcome
+    spicyResult = append(spicyResult, list("survivalResults" = survivalResult))
+    
+  }
 
 
   ## Linear model
@@ -256,7 +285,8 @@ spicy <- function(cells,
       SIMPLIFY = FALSE
     )
 
-    df <- cleanLM(linearModels, BPPARAM = BPPARAM)
+    lmResult <- cleanLM(linearModels, BPPARAM = BPPARAM)
+    spicyResult = append(spicyResult, lmResult)
   }
 
 
@@ -299,26 +329,30 @@ spicy <- function(cells,
       x
     })
 
-    df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
+    melmResult <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
+    spicyResult = append(spicyResult, melmResult)
   }
 
-  df$condition <- conditionVector
+  
+  if(!is.null(condition)){
+    spicyResult$condition <- conditionVector
+  }
 
   if (!is.null(subject)) {
-    df$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
+    spicyResult$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
   }
-
-  df$pairwiseAssoc <- pairwiseAssoc
-  df$comparisons <- comparisons
-
-  df$weights <- weightFunction
-  df$nCells <- nCells
-
-  df$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
-  df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
-
-  df <- methods::new("SpicyResults", df)
-  df
+  
+  spicyResult$pairwiseAssoc <- pairwiseAssoc
+  spicyResult$comparisons <- comparisons
+  
+  spicyResult$weights <- weightFunction
+  spicyResult$nCells <- nCells
+  
+  spicyResult$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
+  spicyResult$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
+  
+  spicyResult <- methods::new("SpicyResults", spicyResult)
+  spicyResult
 }
 
 
@@ -644,6 +678,41 @@ spatialLM <-
 
     lm1
   }
+
+#' @importFrom survival coxph
+#' @importFrom dplyr bind_rows
+#' @importFrom dplyr mutate
+#' @importFrom dplyr rename
+#' @importFrom dplyr select
+#' @importFrom dplyr arrange
+spatialSurv <- function(
+    measurementMat,
+    outcome,
+    weights = NULL,
+    remove = NULL) {
+  result <- lapply(colnames(measurementMat), function(test) {
+    measurementCol <- measurementMat[, test]
+    ind <- !(measurementCol %in% remove)
+    
+    if(is.null(weights)) {
+      fit <- survival::coxph(outcome ~ measurementCol, subset = ind)
+      result <- summary(fit)$coefficients[1, c("coef", "se(coef)" , "Pr(>|z|)")]
+    } else{
+      fit <- survival::coxph(outcome ~ measurementCol, weights = weights[[test]], subset = ind)
+      result <- summary(fit)$coefficients[1, c("coef", "se(coef)" , "Pr(>|z|)")]
+    }
+    return(result)
+  })
+  
+  result <- result |>
+    dplyr::bind_rows() |>
+    dplyr::mutate(test = colnames(measurementMat)) |>
+    dplyr::rename("se.coef" = "se(coef)", "p.value" = "Pr(>|z|)") |>
+    dplyr::select(test, coef, se.coef, p.value) |> 
+    dplyr::arrange(p.value)
+  
+  return(result)
+}
 
 ###########################
 #
