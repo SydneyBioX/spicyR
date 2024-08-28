@@ -218,7 +218,7 @@ bubblePlot <- function(
     ) +
     ggforce::geom_arc_bar(
       ggplot2::aes(
-        fill = groupA, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        fill = groupB, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
         r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
         start = 0, end = pi, x = NULL, y = NULL
       ),
@@ -226,7 +226,7 @@ bubblePlot <- function(
     ) +
     ggforce::geom_arc_bar(
       ggplot2::aes(
-        fill = groupB, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        fill = groupA, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
         r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
         start = pi, end = 2 * pi, x = NULL, y = NULL
       ),
