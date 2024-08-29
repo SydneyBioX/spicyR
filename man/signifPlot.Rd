@@ -32,7 +32,7 @@ number of breaks.}
 
 \item{marksToPlot}{Vector of marks to include in pheatmap.}
 
-\item{cutoff}{significance threshold for circles in bubble plot}
+\item{cutoff}{significance threshold for circles in bubble plot.}
 }
 \value{
 a pheatmap object

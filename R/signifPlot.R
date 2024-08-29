@@ -9,7 +9,7 @@
 #' @param comparisonGroup A string specifying the name of the outcome group to compare with the base group.
 #' @param colours Vector of colours to use in pheatmap.
 #' @param marksToPlot Vector of marks to include in pheatmap.
-#' @param cutoff significance threshold for circles in bubble plot
+#' @param cutoff significance threshold for circles in bubble plot.
 #'
 #' @return a pheatmap object
 #'
@@ -261,3 +261,123 @@ bubblePlot <- function(
       )
     )
 }
+
+#' Plots survival results from spicy.
+#'
+#' @param result A spicyResults object that contains survial results.
+#' @param cutoff Significance threshold for circles in bubble plot.
+#' @param colourGradient A vector of colours, used to define the low, medium, and high values for the colour scale.
+#' @param marksToPlot Vector of marks to include in bubble plot.
+#' @param kontextual A boolean indicating if the `result` is a Kontextual result from \code{\link[Statial]{Kontextual}}.
+#' @param contextColours Only used if `kontextual = TRUE`. A named list specifying the colours for each context.
+#'  By default the Tableau colour palette is used.
+#' 
+#' @return A ggplot object.
+#' @export
+#' 
+#' @import ggh4x 
+#' @import ggplot2
+#' @import ggthemes
+survBubble = function(result,
+                      cutoff = 0.05,
+                      colourGradient = c("#4575B4", "white", "#D73027"),
+                      marksToPlot = NULL,
+                      kontextual = FALSE,
+                      contextColours = NULL){
+  
+  
+  if(!"survivalResults" %in% names(result)) {
+    stop("Survival results are missing, please run spicy with survival outcomes.")
+  }
+  
+  survivalResults = result$survivalResults
+  
+  
+  if(kontextual) {
+    plotData = survivalResults |>
+      separate(test,
+               into = c("from", "to", "parent"),
+               sep = "__") |>
+      arrange(parent, to, from) |>
+      mutate(toParent = paste(to, parent, sep = "__"))
+    
+    
+    
+    if(is.null(contextColours)) {
+      # Defining colour palette for Context
+      palette = ggthemes_data$tableau$`color-palettes`$regular$`Tableau 10`$value
+      
+      if (length(unique(plotData$parent)) > 10) {
+        palette = ggthemes_data$tableau$`color-palettes`$regular$`Tableau 20`$value
+      }
+      
+      contextColours = palette[1:length(unique(plotData$parent))]
+      names(contextColours) = levels(plotData$parent)
+    }
+    
+    # Assigning contextColours to the strip
+    strip = strip_themed(background_x = elem_list_rect(fill = contextColours)
+    )
+    
+  } else {
+    plotData = survivalResults |>
+      separate(test, into = c("from", "to"), sep = "__") |>
+      arrange(to, from)
+  }
+  
+  if(!is.null(marksToPlot)) {
+    plotData = plotData |> 
+      filter(to %in% marksToPlot) |> 
+      filter(from %in% marksToPlot)
+  }
+  
+  plotData = plotData |>
+    mutate(
+      sig = p.value < cutoff,
+      logP = -log10(p.value),
+      size = logP / max(logP, na.rm = TRUE),
+      from = factor(from),
+      to = factor(to)
+    )
+  
+  plot = ggplot(plotData, aes(x = to, y = from)) +
+    ggplot2::geom_point(ggplot2::aes(size = pmax(logP/2, 0.15), colour = coef)) +  
+    ggplot2::geom_point(data = dplyr::filter(plotData, sig == TRUE),
+                        aes(size = pmax(logP/2, 0.15)),
+                        shape = 21) +
+    ggplot2::geom_point(ggplot2::aes(shape = paste0("P < ", cutoff)), size = -1) + 
+    scale_colour_gradient2(low = colourGradient[[1]],
+                           mid = colourGradient[[2]],
+                           high = colourGradient[[3]],
+                           midpoint = 0) +
+    scale_size(range = c(2, 6)) +
+    scale_x_discrete(guide = guide_axis(angle = 45)) +
+    labs(colour = "CoxPH \ncoefficient",
+         shape = NULL,
+         x = NULL,
+         y = NULL) +
+    ggplot2::guides(shape = ggplot2::guide_legend(order = 2, override.aes = list(size=5, shape = 1, col = "black")),
+                    colour = ggplot2::guide_colourbar(order = 3),
+                    size = "none") +
+    theme_classic() 
+  
+  
+  if(kontextual) {
+    # Adding context information to the plot
+    plot = plot + 
+      geom_tile(aes(fill = parent), alpha = -1) +
+      ggh4x::facet_grid2(~parent, scales = "free", space = "free", strip = strip) +
+      scale_fill_manual(values = contextColours) +
+      labs(fill = "Context") +
+      ggplot2::guides(fill = guide_legend(order = 1, override.aes = list(alpha = 1))) +
+      theme(strip.text = element_text(size = -1),
+            strip.clip = "off",
+            strip.background = element_rect(linewidth = NA),
+            panel.spacing = unit(0.4,'lines'))
+  }
+  
+  
+  return(plot)
+  
+}
+

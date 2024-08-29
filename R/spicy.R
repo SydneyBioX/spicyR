@@ -187,8 +187,7 @@ spicy <- function(cells,
     pairwiseAssoc <- pairwiseAssoc[labels]
   }
 
-
-  if (!is.null(alternateResult) && !isKonditional(alternateResult)) {
+  if (!is.null(alternateResult) && !isKontextual(alternateResult)) {
     pairwiseAssoc <- alternateResult
 
     if (weights) {
@@ -199,7 +198,7 @@ spicy <- function(cells,
 
   comparisons <- data.frame(from = m1, to = m2, labels = labels)
 
-  if (!is.null(alternateResult) && isKonditional(alternateResult)) {
+  if (!is.null(alternateResult) && isKontextual(alternateResult)) {
     pairwiseAssoc <- alternateResult |>
       dplyr::select(.data$imageID, .data$test, .data$konditional) |>
       tidyr::pivot_wider(
