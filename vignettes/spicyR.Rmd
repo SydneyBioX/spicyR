@@ -17,7 +17,8 @@ author:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
-abstract: "Perform linear and mixed-effects models to assess and visualise changes in cell localisation across disease conditions."
+abstract: "Perform linear and mixed-effects models to assess and visualise changes 
+in cell localisation across disease conditions."
 vignette: >
   %\VignetteIndexEntry{"Introduction to spicy"}
   %\VignetteEngine{knitr::rmarkdown}
@@ -54,14 +55,19 @@ library(SpatialExperiment)
 library(imcRtools)
 ```
 
+
+```{r warning=FALSE, message=FALSE, echo=FALSE}
+htmltools::includeCSS("../inst/hexagons.css")
+htmltools::includeHTML("../inst/spatialHeader.html")
+```
+
 # Overview
 
-This guide provides step-by-step instructions to apply mixed effects models to multiple segmented and labelled images to assess how the localisation of different cell types changes across different disease conditions. The subject is modelled as a random effect, and the different disease conditions are modelled as a fixed effect.
-
+This guide provides step-by-step instructions on how to apply mixed effects models to multiple segmented and labelled images to assess how the localisation of different cell types changes across different disease conditions. The subject is modelled as a random effect, and the different disease conditions are modelled as a fixed effect.
 
 # Example data
 
-We use a subset of the Damond et al., (2019) imaging mass cytometry dataset. We compare the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
+We use a subset of the Damond et al., (2019) imaging mass cytometry dataset. We compare the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls.
 
 The data is stored as a `SingleCellExperiment` object and contains single-cell data of 160 images from 8 subjects, with 20 images per subject.
 
@@ -91,13 +97,21 @@ $$
 
 where $\widehat{K_{ij}}$ summarises the degree of co-localisation of cell type $j$ with cell type $i$, $n_i$ and $n_j$ are the number of cells of type $i$ and $j$, $|W|$ is the image area, $d_{ij}$ is the distance between two cells and $e_{ij} (r)$ is an edge correcting factor.
 
-Specifically, the mean difference between the obtained function and the theoretical function is used as a measure for the level of localisation. Differences of this statistic between two  conditions is modelled using a weighted mixed effects model, with condition as the fixed effect and subject as the random effect.
+Specifically, the mean difference between the experimental function and the theoretical function is used as a measure for the level of localisation, defined as
+
+$$
+u = \sum_{r' = r_{\text{min}}}^{r_{\text{max}}} \widehat L_{ij, \text{Experimental}} (r') - \widehat L_{ij, \text{Poisson}} (r')
+$$
+where is the sum is taken over a discrete range of $r$ between $r_{\text{min}}$ and $r_{\text{max}}$.
+
+
+Differences of the statistic $u$ between two  conditions is modelled using a weighted mixed effects model, with condition as the fixed effect and subject as the random effect.
 
 ## Test for change in localisation for a specific pair of cells
 
 Firstly, we can test whether one cell type tends to be more localised with another cell type in one condition compared to the other. This can be done using the `spicy()` function, where we specify `condition`, and `subject`. 
 
-In this example, we want to see whether or not delta cells (`to`) tend to be found around beta cells (`from`) in onset diabetes images compared to non-diabetic images. Given that there are 3 conditions, we can specify the desired conditions by setting the order of our `condition` factor. `spicy()` will choose the first level of the factor as the base condition and the second level as the comparison condition. `spicy()` will also naturally coerce the `condition` column into a factor if it is not already a factor. The column containing cell type annotations can be specified using the `cellTypeCol` argument. By default, `spicy()` uses the column named `cellType` in the `SingleCellExperiment` object.
+In this example, we want to see whether or not delta cells (`to`) tend to be found around beta cells (`from`) in onset diabetes images compared to non-diabetic images. Given that there are 3 conditions, we can specify the desired conditions by setting the order of our `condition` factor. `spicy()` will choose the first level of the factor as the base condition and the second level as the comparison condition. `spicy()` will also naturally coerce the `condition` column into a factor if it is not already a factor. The column containing cell type annotations can be specified using the `cellTypeCol` argument. By default, `spicy()` uses the column named `cellType` in the `SpatialExperiment` object.
 
 
 ```{r message=FALSE}
@@ -122,7 +136,7 @@ As the `coefficient` in `spicyTestPair` is negative, we find that delta cells ar
 We can perform what we did above for all pairwise combinations of cell 
 types by excluding the `from` and `to` parameters in `spicy()`.
 
-```{r message=FALSE}
+```{r message=FALSE, eval=F}
 spicyTest <- spicy(
   diabetesData,
   condition = "stage",
@@ -132,16 +146,15 @@ spicyTest <- spicy(
 topPairs(spicyTest)
 ```
 
+Again, we obtain a `spicy` object which outlines the result of the mixed effects 
+models performed for each pairwise combination of cell types.
+
 We can also examine the L-function metrics of individual images by using the
 convenient `bind()` function on our `spicyTest` results object.
 
 ```{r}
 bind(spicyTest)[1:5, 1:5]
 ```
-
-
-Again, we obtain a `spicy` object which outlines the result of the mixed effects 
-models performed for each pairwise combination of cell types.
 
 The results can be represented as a bubble plot using the `signifPlot()` function. Here, we can observe that the most significant relationships occur between pancreatic beta and delta cells, suggesting that the two cell types are far more localised during diabetes onset compared to non-diabetics.
 
@@ -155,6 +168,7 @@ signifPlot(
   )
 )
 ```
+
 
 To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxplot()` and specify either `from = beta` and `to = delta` or `rank = 1`.
 
