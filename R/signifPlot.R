@@ -271,6 +271,7 @@ bubblePlot <- function(
 #' @param kontextual A boolean indicating if the `result` is a Kontextual result from \code{\link[Statial]{Kontextual}}.
 #' @param contextColours Only used if `kontextual = TRUE`. A named list specifying the colours for each context.
 #'  By default the Tableau colour palette is used.
+#' @param contextLabels Only used if `kontextual = TRUE`. A named list to change the default labels for each context.
 #' 
 #' @return A ggplot object.
 #' @export
@@ -283,7 +284,8 @@ survBubble = function(result,
                       colourGradient = c("#4575B4", "white", "#D73027"),
                       marksToPlot = NULL,
                       kontextual = FALSE,
-                      contextColours = NULL){
+                      contextColours = NULL,
+                      contextLabels = waiver()){
   
   
   if(!"survivalResults" %in% names(result)) {
@@ -367,7 +369,8 @@ survBubble = function(result,
     plot = plot + 
       geom_tile(aes(fill = parent), alpha = -1) +
       ggh4x::facet_grid2(~parent, scales = "free", space = "free", strip = strip) +
-      scale_fill_manual(values = contextColours) +
+      scale_fill_manual(values = contextColours,
+                        labels = contextLabels) +
       labs(fill = "Context") +
       ggplot2::guides(fill = guide_legend(order = 1, override.aes = list(alpha = 1))) +
       theme(strip.text = element_text(size = -1),
