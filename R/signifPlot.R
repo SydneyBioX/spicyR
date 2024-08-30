@@ -157,7 +157,7 @@ bubblePlot <- function(
   df$cellTypeB <- droplevels(df$cellTypeB)
 
   shape.legend <- stats::setNames(
-    c("\u25D6", "\u25D7"),
+    c("\u25D0", "\u25D1"),
     c(levels(test$condition)[1], levels(test$condition)[coef])
   )
 
