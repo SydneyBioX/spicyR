@@ -4,9 +4,7 @@
 #'   A SummarizedExperiment or data frame that contains at least the  variables
 #'   x and y, giving the location coordinates of each cell, and cellType.
 #' @param condition
-#'   Vector of conditions to be tested corresponding to each image.
-#' @param survOutcome
-#'   Vector of `Surv` objects to be tested corresponding to each image.
+#'   A character specifying which column which contains the condition or `Surv` objects
 #' @param subject Vector of subject IDs corresponding to each image if cells is
 #'   a data frame.
 #' @param covariates Vector of covariate names that should be included in the
@@ -81,8 +79,7 @@
 #' @importFrom rlang .data
 #' @importFrom tibble column_to_rownames
 spicy <- function(cells,
-                  condition = NULL,
-                  survOutcome = NULL,
+                  condition,
                   subject = NULL,
                   covariates = NULL,
                   from = NULL,
@@ -134,15 +131,11 @@ spicy <- function(cells,
   }
 
   nCells <- table(getImageID(cells), getCellType(cells))
-  
-  if(is.null(condition) && is.null(survOutcome)) {
-    cli::cli_inform("Please specify either a condition or survOutcome")
-  }
 
   if(!is.null(condition)){
     conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
     
-    if (!is.factor(conditionVector)) {
+    if (class(conditionVector) != "Surv" && !is.factor(conditionVector)) {
       conditionVector <- as.factor(conditionVector)
       cli::cli_inform(
         paste0(
@@ -162,7 +155,13 @@ spicy <- function(cells,
   if (!is.null(subject)) {
     if (nrow(as.data.frame(unique(cells[, subject]))) == nrow(as.data.frame(unique(cells[, imageIDCol])))) {
       subject <- NULL
-      warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a linear model instead of mixed model.")
+      
+      if(class(conditionVector) == "Surv") {
+        warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a coxph model instead of cox mixed effects model.")
+      } else{
+        warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a linear model instead of mixed model.")
+      }
+      
     }  
   }
   
@@ -244,22 +243,26 @@ spicy <- function(cells,
   spicyResult = list()
   
   ## Survival model
-  if(!is.null(survOutcome)){
+  if(class(conditionVector) == "Surv"){
     
     survivalResult = spatialSurv(
       measurementMat = pairwiseAssocMatrix,
-      outcome = survOutcome,
-      weights = weightFunction
+      condition = condition,
+      pheno = as.data.frame(getImagePheno(cells)),
+      covariates = covariates,
+      subject = subject,
+      weights = weightFunction,
+      BPPARAM = BPPARAM
     )
     
-    spicyResult$survivalOutcome = survOutcome
+    spicyResult$survivalOutcome = conditionVector
     spicyResult = append(spicyResult, list("survivalResults" = survivalResult))
     
   }
 
 
   ## Linear model
-  if (is.null(subject) && !is.null(condition)) {
+  if (!class(conditionVector) == "Surv" && is.null(subject) && !is.null(condition)) {
     if (verbose) {
       cli::cli_inform("Testing for spatial differences across conditions")
     }
@@ -290,7 +293,7 @@ spicy <- function(cells,
 
 
   ## Mixed effects model
-  if ((!is.null(subject)) && !is.null(condition)) {
+  if (!class(conditionVector) == "Surv" && (!is.null(subject)) && !is.null(condition)) {
     if (verbose) {
       cli::cli_inform(
         "Testing for spatial differences across conditions accounting for multiple images per subject" # nolint
@@ -684,34 +687,87 @@ spatialLM <-
 #' @importFrom dplyr rename
 #' @importFrom dplyr select
 #' @importFrom dplyr arrange
-spatialSurv <- function(
-    measurementMat,
-    outcome,
-    weights = NULL,
-    remove = NULL) {
-  result <- lapply(colnames(measurementMat), function(test) {
+#' @importFrom dplyr across
+#' @importFrom dplyr where 
+#' @importFrom coxme coxme
+#' @importFrom BiocParallel bplapply
+#' @importFrom BiocParallel SerialParam
+spatialSurv <- function(measurementMat,
+                        condition,
+                        pheno,
+                        covariates = NULL,
+                        subject = NULL,
+                        weights = NULL,
+                        remove = NULL,
+                        BPPARAM = BiocParallel::SerialParam()) {
+  
+  
+  result <- bplapply(colnames(measurementMat), function(test) {
     measurementCol <- measurementMat[, test]
     ind <- !(measurementCol %in% remove)
     
-    if(is.null(weights)) {
-      fit <- survival::coxph(outcome ~ measurementCol, subset = ind)
-      result <- summary(fit)$coefficients[1, c("coef", "se(coef)" , "Pr(>|z|)")]
-    } else{
-      fit <- survival::coxph(outcome ~ measurementCol, weights = weights[[test]], subset = ind)
-      result <- summary(fit)$coefficients[1, c("coef", "se(coef)" , "Pr(>|z|)")]
+    spatialData = data.frame("measurementCol" = measurementCol, "surv" = pheno[, condition])
+    
+    formula = "surv ~ measurementCol"
+    
+    if (!is.null(subject)) {
+      spatialData = data.frame(spatialData, "subject" = pheno[, subject])
+      
+      formula <- paste(formula, "(1 | subject)", sep = "+")
     }
-    return(result)
-  })
-  
-  result <- result |>
-    dplyr::bind_rows() |>
-    dplyr::mutate(test = colnames(measurementMat)) |>
-    dplyr::rename("se.coef" = "se(coef)", "p.value" = "Pr(>|z|)") |>
-    dplyr::select(test, coef, se.coef, p.value) |> 
-    dplyr::arrange(p.value)
+    
+    if (!is.null(covariates)) {
+      spatialData = data.frame(spatialData, "covariates" = pheno[, covariates])
+      names(spatialData)[grep("covariates", names(spatialData))] <- covariates
+      
+      formula <- paste(formula, paste(covariates, collapse = "+"), sep = "+")
+    }
+    
+    formula = stats::formula(formula)
+    
+    if(is.null(weights)) {
+      spatialData$weights = 1
+    } else {
+      spatialData$weights = weights[[test]]
+    }
+    
+    if(is.null(subject)) {
+    # If no random effects must use coxph
+    fit <- survival::coxph(formula, data = spatialData, weights = spatialData$weights, subset = ind)
+    result <- summary(fit)$coefficients["measurementCol", c("coef", "se(coef)", "Pr(>|z|)")]
+  } else{
+    # Drop factors for any factor columns in spatialData
+    spatialData = spatialData %>%
+      mutate(across(where(is.factor), ~ droplevels(.)))
+    
+    # Mixed effects survival
+    fit <- coxme::coxme(formula, data = spatialData, weights = spatialData$weights, subset = ind)
+    
+    # from print.coxme() function
+    beta <- unname(fit$coefficients)
+    nvar <- length(beta)
+    nfrail <- nrow(fit$var) - nvar
+    
+    se <- sqrt(diag(as.matrix(fit$var))[nfrail + 1:nvar])
+    p_val <- 1 - pchisq((beta / se) ^ 2, 1)
+    
+    # Need to select first indexes of each value incase of multiple betas
+    result <- c("coef" = beta[1], "se(coef)" = se[1], "Pr(>|z|)" = p_val[1])
+  }
   
   return(result)
+  }, BPPARAM = BPPARAM)
+
+result <- result |>
+  dplyr::bind_rows() |>
+  dplyr::mutate(test = colnames(measurementMat)) |>
+  dplyr::rename("se.coef" = "se(coef)", "p.value" = "Pr(>|z|)") |>
+  dplyr::select(test, coef, se.coef, p.value) |>
+  dplyr::arrange(p.value)
+
+return(result)
 }
+
 
 ###########################
 #

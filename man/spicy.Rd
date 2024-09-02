@@ -10,8 +10,7 @@
 \usage{
 spicy(
   cells,
-  condition = NULL,
-  survOutcome = NULL,
+  condition,
   subject = NULL,
   covariates = NULL,
   from = NULL,
@@ -39,9 +38,7 @@ spicy(
 \item{cells}{A SummarizedExperiment or data frame that contains at least the  variables
 x and y, giving the location coordinates of each cell, and cellType.}
 
-\item{condition}{Vector of conditions to be tested corresponding to each image.}
-
-\item{survOutcome}{Vector of `Surv` objects to be tested corresponding to each image.}
+\item{condition}{A character specifying which column which contains the condition or `Surv` objects}
 
 \item{subject}{Vector of subject IDs corresponding to each image if cells is
 a data frame.}

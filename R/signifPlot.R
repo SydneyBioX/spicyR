@@ -259,12 +259,13 @@ bubblePlot <- function(
       colour = ggplot2::guide_legend(
         order = 1, override.aes = list(size = 5, shape = 1)
       )
-    )
+    ) +
+    coord_fixed()
 }
 
 #' Plots survival results from spicy.
 #'
-#' @param result A spicyResults object that contains survial results.
+#' @param result A spicyResults object that contains survival results.
 #' @param cutoff Significance threshold for circles in bubble plot.
 #' @param colourGradient A vector of colours, used to define the low, medium, and high values for the colour scale.
 #' @param marksToPlot Vector of marks to include in bubble plot.

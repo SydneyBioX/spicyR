@@ -7,15 +7,19 @@
 survBubble(
   result,
   cutoff = 0.05,
+  colourGradient = c("#4575B4", "white", "#D73027"),
   marksToPlot = NULL,
   kontextual = FALSE,
-  contextColours = NULL
+  contextColours = NULL,
+  contextLabels = waiver()
 )
 }
 \arguments{
-\item{result}{A spicyResults object that contains survial results.}
+\item{result}{A spicyResults object that contains survival results.}
 
 \item{cutoff}{Significance threshold for circles in bubble plot.}
+
+\item{colourGradient}{A vector of colours, used to define the low, medium, and high values for the colour scale.}
 
 \item{marksToPlot}{Vector of marks to include in bubble plot.}
 
@@ -23,6 +27,8 @@ survBubble(
 
 \item{contextColours}{Only used if `kontextual = TRUE`. A named list specifying the colours for each context.
 By default the Tableau colour palette is used.}
+
+\item{contextLabels}{Only used if `kontextual = TRUE`. A named list to change the default labels for each context.}
 }
 \value{
 A ggplot object.
