@@ -594,7 +594,7 @@ spatialMEM <-
         "covariates" = pheno[covariates]
       )
 
-    names(spatialData)[names(spatialData) == "covariates"] <- covariates
+    names(spatialData)[grep("covariates", names(spatialData))] <- covariates
 
     formula <- "spatAssoc ~ condition + (1|subject)"
 
@@ -649,7 +649,7 @@ spatialLM <-
         "covariates" = pheno[, covariates]
       )
 
-    names(spatialData)[names(spatialData) == "covariates"] <- covariates
+    names(spatialData)[grep("covariates", names(spatialData))] <- covariates
 
     formula <- "spatAssoc ~ condition"
 
