@@ -157,7 +157,7 @@ bubblePlot <- function(
   df$cellTypeB <- droplevels(df$cellTypeB)
   
   shape.legend <- stats::setNames(
-    c("\u25D0", "\u25D1"),
+    c("\u25D6", "\u25D7"),
     c(levels(test$condition)[1], levels(test$condition)[coef])
   )
   
@@ -205,6 +205,10 @@ bubblePlot <- function(
   labels <- round(breaks, 3)
   labels[1] <- "avoidance"
   labels[length(labels)] <- "attraction"
+  
+  windowsFonts(sans="Lucida Sans Unicode")
+  loadfonts(device="win")
+  loadfonts(device="postscript")
   
   ggplot2::ggplot(df, ggplot2::aes(x = cellTypeA, y = cellTypeB)) +
     ggplot2::scale_fill_gradient2(
