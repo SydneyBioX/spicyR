@@ -206,9 +206,14 @@ bubblePlot <- function(
   labels[1] <- "avoidance"
   labels[length(labels)] <- "attraction"
   
-  windowsFonts(sans="Lucida Sans Unicode")
-  loadfonts(device="win")
-  loadfonts(device="postscript")
+  if(.Platform$OS.type == "windows") {
+    grDevices::windowsFonts(sans="Lucida Sans Unicode")
+    extrafont::loadfonts(device="all", quiet = TRUE)
+  } else if (.Platform$OS.type == "unix") {
+    par(family = "Lucida Sans Unicode")
+    extrafont::loadfonts(device="postscript", quiet = TRUE)
+    extrafont::loadfonts(device="pdf", quiet = TRUE)
+  }
   
   ggplot2::ggplot(df, ggplot2::aes(x = cellTypeA, y = cellTypeB)) +
     ggplot2::scale_fill_gradient2(
