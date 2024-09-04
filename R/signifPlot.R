@@ -210,7 +210,7 @@ bubblePlot <- function(
     grDevices::windowsFonts(sans="Lucida Sans Unicode")
     extrafont::loadfonts(device="all", quiet = TRUE)
   } else if (.Platform$OS.type == "unix") {
-    par(family = "Lucida Sans Unicode")
+    extrafont::font_import(pattern="DejaVuSans", prompt=FALSE)
     extrafont::loadfonts(device="postscript", quiet = TRUE)
     extrafont::loadfonts(device="pdf", quiet = TRUE)
   }
