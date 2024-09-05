@@ -46,7 +46,8 @@ Imports:
     cli,
     survival,
     ggthemes,
-    ggh4x
+    ggh4x,
+    coxme
 Suggests: 
     BiocStyle,
     knitr,
