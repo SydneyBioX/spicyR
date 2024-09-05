@@ -277,7 +277,7 @@ bubblePlot <- function(
 #' @return A ggplot object.
 #' @export
 #' 
-#' @import ggh4x 
+#' @importFrom ggh4x strip_themed facet_grid2
 #' @import ggplot2
 #' @import ggthemes
 survBubble = function(result,
