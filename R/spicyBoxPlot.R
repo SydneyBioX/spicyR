@@ -23,7 +23,7 @@ spicyBoxPlot <- function(results,
                          rank = NULL) {
   
   if(is.null(c(from, to, rank))) {
-    stop("Please specify either a pairwse relationship or rank")
+    stop("Please specify either a pairwise relationship or rank")
   }
   
   pVal <- results$p.value
@@ -54,7 +54,7 @@ spicyBoxPlot <- function(results,
   ggplot2::ggplot(df, ggplot2::aes(x = condition, y = .data[[pairName]], fill = condition, label = imageID)) +
     ggplot2::geom_boxplot() +
     # ggplot2::geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.5) +
-    ggplot2::ggtitle("Boxplot of Pairwise Assocations across Conditions") +
+    ggplot2::ggtitle("Boxplot of Pairwise Associations across Conditions") +
     ggplot2::xlab("Condition") + 
     ggplot2::ylab(ylabel) +
     ggplot2::theme_classic()

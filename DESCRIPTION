@@ -38,11 +38,13 @@ Imports:
     SingleCellExperiment,
     SpatialExperiment,
     SummarizedExperiment,
+    SpatialDatasets,
     ggforce,
     ClassifyR,
     tibble,
     magrittr,
-    cli
+    cli,
+    extrafont
 Suggests: 
     BiocStyle,
     knitr,

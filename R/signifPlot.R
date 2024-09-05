@@ -39,24 +39,24 @@ signifPlot <- function(results,
                        colours = c("#4575B4", "white", "#D73027"),
                        marksToPlot = NULL,
                        cutoff = 0.05) {
-
+  
   if (is.null(comparisonGroup)) {
     coef <- 2
   } else {
     coef <- which(levels(results$condition) == comparisonGroup)
   }
   marks <- unique(results$comparisons$from)
-
+  
   if ("fromName" %in% names(results$comparisons)) {
     marks <- unique(c(
       results$comparisons$to,
       results$comparisons$from
     ))
   }
-
-
+  
+  
   if (is.null(marksToPlot)) marksToPlot <- marks
-
+  
   if (type == "bubble") {
     return(
       bubblePlot(
@@ -65,36 +65,36 @@ signifPlot <- function(results,
       )
     )
   }
-
+  
   if (is.null(breaks)) breaks <- c(-3, 3, 0.5)
   breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
   pal <- grDevices::colorRampPalette(colours)(length(breaks))
-
-
+  
+  
   pVal <- results$p.value[, coef]
-
+  
   if (min(pVal, na.rm = TRUE) == 0) {
     pVal[pVal == 0] <-
       pVal[pVal == 0] + 10^floor(log10(min(pVal[pVal > 0], na.rm = TRUE)))
   }
-
+  
   if (fdr) {
     pVal <- stats::p.adjust(pVal, method = "fdr")
   }
-
+  
   isGreater <- results$coefficient[, coef] > 0
-
+  
   pVal <- log10(pVal)
-
+  
   pVal[isGreater] <- abs(pVal[isGreater])
-
+  
   pVal <- matrix(pVal, nrow = length(marks))
   colnames(pVal) <- marks
   rownames(pVal) <- marks
-
-
-
-
+  
+  
+  
+  
   heatmap <- pheatmap::pheatmap(
     pVal[marksToPlot, marksToPlot],
     color = pal,
@@ -102,7 +102,7 @@ signifPlot <- function(results,
     cluster_rows = FALSE,
     cluster_cols = FALSE
   )
-
+  
   heatmap
 }
 
@@ -111,11 +111,11 @@ bubblePlot <- function(
     test, fdr, breaks, coef,
     colours = c("blue", "white", "red"), cutoff = 0.05, marksToPlot) {
   size <- -log10(test$p.value[, coef])
-
+  
   if (is.null(test$alternateResult)) {
     test$alternateResult <- FALSE
   }
-
+  
   if (test$alternateResult) {
     groupA <- test$coefficient[, 1]
     groupB <- (test$coefficient[, 1] + test$coefficient[, coef])
@@ -128,52 +128,52 @@ bubblePlot <- function(
   }
   cellTypeA <- factor(test$comparisons$from)
   cellTypeB <- factor(test$comparisons$to)
-
+  
   sig <- test$p.value[, coef] < cutoff
   sigLab <- paste0("p-value < ", cutoff)
   if (fdr) {
     sig <- p.adjust(test$p.value[, coef], "fdr") < cutoff
     sigLab <- paste0("fdr < ", cutoff)
   }
-
-
-
+  
+  
+  
   df <- data.frame(
     cellTypeA, cellTypeB, groupA, groupB, size,
     stat = test$statistic[, coef], pvalue = test$p.value[, coef],
     sig = factor(sig)
   )
   rownames(df) <- rownames(test$statistic)
-
-
+  
+  
   if ("fromName" %in% names(test$comparisons)) {
     df$cellTypeAName <- factor(test$comparisons$fromName)
     df <- df[df$cellTypeAName %in% marksToPlot & df$cellTypeB %in% marksToPlot, ] # nolint
   } else {
     df <- df[df$cellTypeA %in% marksToPlot & df$cellTypeB %in% marksToPlot, ]
   }
-
+  
   df$cellTypeA <- droplevels(df$cellTypeA)
   df$cellTypeB <- droplevels(df$cellTypeB)
-
+  
   shape.legend <- stats::setNames(
     c("\u25D6", "\u25D7"),
     c(levels(test$condition)[1], levels(test$condition)[coef])
   )
-
+  
   df.shape <- data.frame(
     cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
     condition = c(
       levels(test$condition)[1], levels(test$condition)[coef]
     )
   )
-
-
+  
+  
   if (test$alternateResult) {
     groupAB <- c(groupA, groupB)
-
+    
     limits <- c(min(groupAB, na.rm = TRUE), max(groupAB, na.rm = TRUE))
-
+    
     range <- limits[2] - limits[1]
     breaks <- c(
       limits[1] + range / 5,
@@ -182,30 +182,39 @@ bubblePlot <- function(
       limits[1] + 4 * (range / 5),
       limits[2]
     )
-
+    
     midpoint <- limits[1] + 3 * (range / 5)
   } else if (is.null(breaks)) {
     groupAB <- c(groupA, groupB)
-
+    
     limits <- c(min(groupAB, na.rm = TRUE), max(groupAB, na.rm = TRUE)) |>
       round(1)
-
+    
     breaks <- seq(from = limits[1], to = limits[2], by = diff(limits) / 5)
   } else {
     limits <- c(breaks[1], breaks[2])
     breaks <- seq(from = breaks[1], to = breaks[2], by = breaks[3])
   }
-
-
+  
+  
   df$groupA <- pmax(pmin(df$groupA, limits[2]), limits[1])
   df$groupB <- pmax(pmin(df$groupB, limits[2]), limits[1])
-
+  
   pal <- grDevices::colorRampPalette(colours)(length(breaks)) # nolint
-
+  
   labels <- round(breaks, 3)
   labels[1] <- "avoidance"
   labels[length(labels)] <- "attraction"
-
+  
+  if(.Platform$OS.type == "windows") {
+    grDevices::windowsFonts(sans="Lucida Sans Unicode")
+    extrafont::loadfonts(device="all", quiet = TRUE)
+  } else if (.Platform$OS.type == "unix") {
+    extrafont::font_import(pattern="DejaVuSans", prompt=FALSE)
+    extrafont::loadfonts(device="postscript", quiet = TRUE)
+    extrafont::loadfonts(device="pdf", quiet = TRUE)
+  }
+  
   ggplot2::ggplot(df, ggplot2::aes(x = cellTypeA, y = cellTypeB)) +
     ggplot2::scale_fill_gradient2(
       low = colours[1], mid = colours[2], high = colours[3],
@@ -218,7 +227,7 @@ bubblePlot <- function(
     ) +
     ggforce::geom_arc_bar(
       ggplot2::aes(
-        fill = groupA, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        fill = groupB, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
         r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
         start = 0, end = pi, x = NULL, y = NULL
       ),
@@ -226,7 +235,7 @@ bubblePlot <- function(
     ) +
     ggforce::geom_arc_bar(
       ggplot2::aes(
-        fill = groupB, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
+        fill = groupA, r = pmax(size / max(size, na.rm = TRUE) / 2, 0.15),
         r0 = 0, x0 = as.numeric(cellTypeA), y0 = as.numeric(cellTypeB),
         start = pi, end = 2 * pi, x = NULL, y = NULL
       ),

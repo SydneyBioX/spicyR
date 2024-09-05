@@ -1,5 +1,5 @@
 ---
-title: "Spatial Mixed-Effects Modelling with spicy"
+title: "Spatial Linear and Mixed-Effects Modelling with spicy"
 date: "`r BiocStyle::doc_date()`"
 params:
   test: FALSE
@@ -17,23 +17,27 @@ author:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
+abstract: > 
+  Perform linear and mixed-effects models to assess and visualise changes 
+  in cell localisation across disease conditions.
 vignette: >
-  %\VignetteIndexEntry{"Introduction to spicy"}
+  %\VignetteIndexEntry{"Spatial Linear and Mixed-Effects Modelling with spicy"}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
   BiocStyle::html_document
+bibliography: REFERENCES.bib
 ---
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  warning = FALSE
+  warning = FALSE,
+  message = FALSE
 )
 library(BiocStyle)
 ```
-
 
 # Installation
 
@@ -44,176 +48,154 @@ if (!require("BiocManager")) {
 BiocManager::install("spicyR")
 ```
 
+
 ```{r warning=FALSE, message=FALSE}
 # load required packages
 library(spicyR)
 library(ggplot2)
-library(SingleCellExperiment)
 library(SpatialExperiment)
+library(SpatialDatasets)
 library(imcRtools)
 ```
 
+
 # Overview
-This guide will provide a step-by-step guide on how mixed effects models can be 
-applied to multiple segmented and labelled images to identify how the 
-localisation of different cell types can change across different conditions. 
-Here, the subject is modelled as a random effect, and the different conditions 
-are modelled as a fixed effect.
+
+This guide provides step-by-step instructions on how to apply a linear model to multiple segmented and labelled images to assess how the localisation of different cell types changes across different disease conditions. 
 
 # Example data
-Here, we use a subset of the Damond et al., 2019 imaging mass cytometry dataset. We will compare 
-the spatial distributions of cells in the pancreatic islets of individuals with early onset diabetes and healthy controls. 
 
-`diabetesData` is a `SingleCellExperiment` object containing single-cell data of 160 images 
-from 8 subjects, with 20 images per subject.
+We use the @keren2018 breast cancer dataset to compare the spatial distribution of immune cells in individuals with different levels of tumour infiltration (cold and compartmentalised).
+
+The data is stored as a `SpatialExperiment` object and contains single-cell spatial data from 41 images.
 
 
-```{r}
-data("diabetesData")
-diabetesData
+```{r warning=FALSE, message=FALSE}
+kerenSPE <- SpatialDatasets::spe_Keren_2018()
 ```
 
-In this data set, cell types include immune cell types (B cells, naive T cells,
-T Helper cells, T cytotoxic cells, neutrophils, macrophages) and pancreatic islet
-cells (alpha, beta, gamma, delta).
+The cell types in this dataset includes 11 immune cell types (double negative CD3 T cells, CD4 T cells, B cells, monocytes, macrophages, CD8 T cells, neutrophils, natural killer cells, dendritic cells, regulatory T cells), 2 structural cell types (endothelial, mesenchymal), 2 tumour cell types (keratin+ tumour, tumour) and one unidentified category.
 
-# Mixed Effects Modelling
+# Linear modelling
 
 To investigate changes in localisation between two different cell types, we 
 measure the level of localisation between two cell types by modelling with the 
-L-function. Specifically, the mean difference 
-between the obtained function and the theoretical function is used as a measure
-for the level of localisation. Differences of this statistic between two 
-conditions is modelled using a weighted mixed effects model, with condition as 
-the fixed effect and subject as the random effect.
+L-function. The L-function is a variance-stabilised K-function given by the equation
 
-## Testing for change in localisation for a specific pair of cells
+$$
+\widehat{L_{ij}} (r) = \sqrt{\frac{\widehat{K_{ij}}(r)}{\pi}}
+$$
 
-Firstly, we can test whether one cell type tends to be more localised with another cell type 
-in one condition compared to the other. This can be done using the `spicy()` 
-function, where we include `condition`, and `subject`. 
+with $\widehat{K_{ij}}$ defined as
 
-In this example, we want to see whether or not Delta cells (`to`) tend to be found around Beta cells (`from`)
-in onset diabetes images compared to non-diabetic images. However, given that there are 3 conditions, we can specify the desired
-conditions by setting the order of our `condition` factor. `spicy()` will choose the first level of the factor as 
-the base condition and the second level as the comparison condition. `spicy()` will also naturally coerce the `condition` column into a 
-factor if not already a factor. 
+$$
+\widehat{K_{ij}} (r) = \frac{|W|}{n_i n_j} \sum_{n_i} \sum_{n_j} 1 \{d_{ij} \leq r \} e_{ij} (r)
+$$
 
-```{r message=FALSE}
+where $\widehat{K_{ij}}$ summarises the degree of co-localisation of cell type $j$ with cell type $i$, $n_i$ and $n_j$ are the number of cells of type $i$ and $j$, $|W|$ is the image area, $d_{ij}$ is the distance between two cells and $e_{ij} (r)$ is an edge correcting factor.
+
+Specifically, the mean difference between the experimental function and the theoretical function is used as a measure for the level of localisation, defined as
+
+$$
+u = \sum_{r' = r_{\text{min}}}^{r_{\text{max}}} \widehat L_{ij, \text{Experimental}} (r') - \widehat L_{ij, \text{Poisson}} (r')
+$$
+
+where $u$ is the sum is taken over a discrete range of $r$ between $r_{\text{min}}$ and $r_{\text{max}}$. Differences of the statistic $u$ between two  conditions is modelled using a weighted linear model.
+
+## Test for change in localisation for a specific pair of cells
+
+Firstly, we can test whether one cell type tends to be more localised with another cell type in one condition compared to the other. This can be done using the `spicy()` function, where we specify the `condition` parameter.
+
+In this example, we want to see whether or not neutrophils (`to`) tend to be found around CD8 T cells (`from`) in compartmentalised tumours compared to cold tumours. Given that there are 3 conditions, we can specify the desired conditions by setting the order of our `condition` factor. `spicy` will choose the first level of the factor as the base condition and the second level as the comparison condition. `spicy` will also naturally coerce the `condition` column into a factor if it is not already a factor. The column containing cell type annotations can be specified using the `cellTypeCol` argument. By default, `spicy` uses the column named `cellType` in the `SpatialExperiment` object.
+
+```{r}
 spicyTestPair <- spicy(
-  diabetesData,
-  condition = "stage",
-  subject = "case",
-  from = "beta",
-  to = "delta"
+  kerenSPE,
+  condition = "tumour_type",
+  from = "CD8_T_cell",
+  to = "Neutrophils"
 )
 
 topPairs(spicyTestPair)
 ```
 
-We obtain a `spicy` object which details the results of the mixed effects 
-modelling performed. As the `coefficient` in `spicyTest` is positive, we find 
-that delta cells cells are significantly less likely to be found near beta cells
-in the onset diabetes group compared to the non-diabetic control.
+We obtain a `spicy` object which details the results of the 
+modelling performed. The `topPairs()` function can be used to obtain the associated coefficients and p-value.
+
+As the `coefficient` in `spicyTestPair` is positive, we find that neutrophils are significantly more likely to be found near CD8 T cells in the compartmentalised tumours group compared to the cold tumour group.
 
 ## Test for change in localisation for all pairwise cell combinations
 
-Here, we can perform what we did above for all pairwise combinations of cell 
-types by excluding the `from` and `to` parameters from `spicy()`.
+We can perform what we did above for all pairwise combinations of cell 
+types by excluding the `from` and `to` parameters in `spicy()`.
 
-```{r message=FALSE}
+
+```{r}
 spicyTest <- spicy(
-  diabetesData,
-  condition = "stage",
-  subject = "case"
+  kerenSPE,
+  condition = "tumour_type"
 )
 
 topPairs(spicyTest)
 ```
+
+Again, we obtain a `spicy` object which outlines the result of the linear
+models performed for each pairwise combination of cell types.
+
 We can also examine the L-function metrics of individual images by using the
-convenient `bind()` function on our spicyTest results object.
+convenient `bind()` function on our `spicyTest` results object.
+
 ```{r}
 bind(spicyTest)[1:5, 1:5]
 ```
 
+The results can be represented as a bubble plot using the `signifPlot()` function.
 
-Again, we obtain a `spicy` object which outlines the result of the mixed effects 
-models performed for each pairwise combination of cell types.
-
-We can represent this as a bubble plot using the `signifPlot()` function by 
-providing it the `spicy` object obtained. Here, we can observe that the most
-significant relationships occur between pancreatic beta and delta cells, suggesting
-that the 2 cell types are far more localised during diabetes onset compared to
-non-diabetics.
 ```{r}
 signifPlot(
   spicyTest,
   breaks = c(-3, 3, 1),
-  marksToPlot = c(
-    "alpha", "beta", "gamma", "delta",
-    "B", "naiveTc", "Th", "Tc", "neutrophil", "macrophage"
-  )
+  marksToPlot = c("Macrophages", "DC_or_Mono", "dn_T_CD3", "Neutrophils",
+                  "CD8_T_cell", "Keratin_Tumour")
 )
 ```
-If we're interested and wish to examine a specific cell type-cell type 
-relationship in more detail, we can use `spicyBoxPlot`, specifying the relationship
-we want to examine.
 
-In the bubble plot above, we can see that the most significant relationship is
-between beta and delta islet cells in the pancreas. To examine this further, we
-can specify either `from = beta` and `to = delta` or `rank = 1` parameters in 
-`spicyBoxPlot`.
+Here, we can observe that the most significant relationships occur between macrophages and double negative CD3 T cells, suggesting that the two cell types are far more dispersed in compartmentalised tumours compared to cold tumours.
+
+To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxplot()` and specify either `from = "Macrophages"` and `to = "dn_T_CD3"` or `rank = 1`.
 
 ```{r}
-spicyBoxPlot(results = spicyTest,
-             # from = "beta",
-             # to = "delta",
+spicyBoxPlot(results = spicyTest, 
+             # from = "Macrophages",
+             # to = "dn_T_CD3"
              rank = 1)
 ```
 
-## Mixed effects modelling for custom metrics
+# Linear modelling for custom metrics
 
-`spicyR` can also be applied to custom distance or abundance metrics. Here, we
-provide an example where we apply the `spicy` function to a custom abundance
-metric.
+`spicyR` can also be applied to custom distance or abundance metrics. A kNN interactions graph can be generated with the function `buildSpatialGraph` from the `imcRtools` package. This generates a `colPairs` object inside of the `SpatialExperiment` object.
 
-We first obtain the custom abundance metric by converting the a `SpatialExperiment`
-object from the existing `SingleCellExperiment` object. A KNN interactions graph
-is then generated with the function `buildSpatialGraph` from the `imcRtools` package.
-This generates a `colPairs` object inside of the SpatialExperiment object.
-`spicyR` provides the function `convPairs` for converting a `colPairs` object stored
-within a `SingleCellExperiment` object into an abundance matrix by effectively 
-calculating the average number of nearby cells types for every cell type. 
-For example, if there exists on average 5 neutrophils for every macrophage in
-image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
+`spicyR` provides the function `convPairs` for converting a `colPairs` object into an abundance matrix by calculating the average number of nearby cells types for every cell type for a given `k`. For example, if there exists on average 5 neutrophils for every macrophage in image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
 
-`spicy` can take any input of pairwise cell type combinations across 
-multiple images and run a mixed effects model to determine collective differences
-across conditions. 
 ```{r}
-diabetesData_SPE <- SpatialExperiment(diabetesData,
-                                      colData = colData(diabetesData)) 
+kerenSPE <- imcRtools::buildSpatialGraph(kerenSPE, 
+                                         img_id = "imageID", 
+                                         type = "knn", k = 20,
+                                        coords = c("x", "y"))
 
-spatialCoords(diabetesData_SPE) <- data.frame(colData(diabetesData_SPE)$x, colData(diabetesData_SPE)$y) |> as.matrix()
-spatialCoordsNames(diabetesData_SPE) <- c("x", "y")
-
-diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE, img_id = "imageID", type = "knn", k = 20, coords = c("x", "y"))
-
-pairAbundances <- convPairs(diabetesData_SPE,
+pairAbundances <- convPairs(kerenSPE,
                   colPair = "knn_interaction_graph")
 
-head(pairAbundances["delta__delta"])
+head(pairAbundances["B_cell__B_cell"])
 ```
 
-`spicy` can take any input of pairwise cell type combinations across 
-multiple images and run a mixed effects model to determine collective differences
-across conditions. To check out other custom distance metrics which can be used,
-feel free to check out the `Statial` package.
+
+The custom distance or abundance metrics can then be included in the analysis with the `alternateResult` parameter. The `Statial` package contains other custom distance metrics which can be used with `spicy`.
+
 ```{r}
 spicyTestColPairs <- spicy(
-  diabetesData_SPE,
-  condition = "stage",
-  subject = "case",
+  kerenSPE,
+  condition = "tumour_type",
   alternateResult = pairAbundances,
   weights = FALSE
 )
@@ -221,21 +203,34 @@ spicyTestColPairs <- spicy(
 topPairs(spicyTestColPairs)
 ```
 
-Again, we can present this `spicy` object as a bubble plot using the 
-`signifPlot()` function by providing it with the `spicy` object.
+
 ```{r}
 signifPlot(
   spicyTestColPairs,
-  marksToPlot = c(
-    "alpha", "acinar", "ductal", "naiveTc", "neutrophil", "Tc",
-    "Th", "otherimmune"
-  )
+  breaks = c(-3, 3, 1),
+  marksToPlot = c("Macrophages", "dn_T_CD3", "CD4_T_cell", 
+                  "B_cell", "DC_or_Mono", "Neutrophils", "CD8_T_cell")
 )
 ```
 
-# sessionInfo()
+# Mixed effects modelling
+
+`spicyR` supports mixed effects modelling when multiple images are obtained for each subject. In this case, `subject` is treated as a random effect and `condition` is treated as a fixed effect. To perform mixed effects modelling, we can specify the `subject` parameter in the `spicy` function.
+
+```{r eval=FALSE}
+spicyMixedTest <- spicy(
+  diabetesData,
+  condition = "stage",
+  subject = "case"
+)
+```
+
+# References
+
 
 ```{r}
 sessionInfo()
 ```
+
+
 
