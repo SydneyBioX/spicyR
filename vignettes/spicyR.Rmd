@@ -160,14 +160,14 @@ signifPlot(
 )
 ```
 
-Here, we can observe that the most significant relationships occur between macrophages and dendritic cells/monocytes, suggesting that the two cell types are far more dispersed in compartmentalised tumours compared to cold tumours.
+Here, we can observe that the most significant relationships occur between macrophages and double negative CD3 T cells, suggesting that the two cell types are far more dispersed in compartmentalised tumours compared to cold tumours.
 
-To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxplot()` and specify either `from = "Macrophages"` and `to = "DC_or_Mono"` or `rank = 1`.
+To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxplot()` and specify either `from = "Macrophages"` and `to = "dn_T_CD3"` or `rank = 1`.
 
 ```{r}
 spicyBoxPlot(results = spicyTest, 
              # from = "Macrophages",
-             # to = "DC_or_Mono"
+             # to = "dn_T_CD3"
              rank = 1)
 ```
 
