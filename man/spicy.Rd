@@ -77,7 +77,8 @@ concave windows.}
 
 \item{sigma}{A numeric variable used for scaling when fitting inhomogeneous L-curves.}
 
-\item{Rs}{A vector of radii that the measures of association should be calculated.}
+\item{Rs}{A vector of radii that the measures of association should be calculated. If
+NULL, Rs = c(20, 50, 100) is specified by default.}
 
 \item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 
