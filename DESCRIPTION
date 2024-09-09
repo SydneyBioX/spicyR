@@ -38,7 +38,6 @@ Imports:
     SingleCellExperiment,
     SpatialExperiment,
     SummarizedExperiment,
-    SpatialDatasets,
     ggforce,
     ClassifyR,
     tibble,
@@ -46,6 +45,7 @@ Imports:
     cli,
     extrafont
 Suggests: 
+    SpatialDatasets,
     BiocStyle,
     knitr,
     rmarkdown,
