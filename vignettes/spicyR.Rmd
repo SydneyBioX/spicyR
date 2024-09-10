@@ -25,7 +25,9 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
-  BiocStyle::html_document
+  BiocStyle::html_document:
+    toc_float: true
+    toc_depth: 3
 bibliography: REFERENCES.bib
 ---
 
@@ -148,6 +150,7 @@ convenient `bind()` function on our `spicyTest` results object.
 ```{r}
 bind(spicyTest)[1:5, 1:5]
 ```
+
 
 The results can be represented as a bubble plot using the `signifPlot()` function.
 
