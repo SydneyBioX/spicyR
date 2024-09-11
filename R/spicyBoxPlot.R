@@ -39,11 +39,14 @@ spicyBoxPlot <- function(results,
     pVal <- pVal[order(pVal[, 2]),]
     
     pairName <- rownames(pVal)[rank]
+    from <- unlist(strsplit(pairName, split = "__"))[1]
+    to <- unlist(strsplit(pairName, split = "__"))[2]
   }
   
   df <- data.frame(imageID = results$imageID, 
                    pairwiseAssoc = results$pairwiseAssoc[pairName],
                    condition = results$condition)
+  
   
   if(results$alternateResult) {
     ylabel <- "Alternate Result"
@@ -51,10 +54,10 @@ spicyBoxPlot <- function(results,
     ylabel <- "L Function"
   }
   
-  ggplot2::ggplot(df, ggplot2::aes(x = condition, y = .data[[pairName]], fill = condition, label = imageID)) +
+  ggplot2::ggplot(df, ggplot2::aes(x = condition, y = .data[[pairName]], fill = condition)) +
     ggplot2::geom_boxplot() +
     # ggplot2::geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.5) +
-    ggplot2::ggtitle("Boxplot of Pairwise Associations across Conditions") +
+    ggplot2::ggtitle(paste0("L-function values between ", from, " cells and ", to, " cells")) +
     ggplot2::xlab("Condition") + 
     ggplot2::ylab(ylabel) +
     ggplot2::theme_classic()
