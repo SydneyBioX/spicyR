@@ -1,7 +1,9 @@
 test_that(
-    "the output is equal using segmented cells and SingleCellExperiment",
+    "the output is equal to previous version",
     {
-        load(system.file("testdata/original_result.rda", package = "spicyR"))
+        original_result <- readRDS(
+            system.file("testdata/original_result.rds", package = "spicyR")
+        )
         expect_equal(
             suppressWarnings(spicy(diabetesData,
                 condition = "stage", subject = "case",

@@ -1,7 +1,7 @@
 Package: spicyR
 Type: Package
 Title: Spatial analysis of in situ cytometry data
-Version: 1.17.1
+Version: 1.17.5
 Authors@R: c(
     person("Nicolas", "Canete", , "nicolas.canete@sydney.edu.au", role = "aut"),
     person("Ellis", "Patrick", , "ellis.patrick@sydney.edu.au", role = c("aut", "cre")),
@@ -47,8 +47,10 @@ Imports:
     survival,
     ggthemes,
     ggh4x,
-    coxme
+    coxme,
+    extrafont
 Suggests: 
+    SpatialDatasets,
     BiocStyle,
     knitr,
     rmarkdown,
