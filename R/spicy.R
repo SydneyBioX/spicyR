@@ -135,7 +135,7 @@ spicy <- function(cells,
   if(!is.null(condition)){
     conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
     
-    if (class(conditionVector) != "Surv" && !is.factor(conditionVector)) {
+    if (!inherits(conditionVector, "Surv") && !is.factor(conditionVector)) {
       conditionVector <- as.factor(conditionVector)
       cli::cli_inform(
         paste0(
@@ -156,7 +156,7 @@ spicy <- function(cells,
     if (nrow(as.data.frame(unique(cells[, subject]))) == nrow(as.data.frame(unique(cells[, imageIDCol])))) {
       subject <- NULL
       
-      if(class(conditionVector) == "Surv") {
+      if(inherits(conditionVector, "Surv")) {
         warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a coxph model instead of cox mixed effects model.")
       } else{
         warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a linear model instead of mixed model.")
@@ -243,7 +243,7 @@ spicy <- function(cells,
   spicyResult = list()
   
   ## Survival model
-  if(class(conditionVector) == "Surv"){
+  if(inherits(conditionVector, "Surv")){
     
     survivalResult = spatialSurv(
       measurementMat = pairwiseAssocMatrix,
@@ -262,7 +262,7 @@ spicy <- function(cells,
 
 
   ## Linear model
-  if (!class(conditionVector) == "Surv" && is.null(subject) && !is.null(condition)) {
+  if (!inherits(conditionVector, "Surv") && is.null(subject) && !is.null(condition)) {
     if (verbose) {
       cli::cli_inform("Testing for spatial differences across conditions")
     }
@@ -293,7 +293,7 @@ spicy <- function(cells,
 
 
   ## Mixed effects model
-  if (!class(conditionVector) == "Surv" && (!is.null(subject)) && !is.null(condition)) {
+  if (!inherits(conditionVector, "Surv") && (!is.null(subject)) && !is.null(condition)) {
     if (verbose) {
       cli::cli_inform(
         "Testing for spatial differences across conditions accounting for multiple images per subject" # nolint
