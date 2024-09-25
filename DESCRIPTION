@@ -48,7 +48,8 @@ Imports:
     ggthemes,
     ggh4x,
     coxme,
-    extrafont
+    extrafont,
+    ggnewscale
 Suggests: 
     SpatialDatasets,
     BiocStyle,

@@ -164,6 +164,8 @@ spicy <- function(cells,
     }  
   }
 
+  
+  spicyResult = list()
 
 
   ## Find pairwise associations
@@ -184,50 +186,37 @@ spicy <- function(cells,
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
   }
-
-  if (!is.null(alternateResult) && !isKontextual(alternateResult)) {
+  
+  
+  if (!is.null(alternateResult)) {
     pairwiseAssoc <- alternateResult
-
-    if (weights) {
-      cli::cli_inform("Cell count weighting set to FALSE for alternate results")
-      weights <- FALSE
+    
+    comparisons <- data.frame(from = m1,
+                              to = m2,
+                              labels = labels)
+    
+    # Checking if Kontextual result.
+    if (isTRUE(attr(alternateResult, "kontextualResult"))) {
+      pairwiseAssoc <- alternateResult
+      
+      labels <- names(pairwiseAssoc)
+      
+      comparisons <- data.frame(labels) |>
+        tidyr::separate(
+          col = labels,
+          into = c("from", "to", "parent"),
+          sep = "__"
+        ) |>
+        dplyr::mutate(labels = paste(.data$from, .data$to, .data$parent, sep = "__"))
+      
+      m1 <- comparisons$from
+      m2 <- comparisons$to
+      
+      spicyResult$isKontextual = TRUE
+    
     }
   }
-
-  comparisons <- data.frame(from = m1, to = m2, labels = labels)
-
-  if (!is.null(alternateResult) && isKontextual(alternateResult)) {
-    pairwiseAssoc <- alternateResult |>
-      dplyr::select(.data$imageID, .data$test, .data$konditional) |>
-      tidyr::pivot_wider(
-        names_from = .data$test, values_from = .data$konditional
-      ) |>
-      tibble::column_to_rownames("imageID")
-
-    labels <- names(pairwiseAssoc)
-
-    comparisons <- data.frame(labels) |>
-      tidyr::separate(
-        col = labels,
-        into = c("fromName", "to", "parent"),
-        sep = "__"
-      ) |>
-      dplyr::mutate(
-        labels = paste(.data$fromName, .data$to, .data$parent, sep = "__")
-      ) |>
-      dplyr::mutate(from = paste(.data$fromName, .data$parent, sep = "__")) |>
-      dplyr::select(-.data$parent)
-
-    m1 <- comparisons$fromName
-    m2 <- comparisons$to
-
-    if (weights) {
-      weights <- FALSE
-      cli::cli_inform(
-        "Cell count weighting set to FALSE for Kontextual results"
-      )
-    }
-  }
+  
   
   weightFunction <- getWeightFunction(
     pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor
@@ -239,7 +228,7 @@ spicy <- function(cells,
   pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
   names(pairwiseAssoc) <- labels
   
-  spicyResult = list()
+
   
   ## Survival model
   if(inherits(conditionVector, "Surv")){
@@ -681,16 +670,9 @@ spatialLM <-
   }
 
 #' @importFrom survival coxph
-#' @importFrom dplyr bind_rows
-#' @importFrom dplyr mutate
-#' @importFrom dplyr rename
-#' @importFrom dplyr select
-#' @importFrom dplyr arrange
-#' @importFrom dplyr across
-#' @importFrom dplyr where 
+#' @importFrom dplyr bind_rows mutate rename select arrange across where 
 #' @importFrom coxme coxme
-#' @importFrom BiocParallel bplapply
-#' @importFrom BiocParallel SerialParam
+#' @importFrom BiocParallel bplapply SerialParam
 spatialSurv <- function(measurementMat,
                         condition,
                         pheno,
@@ -699,7 +681,6 @@ spatialSurv <- function(measurementMat,
                         weights = NULL,
                         remove = NULL,
                         BPPARAM = BiocParallel::SerialParam()) {
-  
   
   result <- bplapply(colnames(measurementMat), function(test) {
     measurementCol <- measurementMat[, test]

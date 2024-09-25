@@ -12,30 +12,37 @@ signifPlot(
   comparisonGroup = NULL,
   colours = c("#4575B4", "white", "#D73027"),
   marksToPlot = NULL,
-  cutoff = 0.05
+  cutoff = 0.05,
+  contextColours = NULL,
+  contextLabels = waiver()
 )
 }
 \arguments{
-\item{results}{Data frame obtained from spicy.}
+\item{results}{A spicy results object}
 
 \item{fdr}{TRUE if FDR correction is used.}
 
-\item{type}{Where to make a bubble plot or heatmap.}
+\item{type}{Whether to make a bubble plot or heatmap. Note: For survival results a bubble plot will be used.}
 
-\item{breaks}{Vector of 3 numbers giving breaks used in pheatmap. The first
+\item{breaks}{Vector of 3 numbers giving breaks used in legend. The first
 number is the minimum, the second is the maximum, the third is the
 number of breaks.}
 
 \item{comparisonGroup}{A string specifying the name of the outcome group to compare with the base group.}
 
-\item{colours}{Vector of colours to use in pheatmap.}
+\item{colours}{Vector of colours to use to colour legend.}
 
-\item{marksToPlot}{Vector of marks to include in pheatmap.}
+\item{marksToPlot}{Vector of marks to include in plot.}
 
 \item{cutoff}{significance threshold for circles in bubble plot.}
+
+\item{contextColours}{Used for \code{\link[Statial]{Kontextual}} results. A named list specifying the colours for each context.
+By default the Tableau colour palette is used.}
+
+\item{contextLabels}{Used for \code{\link[Statial]{Kontextual}} results. A named list to change the default labels for each context.}
 }
 \value{
-a pheatmap object
+a ggplot or pheatmap object
 }
 \description{
 Plots result of signifPlot.

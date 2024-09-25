@@ -1,0 +1,22 @@
+CHANGES IN VERSION 1.18.0
+-------------------------
+
+NEW FEATURES
+
+    o Added functionality for survival and mixed effect survival analysis.
+    
+    o Added new plotting functions for survival analysis.
+    
+    o Added support for using weights for alternative results.
+    
+
+BUG FIXES
+
+    o Fixed issue with bubble plot where unicode characters don't show up on
+      certain operating systems.
+
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o Vingette has been updated with new dataset showcasing more functionality
+      of spicyR.
