@@ -14,9 +14,12 @@ BUG FIXES
 
     o Fixed issue with bubble plot where unicode characters don't show up on
       certain operating systems.
+    
+    o Fixed issue with bubble plot where legend was not accurately showing 
+      conditions or phenotypes on the plot.
 
 
 SIGNIFICANT USER-VISIBLE CHANGES
 
-    o Vingette has been updated with new dataset showcasing more functionality
+    o Vignette has been updated with new dataset showcasing more functionality
       of spicyR.
