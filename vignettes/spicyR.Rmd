@@ -16,6 +16,10 @@ author:
   affiliation:
   - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
   - School of Mathematics and Statistics, University of Sydney, Australia
+- name: Shreya Rao
+  affiliation: 
+    - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
+    - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
 abstract: > 
   Perform linear and mixed-effects models to assess and visualise changes 
@@ -58,6 +62,9 @@ library(ggplot2)
 library(SpatialExperiment)
 library(SpatialDatasets)
 library(imcRtools)
+library(tidyverse)
+library(survival)
+library(ggsurvfit)
 ```
 
 
@@ -178,7 +185,7 @@ spicyBoxPlot(results = spicyTest,
 
 `spicyR` can also be applied to custom distance or abundance metrics. A kNN interactions graph can be generated with the function `buildSpatialGraph` from the `imcRtools` package. This generates a `colPairs` object inside of the `SpatialExperiment` object.
 
-`spicyR` provides the function `convPairs` for converting a `colPairs` object into an abundance matrix by calculating the average number of nearby cells types for every cell type for a given `k`. For example, if there exists on average 5 neutrophils for every macrophage in image 1, the column `neutrophil__macrophage` would have a value of 5 for image 1.
+`spicyR` provides the function `convPairs` for converting a `colPairs` object into an abundance matrix by calculating the average number of nearby cells types for every cell type for a given `k`. For example, if there exists on average 5 neutrophils for every macrophage in image 1, the column `Neutrophil__Macrophage` would have a value of 5 for image 1.
 
 ```{r}
 kerenSPE <- imcRtools::buildSpatialGraph(kerenSPE, 
@@ -215,6 +222,91 @@ signifPlot(
                   "B_cell", "DC_or_Mono", "Neutrophils", "CD8_T_cell")
 )
 ```
+
+# Performing survival analysis 
+
+`spicy` can also be used to perform survival analysis to asses whether changes in co-localisation between cell types are associated with survival probability. `spicy` requires the `SingleCellExperiment` object being used to contain a column called `survival` as a `Surv` object.
+
+```{r}
+kerenSPE$event = 1 - kerenSPE$Censored
+kerenSPE$survival = Surv(kerenSPE$`Survival_days_capped*`, kerenSPE$event)
+```
+
+We can then perform survival analysis using the `spicy` function by specifying `condition = "survival"`. We can then access the corresponding coefficients and p-values by accessing the `survivalResults` slot in the `spicy` results object.
+
+```{r}
+# Running survival analysis
+spicySurvival = spicy(kerenSPE,
+                      condition = "survival")
+
+# top 10 significant pairs
+head(spicySurvival$survivalResults, 10)
+```
+
+
+# Accounting for tissue inhomogeneity
+
+The `spicy` function can also account for tissue inhomogeneity to avoid false positives or negatives. This can be done by setting the `sigma = ` parameter within the spicy function. By default, `sigma` is set to `NULL`, and `spicy` assumes a homogeneous tissue structure. The value of `sigma` affects the value of the L-function, which in turn affects the cell type pairs identified as significant during linear modelling.
+
+For example, when we examine the L-function for `Keratin_Tumour__Neutrophils` when `sigma = NULL` and `Rs = 100`, the value is positive, indicating attraction between the two cell types. 
+
+```{r}
+# filter SPE object to obtain image 24 data
+kerenSubset = kerenSPE[, colData(kerenSPE)$imageID == "24"]
+
+pairwiseAssoc = getPairwise(kerenSubset, 
+                            sigma = NULL, 
+                            Rs = 100) |>
+  as.data.frame()
+
+pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
+```
+
+When we specify `sigma = 20` and re-calculate the L-function, it indicates that there is no relationship between `Keratin_Tumour` and `Neutrophils`, i.e., there is no major attraction or dispersion, as it now takes into account tissue inhomogeneity.
+
+
+```{r}
+pairwiseAssoc = getPairwise(kerenSubset, 
+                            sigma = 20, 
+                            Rs = 100) |>
+  as.data.frame()
+
+pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
+```
+
+```{r}
+# obtain colData for image 24
+cData = colData(kerenSPE) |> as.data.frame() |> 
+          dplyr::filter(imageID == "24")
+
+# obtain cells present in image 24
+coords = spatialCoords(kerenSPE) |> as.data.frame()
+coords$cellID = rownames(coords)
+coords = coords |> dplyr::filter(cellID %in% cData$CellID)
+
+cData$X = coords$x
+cData$Y = coords$y
+
+cData = cData |> 
+  dplyr::mutate(cellTypeNew = ifelse(cellType %in% c("Keratin_Tumour", "Neutrophils"), 
+                                     cellType, "Other"))
+
+ pal = setNames(c("#d6b11c", "#850f07"), 
+                c("Keratin_Tumour", "Neutrophils"))
+
+ggplot() +
+    stat_density_2d(data = cData, aes(x = X, y = Y, fill = after_stat(density)), 
+                    geom = "raster", 
+                    contour = FALSE) +
+    geom_point(data = cData |> filter(cellType != "Other"),
+               aes(x = X, y = Y, colour = cellTypeNew), size = 1) +
+    scale_color_manual(values = pal) +
+    scale_fill_distiller(palette = "Blues", direction = 1) +
+    theme_classic() +
+    labs(title = "image ID: 24")
+```
+
+Plotting image 24 shows that the supposed co-localisation occurs due to the dense cluster of cells near the top of the image.
 
 # Mixed effects modelling
 
