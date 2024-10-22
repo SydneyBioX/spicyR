@@ -167,6 +167,10 @@ spicy <- function(cells,
   
   spicyResult = list()
 
+  
+  comparisons <- data.frame(from = m1,
+                            to = m2,
+                            labels = labels)
 
   ## Find pairwise associations
 
@@ -185,15 +189,12 @@ spicy <- function(cells,
     )
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
+    
   }
   
   
   if (!is.null(alternateResult)) {
     pairwiseAssoc <- alternateResult
-    
-    comparisons <- data.frame(from = m1,
-                              to = m2,
-                              labels = labels)
     
     # Checking if Kontextual result.
     if (isTRUE(attr(alternateResult, "kontextualResult"))) {

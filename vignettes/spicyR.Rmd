@@ -62,9 +62,8 @@ library(ggplot2)
 library(SpatialExperiment)
 library(SpatialDatasets)
 library(imcRtools)
-library(tidyverse)
+library(dplyr)
 library(survival)
-library(ggsurvfit)
 ```
 
 
