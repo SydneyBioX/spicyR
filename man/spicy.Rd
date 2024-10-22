@@ -38,7 +38,7 @@ spicy(
 \item{cells}{A SummarizedExperiment or data frame that contains at least the  variables
 x and y, giving the location coordinates of each cell, and cellType.}
 
-\item{condition}{Vector of conditions to be tested corresponding to each image.}
+\item{condition}{A character specifying which column which contains the condition or `Surv` objects}
 
 \item{subject}{Vector of subject IDs corresponding to each image if cells is
 a data frame.}
@@ -77,7 +77,8 @@ concave windows.}
 
 \item{sigma}{A numeric variable used for scaling when fitting inhomogeneous L-curves.}
 
-\item{Rs}{A vector of radii that the measures of association should be calculated.}
+\item{Rs}{A vector of radii that the measures of association should be calculated. If
+NULL, Rs = c(20, 50, 100) is specified by default.}
 
 \item{minLambda}{Minimum value for density for scaling when fitting inhomogeneous L-curves.}
 

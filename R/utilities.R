@@ -1,20 +1,7 @@
-# check if alternativeResults is konditional
-isKonditional <- function(konditionalResult) {
-    colNames <- c(
-        "imageID",
-        "test",
-        "original",
-        "konditional",
-        "r",
-        "weightQuantile",
-        "inhom",
-        "edge",
-        "includeZeroCells",
-        "window",
-        "window.length"
-    )
-
-    return(all(colNames %in% names(konditionalResult)))
+# check if alternativeResults is kontextual
+isKontextual <- function(kontextualResult) {
+  
+    return("kontexutal"%in% names(kontextualResult))
 }
 
 #' A format SummarizedExperiment and data.frame objects into a canonical form.

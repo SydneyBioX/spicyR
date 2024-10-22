@@ -4,7 +4,7 @@
 #'   A SummarizedExperiment or data frame that contains at least the  variables
 #'   x and y, giving the location coordinates of each cell, and cellType.
 #' @param condition
-#'   Vector of conditions to be tested corresponding to each image.
+#'   A character specifying which column which contains the condition or `Surv` objects
 #' @param subject Vector of subject IDs corresponding to each image if cells is
 #'   a data frame.
 #' @param covariates Vector of covariate names that should be included in the
@@ -132,31 +132,41 @@ spicy <- function(cells,
 
   nCells <- table(getImageID(cells), getCellType(cells))
 
-  conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
-
-  if (!is.factor(conditionVector)) {
-    conditionVector <- as.factor(conditionVector)
-    cli::cli_inform(
-      paste0(
-        "Coercing condition into factor. Using ",
-        condition, " = ", levels(conditionVector)[1],
-        " as base comparison group. If this is not the desired base group,",
-        " please convert cells$",
-        condition, " into a factor and change the order of levels(cells$",
-        condition, ") so that the base group is at index 1."
+  if(!is.null(condition)){
+    conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
+    
+    if (!inherits(conditionVector, "Surv") && !is.factor(conditionVector)) {
+      conditionVector <- as.factor(conditionVector)
+      cli::cli_inform(
+        paste0(
+          "Coercing condition into factor. Using ",
+          condition, " = ", levels(conditionVector)[1],
+          " as base comparison group. If this is not the desired base group,",
+          " please convert cells$",
+          condition, " into a factor and change the order of levels(cells$",
+          condition, ") so that the base group is at index 1."
+        )
       )
-    )
+    }
   }
-  
+
   ## Check whether the subject parameter has a one-to-one mapping with image
   if (!is.null(subject)) {
     if (nrow(as.data.frame(unique(cells[, subject]))) == nrow(as.data.frame(unique(cells[, imageIDCol])))) {
       subject <- NULL
-      warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a linear model instead of mixed model.")
+      
+      if(inherits(conditionVector, "Surv")) {
+        warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a coxph model instead of cox mixed effects model.")
+      } else{
+        warning("Your specified subject parameter has a one-to-one mapping with imageID. Converting to a linear model instead of mixed model.")
+      }
+      
     }  
   }
+
   
-  
+  spicyResult = list()
+
 
   ## Find pairwise associations
 
@@ -176,62 +186,71 @@ spicy <- function(cells,
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
   }
-
-
-  if (!is.null(alternateResult) && !isKonditional(alternateResult)) {
+  
+  
+  if (!is.null(alternateResult)) {
     pairwiseAssoc <- alternateResult
-
-    if (weights) {
-      cli::cli_inform("Cell count weighting set to FALSE for alternate results")
-      weights <- FALSE
+    
+    comparisons <- data.frame(from = m1,
+                              to = m2,
+                              labels = labels)
+    
+    # Checking if Kontextual result.
+    if (isTRUE(attr(alternateResult, "kontextualResult"))) {
+      pairwiseAssoc <- alternateResult
+      
+      labels <- names(pairwiseAssoc)
+      
+      comparisons <- data.frame(labels) |>
+        tidyr::separate(
+          col = labels,
+          into = c("from", "to", "parent"),
+          sep = "__"
+        ) |>
+        dplyr::mutate(labels = paste(.data$from, .data$to, .data$parent, sep = "__"))
+      
+      m1 <- comparisons$from
+      m2 <- comparisons$to
+      
+      spicyResult$isKontextual = TRUE
+    
     }
   }
-
-  comparisons <- data.frame(from = m1, to = m2, labels = labels)
-
-  if (!is.null(alternateResult) && isKonditional(alternateResult)) {
-    pairwiseAssoc <- alternateResult |>
-      dplyr::select(.data$imageID, .data$test, .data$konditional) |>
-      tidyr::pivot_wider(
-        names_from = .data$test, values_from = .data$konditional
-      ) |>
-      tibble::column_to_rownames("imageID")
-
-    labels <- names(pairwiseAssoc)
-
-    comparisons <- data.frame(labels) |>
-      tidyr::separate(
-        col = labels,
-        into = c("fromName", "to", "parent"),
-        sep = "__"
-      ) |>
-      dplyr::mutate(
-        labels = paste(.data$fromName, .data$to, .data$parent, sep = "__")
-      ) |>
-      dplyr::mutate(from = paste(.data$fromName, .data$parent, sep = "__")) |>
-      dplyr::select(-.data$parent)
-
-    m1 <- comparisons$fromName
-    m2 <- comparisons$to
-
-    if (weights) {
-      weights <- FALSE
-      cli::cli_inform(
-        "Cell count weighting set to FALSE for Konditional results"
-      )
-    }
-  }
-
+  
+  
   weightFunction <- getWeightFunction(
     pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor
   )
-
+  
+  # Matrix needed for survival analysis
+  pairwiseAssocMatrix = pairwiseAssoc
+  
   pairwiseAssoc <- as.list(data.frame(pairwiseAssoc))
   names(pairwiseAssoc) <- labels
+  
+
+  
+  ## Survival model
+  if(inherits(conditionVector, "Surv")){
+    
+    survivalResult = spatialSurv(
+      measurementMat = pairwiseAssocMatrix,
+      condition = condition,
+      pheno = as.data.frame(getImagePheno(cells)),
+      covariates = covariates,
+      subject = subject,
+      weights = weightFunction,
+      BPPARAM = BPPARAM
+    )
+    
+    spicyResult$survivalOutcome = conditionVector
+    spicyResult = append(spicyResult, list("survivalResults" = survivalResult))
+    
+  }
 
 
   ## Linear model
-  if (is.null(subject) && !is.null(condition)) {
+  if (!inherits(conditionVector, "Surv") && is.null(subject) && !is.null(condition)) {
     if (verbose) {
       cli::cli_inform("Testing for spatial differences across conditions")
     }
@@ -256,12 +275,13 @@ spicy <- function(cells,
       SIMPLIFY = FALSE
     )
 
-    df <- cleanLM(linearModels, BPPARAM = BPPARAM)
+    lmResult <- cleanLM(linearModels, BPPARAM = BPPARAM)
+    spicyResult = append(spicyResult, lmResult)
   }
 
 
   ## Mixed effects model
-  if ((!is.null(subject)) && !is.null(condition)) {
+  if (!inherits(conditionVector, "Surv") && (!is.null(subject)) && !is.null(condition)) {
     if (verbose) {
       cli::cli_inform(
         "Testing for spatial differences across conditions accounting for multiple images per subject" # nolint
@@ -299,26 +319,30 @@ spicy <- function(cells,
       x
     })
 
-    df <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
+    melmResult <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
+    spicyResult = append(spicyResult, melmResult)
   }
 
-  df$condition <- conditionVector
+  
+  if(!is.null(condition)){
+    spicyResult$condition <- conditionVector
+  }
 
   if (!is.null(subject)) {
-    df$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
+    spicyResult$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
   }
-
-  df$pairwiseAssoc <- pairwiseAssoc
-  df$comparisons <- comparisons
-
-  df$weights <- weightFunction
-  df$nCells <- nCells
-
-  df$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
-  df$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
-
-  df <- methods::new("SpicyResults", df)
-  df
+  
+  spicyResult$pairwiseAssoc <- pairwiseAssoc
+  spicyResult$comparisons <- comparisons
+  
+  spicyResult$weights <- weightFunction
+  spicyResult$nCells <- nCells
+  
+  spicyResult$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
+  spicyResult$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
+  
+  spicyResult <- methods::new("SpicyResults", spicyResult)
+  spicyResult
 }
 
 
@@ -558,7 +582,7 @@ spatialMEM <-
         "covariates" = pheno[covariates]
       )
 
-    names(spatialData)[names(spatialData) == "covariates"] <- covariates
+    names(spatialData)[grep("covariates", names(spatialData))] <- covariates
 
     formula <- "spatAssoc ~ condition + (1|subject)"
 
@@ -613,7 +637,7 @@ spatialLM <-
         "covariates" = pheno[, covariates]
       )
 
-    names(spatialData)[names(spatialData) == "covariates"] <- covariates
+    names(spatialData)[grep("covariates", names(spatialData))] <- covariates
 
     formula <- "spatAssoc ~ condition"
 
@@ -644,6 +668,86 @@ spatialLM <-
 
     lm1
   }
+
+#' @importFrom survival coxph
+#' @importFrom dplyr bind_rows mutate rename select arrange across where 
+#' @importFrom coxme coxme
+#' @importFrom BiocParallel bplapply SerialParam
+spatialSurv <- function(measurementMat,
+                        condition,
+                        pheno,
+                        covariates = NULL,
+                        subject = NULL,
+                        weights = NULL,
+                        remove = NULL,
+                        BPPARAM = BiocParallel::SerialParam()) {
+  
+  result <- bplapply(colnames(measurementMat), function(test) {
+    measurementCol <- measurementMat[, test]
+    ind <- !(measurementCol %in% remove)
+    
+    spatialData = data.frame("measurementCol" = measurementCol, "surv" = pheno[, condition])
+    
+    formula = "surv ~ measurementCol"
+    
+    if (!is.null(subject)) {
+      spatialData = data.frame(spatialData, "subject" = pheno[, subject])
+      
+      formula <- paste(formula, "(1 | subject)", sep = "+")
+    }
+    
+    if (!is.null(covariates)) {
+      spatialData = data.frame(spatialData, "covariates" = pheno[, covariates])
+      names(spatialData)[grep("covariates", names(spatialData))] <- covariates
+      
+      formula <- paste(formula, paste(covariates, collapse = "+"), sep = "+")
+    }
+    
+    formula = stats::formula(formula)
+    
+    if(is.null(weights)) {
+      spatialData$weights = 1
+    } else {
+      spatialData$weights = weights[[test]]
+    }
+    
+    if(is.null(subject)) {
+    # If no random effects must use coxph
+    fit <- survival::coxph(formula, data = spatialData, weights = spatialData$weights, subset = ind)
+    result <- summary(fit)$coefficients["measurementCol", c("coef", "se(coef)", "Pr(>|z|)")]
+  } else{
+    # Drop factors for any factor columns in spatialData
+    spatialData = spatialData %>%
+      mutate(across(where(is.factor), ~ droplevels(.)))
+    
+    # Mixed effects survival
+    fit <- coxme::coxme(formula, data = spatialData, weights = spatialData$weights, subset = ind)
+    
+    # from print.coxme() function
+    beta <- unname(fit$coefficients)
+    nvar <- length(beta)
+    nfrail <- nrow(fit$var) - nvar
+    
+    se <- sqrt(diag(as.matrix(fit$var))[nfrail + 1:nvar])
+    p_val <- 1 - pchisq((beta / se) ^ 2, 1)
+    
+    # Need to select first indexes of each value incase of multiple betas
+    result <- c("coef" = beta[1], "se(coef)" = se[1], "Pr(>|z|)" = p_val[1])
+  }
+  
+  return(result)
+  }, BPPARAM = BPPARAM)
+
+result <- result |>
+  dplyr::bind_rows() |>
+  dplyr::mutate(test = colnames(measurementMat)) |>
+  dplyr::rename("se.coef" = "se(coef)", "p.value" = "Pr(>|z|)") |>
+  dplyr::select(test, coef, se.coef, p.value) |>
+  dplyr::arrange(p.value)
+
+return(result)
+}
+
 
 ###########################
 #
@@ -747,6 +851,9 @@ inhomLPair <- function(data,
   if (is.null(to)) to <- levels(data$cellType)
 
   use <- data$cellType %in% c(from, to)
+  if (all(!use)) {
+    return(NA)
+  }
   data <- data[use, ]
   X <- X[use, ]
 
@@ -778,43 +885,41 @@ inhomLPair <- function(data,
   p$cellTypeI <- cT[p$i]
   p$i <- factor(p$i, levels = data$cellID)
 
-  
+
   if (edgeCorrect) {
-    rList <- sapply(Rs[-1], function(x){
-    p2 <- p
-    edge <-  borderEdge(X, x)
-    edge <- as.data.frame(edge)
-    colnames(edge) <- x
-    edge$i <- data$cellID
-    edge <- tidyr::pivot_longer(edge, -.data$i, names_to = "d")
-    p2 <- as.data.frame(p2)
-    p2 <- p2[as.numeric(as.character(p2$d))<=x,]
-    p2$d <- as.character(x)
-    p2 <- dplyr::left_join(p2, edge, c("i", "d"))
-    p2$d <- factor(p2$d, levels = x)
-    p2 <- p2[p2$i != p2$j, ]
-    use <- p2$cellTypeI %in% from & p2$cellTypeJ %in% to
-    p2 <- p2[use, ]
-    inhomL(p2, lam, X, x)
-    
+    rList <- sapply(Rs[-1], function(x) {
+      p2 <- p
+      edge <- borderEdge(X, x)
+      edge <- as.data.frame(edge)
+      colnames(edge) <- x
+      edge$i <- data$cellID
+      edge <- tidyr::pivot_longer(edge, -.data$i, names_to = "d")
+      p2 <- as.data.frame(p2)
+      p2 <- p2[as.numeric(as.character(p2$d)) <= x, ]
+      p2$d <- as.character(x)
+      p2 <- dplyr::left_join(p2, edge, c("i", "d"))
+      p2$d <- factor(p2$d, levels = x)
+      p2 <- p2[p2$i != p2$j, ]
+      use <- p2$cellTypeI %in% from & p2$cellTypeJ %in% to
+      p2 <- p2[use, ]
+      inhomL(p2, lam, X, x)
     }, simplify = FALSE)
-     #browser()
-     r <- do.call("rbind", rList)
-  
-     r <- dplyr::group_by(r, cellTypeI, cellTypeJ)
-     r <- dplyr::summarise(r, wt = mean(wt))
-    
+    # browser()
+    r <- do.call("rbind", rList)
+
+    r <- dplyr::group_by(r, cellTypeI, cellTypeJ)
+    r <- dplyr::summarise(r, wt = mean(wt))
   } else {
     p <- as.data.frame(p)
     p$value <- 1
-    
+
     p$d <- factor(p$d, levels = Rs[-1])
-    
+
     p <- p[p$i != p$j, ]
-    
+
     use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
     p <- p[use, ]
-    
+
     r <- inhomL(p, lam, X, Rs)
   }
 
