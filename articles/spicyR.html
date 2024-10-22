@@ -67,11 +67,17 @@ Qin</h4>
             <address class="author_afil">
       Westmead Institute for Medical Research, University of Sydney,
 AustraliaSchool of Mathematics and Statistics, University of Sydney,
-Australia<br><h4 data-toc-skip class="date">18 September 2024</h4>
+Australia<br><h4 data-toc-skip class="author">Shreya
+Rao</h4>
+            <address class="author_afil">
+      Westmead Institute for Medical Research, University of Sydney,
+AustraliaSchool of Mathematics and Statistics, University of Sydney,
+Australia<br><h4 data-toc-skip class="date">22 October 2024</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/SydneyBioX/spicyR/blob/devel/vignettes/spicyR.Rmd" class="external-link"><code>vignettes/spicyR.Rmd</code></a></small>
       <div class="d-none name"><code>spicyR.Rmd</code></div>
     </address>
+</address>
 </address>
 </div>
 
@@ -96,7 +102,9 @@ Australia<br><h4 data-toc-skip class="date">18 September 2024</h4>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/drighelli/SpatialExperiment" class="external-link">SpatialExperiment</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/SydneyBioX/SpatialDatasets" class="external-link">SpatialDatasets</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/BodenmillerGroup/imcRtools" class="external-link">imcRtools</a></span><span class="op">)</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/BodenmillerGroup/imcRtools" class="external-link">imcRtools</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/therneau/survival" class="external-link">survival</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
@@ -311,7 +319,7 @@ converting a <code>colPairs</code> object into an abundance matrix by
 calculating the average number of nearby cells types for every cell type
 for a given <code>k</code>. For example, if there exists on average 5
 neutrophils for every macrophage in image 1, the column
-<code>neutrophil__macrophage</code> would have a value of 5 for image
+<code>Neutrophil__Macrophage</code> would have a value of 5 for image
 1.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">kerenSPE</span> <span class="op">&lt;-</span> <span class="fu">imcRtools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/imcRtools/man/buildSpatialGraph.html" class="external-link">buildSpatialGraph</a></span><span class="op">(</span><span class="va">kerenSPE</span>, </span>
@@ -375,6 +383,113 @@ which can be used with <code>spicy</code>.</p>
 <p><img src="spicyR_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
 </div>
 <div class="section level2">
+<h2 id="performing-survival-analysis">Performing survival analysis<a class="anchor" aria-label="anchor" href="#performing-survival-analysis"></a>
+</h2>
+<p><code>spicy</code> can also be used to perform survival analysis to
+asses whether changes in co-localisation between cell types are
+associated with survival probability. <code>spicy</code> requires the
+<code>SingleCellExperiment</code> object being used to contain a column
+called <code>survival</code> as a <code>Surv</code> object.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">kerenSPE</span><span class="op">$</span><span class="va">event</span> <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="va">kerenSPE</span><span class="op">$</span><span class="va">Censored</span></span>
+<span><span class="va">kerenSPE</span><span class="op">$</span><span class="va">survival</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">kerenSPE</span><span class="op">$</span><span class="va">`Survival_days_capped*`</span>, <span class="va">kerenSPE</span><span class="op">$</span><span class="va">event</span><span class="op">)</span></span></code></pre></div>
+<p>We can then perform survival analysis using the <code>spicy</code>
+function by specifying <code>condition = "survival"</code>. We can then
+access the corresponding coefficients and p-values by accessing the
+<code>survivalResults</code> slot in the <code>spicy</code> results
+object.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Running survival analysis</span></span>
+<span><span class="va">spicySurvival</span> <span class="op">=</span> <span class="fu"><a href="../reference/spicy.html">spicy</a></span><span class="op">(</span><span class="va">kerenSPE</span>,</span>
+<span>                      condition <span class="op">=</span> <span class="st">"survival"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># top 10 significant pairs</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">spicySurvival</span><span class="op">$</span><span class="va">survivalResults</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 4</span></span></span>
+<span><span class="co">#&gt;    test                       coef se.coef    p.value</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> Other_Immune__Tregs     0.023<span style="text-decoration: underline;">6</span>  0.008<span style="text-decoration: underline;">66</span> 0.000<span style="text-decoration: underline;">008</span>93</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> CD4_T_cell__Tregs       0.017<span style="text-decoration: underline;">7</span>  0.006<span style="text-decoration: underline;">85</span> 0.000<span style="text-decoration: underline;">012</span>4 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> Tregs__Other_Immune     0.023<span style="text-decoration: underline;">7</span>  0.008<span style="text-decoration: underline;">73</span> 0.000<span style="text-decoration: underline;">012</span>6 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> Tregs__CD4_T_cell       0.017<span style="text-decoration: underline;">1</span>  0.006<span style="text-decoration: underline;">76</span> 0.000<span style="text-decoration: underline;">028</span>5 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> CD8_T_cell__CD8_T_cell  0.006<span style="text-decoration: underline;">05</span> 0.002<span style="text-decoration: underline;">72</span> 0.000<span style="text-decoration: underline;">332</span>  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> Tumour__CD8_T_cell     -<span style="color: #BB0000;">0.030</span><span style="color: #BB0000; text-decoration: underline;">5</span>  0.011<span style="text-decoration: underline;">4</span>  0.000<span style="text-decoration: underline;">617</span>  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> CD8_T_cell__Tumour     -<span style="color: #BB0000;">0.030</span><span style="color: #BB0000; text-decoration: underline;">5</span>  0.011<span style="text-decoration: underline;">6</span>  0.000<span style="text-decoration: underline;">721</span>  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> CD4_T_cell__dn_T_CD3    0.008<span style="text-decoration: underline;">45</span> 0.003<span style="text-decoration: underline;">53</span> 0.000<span style="text-decoration: underline;">794</span>  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> dn_T_CD3__CD4_T_cell    0.008<span style="text-decoration: underline;">40</span> 0.003<span style="text-decoration: underline;">53</span> 0.000<span style="text-decoration: underline;">937</span>  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> DC__Other_Immune       -<span style="color: #BB0000;">0.028</span><span style="color: #BB0000; text-decoration: underline;">9</span>  0.012<span style="text-decoration: underline;">3</span>  0.001<span style="text-decoration: underline;">03</span></span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="accounting-for-tissue-inhomogeneity">Accounting for tissue inhomogeneity<a class="anchor" aria-label="anchor" href="#accounting-for-tissue-inhomogeneity"></a>
+</h2>
+<p>The <code>spicy</code> function can also account for tissue
+inhomogeneity to avoid false positives or negatives. This can be done by
+setting the <code>sigma =</code> parameter within the spicy function. By
+default, <code>sigma</code> is set to <code>NULL</code>, and
+<code>spicy</code> assumes a homogeneous tissue structure.</p>
+<p>For example, when we examine the L-function for
+<code>Keratin_Tumour__Neutrophils</code> when <code>sigma = NULL</code>
+and <code>Rs = 100</code>, the value is positive, indicating attraction
+between the two cell types.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># filter SPE object to obtain image 24 data</span></span>
+<span><span class="va">kerenSubset</span> <span class="op">=</span> <span class="va">kerenSPE</span><span class="op">[</span>, <span class="fu">colData</span><span class="op">(</span><span class="va">kerenSPE</span><span class="op">)</span><span class="op">$</span><span class="va">imageID</span> <span class="op">==</span> <span class="st">"24"</span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">pairwiseAssoc</span> <span class="op">=</span> <span class="fu"><a href="../reference/getPairwise.html">getPairwise</a></span><span class="op">(</span><span class="va">kerenSubset</span>, </span>
+<span>                            sigma <span class="op">=</span> <span class="cn">NULL</span>, </span>
+<span>                            Rs <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pairwiseAssoc</span><span class="op">[[</span><span class="st">"Keratin_Tumour__Neutrophils"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co">#&gt; [1] 10.88892</span></span></code></pre></div>
+<p>When we specify <code>sigma = 20</code> and re-calculate the
+L-function, it indicates that there is no relationship between
+<code>Keratin_Tumour</code> and <code>Neutrophils</code>, i.e., there is
+no major attraction or dispersion, as it now takes into account tissue
+inhomogeneity.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pairwiseAssoc</span> <span class="op">=</span> <span class="fu"><a href="../reference/getPairwise.html">getPairwise</a></span><span class="op">(</span><span class="va">kerenSubset</span>, </span>
+<span>                            sigma <span class="op">=</span> <span class="fl">20</span>, </span>
+<span>                            Rs <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pairwiseAssoc</span><span class="op">[[</span><span class="st">"Keratin_Tumour__Neutrophils"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co">#&gt; [1] 0.9024836</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># obtain colData for image 24</span></span>
+<span><span class="va">cData</span> <span class="op">=</span> <span class="fu">colData</span><span class="op">(</span><span class="va">kerenSPE</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
+<span>          <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">imageID</span> <span class="op">==</span> <span class="st">"24"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># obtain cells present in image 24</span></span>
+<span><span class="va">coords</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/SpatialExperiment/man/SpatialExperiment-methods.html" class="external-link">spatialCoords</a></span><span class="op">(</span><span class="va">kerenSPE</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">coords</span><span class="op">$</span><span class="va">cellID</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">coords</span><span class="op">)</span></span>
+<span><span class="va">coords</span> <span class="op">=</span> <span class="va">coords</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cellID</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">cData</span><span class="op">$</span><span class="va">CellID</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cData</span><span class="op">$</span><span class="va">X</span> <span class="op">=</span> <span class="va">coords</span><span class="op">$</span><span class="va">x</span></span>
+<span><span class="va">cData</span><span class="op">$</span><span class="va">Y</span> <span class="op">=</span> <span class="va">coords</span><span class="op">$</span><span class="va">y</span></span>
+<span></span>
+<span><span class="va">cData</span> <span class="op">=</span> <span class="va">cData</span> <span class="op">|&gt;</span> </span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>cellTypeNew <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">cellType</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Keratin_Tumour"</span>, <span class="st">"Neutrophils"</span><span class="op">)</span>, </span>
+<span>                                     <span class="va">cellType</span>, <span class="st">"Other"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span> <span class="va">pal</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#d6b11c"</span>, <span class="st">"#850f07"</span><span class="op">)</span>, </span>
+<span>                <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Keratin_Tumour"</span>, <span class="st">"Neutrophils"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density_2d.html" class="external-link">stat_density_2d</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cData</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">Y</span>, fill <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes_eval.html" class="external-link">after_stat</a></span><span class="op">(</span><span class="va">density</span><span class="op">)</span><span class="op">)</span>, </span>
+<span>                    geom <span class="op">=</span> <span class="st">"raster"</span>, </span>
+<span>                    contour <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cData</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">cellType</span> <span class="op">!=</span> <span class="st">"Other"</span><span class="op">)</span>,</span>
+<span>               <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">Y</span>, colour <span class="op">=</span> <span class="va">cellTypeNew</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">pal</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_brewer.html" class="external-link">scale_fill_distiller</a></span><span class="op">(</span>palette <span class="op">=</span> <span class="st">"Blues"</span>, direction <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"image ID: 24"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="spicyR_files/figure-html/unnamed-chunk-17-1.png" width="700"></p>
+<p>Plotting image 24 shows that the supposed co-localisation occurs due
+to the dense cluster of cells near the top of the image.</p>
+</div>
+<div class="section level2">
 <h2 id="mixed-effects-modelling">Mixed effects modelling<a class="anchor" aria-label="anchor" href="#mixed-effects-modelling"></a>
 </h2>
 <p><code>spicyR</code> supports mixed effects modelling when multiple
@@ -382,7 +497,7 @@ images are obtained for each subject. In this case, <code>subject</code>
 is treated as a random effect and <code>condition</code> is treated as a
 fixed effect. To perform mixed effects modelling, we can specify the
 <code>subject</code> parameter in the <code>spicy</code> function.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">spicyMixedTest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/spicy.html">spicy</a></span><span class="op">(</span></span>
 <span>  <span class="va">diabetesData</span>,</span>
 <span>  condition <span class="op">=</span> <span class="st">"stage"</span>,</span>
@@ -392,11 +507,11 @@ fixed effect. To perform mixed effects modelling, we can specify the
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; R version 4.4.1 (2024-06-14)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-pc-linux-gnu</span></span>
-<span><span class="co">#&gt; Running under: Ubuntu 22.04.4 LTS</span></span>
+<span><span class="co">#&gt; Running under: Ubuntu 22.04.5 LTS</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Matrix products: default</span></span>
 <span><span class="co">#&gt; BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 </span></span>
@@ -416,20 +531,21 @@ fixed effect. To perform mixed effects modelling, we can specify the
 <span><span class="co">#&gt; [8] base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt;  [1] imcRtools_1.10.0            SpatialDatasets_1.2.0      </span></span>
-<span><span class="co">#&gt;  [3] ExperimentHub_2.12.0        AnnotationHub_3.12.0       </span></span>
-<span><span class="co">#&gt;  [5] BiocFileCache_2.12.0        dbplyr_2.5.0               </span></span>
-<span><span class="co">#&gt;  [7] SpatialExperiment_1.14.0    SingleCellExperiment_1.26.0</span></span>
-<span><span class="co">#&gt;  [9] SummarizedExperiment_1.34.0 Biobase_2.64.0             </span></span>
-<span><span class="co">#&gt; [11] GenomicRanges_1.56.1        GenomeInfoDb_1.40.1        </span></span>
-<span><span class="co">#&gt; [13] IRanges_2.38.1              S4Vectors_0.42.1           </span></span>
-<span><span class="co">#&gt; [15] BiocGenerics_0.50.0         MatrixGenerics_1.16.0      </span></span>
-<span><span class="co">#&gt; [17] matrixStats_1.4.1           ggplot2_3.5.1              </span></span>
-<span><span class="co">#&gt; [19] spicyR_1.17.5               BiocStyle_2.32.1           </span></span>
+<span><span class="co">#&gt;  [1] survival_3.6-4              dplyr_1.1.4                </span></span>
+<span><span class="co">#&gt;  [3] imcRtools_1.10.0            SpatialDatasets_1.2.0      </span></span>
+<span><span class="co">#&gt;  [5] ExperimentHub_2.12.0        AnnotationHub_3.12.0       </span></span>
+<span><span class="co">#&gt;  [7] BiocFileCache_2.12.0        dbplyr_2.5.0               </span></span>
+<span><span class="co">#&gt;  [9] SpatialExperiment_1.14.0    SingleCellExperiment_1.26.0</span></span>
+<span><span class="co">#&gt; [11] SummarizedExperiment_1.34.0 Biobase_2.64.0             </span></span>
+<span><span class="co">#&gt; [13] GenomicRanges_1.56.2        GenomeInfoDb_1.40.1        </span></span>
+<span><span class="co">#&gt; [15] IRanges_2.38.1              S4Vectors_0.42.1           </span></span>
+<span><span class="co">#&gt; [17] BiocGenerics_0.50.0         MatrixGenerics_1.16.0      </span></span>
+<span><span class="co">#&gt; [19] matrixStats_1.4.1           ggplot2_3.5.1              </span></span>
+<span><span class="co">#&gt; [21] spicyR_1.17.5               BiocStyle_2.32.1           </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;   [1] fs_1.6.4                    spatstat.sparse_3.1-0      </span></span>
-<span><span class="co">#&gt;   [3] bitops_1.0-8                sf_1.0-17                  </span></span>
+<span><span class="co">#&gt;   [3] bitops_1.0-9                sf_1.0-18                  </span></span>
 <span><span class="co">#&gt;   [5] EBImage_4.46.0              httr_1.4.7                 </span></span>
 <span><span class="co">#&gt;   [7] RColorBrewer_1.1-3          numDeriv_2016.8-1.1        </span></span>
 <span><span class="co">#&gt;   [9] tools_4.4.1                 backports_1.5.0            </span></span>
@@ -438,90 +554,88 @@ fixed effect. To perform mixed effects modelling, we can specify the
 <span><span class="co">#&gt;  [15] mgcv_1.9-1                  rhdf5filters_1.16.0        </span></span>
 <span><span class="co">#&gt;  [17] withr_3.0.1                 sp_2.1-4                   </span></span>
 <span><span class="co">#&gt;  [19] gridExtra_2.3               coxme_2.2-22               </span></span>
-<span><span class="co">#&gt;  [21] ClassifyR_3.8.3             cli_3.6.3                  </span></span>
+<span><span class="co">#&gt;  [21] ClassifyR_3.8.5             cli_3.6.3                  </span></span>
 <span><span class="co">#&gt;  [23] textshaping_0.4.0           spatstat.explore_3.3-2     </span></span>
 <span><span class="co">#&gt;  [25] labeling_0.4.3              sass_0.4.9                 </span></span>
 <span><span class="co">#&gt;  [27] nnls_1.5                    spatstat.data_3.1-2        </span></span>
 <span><span class="co">#&gt;  [29] readr_2.1.5                 proxy_0.4-27               </span></span>
-<span><span class="co">#&gt;  [31] pkgdown_2.1.0               systemfonts_1.1.0          </span></span>
+<span><span class="co">#&gt;  [31] pkgdown_2.1.1               systemfonts_1.1.0          </span></span>
 <span><span class="co">#&gt;  [33] ggupset_0.4.0               svglite_2.1.3              </span></span>
 <span><span class="co">#&gt;  [35] RSQLite_2.3.7               generics_0.1.3             </span></span>
-<span><span class="co">#&gt;  [37] vroom_1.6.5                 spatstat.random_3.3-1      </span></span>
-<span><span class="co">#&gt;  [39] car_3.1-2                   dplyr_1.1.4                </span></span>
-<span><span class="co">#&gt;  [41] scam_1.2-17                 Matrix_1.7-0               </span></span>
-<span><span class="co">#&gt;  [43] ggbeeswarm_0.7.2            fansi_1.0.6                </span></span>
-<span><span class="co">#&gt;  [45] abind_1.4-8                 terra_1.7-78               </span></span>
-<span><span class="co">#&gt;  [47] lifecycle_1.0.4             yaml_2.3.10                </span></span>
-<span><span class="co">#&gt;  [49] carData_3.0-5               rhdf5_2.48.0               </span></span>
-<span><span class="co">#&gt;  [51] SparseArray_1.4.8           grid_4.4.1                 </span></span>
-<span><span class="co">#&gt;  [53] blob_1.2.4                  promises_1.3.0             </span></span>
-<span><span class="co">#&gt;  [55] crayon_1.5.3                bdsmatrix_1.3-7            </span></span>
-<span><span class="co">#&gt;  [57] shinydashboard_0.7.2        lattice_0.22-6             </span></span>
-<span><span class="co">#&gt;  [59] beachmat_2.20.0             KEGGREST_1.44.1            </span></span>
-<span><span class="co">#&gt;  [61] magick_2.8.4                cytomapper_1.16.0          </span></span>
-<span><span class="co">#&gt;  [63] pillar_1.9.0                knitr_1.48                 </span></span>
-<span><span class="co">#&gt;  [65] RTriangle_1.6-0.14          rjson_0.2.23               </span></span>
-<span><span class="co">#&gt;  [67] boot_1.3-30                 codetools_0.2-20           </span></span>
-<span><span class="co">#&gt;  [69] glue_1.7.0                  spatstat.univar_3.0-1      </span></span>
-<span><span class="co">#&gt;  [71] data.table_1.16.0           MultiAssayExperiment_1.30.3</span></span>
-<span><span class="co">#&gt;  [73] vctrs_0.6.5                 png_0.1-8                  </span></span>
-<span><span class="co">#&gt;  [75] gtable_0.3.5                cachem_1.1.0               </span></span>
-<span><span class="co">#&gt;  [77] xfun_0.47                   S4Arrays_1.4.1             </span></span>
-<span><span class="co">#&gt;  [79] mime_0.12                   tidygraph_1.3.1            </span></span>
-<span><span class="co">#&gt;  [81] survival_3.6-4              pheatmap_1.0.12            </span></span>
-<span><span class="co">#&gt;  [83] units_0.8-5                 nlme_3.1-164               </span></span>
-<span><span class="co">#&gt;  [85] bit64_4.0.5                 filelock_1.0.3             </span></span>
-<span><span class="co">#&gt;  [87] bslib_0.8.0                 svgPanZoom_0.3.4           </span></span>
-<span><span class="co">#&gt;  [89] KernSmooth_2.23-24          vipor_0.4.7                </span></span>
-<span><span class="co">#&gt;  [91] colorspace_2.1-1            DBI_1.2.3                  </span></span>
-<span><span class="co">#&gt;  [93] raster_3.6-26               tidyselect_1.2.1           </span></span>
-<span><span class="co">#&gt;  [95] extrafontdb_1.0             bit_4.0.5                  </span></span>
-<span><span class="co">#&gt;  [97] compiler_4.4.1              curl_5.2.2                 </span></span>
-<span><span class="co">#&gt;  [99] BiocNeighbors_1.22.0        desc_1.4.3                 </span></span>
-<span><span class="co">#&gt; [101] DelayedArray_0.30.1         bookdown_0.40              </span></span>
-<span><span class="co">#&gt; [103] scales_1.3.0                classInt_0.4-10            </span></span>
-<span><span class="co">#&gt; [105] distances_0.1.11            rappdirs_0.3.3             </span></span>
-<span><span class="co">#&gt; [107] tiff_0.1-12                 stringr_1.5.1              </span></span>
-<span><span class="co">#&gt; [109] digest_0.6.37               goftest_1.2-3              </span></span>
-<span><span class="co">#&gt; [111] fftwtools_0.9-11            spatstat.utils_3.1-0       </span></span>
-<span><span class="co">#&gt; [113] minqa_1.2.8                 rmarkdown_2.28             </span></span>
-<span><span class="co">#&gt; [115] XVector_0.44.0              htmltools_0.5.8.1          </span></span>
-<span><span class="co">#&gt; [117] pkgconfig_2.0.3             jpeg_0.1-10                </span></span>
-<span><span class="co">#&gt; [119] extrafont_0.19              lme4_1.1-35.5              </span></span>
-<span><span class="co">#&gt; [121] sparseMatrixStats_1.16.0    highr_0.11                 </span></span>
-<span><span class="co">#&gt; [123] fastmap_1.2.0               rlang_1.1.4                </span></span>
-<span><span class="co">#&gt; [125] htmlwidgets_1.6.4           ggthemes_5.1.0             </span></span>
-<span><span class="co">#&gt; [127] UCSC.utils_1.0.0            DelayedMatrixStats_1.26.0  </span></span>
-<span><span class="co">#&gt; [129] shiny_1.9.1                 ggh4x_0.2.8                </span></span>
-<span><span class="co">#&gt; [131] farver_2.1.2                jquerylib_0.1.4            </span></span>
-<span><span class="co">#&gt; [133] jsonlite_1.8.8              BiocParallel_1.38.0        </span></span>
-<span><span class="co">#&gt; [135] RCurl_1.98-1.16             magrittr_2.0.3             </span></span>
-<span><span class="co">#&gt; [137] scuttle_1.14.0              GenomeInfoDbData_1.2.12    </span></span>
-<span><span class="co">#&gt; [139] Rhdf5lib_1.26.0             munsell_0.5.1              </span></span>
-<span><span class="co">#&gt; [141] Rcpp_1.0.13                 viridis_0.6.5              </span></span>
-<span><span class="co">#&gt; [143] stringi_1.8.4               ggraph_2.2.1               </span></span>
-<span><span class="co">#&gt; [145] zlibbioc_1.50.0             MASS_7.3-60.2              </span></span>
-<span><span class="co">#&gt; [147] plyr_1.8.9                  parallel_4.4.1             </span></span>
-<span><span class="co">#&gt; [149] ggrepel_0.9.6               deldir_2.0-4               </span></span>
-<span><span class="co">#&gt; [151] Biostrings_2.72.1           graphlayouts_1.1.1         </span></span>
-<span><span class="co">#&gt; [153] splines_4.4.1               tensor_1.5                 </span></span>
-<span><span class="co">#&gt; [155] hms_1.1.3                   locfit_1.5-9.10            </span></span>
-<span><span class="co">#&gt; [157] igraph_2.0.3                ggpubr_0.6.0               </span></span>
-<span><span class="co">#&gt; [159] spatstat.geom_3.3-2         ggsignif_0.6.4             </span></span>
-<span><span class="co">#&gt; [161] reshape2_1.4.4              BiocVersion_3.19.1         </span></span>
-<span><span class="co">#&gt; [163] evaluate_0.24.0             BiocManager_1.30.25        </span></span>
-<span><span class="co">#&gt; [165] tzdb_0.4.0                  nloptr_2.1.1               </span></span>
-<span><span class="co">#&gt; [167] tweenr_2.0.3                httpuv_1.6.15              </span></span>
-<span><span class="co">#&gt; [169] Rttf2pt1_1.3.12             tidyr_1.3.1                </span></span>
-<span><span class="co">#&gt; [171] purrr_1.0.2                 polyclip_1.10-7            </span></span>
-<span><span class="co">#&gt; [173] ggforce_0.4.2               broom_1.0.6                </span></span>
-<span><span class="co">#&gt; [175] xtable_1.8-4                e1071_1.7-16               </span></span>
-<span><span class="co">#&gt; [177] rstatix_0.7.2               later_1.3.2                </span></span>
-<span><span class="co">#&gt; [179] class_7.3-22                viridisLite_0.4.2          </span></span>
-<span><span class="co">#&gt; [181] ragg_1.3.3                  tibble_3.2.1               </span></span>
-<span><span class="co">#&gt; [183] lmerTest_3.1-3              memoise_2.0.1              </span></span>
-<span><span class="co">#&gt; [185] beeswarm_0.4.0              AnnotationDbi_1.66.0       </span></span>
-<span><span class="co">#&gt; [187] concaveman_1.1.0</span></span></code></pre></div>
+<span><span class="co">#&gt;  [37] vroom_1.6.5                 spatstat.random_3.3-2      </span></span>
+<span><span class="co">#&gt;  [39] car_3.1-3                   scam_1.2-17                </span></span>
+<span><span class="co">#&gt;  [41] Matrix_1.7-0                ggbeeswarm_0.7.2           </span></span>
+<span><span class="co">#&gt;  [43] fansi_1.0.6                 abind_1.4-8                </span></span>
+<span><span class="co">#&gt;  [45] terra_1.7-83                lifecycle_1.0.4            </span></span>
+<span><span class="co">#&gt;  [47] yaml_2.3.10                 carData_3.0-5              </span></span>
+<span><span class="co">#&gt;  [49] rhdf5_2.48.0                SparseArray_1.4.8          </span></span>
+<span><span class="co">#&gt;  [51] grid_4.4.1                  blob_1.2.4                 </span></span>
+<span><span class="co">#&gt;  [53] promises_1.3.0              crayon_1.5.3               </span></span>
+<span><span class="co">#&gt;  [55] bdsmatrix_1.3-7             shinydashboard_0.7.2       </span></span>
+<span><span class="co">#&gt;  [57] lattice_0.22-6              beachmat_2.20.0            </span></span>
+<span><span class="co">#&gt;  [59] KEGGREST_1.44.1             magick_2.8.5               </span></span>
+<span><span class="co">#&gt;  [61] cytomapper_1.16.0           pillar_1.9.0               </span></span>
+<span><span class="co">#&gt;  [63] knitr_1.48                  RTriangle_1.6-0.14         </span></span>
+<span><span class="co">#&gt;  [65] rjson_0.2.23                boot_1.3-30                </span></span>
+<span><span class="co">#&gt;  [67] codetools_0.2-20            glue_1.8.0                 </span></span>
+<span><span class="co">#&gt;  [69] spatstat.univar_3.0-1       data.table_1.16.2          </span></span>
+<span><span class="co">#&gt;  [71] MultiAssayExperiment_1.30.3 vctrs_0.6.5                </span></span>
+<span><span class="co">#&gt;  [73] png_0.1-8                   gtable_0.3.5               </span></span>
+<span><span class="co">#&gt;  [75] cachem_1.1.0                xfun_0.48                  </span></span>
+<span><span class="co">#&gt;  [77] S4Arrays_1.4.1              mime_0.12                  </span></span>
+<span><span class="co">#&gt;  [79] tidygraph_1.3.1             pheatmap_1.0.12            </span></span>
+<span><span class="co">#&gt;  [81] units_0.8-5                 nlme_3.1-164               </span></span>
+<span><span class="co">#&gt;  [83] bit64_4.5.2                 filelock_1.0.3             </span></span>
+<span><span class="co">#&gt;  [85] bslib_0.8.0                 svgPanZoom_0.3.4           </span></span>
+<span><span class="co">#&gt;  [87] KernSmooth_2.23-24          vipor_0.4.7                </span></span>
+<span><span class="co">#&gt;  [89] colorspace_2.1-1            DBI_1.2.3                  </span></span>
+<span><span class="co">#&gt;  [91] raster_3.6-30               tidyselect_1.2.1           </span></span>
+<span><span class="co">#&gt;  [93] bit_4.5.0                   compiler_4.4.1             </span></span>
+<span><span class="co">#&gt;  [95] curl_5.2.3                  BiocNeighbors_1.22.0       </span></span>
+<span><span class="co">#&gt;  [97] desc_1.4.3                  DelayedArray_0.30.1        </span></span>
+<span><span class="co">#&gt;  [99] bookdown_0.41               scales_1.3.0               </span></span>
+<span><span class="co">#&gt; [101] classInt_0.4-10             distances_0.1.11           </span></span>
+<span><span class="co">#&gt; [103] rappdirs_0.3.3              tiff_0.1-12                </span></span>
+<span><span class="co">#&gt; [105] stringr_1.5.1               digest_0.6.37              </span></span>
+<span><span class="co">#&gt; [107] goftest_1.2-3               fftwtools_0.9-11           </span></span>
+<span><span class="co">#&gt; [109] spatstat.utils_3.1-0        minqa_1.2.8                </span></span>
+<span><span class="co">#&gt; [111] rmarkdown_2.28              XVector_0.44.0             </span></span>
+<span><span class="co">#&gt; [113] htmltools_0.5.8.1           pkgconfig_2.0.3            </span></span>
+<span><span class="co">#&gt; [115] jpeg_0.1-10                 lme4_1.1-35.5              </span></span>
+<span><span class="co">#&gt; [117] sparseMatrixStats_1.16.0    highr_0.11                 </span></span>
+<span><span class="co">#&gt; [119] fastmap_1.2.0               rlang_1.1.4                </span></span>
+<span><span class="co">#&gt; [121] htmlwidgets_1.6.4           ggthemes_5.1.0             </span></span>
+<span><span class="co">#&gt; [123] UCSC.utils_1.0.0            DelayedMatrixStats_1.26.0  </span></span>
+<span><span class="co">#&gt; [125] shiny_1.9.1                 ggh4x_0.2.8                </span></span>
+<span><span class="co">#&gt; [127] farver_2.1.2                jquerylib_0.1.4            </span></span>
+<span><span class="co">#&gt; [129] jsonlite_1.8.9              BiocParallel_1.38.0        </span></span>
+<span><span class="co">#&gt; [131] RCurl_1.98-1.16             magrittr_2.0.3             </span></span>
+<span><span class="co">#&gt; [133] scuttle_1.14.0              Formula_1.2-5              </span></span>
+<span><span class="co">#&gt; [135] GenomeInfoDbData_1.2.12     Rhdf5lib_1.26.0            </span></span>
+<span><span class="co">#&gt; [137] munsell_0.5.1               Rcpp_1.0.13                </span></span>
+<span><span class="co">#&gt; [139] viridis_0.6.5               stringi_1.8.4              </span></span>
+<span><span class="co">#&gt; [141] ggraph_2.2.1                zlibbioc_1.50.0            </span></span>
+<span><span class="co">#&gt; [143] MASS_7.3-60.2               plyr_1.8.9                 </span></span>
+<span><span class="co">#&gt; [145] parallel_4.4.1              ggrepel_0.9.6              </span></span>
+<span><span class="co">#&gt; [147] deldir_2.0-4                Biostrings_2.72.1          </span></span>
+<span><span class="co">#&gt; [149] graphlayouts_1.2.0          splines_4.4.1              </span></span>
+<span><span class="co">#&gt; [151] tensor_1.5                  hms_1.1.3                  </span></span>
+<span><span class="co">#&gt; [153] locfit_1.5-9.10             igraph_2.1.1               </span></span>
+<span><span class="co">#&gt; [155] ggpubr_0.6.0                spatstat.geom_3.3-3        </span></span>
+<span><span class="co">#&gt; [157] ggsignif_0.6.4              reshape2_1.4.4             </span></span>
+<span><span class="co">#&gt; [159] BiocVersion_3.19.1          evaluate_1.0.1             </span></span>
+<span><span class="co">#&gt; [161] BiocManager_1.30.25         tzdb_0.4.0                 </span></span>
+<span><span class="co">#&gt; [163] nloptr_2.1.1                tweenr_2.0.3               </span></span>
+<span><span class="co">#&gt; [165] httpuv_1.6.15               tidyr_1.3.1                </span></span>
+<span><span class="co">#&gt; [167] purrr_1.0.2                 polyclip_1.10-7            </span></span>
+<span><span class="co">#&gt; [169] ggforce_0.4.2               broom_1.0.7                </span></span>
+<span><span class="co">#&gt; [171] xtable_1.8-4                e1071_1.7-16               </span></span>
+<span><span class="co">#&gt; [173] rstatix_0.7.2               later_1.3.2                </span></span>
+<span><span class="co">#&gt; [175] class_7.3-22                viridisLite_0.4.2          </span></span>
+<span><span class="co">#&gt; [177] ragg_1.3.3                  tibble_3.2.1               </span></span>
+<span><span class="co">#&gt; [179] lmerTest_3.1-3              memoise_2.0.1              </span></span>
+<span><span class="co">#&gt; [181] beeswarm_0.4.0              AnnotationDbi_1.66.0       </span></span>
+<span><span class="co">#&gt; [183] concaveman_1.1.0</span></span></code></pre></div>
 <div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
 <div id="ref-keren2018" class="csl-entry">
 Keren, L, M Bosse, D Marquez, R Angoshtari, S Jain, S Varma, S Yang, et
@@ -542,7 +656,7 @@ Negative Breast Cancer Revealed by Multiplexed Ion Beam Imaging.”</span>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer>
