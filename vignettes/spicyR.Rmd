@@ -246,7 +246,7 @@ head(spicySurvival$survivalResults, 10)
 
 # Accounting for tissue inhomogeneity
 
-The `spicy` function can also account for tissue inhomogeneity to avoid false positives or negatives. This can be done by setting the `sigma = ` parameter within the spicy function. By default, `sigma` is set to `NULL`, and `spicy` assumes a homogeneous tissue structure. The value of `sigma` affects the value of the L-function, which in turn affects the cell type pairs identified as significant during linear modelling.
+The `spicy` function can also account for tissue inhomogeneity to avoid false positives or negatives. This can be done by setting the `sigma = ` parameter within the spicy function. By default, `sigma` is set to `NULL`, and `spicy` assumes a homogeneous tissue structure. 
 
 For example, when we examine the L-function for `Keratin_Tumour__Neutrophils` when `sigma = NULL` and `Rs = 100`, the value is positive, indicating attraction between the two cell types. 
 

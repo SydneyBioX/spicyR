@@ -106,6 +106,40 @@ signifPlot <- function(results,
   heatmap
 }
 
+# Function to create x and y points for a half circle (left or right) ---> CHANGE HERE
+half_circle_coords = function(shape = "left", num_points = 100) {
+  # Generate points from -pi/2 to pi/2 for vertical half circles
+  t = seq(-pi / 2, pi / 2, length.out = num_points)
+  if (shape == "left") {
+    x = 0.5 - 0.5 * cos(t) # Shift to the left half
+  } else {
+    x = 0.5 + 0.5 * cos(t)  # Shift to the right half
+  }
+  y = 0.5 + 0.5 * sin(t) # Vertical component
+  list(x = c(x,x[1])-mean(c(x,x[1]))+0.5, y = c(y,y[1]))
+}
+
+# Custom draw_key function to draw a left half circle in the legend using polygonGrob ----> CHANGE HERE
+draw_key_half_circle = function(data, params, shape) {
+  if(data$shape == 16){
+    coords <- half_circle_coords(shape = "left")
+    grid::grobTree(
+      grid::polygonGrob(
+        x = coords$x, y = coords$y,
+        gp = grid::gpar(fill = "black", col = "black")
+      )
+    )
+  } else{
+    coords <- half_circle_coords(shape = "right")
+    grid::grobTree(
+      grid::polygonGrob(
+        x = coords$x, y = coords$y,
+        gp = grid::gpar(fill = "black", col = "black")
+      )
+    )
+  }
+}
+
 
 bubblePlot <- function(
     test, fdr, breaks, coef,
@@ -156,10 +190,12 @@ bubblePlot <- function(
   df$cellTypeA <- droplevels(df$cellTypeA)
   df$cellTypeB <- droplevels(df$cellTypeB)
   
-  shape.legend <- stats::setNames(
-    c("\u25D6", "\u25D7"),
-    c(levels(test$condition)[1], levels(test$condition)[coef])
-  )
+  # removed shape.legend specifying the legend with unicode characters ---> CHANGE HERE
+  
+  # shape.legend <- stats::setNames(
+  # c("\u25D6", "\u25D7"),
+  # c(levels(test$condition)[1], levels(test$condition)[coef])
+  # )
   
   df.shape <- data.frame(
     cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
@@ -206,14 +242,7 @@ bubblePlot <- function(
   labels[1] <- "avoidance"
   labels[length(labels)] <- "attraction"
   
-  if(.Platform$OS.type == "windows") {
-    grDevices::windowsFonts(sans="Lucida Sans Unicode")
-    extrafont::loadfonts(device="all", quiet = TRUE)
-  } else if (.Platform$OS.type == "unix") {
-    extrafont::font_import(pattern="DejaVuSans", prompt=FALSE)
-    extrafont::loadfonts(device="postscript", quiet = TRUE)
-    extrafont::loadfonts(device="pdf", quiet = TRUE)
-  }
+  # removed everything to do with OS/fonts ---> CHANGE HERE
   
   ggplot2::ggplot(df, ggplot2::aes(x = cellTypeA, y = cellTypeB)) +
     ggplot2::scale_fill_gradient2(
@@ -249,9 +278,9 @@ bubblePlot <- function(
       ), colour = "black"
     ) +
     ggplot2::geom_point(
-      data = df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000
+      data = df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000,
+      key_glyph = draw_key_half_circle # specified key ---> CHANGE HERE
     ) +
-    ggplot2::scale_shape_manual(values = shape.legend) +
     ggplot2::theme_classic() +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0),
