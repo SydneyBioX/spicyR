@@ -129,6 +129,40 @@ signifPlot <- function(results,
   heatmap
 }
 
+# Function to create x and y points for a half circle (left or right) ---> CHANGE HERE
+half_circle_coords = function(shape = "left", num_points = 100) {
+  # Generate points from -pi/2 to pi/2 for vertical half circles
+  t = seq(-pi / 2, pi / 2, length.out = num_points)
+  if (shape == "left") {
+    x = 0.5 - 0.5 * cos(t) # Shift to the left half
+  } else {
+    x = 0.5 + 0.5 * cos(t)  # Shift to the right half
+  }
+  y = 0.5 + 0.5 * sin(t) # Vertical component
+  list(x = c(x,x[1])-mean(c(x,x[1]))+0.5, y = c(y,y[1]))
+}
+
+# Custom draw_key function to draw a left half circle in the legend using polygonGrob ----> CHANGE HERE
+draw_key_half_circle = function(data, params, shape) {
+  if(data$shape == 16){
+    coords <- half_circle_coords(shape = "left")
+    grid::grobTree(
+      grid::polygonGrob(
+        x = coords$x, y = coords$y,
+        gp = grid::gpar(fill = "black", col = "black")
+      )
+    )
+  } else{
+    coords <- half_circle_coords(shape = "right")
+    grid::grobTree(
+      grid::polygonGrob(
+        x = coords$x, y = coords$y,
+        gp = grid::gpar(fill = "black", col = "black")
+      )
+    )
+  }
+}
+
 
 
 
@@ -270,6 +304,7 @@ bubblePlot <- function(test,
   labels <- round(breaks, 3)
   labels[1] <- "avoidance"
   labels[length(labels)] <- "attraction"
+
 
   if(isTRUE(test$isKontextual)) {
     df = df |> 
