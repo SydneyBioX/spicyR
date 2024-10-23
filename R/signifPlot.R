@@ -455,11 +455,11 @@ survBubble = function(result,
   
   if(isTRUE(result$isKontextual)) {
     plotData = survivalResults |>
-      separate(test,
+      tidyr::separate(test,
                into = c("from", "to", "parent"),
                sep = "__") |>
-      arrange(parent, to, from) |>
-      mutate(toParent = paste(to, parent, sep = "__"))
+      dplyr::arrange(parent, to, from) |>
+      dplyr::mutate(toParent = paste(to, parent, sep = "__"))
     
     
     
@@ -481,8 +481,8 @@ survBubble = function(result,
     
   } else {
     plotData = survivalResults |>
-      separate(test, into = c("from", "to"), sep = "__") |>
-      arrange(to, from)
+      tidyr::separate(test, into = c("from", "to"), sep = "__") |>
+      dplyr::arrange(to, from)
   }
   
   if(!is.null(marksToPlot)) {
