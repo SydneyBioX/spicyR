@@ -49,19 +49,19 @@
 <span>  imageID <span class="op">=</span> <span class="st">"imageID"</span>,</span>
 <span>  cellType <span class="op">=</span> <span class="st">"cellType"</span>,</span>
 <span>  spatialCoords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>,</span>
-<span>  alternateResult <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  Rs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  minLambda <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  weights <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  weightsByPair <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  weightFactor <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  alternateResult <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  window <span class="op">=</span> <span class="st">"convex"</span>,</span>
 <span>  window.length <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  nCores <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  sigma <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  Rs <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  minLambda <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  edgeCorrect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  includeZeroCells <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  nCores <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -76,7 +76,7 @@ x and y, giving the location coordinates of each cell, and cellType.</p></dd>
 
 
 <dt id="arg-condition">condition<a class="anchor" aria-label="anchor" href="#arg-condition"></a></dt>
-<dd><p>A character specifying which column which contains the condition or `Surv` objects</p></dd>
+<dd><p>A character specifying which column which contains the condition or `Surv` objects.</p></dd>
 
 
 <dt id="arg-subject">subject<a class="anchor" aria-label="anchor" href="#arg-subject"></a></dt>
@@ -90,32 +90,35 @@ mixed effects model as fixed effects.</p></dd>
 
 
 <dt id="arg-from">from<a class="anchor" aria-label="anchor" href="#arg-from"></a></dt>
-<dd><p>vector of cell types which you would like to compare to the to vector</p></dd>
+<dd><p>vector of cell types which you would like to compare to the to vector.</p></dd>
 
 
 <dt id="arg-to">to<a class="anchor" aria-label="anchor" href="#arg-to"></a></dt>
-<dd><p>vector of cell types which you would like to compare to the from vector</p></dd>
+<dd><p>vector of cell types which you would like to compare to the from vector.</p></dd>
 
 
 <dt id="arg-imageid">imageID<a class="anchor" aria-label="anchor" href="#arg-imageid"></a></dt>
-<dd><p>The image ID if using SingleCellExperiment.</p></dd>
+<dd><p>The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.</p></dd>
 
 
 <dt id="arg-celltype">cellType<a class="anchor" aria-label="anchor" href="#arg-celltype"></a></dt>
-<dd><p>The cell type if using SingleCellExperiment.</p></dd>
+<dd><p>The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.</p></dd>
 
 
 <dt id="arg-spatialcoords">spatialCoords<a class="anchor" aria-label="anchor" href="#arg-spatialcoords"></a></dt>
-<dd><p>The spatial coordinates if using a SingleCellExperiment.</p></dd>
+<dd><p>The names of the spatialCoords column if using a SingleCellExperiment.</p></dd>
 
 
-<dt id="arg-alternateresult">alternateResult<a class="anchor" aria-label="anchor" href="#arg-alternateresult"></a></dt>
-<dd><p>An pairwise association statistic between each combination of celltypes in
-each image.</p></dd>
+<dt id="arg-rs">Rs<a class="anchor" aria-label="anchor" href="#arg-rs"></a></dt>
+<dd><p>A vector of the radii that the measures of association should be calculated over.</p></dd>
 
 
-<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
-<dd><p>logical indicating whether to output messages.</p></dd>
+<dt id="arg-sigma">sigma<a class="anchor" aria-label="anchor" href="#arg-sigma"></a></dt>
+<dd><p>A numeric variable used for scaling when fitting inhomogenous L-curves.</p></dd>
+
+
+<dt id="arg-minlambda">minLambda<a class="anchor" aria-label="anchor" href="#arg-minlambda"></a></dt>
+<dd><p>Minimum value density for scaling when fitting inhomogeneous L-curves.</p></dd>
 
 
 <dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
@@ -131,30 +134,17 @@ pair.</p></dd>
 <dd><p>numeric that controls the convexity of the weight function.</p></dd>
 
 
+<dt id="arg-alternateresult">alternateResult<a class="anchor" aria-label="anchor" href="#arg-alternateresult"></a></dt>
+<dd><p>A pairwise association statistic between each combination of celltypes in
+each image.</p></dd>
+
+
 <dt id="arg-window">window<a class="anchor" aria-label="anchor" href="#arg-window"></a></dt>
 <dd><p>Should the window around the regions be 'square', 'convex' or 'concave'.</p></dd>
 
 
 <dt id="arg-window-length">window.length<a class="anchor" aria-label="anchor" href="#arg-window-length"></a></dt>
-<dd><p>A tuning parameter for controlling the level of concavity when estimating
-concave windows.</p></dd>
-
-
-<dt id="arg-ncores">nCores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
-<dd><p>number of cores to use for parallel processing.</p></dd>
-
-
-<dt id="arg-sigma">sigma<a class="anchor" aria-label="anchor" href="#arg-sigma"></a></dt>
-<dd><p>A numeric variable used for scaling when fitting inhomogeneous L-curves.</p></dd>
-
-
-<dt id="arg-rs">Rs<a class="anchor" aria-label="anchor" href="#arg-rs"></a></dt>
-<dd><p>A vector of radii that the measures of association should be calculated. If
-NULL, Rs = c(20, 50, 100) is specified by default.</p></dd>
-
-
-<dt id="arg-minlambda">minLambda<a class="anchor" aria-label="anchor" href="#arg-minlambda"></a></dt>
-<dd><p>Minimum value for density for scaling when fitting inhomogeneous L-curves.</p></dd>
+<dd><p>A tuning parameter for controlling the level of concavity when estimating concave windows.</p></dd>
 
 
 <dt id="arg-edgecorrect">edgeCorrect<a class="anchor" aria-label="anchor" href="#arg-edgecorrect"></a></dt>
@@ -162,12 +152,19 @@ NULL, Rs = c(20, 50, 100) is specified by default.</p></dd>
 
 
 <dt id="arg-includezerocells">includeZeroCells<a class="anchor" aria-label="anchor" href="#arg-includezerocells"></a></dt>
-<dd><p>A logical indicating whether to include cells with zero counts in the
-pairwise association calculation.</p></dd>
+<dd><p>A logical indicating whether to include cells with zero counts in the pairwise association calculation.</p></dd>
+
+
+<dt id="arg-ncores">nCores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
+<dd><p>Number of cores to use for parallel processing.</p></dd>
+
+
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>logical indicating whether to output messages.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Other options.</p></dd>
+<dd><p>Other options</p></dd>
 
 </dl></div>
     <div class="section level2">
