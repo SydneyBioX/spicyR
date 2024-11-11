@@ -50,10 +50,10 @@
 <span>  minLambda <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  edgeCorrect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  includeZeroCells <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">SerialParam</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  imageIDCol <span class="op">=</span> <span class="st">"imageID"</span>,</span>
-<span>  cellTypeCol <span class="op">=</span> <span class="st">"cellType"</span>,</span>
-<span>  spatialCoordCols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span></span>
+<span>  nCores <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  imageID <span class="op">=</span> <span class="st">"imageID"</span>,</span>
+<span>  cellType <span class="op">=</span> <span class="st">"cellType"</span>,</span>
+<span>  spatialCoords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -107,21 +107,21 @@ L-curves.</p></dd>
 zero counts in the pairwise association calculation.</p></dd>
 
 
-<dt id="arg-bpparam">BPPARAM<a class="anchor" aria-label="anchor" href="#arg-bpparam"></a></dt>
-<dd><p>A BiocParallelParam object.</p></dd>
+<dt id="arg-ncores">nCores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
+<dd><p>number of cores to use for parallel processing.</p></dd>
 
 
-<dt id="arg-imageidcol">imageIDCol<a class="anchor" aria-label="anchor" href="#arg-imageidcol"></a></dt>
+<dt id="arg-imageid">imageID<a class="anchor" aria-label="anchor" href="#arg-imageid"></a></dt>
 <dd><p>The name of the imageID column if using a SingleCellExperiment or
 SpatialExperiment.</p></dd>
 
 
-<dt id="arg-celltypecol">cellTypeCol<a class="anchor" aria-label="anchor" href="#arg-celltypecol"></a></dt>
+<dt id="arg-celltype">cellType<a class="anchor" aria-label="anchor" href="#arg-celltype"></a></dt>
 <dd><p>The name of the cellType column if using a SingleCellExperiment or
 SpatialExperiment.</p></dd>
 
 
-<dt id="arg-spatialcoordcols">spatialCoordCols<a class="anchor" aria-label="anchor" href="#arg-spatialcoordcols"></a></dt>
+<dt id="arg-spatialcoords">spatialCoords<a class="anchor" aria-label="anchor" href="#arg-spatialcoords"></a></dt>
 <dd><p>The names of the spatialCoords column if using a SingleCellExperiment.</p></dd>
 
 </dl></div>
