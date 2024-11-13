@@ -41,19 +41,24 @@
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">getPairwise</span><span class="op">(</span></span>
 <span>  <span class="va">cells</span>,</span>
-<span>  from <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  to <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  imageID <span class="op">=</span> <span class="st">"imageID"</span>,</span>
 <span>  cellType <span class="op">=</span> <span class="st">"cellType"</span>,</span>
 <span>  spatialCoords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>,</span>
-<span>  Rs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">50</span>, <span class="fl">100</span><span class="op">)</span>,</span>
+<span>  Rs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sigma <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  from <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  to <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  minLambda <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  window <span class="op">=</span> <span class="st">"convex"</span>,</span>
 <span>  window.length <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  edgeCorrect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  includeZeroCells <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  nCores <span class="op">=</span> <span class="fl">1</span></span>
+<span>  includeZeroCells <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">SerialParam</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  imageIDCol <span class="op">=</span> <span class="va">imageID</span>,</span>
+<span>  cellTypeCol <span class="op">=</span> <span class="va">cellType</span>,</span>
+<span>  spatialCoordCols <span class="op">=</span> <span class="va">spatialCoords</span>,</span>
+<span>  nCores <span class="op">=</span> <span class="va">cores</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -65,14 +70,6 @@
 <dd><p>A SummarizedExperiment that contains at least the
 variables x and y, giving the location coordinates of each cell, and
 cellType.</p></dd>
-
-
-<dt id="arg-from">from<a class="anchor" aria-label="anchor" href="#arg-from"></a></dt>
-<dd><p>The 'from' cellType for generating the L curve.</p></dd>
-
-
-<dt id="arg-to">to<a class="anchor" aria-label="anchor" href="#arg-to"></a></dt>
-<dd><p>The 'to' cellType for generating the L curve.</p></dd>
 
 
 <dt id="arg-imageid">imageID<a class="anchor" aria-label="anchor" href="#arg-imageid"></a></dt>
@@ -95,6 +92,18 @@ cellType.</p></dd>
 <dd><p>A numeric variable used for scaling when fitting inhomogenous L-curves.</p></dd>
 
 
+<dt id="arg-from">from<a class="anchor" aria-label="anchor" href="#arg-from"></a></dt>
+<dd><p>The 'from' cellType for generating the L curve.</p></dd>
+
+
+<dt id="arg-to">to<a class="anchor" aria-label="anchor" href="#arg-to"></a></dt>
+<dd><p>The 'to' cellType for generating the L curve.</p></dd>
+
+
+<dt id="arg-cores">cores<a class="anchor" aria-label="anchor" href="#arg-cores"></a></dt>
+<dd><p>Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.</p></dd>
+
+
 <dt id="arg-minlambda">minLambda<a class="anchor" aria-label="anchor" href="#arg-minlambda"></a></dt>
 <dd><p>Minimum value density for scaling when fitting inhomogeneous L-curves.</p></dd>
 
@@ -115,10 +124,6 @@ cellType.</p></dd>
 <dd><p>A logical indicating whether to include cells with zero counts in the pairwise association
 calculation.</p></dd>
 
-
-<dt id="arg-ncores">nCores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
-<dd><p>Number of cores to use for parallel processing.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -133,6 +138,7 @@ calculation.</p></dd>
 <span class="r-in"><span>  , <span class="fu">SummarizedExperiment</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">colData</a></span><span class="op">(</span><span class="va">diabetesData</span><span class="op">)</span><span class="op">$</span><span class="va">imageID</span> <span class="op">==</span> <span class="st">"A09"</span></span></span>
 <span class="r-in"><span><span class="op">]</span></span></span>
 <span class="r-in"><span><span class="va">pairAssoc</span> <span class="op">&lt;-</span> <span class="fu">getPairwise</span><span class="op">(</span><span class="va">selected_cells</span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in FUN(X[[i]], ...):</span> object 'selected_cells' not found</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
