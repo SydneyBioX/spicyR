@@ -55,7 +55,17 @@ cellType.}
 
 \item{edgeCorrect}{A logical indicating whether to perform edge correction.}
 
-\item{includeZeroCells}{A logical indicating whether to include cells with zero counts in the pairwise association
+\item{includeZeroCells}{A logical indicating whether to include cells with zero counts in the pairwise association.}
+
+\item{BPPARAM}{\{DEPRECATED\} A BiocParallel MulticoreParam or SerialParam object.}
+
+\item{imageIDCol}{\{DEPRECATED\} The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.}
+
+\item{cellTypeCol}{\{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.}
+
+\item{spatialCoordCols}{\{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.}
+
+\item{nCores}{\{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
 calculation.}
 }
 \value{

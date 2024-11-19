@@ -27,6 +27,11 @@
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
 #' @param includeZeroCells 	A logical indicating whether to include cells with zero counts in the pairwise association calculation.
 #' @param verbose logical indicating whether to output messages.
+#' @param BPPARAM \{DEPRECATED\} A BiocParallel MulticoreParam or SerialParam object. 
+#' @param imageIDCol \{DEPRECATED\} The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
+#' @param cellTypeCol \{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
+#' @param spatialCoordCols \{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.
+#' @param nCores \{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
 #' @param ... Other options
 #' @return Data frame of p-values.
 #' @export
@@ -80,12 +85,12 @@ spicy <- function(cells,
                   window.length = NULL,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
+                  verbose = FALSE,
                   BPPARAM = BiocParallel::SerialParam(),
                   imageIDCol = imageID,
                   cellTypeCol = cellType,
                   spatialCoordCols = spatialCoords,
                   nCores = cores,
-                  verbose = FALSE,
                   ...) {
   
   user_args = as.list(match.call())[-1]
@@ -421,7 +426,12 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #' @param window Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
-#' @param includeZeroCells A logical indicating whether to include cells with zero counts in the pairwise association
+#' @param includeZeroCells A logical indicating whether to include cells with zero counts in the pairwise association.
+#' @param BPPARAM \{DEPRECATED\} A BiocParallel MulticoreParam or SerialParam object. 
+#' @param imageIDCol \{DEPRECATED\} The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
+#' @param cellTypeCol \{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
+#' @param spatialCoordCols \{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.
+#' @param nCores \{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
 #' calculation.
 #' @return Statistic from pairwise L-curve of a single image.
 #' @examples

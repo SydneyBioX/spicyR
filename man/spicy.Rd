@@ -30,12 +30,12 @@ spicy(
   window.length = NULL,
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
+  verbose = FALSE,
   BPPARAM = BiocParallel::SerialParam(),
   imageIDCol = imageID,
   cellTypeCol = cellType,
   spatialCoordCols = spatialCoords,
   nCores = cores,
-  verbose = FALSE,
   ...
 )
 }
@@ -88,6 +88,16 @@ pair.}
 \item{includeZeroCells}{A logical indicating whether to include cells with zero counts in the pairwise association calculation.}
 
 \item{verbose}{logical indicating whether to output messages.}
+
+\item{BPPARAM}{\{DEPRECATED\} A BiocParallel MulticoreParam or SerialParam object.}
+
+\item{imageIDCol}{\{DEPRECATED\} The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.}
+
+\item{cellTypeCol}{\{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.}
+
+\item{spatialCoordCols}{\{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.}
+
+\item{nCores}{\{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.}
 
 \item{...}{Other options}
 }
