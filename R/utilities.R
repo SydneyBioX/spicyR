@@ -191,6 +191,7 @@ argumentChecks = function(function_name, user_vals) {
   handle_deprecated("spatialCoordCols", "spatialCoords", user_vals)
   handle_deprecated("nCores", "cores", user_vals)
   handle_deprecated("BPPARAM", "cores", user_vals)
+  handle_deprecated("Rs", "r", user_vals)
   
   # enforce mutually exclusive arguments
   check_exclusive = function(arg_set, user_vals) {
@@ -204,6 +205,7 @@ argumentChecks = function(function_name, user_vals) {
   check_exclusive(c("imageIDCol", "imageID"), user_vals)
   check_exclusive(c("spatialCoordCols", "spatialCoords"), user_vals)
   check_exclusive(c("cores", "nCores", "BPPARAM"), user_vals)
+  check_exclusive(c("Rs", "r"), user_vals)
 
   # validity checks for cores/nCores/BPPARAM
   if ("nCores" %in% names(user_vals)) {

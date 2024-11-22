@@ -9,7 +9,7 @@ getPairwise(
   imageID = "imageID",
   cellType = "cellType",
   spatialCoords = c("x", "y"),
-  Rs = NULL,
+  r = NULL,
   sigma = NULL,
   from = NULL,
   to = NULL,
@@ -23,7 +23,8 @@ getPairwise(
   imageIDCol = imageID,
   cellTypeCol = cellType,
   spatialCoordCols = spatialCoords,
-  nCores = cores
+  nCores = cores,
+  Rs = r
 )
 }
 \arguments{
@@ -37,7 +38,7 @@ cellType.}
 
 \item{spatialCoords}{The names of the spatialCoords column if using a SingleCellExperiment.}
 
-\item{Rs}{A vector of the radii that the measures of association should be calculated over.}
+\item{r}{A vector of the radii that the measures of association should be calculated over.}
 
 \item{sigma}{A numeric variable used for scaling when fitting inhomogenous L-curves.}
 
@@ -65,7 +66,9 @@ cellType.}
 
 \item{spatialCoordCols}{\{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.}
 
-\item{nCores}{\{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
+\item{nCores}{\{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.}
+
+\item{Rs}{\{DEPRECATED\} A vector of the radii that the measures of association should be calculated over.
 calculation.}
 }
 \value{

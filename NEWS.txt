@@ -41,6 +41,9 @@ DEPRECATED ARGUMENTS
     o `spatialCoordCols` argument deprecated for both getPairwise() and spicy(), replaced 
     with `spatialCoords`.
     
+    o `Rs` argument deprecated for both getPairwise() and spicy(), replaced 
+    with `r`.
+    
 * Deprecation warnings have been added to guide users to the new argument names.
 
     

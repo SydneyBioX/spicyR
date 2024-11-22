@@ -10,7 +10,7 @@
 #' @param imageID The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
 #' @param cellType The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
 #' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
-#' @param Rs A vector of the radii that the measures of association should be calculated over.
+#' @param r A vector of the radii that the measures of association should be calculated over.
 #' @param sigma A numeric variable used for scaling when fitting inhomogenous L-curves.
 #' @param from vector of cell types which you would like to compare to the to vector.
 #' @param to vector of cell types which you would like to compare to the from vector.
@@ -32,6 +32,7 @@
 #' @param cellTypeCol \{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
 #' @param spatialCoordCols \{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.
 #' @param nCores \{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
+#' @param Rs \{DEPRECATED\} A vector of the radii that the measures of association should be calculated over.
 #' @param ... Other options
 #' @return Data frame of p-values.
 #' @export
@@ -71,7 +72,7 @@ spicy <- function(cells,
                   imageID = "imageID",
                   cellType = "cellType",
                   spatialCoords = c("x", "y"),
-                  Rs = NULL,
+                  r = NULL,
                   sigma = NULL,
                   from = NULL,
                   to = NULL,
@@ -91,6 +92,7 @@ spicy <- function(cells,
                   cellTypeCol = cellType,
                   spatialCoordCols = spatialCoords,
                   nCores = cores,
+                  Rs = r,
                   ...) {
   
   user_args = as.list(match.call())[-1]
@@ -172,7 +174,7 @@ spicy <- function(cells,
 
   if (is.null(alternateResult)) {
     pairwiseAssoc <- getPairwise(cells,
-        Rs = Rs,
+        r = r,
         sigma = sigma,
         from = from,
         to = to,
@@ -417,7 +419,7 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #'     The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
 #' @param cellType The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
 #' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
-#' @param Rs A vector of the radii that the measures of association should be calculated over.
+#' @param r A vector of the radii that the measures of association should be calculated over.
 #' @param sigma A numeric variable used for scaling when fitting inhomogenous L-curves.
 #' @param from The 'from' cellType for generating the L curve.
 #' @param to The 'to' cellType for generating the L curve.
@@ -432,6 +434,7 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #' @param cellTypeCol \{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
 #' @param spatialCoordCols \{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.
 #' @param nCores \{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
+#' @param Rs \{DEPRECATED\} A vector of the radii that the measures of association should be calculated over.
 #' calculation.
 #' @return Statistic from pairwise L-curve of a single image.
 #' @examples
@@ -449,7 +452,7 @@ getPairwise <- function(
     imageID = "imageID",
     cellType = "cellType",
     spatialCoords = c("x", "y"),
-    Rs = NULL,
+    r = NULL,
     sigma = NULL,
     from = NULL,
     to = NULL,
@@ -463,7 +466,8 @@ getPairwise <- function(
     imageIDCol = imageID,
     cellTypeCol = cellType,
     spatialCoordCols = spatialCoords,
-    nCores = cores
+    nCores = cores,
+    Rs = r
     ) {
   
     user_args = as.list(match.call())[-1]
