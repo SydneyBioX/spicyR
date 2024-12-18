@@ -273,39 +273,13 @@ pairwiseAssoc = getPairwise(kerenSubset,
 pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
 ```
 
+We can use the `plotImage` function to plot any pair of cell types for a specific image and visually inspect cellular relationships.
+
 ```{r}
-# obtain colData for image 24
-cData = colData(kerenSPE) |> as.data.frame() |> 
-          dplyr::filter(imageID == "24")
-
-# obtain cells present in image 24
-coords = spatialCoords(kerenSPE) |> as.data.frame()
-coords$cellID = rownames(coords)
-coords = coords |> dplyr::filter(cellID %in% cData$CellID)
-
-cData$X = coords$x
-cData$Y = coords$y
-
-cData = cData |> 
-  dplyr::mutate(cellTypeNew = ifelse(cellType %in% c("Keratin_Tumour", "Neutrophils"), 
-                                     cellType, "Other"))
-
- pal = setNames(c("#d6b11c", "#850f07"), 
-                c("Keratin_Tumour", "Neutrophils"))
-
-ggplot() +
-    stat_density_2d(data = cData, aes(x = X, y = Y, fill = after_stat(density)), 
-                    geom = "raster", 
-                    contour = FALSE) +
-    geom_point(data = cData |> filter(cellType != "Other"),
-               aes(x = X, y = Y, colour = cellTypeNew), size = 1) +
-    scale_color_manual(values = pal) +
-    scale_fill_distiller(palette = "Blues", direction = 1) +
-    theme_classic() +
-    labs(title = "image ID: 24")
+plotImage(kerenSPE, "24", from = "Keratin_Tumour", to = "Neutrophils")
 ```
 
-Plotting image 24 shows that the supposed co-localisation occurs due to the dense cluster of cells near the top of the image.
+Plotting image 24 shows that the supposed co-localisation occurs due to the dense cluster of cells near the bottom of the image.
 
 # Mixed effects modelling
 

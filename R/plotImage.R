@@ -43,8 +43,10 @@ plotImage = function(cells,
     stop(paste0(cellType, " not found in colData."))
   }
   
-  if (!all(spatialCoords %in% colnames(colData(cells)))) {
-    stop(paste0(spatialCoords, " not found in colData."))
+  if (class(cells) == "SingleCellExperiment") {
+    if (!all(spatialCoords %in% colnames(colData(cells)))) {
+      stop(paste0(spatialCoords, " not found in colData. "))
+    }
   }
   
   if (length(spatialCoords) != 2) {
