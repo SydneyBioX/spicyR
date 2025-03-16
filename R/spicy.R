@@ -845,7 +845,8 @@ inhomLPair <- function(data,
       x = data$x,
       y = data$y,
       window = ow,
-      marks = data$cellType
+      marks = data$cellType,
+      check = FALSE
     )
 
   if (is.null(Rs)) {
