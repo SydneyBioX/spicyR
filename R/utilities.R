@@ -180,7 +180,6 @@ argumentChecks = function(function_name, user_vals) {
   # handle deprecated arguments
   handle_deprecated = function(old_arg, new_arg, user_vals) {
     if (old_arg %in% names(user_vals) && !(new_arg %in% names(user_vals))) {
-      # warning(paste0("'", old_arg, "' was deprecated in 1.18.0. Please use '", new_arg, "' instead.\n"))
       deprecate_warn("1.18.0", paste0(function_name, "(", old_arg, ")"), paste0(function_name, "(", new_arg, ")"))
       assign(new_arg, user_vals[[old_arg]], envir = sys.frame(sys.parent(1)))
     }
@@ -209,7 +208,6 @@ argumentChecks = function(function_name, user_vals) {
 
   # validity checks for cores/nCores/BPPARAM
   if ("nCores" %in% names(user_vals)) {
-    # warning("'nCores' was deprecated in 1.18.0. Please use 'cores' instead.\n")
     deprecate_warn("1.18.0", paste0(function_name, "(nCores)"), paste0(function_name, "(cores)"))
     
     if (is(user_vals$nCores, "numeric")) {
@@ -221,7 +219,6 @@ argumentChecks = function(function_name, user_vals) {
     }
     
   } else if ("BPPARAM" %in% names(user_vals)) {
-    # warning("'BPPARAM' was deprecated in 1.18.0. Please use 'cores' instead.\n")
     deprecate_warn("1.18.0", paste0(function_name, "(BPPARAM)"), paste0(function_name, "(cores)"))
     
     if (is(user_vals$BPPARAM, "MulticoreParam") || is(user_vals$BPPARAM, "SerialParam")) {

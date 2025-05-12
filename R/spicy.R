@@ -473,7 +473,7 @@ getPairwise <- function(
     user_args = as.list(match.call())[-1]
       
     tryCatch({
-      user_vals = lapply(user_args, eval)
+      user_vals = lapply(user_args, eval, envir = parent.frame())
       argumentChecks("getPairwise", user_vals)
     }, error = function(e) {
     if (grepl("object 'cells' not found", e$message)) {
@@ -482,7 +482,7 @@ getPairwise <- function(
       stop(e)
     }
   })
-  
+
   
   if (is(cells, "SummarizedExperiment")) {
     cells <- .format_data(

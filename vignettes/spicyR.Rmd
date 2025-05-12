@@ -77,6 +77,14 @@ We use the @keren2018 breast cancer dataset to compare the spatial distribution 
 
 The data is stored as a `SpatialExperiment` object and contains single-cell spatial data from 41 images.
 
+**Note:** There is a bug with the S4 method dispatch system, and `SingleCellExperiment` and `SpatialExperiment` objects are not correctly inheriting from `SummarizedExperiment.` One quick fix is to run the code below:
+
+```{r warning=FALSE, message=FALSE}
+methods::setClassUnion("ExpData", c("matrix", "dgCMatrix", "ExpressionSet",
+                                    "SummarizedExperiment", "SingleCellExperiment", "SpatialExperiment"))
+```
+
+
 
 ```{r warning=FALSE, message=FALSE}
 kerenSPE <- SpatialDatasets::spe_Keren_2018()
