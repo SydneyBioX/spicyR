@@ -3,7 +3,7 @@ pkgdown: 2.1.2
 pkgdown_sha: ~
 articles:
   spicyR: spicyR.html
-last_built: 2025-05-15T21:18Z
+last_built: 2025-05-15T21:31Z
 urls:
   reference: https://sydneybiox.github.io/spicyR/reference
   article: https://sydneybiox.github.io/spicyR/articles
