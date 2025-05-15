@@ -96,7 +96,7 @@ spicy <- function(cells,
                   ...) {
   
   user_args = as.list(match.call())[-1]
-  user_vals = lapply(user_args, eval)
+  user_vals = lapply(user_args, eval, envir = parent.frame())
   argumentChecks("spicy", user_vals)
   
   if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
@@ -469,7 +469,8 @@ getPairwise <- function(
     nCores = cores,
     Rs = r
     ) {
-  
+    
+    
     user_args = as.list(match.call())[-1]
       
     tryCatch({
