@@ -913,6 +913,12 @@ inhomLPair <- function(data,
       p2 <- as.data.frame(p2)
       p2 <- p2[as.numeric(as.character(p2$d)) <= x, ]
       p2$d <- as.character(x)
+      
+      p2$i <- as.character(p2$i)
+      p2$d <- as.character(p2$d)
+      edge$i <- as.character(edge$i)
+      edge$d <- as.character(edge$d)
+      
       p2 <- dplyr::left_join(p2, edge, c("i", "d"))
       p2$d <- factor(p2$d, levels = x)
       p2 <- p2[p2$i != p2$j, ]
