@@ -87,7 +87,7 @@ spicy <- function(cells,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
                   verbose = FALSE,
-                  BPPARAM = BiocParallel::SerialParam(),
+                  BPPARAM = NULL,
                   imageIDCol = imageID,
                   cellTypeCol = cellType,
                   spatialCoordCols = spatialCoords,
@@ -98,6 +98,16 @@ spicy <- function(cells,
   user_args = as.list(match.call())[-1]
   user_vals = lapply(user_args, eval, envir = parent.frame())
   argumentChecks("spicy", user_vals)
+  
+  if (is.null(BPPARAM)) {
+    if (cores > 1 && .Platform$OS.type != "windows") {
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores)
+    } else if (cores > 1) {
+      BPPARAM = BiocParallel::SnowParam(workers = cores)
+    } else {
+      BPPARAM = BiocParallel::SerialParam()
+    } 
+  }
   
   if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
     cells <- .format_data(
@@ -191,12 +201,12 @@ spicy <- function(cells,
         sigma = sigma,
         from = from,
         to = to,
-        cores = cores,
         minLambda = minLambda,
         window = window,
         window.length = window.length,
         edgeCorrect = edgeCorrect,
-        includeZeroCells = includeZeroCells
+        includeZeroCells = includeZeroCells,
+        BPPARAM = BPPARAM
     )
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
@@ -475,7 +485,7 @@ getPairwise <- function(
     window.length = NULL,
     edgeCorrect = TRUE,
     includeZeroCells = FALSE,
-    BPPARAM = BiocParallel::SerialParam(),
+    BPPARAM = NULL,
     imageIDCol = imageID,
     cellTypeCol = cellType,
     spatialCoordCols = spatialCoords,
@@ -503,7 +513,17 @@ getPairwise <- function(
       cells, imageID, cellType, spatialCoords, FALSE
     )
   }
-
+    
+  if (is.null(BPPARAM)) {
+    if (cores > 1 && .Platform$OS.type != "windows") {
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores)
+    } else if (cores > 1) {
+      BPPARAM = BiocParallel::SnowParam(workers = cores)
+    } else {
+      BPPARAM = BiocParallel::SerialParam()
+    } 
+  }  
+    
   cells2 <- getCellSummary(cells, bind = FALSE)
 
 
@@ -708,7 +728,7 @@ spatialSurv <- function(measurementMat,
                         subject = NULL,
                         weights = NULL,
                         remove = NULL,
-                        BPPARAM = BiocParallel::SerialParam()) {
+                        BPPARAM = NULL) {
   
   result <- bplapply(colnames(measurementMat), function(test) {
     measurementCol <- measurementMat[, test]
