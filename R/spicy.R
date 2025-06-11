@@ -129,24 +129,37 @@ spicy <- function(cells,
   }
 
   nCells <- table(getImageID(cells), getCellType(cells))
-
-  if(!is.null(condition)){
+  
+  
+  if (!is.null(condition)) {
     conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
     
-    if (!inherits(conditionVector, "Surv") && !is.factor(conditionVector)) {
-      conditionVector <- as.factor(conditionVector)
-      cli::cli_inform(
-        paste0(
-          "Coercing condition into factor. Using ",
-          condition, " = ", levels(conditionVector)[1],
-          " as base comparison group. If this is not the desired base group,",
-          " please convert cells$",
-          condition, " into a factor and change the order of levels(cells$",
-          condition, ") so that the base group is at index 1."
+    if (!inherits(conditionVector, "Surv")) {
+      wasFactor <- is.factor(conditionVector)
+      
+      if (!wasFactor) {
+        conditionVector <- as.factor(conditionVector)
+      }
+      
+      conditionVector <- droplevels(conditionVector)
+      conditionVector <- relevel(conditionVector, ref = levels(conditionVector)[1])
+      
+      if (!wasFactor || TRUE) {  
+        cli::cli_inform(
+          paste0(
+            if (!wasFactor) "Coercing condition into factor. " else "",
+            "Dropping unused levels. Using ",
+            condition, " = ", levels(conditionVector)[1],
+            " as base comparison group. If this is not the desired base group,",
+            " please convert cells$", condition, " into a factor and change the order of levels(cells$",
+            condition, ") so that the base group is at index 1."
+          )
         )
-      )
+      }
     }
   }
+  
+  
 
   ## Check whether the subject parameter has a one-to-one mapping with image
   if (!is.null(subject)) {
