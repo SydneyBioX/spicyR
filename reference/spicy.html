@@ -62,7 +62,7 @@
 <span>  edgeCorrect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  includeZeroCells <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  BPPARAM <span class="op">=</span> <span class="fu">BiocParallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BiocParallel/man/SerialParam-class.html" class="external-link">SerialParam</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  BPPARAM <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  imageIDCol <span class="op">=</span> <span class="va">imageID</span>,</span>
 <span>  cellTypeCol <span class="op">=</span> <span class="va">cellType</span>,</span>
 <span>  spatialCoordCols <span class="op">=</span> <span class="va">spatialCoords</span>,</span>
@@ -216,6 +216,10 @@ pair.</p></dd>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> this is not the desired base group, please convert cells$stage into a factor</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> and change the order of levels(cells$stage) so that the base group is at index</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> 1.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The `BPPARAM` argument of `getPairwise()` is deprecated as of spicyR 1.18.0.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Please use the `cores` argument instead.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> The deprecated feature was likely used in the <span style="color: #0000BB;">spicyR</span> package.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span>   Please report the issue at <span style="color: #0000BB; font-style: italic;">&lt;https://github.com/SydneyBioX/spicyR/issues&gt;</span>.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Number of cell type pairs: 1</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Number of differentially localised cell type pairs: </span>
