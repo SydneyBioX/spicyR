@@ -87,7 +87,7 @@ spicy <- function(cells,
                   edgeCorrect = TRUE,
                   includeZeroCells = FALSE,
                   verbose = FALSE,
-                  BPPARAM = BiocParallel::SerialParam(),
+                  BPPARAM = NULL,
                   imageIDCol = imageID,
                   cellTypeCol = cellType,
                   spatialCoordCols = spatialCoords,
@@ -98,6 +98,16 @@ spicy <- function(cells,
   user_args = as.list(match.call())[-1]
   user_vals = lapply(user_args, eval, envir = parent.frame())
   argumentChecks("spicy", user_vals)
+  
+  if (is.null(BPPARAM)) {
+    if (cores > 1 && .Platform$OS.type != "windows") {
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores)
+    } else if (cores > 1) {
+      BPPARAM = BiocParallel::SnowParam(workers = cores)
+    } else {
+      BPPARAM = BiocParallel::SerialParam()
+    } 
+  }
   
   if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
     cells <- .format_data(
@@ -129,24 +139,37 @@ spicy <- function(cells,
   }
 
   nCells <- table(getImageID(cells), getCellType(cells))
-
-  if(!is.null(condition)){
+  
+  
+  if (!is.null(condition)) {
     conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
     
-    if (!inherits(conditionVector, "Surv") && !is.factor(conditionVector)) {
-      conditionVector <- as.factor(conditionVector)
-      cli::cli_inform(
-        paste0(
-          "Coercing condition into factor. Using ",
-          condition, " = ", levels(conditionVector)[1],
-          " as base comparison group. If this is not the desired base group,",
-          " please convert cells$",
-          condition, " into a factor and change the order of levels(cells$",
-          condition, ") so that the base group is at index 1."
+    if (!inherits(conditionVector, "Surv")) {
+      wasFactor <- is.factor(conditionVector)
+      
+      if (!wasFactor) {
+        conditionVector <- as.factor(conditionVector)
+      }
+      
+      conditionVector <- droplevels(conditionVector)
+      conditionVector <- relevel(conditionVector, ref = levels(conditionVector)[1])
+      
+      if (!wasFactor || TRUE) {  
+        cli::cli_inform(
+          paste0(
+            if (!wasFactor) "Coercing condition into factor. " else "",
+            "Dropping unused levels. Using ",
+            condition, " = ", levels(conditionVector)[1],
+            " as base comparison group. If this is not the desired base group,",
+            " please convert cells$", condition, " into a factor and change the order of levels(cells$",
+            condition, ") so that the base group is at index 1."
+          )
         )
-      )
+      }
     }
   }
+  
+  
 
   ## Check whether the subject parameter has a one-to-one mapping with image
   if (!is.null(subject)) {
@@ -178,12 +201,12 @@ spicy <- function(cells,
         sigma = sigma,
         from = from,
         to = to,
-        cores = cores,
         minLambda = minLambda,
         window = window,
         window.length = window.length,
         edgeCorrect = edgeCorrect,
-        includeZeroCells = includeZeroCells
+        includeZeroCells = includeZeroCells,
+        BPPARAM = BPPARAM
     )
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
@@ -462,7 +485,7 @@ getPairwise <- function(
     window.length = NULL,
     edgeCorrect = TRUE,
     includeZeroCells = FALSE,
-    BPPARAM = BiocParallel::SerialParam(),
+    BPPARAM = NULL,
     imageIDCol = imageID,
     cellTypeCol = cellType,
     spatialCoordCols = spatialCoords,
@@ -490,7 +513,17 @@ getPairwise <- function(
       cells, imageID, cellType, spatialCoords, FALSE
     )
   }
-
+    
+  if (is.null(BPPARAM)) {
+    if (cores > 1 && .Platform$OS.type != "windows") {
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores)
+    } else if (cores > 1) {
+      BPPARAM = BiocParallel::SnowParam(workers = cores)
+    } else {
+      BPPARAM = BiocParallel::SerialParam()
+    } 
+  }  
+    
   cells2 <- getCellSummary(cells, bind = FALSE)
 
 
@@ -695,7 +728,7 @@ spatialSurv <- function(measurementMat,
                         subject = NULL,
                         weights = NULL,
                         remove = NULL,
-                        BPPARAM = BiocParallel::SerialParam()) {
+                        BPPARAM = NULL) {
   
   result <- bplapply(colnames(measurementMat), function(test) {
     measurementCol <- measurementMat[, test]
@@ -913,6 +946,12 @@ inhomLPair <- function(data,
       p2 <- as.data.frame(p2)
       p2 <- p2[as.numeric(as.character(p2$d)) <= x, ]
       p2$d <- as.character(x)
+      
+      p2$i <- as.character(p2$i)
+      p2$d <- as.character(p2$d)
+      edge$i <- as.character(edge$i)
+      edge$d <- as.character(edge$d)
+      
       p2 <- dplyr::left_join(p2, edge, c("i", "d"))
       p2$d <- factor(p2$d, levels = x)
       p2 <- p2[p2$i != p2$j, ]

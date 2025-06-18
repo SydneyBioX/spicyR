@@ -19,7 +19,7 @@ getPairwise(
   window.length = NULL,
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
-  BPPARAM = BiocParallel::SerialParam(),
+  BPPARAM = NULL,
   imageIDCol = imageID,
   cellTypeCol = cellType,
   spatialCoordCols = spatialCoords,

@@ -31,7 +31,7 @@ spicy(
   edgeCorrect = TRUE,
   includeZeroCells = FALSE,
   verbose = FALSE,
-  BPPARAM = BiocParallel::SerialParam(),
+  BPPARAM = NULL,
   imageIDCol = imageID,
   cellTypeCol = cellType,
   spatialCoordCols = spatialCoords,
