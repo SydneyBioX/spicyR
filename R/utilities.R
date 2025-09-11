@@ -59,13 +59,7 @@ isKontextual <- function(kontextualResult) {
         }
     }
   
-  spatialCoords <- names(spatialCoords(cells))
-  cells <- cells %>%
-    colData() %>%
-    data.frame() %>%
-    dplyr::select(-dplyr::any_of(c("x", "y"))) %>%
-    cbind(spatialCoords(cells) %>% data.frame())
-  
+
     needed <- cells %>%
       select(!!imageIDCol, !!cellTypeCol, spatialCoordCols[1], spatialCoordCols[2]) %>%
       dplyr::rename(
