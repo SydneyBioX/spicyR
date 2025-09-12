@@ -59,13 +59,19 @@ isKontextual <- function(kontextualResult) {
         }
     }
   
+
+    needed <- cells %>%
+      select(!!imageIDCol, !!cellTypeCol, spatialCoordCols[1], spatialCoordCols[2]) %>%
+      dplyr::rename(
+        imageID = !!imageIDCol,
+        cellType = !!cellTypeCol,
+        x = spatialCoordCols[1],
+        y = spatialCoordCols[2]
+      )
+  
     cells <- cells %>%
-        dplyr::rename(
-            imageID = !!imageIDCol,
-            cellType = !!cellTypeCol,
-            x = spatialCoordCols[1],
-            y = spatialCoordCols[2]
-        )
+      dplyr::select(-dplyr::any_of(c("imageID", "cellType", "x", "y"))) %>%
+        cbind(needed)
     
     # Check if imageID is a factor, if not make it as factor whilst keeping order
     if(class(cells$imageID) != "factor") {
