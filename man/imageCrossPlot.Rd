@@ -36,7 +36,7 @@ clamping. Point sizes are clamped to `c(0, max(abs(limits)))`.}
 A \pkg{ggplot2} object.
 }
 \description{
-Builds a pairwise scatterplot of marker–marker associations for a single image
+Builds a pairwise scatterplot of marker-marker associations for a single image
 using the output of `getPairwise()`.
 }
 \details{
@@ -47,7 +47,7 @@ names; otherwise an error is thrown. Values are transformed into two aesthetics:
   \item \code{size}: the (possibly clamped) absolute association used for point size.
 }
 The colourbar shows three ticks at \code{lower}, \code{0}, and \code{upper}
-with labels \code{"≤ lower"}, \code{"0"}, and \code{"≥ upper"}.
+with labels \code{"<lower"}, \code{"0"}, and \code{">upper"}.
 }
 \examples{
 \dontrun{

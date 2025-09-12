@@ -408,7 +408,7 @@ bubblePlot <- function(test,
       theme(
         strip.text = element_text(size = -1),
         strip.clip = "off",
-        strip.background = element_rect(linewidth = NA),
+        strip.background = element_rect(linewidth = 0),
         panel.spacing = unit(0.4, 'lines')
       ) +
       ggnewscale::new_scale("fill") +
