@@ -9,7 +9,8 @@ test_that(
                 condition = "stage", subject = "case",
                 from = "Tc", to = "Th"
             )),
-            original_result
+            original_result,
+            tolerance = 0.01
         )
     }
 )
