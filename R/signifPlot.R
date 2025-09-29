@@ -181,29 +181,6 @@ half_circle_coords = function(shape = "left", num_points = 100) {
   list(x = c(x,x[1])-mean(c(x,x[1]))+0.5, y = c(y,y[1]))
 }
 
-# Custom draw_key function to draw a left half circle in the legend using polygonGrob 
-draw_key_half_circle = function(data, params, shape) {
-  if(data$shape == 16){
-    coords <- half_circle_coords(shape = "left")
-    grid::grobTree(
-      grid::polygonGrob(
-        x = coords$x, y = coords$y,
-        gp = grid::gpar(fill = "black", col = "black")
-      )
-    )
-  } else{
-    coords <- half_circle_coords(shape = "right")
-    grid::grobTree(
-      grid::polygonGrob(
-        x = coords$x, y = coords$y,
-        gp = grid::gpar(fill = "black", col = "black")
-      )
-    )
-  }
-}
-
-
-
 
 #' @import ggthemes
 #' @import ggh4x
@@ -277,9 +254,7 @@ bubblePlot <- function(test,
       levels(test$condition)[1], levels(test$condition)[coef]
     )
   )
-  
-  
-  
+
   if(is.null(breaks)) {
     groupAB <- c(groupA, groupB)
     
@@ -327,6 +302,9 @@ bubblePlot <- function(test,
       )
   }
   
+  
+  df.shape$condition <- factor(df.shape$condition, levels = levels(test$condition))
+  
   plot = ggplot2::ggplot(df, ggplot2::aes(x = cellTypeB_id, y = cellTypeA)) +
     ggplot2::scale_fill_gradient2(
       low = colours[1], mid = colours[2], high = colours[3],
@@ -352,7 +330,7 @@ bubblePlot <- function(test,
     ) +
     ggplot2::geom_point(
       data = df.shape, ggplot2::aes(shape = condition), x = 10000, y = 10000,
-      key_glyph = draw_key_half_circle 
+      key_glyph = draw_key_half_circle # this is where the legend half-circles are drawn
     ) +
     scale_x_discrete(breaks = df$cellTypeB_id, labels = df$cellTypeB,
                      guide = guide_axis(angle = 45)) +
@@ -370,6 +348,7 @@ bubblePlot <- function(test,
       )
     )
   
+
   
   # Plots black circle outlines, only if there are significant results.
   if(nrow(df[df$sig == "TRUE", ]) > 0) {
