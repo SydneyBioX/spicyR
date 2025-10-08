@@ -512,20 +512,18 @@ survBubble = function(result,
   
   
   if(isTRUE(result$isKontextual)) {
-    # Adding context information to the plot
-    # plot = plot + 
-    #   geom_tile(aes(fill = parent), alpha = -1) +
-    #   ggh4x::facet_grid2(~parent, scales = "free", space = "free", strip = strip) +
-    #   scale_fill_manual(values = contextColours,
-    #                     labels = contextLabels) +
-    #   labs(fill = "Context") +
-    #   ggplot2::guides(fill = guide_legend(order = 2, override.aes = list(alpha = 1))) +
-    #   theme(strip.text = element_text(size = -1),
-    #         strip.clip = "off",
-    #         strip.background = element_rect(linewidth = 0),
-    #         panel.spacing = unit(0.4,'lines'))
-    message("ggplot2 broke this functionality when it released v 4.0.0")
-    NULL
+    #Adding context information to the plot
+    plot = plot +
+      geom_tile(aes(fill = parent), alpha = -1) +
+      ggh4x::facet_grid2(~parent, scales = "free", space = "free", strip = strip) +
+      scale_fill_manual(values = contextColours,
+                        labels = contextLabels) +
+      labs(fill = "Context") +
+      ggplot2::guides(fill = guide_legend(order = 2, override.aes = list(alpha = 1))) +
+      theme(strip.text = element_text(size = -1),
+            strip.clip = "off",
+            strip.background = element_rect(linewidth = 0),
+            panel.spacing = unit(0.4,'lines'))
   }
   
   
