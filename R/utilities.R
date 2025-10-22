@@ -137,44 +137,56 @@ getCellSummary <- function(
 }
 
 
-getImageID <- function(x, imageID = NULL) {
-    x %>%
-        dplyr::filter(
-            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
-        ) %>%
-        dplyr::pull(imageID)
+getImageID = function(x, imageID = NULL) {
+
+  if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
+    df <- as.data.frame(SummarizedExperiment::colData(x))
+  } else if (is.data.frame(x)) {
+    df = x
+  } 
+  
+  if (!is.null(imageID)) {
+    df = df[df$imageID == imageID, , drop = FALSE]
+  }
+  
+  return(df$imageID)
 }
 
-getCellType <- function(x, imageID = NULL) {
-    x %>%
-        dplyr::filter(
-            if (!is.null(!!imageID)) imageID == !!imageID else TRUE
-        ) %>%
-        dplyr::pull(cellType)
+getCellType = function(x, imageID = NULL) {
+
+  if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
+    df <- as.data.frame(SummarizedExperiment::colData(x))
+  } else if (is.data.frame(x)) {
+    df = x
+  } 
+  
+  if (!is.null(imageID)) {
+    df = df[df$imageID == imageID, , drop = FALSE]
+  }
+  
+  return(df$cellType)
 }
 
-getImagePheno <- function(x,
-                          imageID = NULL,
-                          bind = TRUE,
-                          expand = FALSE) {
-    x <- x[!duplicated(x$imageID),]
-    x <- x %>%
-      dplyr::mutate(imageID = factor(imageID, levels = unique(imageID)))
-    # x <- x %>%
-    #     dplyr::filter(
-    #         if (!is.null(!!imageID)) imageID == !!imageID else TRUE
-    #     ) %>%
-    #     dplyr::select(-cellID, -imageCellID, -x, -y, -cellType) %>%
-    #     dplyr::mutate(imageID = as.factor(imageID)) %>%
-    #     {
-    #         if (expand) . else dplyr::distinct(.)
-    #     } %>%
-    #     S4Vectors::DataFrame()
-    # if (expand) rownames(x) <- x$imageID
-    x
+
+getImagePheno = function(x, imageID = "imageID") {
+  
+  if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
+    df = as.data.frame(SummarizedExperiment::colData(x))
+  } else if (is.data.frame(x)) {
+    df = x
+  } 
+  
+  df = df[!duplicated(df[[imageID]]), , drop = FALSE]
+  
+  df = df |>
+    dplyr::mutate(
+      !!imageID := factor(.data[[imageID]], levels = unique(.data[[imageID]])))
+  
+  return(df)
 }
 
-#' A function to handle validity of argumemts/check for deprecated arguments
+
+#' A function to handle validity of arguments/check for deprecated arguments
 #'
 #' @importFrom lifecycle deprecate_warn
 #' @importFrom methods is
@@ -243,3 +255,5 @@ argumentChecks = function(function_name, user_vals) {
     }
   }
 }
+
+
