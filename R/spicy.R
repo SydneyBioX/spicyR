@@ -353,7 +353,7 @@ spicy <- function(cells,
   if (!is.null(subject)) {
     spicyResult$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
   }
-  
+   
   spicyResult$pairwiseAssoc <- pairwiseAssoc
   spicyResult$comparisons <- comparisons
   

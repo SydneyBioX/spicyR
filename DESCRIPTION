@@ -52,7 +52,9 @@ Imports:
     stats,
     survival,
     tibble,
-    tidyr
+    tidyr,
+    geepack,
+    fields
 Suggests: 
     SpatialDatasets,
     BiocStyle,

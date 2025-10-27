@@ -1,3 +1,48 @@
+#' `Calculates pairwise spatial associations between cell types across images
+#' and fit generalized estimating equation (GEE) models to test for condition effects.
+#' 
+#' @param cells A \code{SpatialExperiment}, \code{SingleCellExperiment}, or \code{data.frame}
+#' containing single-cell or spatial data with cell metadata and coordinates.
+#' @param condition  A character specifying which column in \code{cells} which contains the condition or grouping variable. 
+#' @param subject A character specifying which column in \code{cells} which contains the patient/donor ID.
+#' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
+#' @param cellType A character specifying which column in \code{cells} which contains the cell types.
+#' @param spatialCoords Character vector of length 2 specifying the columns for x and y coordinates.
+#' @param r Radius around each reference cell to consider for counting neighboring cells.
+#' @param from Character vector of reference cell types. If NULL, all cell types are used.
+#' @param to Character vector of target cell types. If NULL, all cell types are used.
+#' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
+#' @param cores Number of cores to use for parallel computation. 
+#' 
+#' @return A list with the following elements:
+#' \describe{
+#'   \item{condition}{Factor vector of the condition used in the GEE models.}
+#'   \item{subject}{Factor vector of subjects/donors, if provided.}
+#'   \item{comparisons}{Data frame with the reference and target cell types for each pair
+#'     and a combined label (from__to).}
+#'   \item{nCells}{Table of cell counts per image and cell type.}
+#'   \item{GEEresults}{Data frame of GEE model results for each cell type pair.}
+#' }
+#' 
+#' @export
+#' 
+#' @examples
+#' \dontrun{
+#' spicyResult = spicyGEE(
+#'   cells = kerenSPE,
+#'   condition = "tumour_type",
+#'   subject = "DONOR_NO",
+#'   imageID = "imageID",
+#'   from = c("CD8_T_cell", "Keratin_Tumour"),
+#'   to = c("Tumour", "CD4_T_cell"),
+#'   spatialCoords = c("x", "y"),
+#'   r = 50,
+#'   window = "convex",
+#'   cores = 4)
+#' }
+#' 
+#' @importFrom cli cli_inform
+#' 
 spicyGEE = function(cells,
                     condition, 
                     subject,
@@ -8,8 +53,7 @@ spicyGEE = function(cells,
                     from = NULL,
                     to = NULL,
                     window = "convex",
-                    cores = 1,
-                    includeSelf = TRUE) {
+                    cores = 1) {
   
   if (!is.null(condition)) {
     conditionVector = as.data.frame(getImagePheno(cells))[[condition]]
@@ -19,7 +63,7 @@ spicyGEE = function(cells,
     conditionVector = droplevels(conditionVector)
     conditionVector = relevel(conditionVector, ref = levels(conditionVector)[1])
     
-    cli::cli_inform(paste0(
+    cli_inform(paste0(
       if (!wasFactor) "Coercing condition into factor. " else "",
       "Dropping unused levels. Using ",
       condition, " = ", levels(conditionVector)[1],
@@ -29,8 +73,7 @@ spicyGEE = function(cells,
   
   if (!is.null(from) && !is.null(to) && length(from) == 1 && length(to) == 1) {
     cat("Computing pairwise spatial metrics...\n")
-    dfPair = modelDataGen(
-      cells = cells,
+    dfPair = modelDataGen(cells = cells,
       condition = condition,
       subject = subject,
       from = from,
@@ -71,19 +114,9 @@ spicyGEE = function(cells,
   spicyGEEResult$condition = conditionVector
   if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells))[[subject]]
   
-  if (exists("dfList")) {
-    spicyGEEResult$comparisons = data.frame(
-      from = GEEresults$from,
-      to   = GEEresults$to,
-      labels = paste0(GEEresults$from, "__", GEEresults$to)
-    )
-  } else {
-    spicyGEEResult$comparisons = data.frame(
-      from = from,
+  spicyGEEResult$comparisons = data.frame(from = from,
       to = to,
-      labels = paste0(from, "__", to)
-    )
-  }
+      labels = paste0(from, "__", to))
   
   spicyGEEResult$nCells = table(getImageID(cells), getCellType(cells))
   spicyGEEResult$GEEresults = GEEresults
@@ -91,8 +124,8 @@ spicyGEE = function(cells,
   return(spicyGEEResult)
 }
 
-
-
+#' @importFrom BiocParallel bplapply MulticoreParam SerialParam
+#' @importFrom dplyr bind_rows
 modelDataGen = function(cells, 
                         condition,
                         subject,
@@ -153,18 +186,53 @@ modelDataGen = function(cells,
   
 }
 
+#' Compute pairwise spatial associations between cell types
+#' 
+#' @param cells A \code{SpatialExperiment}, \code{SingleCellExperiment}, or \code{data.frame}
+#' containing single-cell or spatial data with cell metadata and coordinates.
+#' @param condition  A character specifying which column in \code{cells} which contains the condition or grouping variable. 
+#' @param subject A character specifying which column in \code{cells} which contains the patient/donor ID.
+#' @param r Radius around each reference cell to consider for counting neighboring cells.
+#' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
+#' @param cellType A character specifying which column in \code{cells} which contains the cell types.
+#' @param spatialCoords Character vector of length 2 specifying the columns for x and y coordinates.
+#' @param from Character vector of reference cell types. If \code{NULL}, all cell types are used.
+#' @param to Character vector of target cell types. If \code{NULL}, all cell types are used.
+#' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
+#' @param cores Number of cores to use for parallel computation. 
+#' 
+#' @return A named list of data frames. Each element corresponds to a cell type pair and contains spatial association metrics for each image. 
+#' The names of the list elements are of the form "from__to".
+#' 
+#' @examples
+#' \dontrun{
+#' getPairwiseAssoc(cells = kerenSPE,
+#'                  condition = "tumour_type",
+#'                  subject = "DONOR_NO",
+#'                  from = c("CD8_T_cell", "DC"),
+#'                  to = c("Tumour", "CD4_T_cell"),
+#'                  imageID = "imageID",
+#'                  cellType = "cellType",
+#'                  spatialCoords = c("x", "y"),
+#'                  r = 50,
+#'                  cores = 2)
+#' }
+#'
+#' @export
+#' 
+#' @importFrom BiocParallel MulticoreParam SerialParam bplapply
+#' @importFrom dplyr mutate
 getPairwiseAssoc = function(cells,
                            condition,
                            subject,
-                           from = NULL,
-                           to = NULL, 
                            r = NULL,
                            imageID,
                            cellType,
                            spatialCoords,
+                           from = NULL,
+                           to = NULL, 
                            window = "convex",
-                           cores = 1,
-                           includeSelf = TRUE) { 
+                           cores = 1) { 
   
   # get cell type pairs
   if (!is.null(from) && !is.null(to)) {
@@ -172,7 +240,7 @@ getPairwiseAssoc = function(cells,
     cellPairs = expand.grid(from = from, to = to, stringsAsFactors = FALSE)
   } else {
     # compute all pairs from unique cell types
-    cellPairs = getCellTypePairs(cells, cellType = cellType, includeSelf = includeSelf)
+    cellPairs = getCellTypePairs(cells, cellType = cellType, includeSelf = TRUE)
   }
   
   if (is.null(r)) {
@@ -218,9 +286,9 @@ getPairwiseAssoc = function(cells,
   return(namedList)
 }
 
-
-
-
+#' @importFrom spatstat.geom owin convexhull.xy area.owin
+#' @importFrom concaveman concaveman
+#' @importFrom fields rdist
 computeImage = function(dfImg,
                         from,
                         to,
@@ -244,11 +312,11 @@ computeImage = function(dfImg,
   
   # define the spatial window for the image
   if (window == "rectangle") {
-    win = spatstat.geom::owin(xrange = range(coordsImg$x), yrange = range(coordsImg$y))
+    win = owin(xrange = range(coordsImg$x), yrange = range(coordsImg$y))
   } else if (window == "convex") {
-    win = spatstat.geom::convexhull.xy(coordsImg)
+    win = convexhull.xy(coordsImg)
   } else if (window == "concave") {
-    hullCoords = concaveman::concaveman(coordsImg)
+    hullCoords = concaveman(coordsImg)
     win = spatstat.geom::owin(poly = list(x = hullCoords[,1], y = hullCoords[,2]))
   } else {
     stop("Invalid value for `window`. Use 'rectangle', 'convex', or 'concave'.")
@@ -274,33 +342,37 @@ computeImage = function(dfImg,
     return(dfResult)
     
   } else {
-    dfResult = data.frame(cellID = if(length(idxFrom) > 0) as.factor(imgCellID[idxFrom]) else NA,
-      imageID = as.factor(img),
-      subject = as.factor(subjectImg),
-      n = NA_integer_,
-      condition = as.factor(conditionImg),
-      density   = dens)
-    
-    return(dfResult)
+    cat(sprintf("No reference or target cells found for image %s\n", img))
   }
+  
   
 }
 
+#' @importFrom geepack geeglm
 buildGEE = function(dfResultPairwise) {
   
   dfValid = dfResultPairwise[!is.na(dfResultPairwise$n), ]
   
   if (nrow(dfValid) == 0) {
-    warning("No valid data (n not NA) for this pair. Skipping GEE.")
+    message("No valid data for this pair. Skipping GEE.")
     return(NULL)
   }
+  
+  from = dfResultPairwise$from |> unique()
+  to = dfResultPairwise$to |> unique()
 
-  GEEfit = geepack::geeglm(
-    n ~ 1 + condition + offset(log(density)),
-    id = dfValid$imageID,
-    data = dfValid,
-    family = poisson("log"),
-    corstr = "independence")
+  GEEfit = tryCatch({
+    geepack::geeglm(n ~ 1 + condition + offset(log(density)),
+      id = dfValid$imageID,
+      data = dfValid,
+      family = poisson("log"),
+      corstr = "independence")
+  }, error = function(e) {
+    message(paste("Model fitting failed due to insufficient number of cells:", from, "→", to, "-", e$message))
+    return(NULL)
+  })
+  
+  if (is.null(GEEfit)) return(NULL)
   
   coefs = summary(GEEfit)$coefficients
   
@@ -330,32 +402,27 @@ getCellTypePairs = function(cells,
   return(cellPairs)
 }
 
-combineGEE = function(dfResult, cores = 1) {
-  if (cores > 1) {
-    BPPARAM = MulticoreParam(workers = cores)
-  } else {
-    BPPARAM = SerialParam()
-  }
+#' @importFrom BiocParallel MulticoreParam SerialParam bplapply
+#' @importFrom dplyr bind_rows
+combineGEE = function(dfResult, 
+                      cores = 1) {
+  BPPARAM = if (cores > 1) MulticoreParam(workers = cores) else SerialParam()
   
-  # Closure captures dfResult
-  FUN = function(pairName) {
+  resultList = bplapply(names(dfResult), function(pairName) {
+    message("Starting pair: ", pairName)
     dfPair = dfResult[[pairName]]
     
-    # extract from/to from the name
     from_to = strsplit(pairName, "__")[[1]]
     from = from_to[1]
-    to   = from_to[2]
+    to = from_to[2]
     
     modelFit = buildGEE(dfPair)
-    # add pair info
     modelFit$from = from
-    modelFit$to   = to
-    
-    return(modelFit)
-  }
+    modelFit$to = to
   
-  # Only one bplapply call, using the closure
-  resultList = bplapply(names(dfResult), FUN = FUN, BPPARAM = BPPARAM)
-  combinedDF = bind_rows(resultList)
-  return(combinedDF)
+    message("Finished pair: ", pairName)
+    return(modelFit)
+  }, BPPARAM = BPPARAM)
+  
+  bind_rows(resultList)
 }
