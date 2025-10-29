@@ -26,6 +26,8 @@ containing single-cell or spatial data with cell metadata and coordinates.}
 
 \item{subject}{A character specifying which column in \code{cells} which contains the patient/donor ID.}
 
+\item{r}{Radius around each reference cell to consider for counting neighboring cells.}
+
 \item{imageID}{A character specifying which column in \code{cells} which contains image/sample ID.}
 
 \item{cellType}{A character specifying which column in \code{cells} which contains the cell types.}
@@ -49,16 +51,17 @@ Compute pairwise spatial associations between cell types
 }
 \examples{
 \dontrun{
+kerenSPE = SpatialDatasets::spe_Keren_2018()
 getPairwiseAssoc(cells = kerenSPE,
                  condition = "tumour_type",
                  subject = "DONOR_NO",
-                 from = c("CD8_T_cell", "DC"),
-                 to = c("Tumour", "CD4_T_cell"),
+                 from = "CD8_T_cell",
+                 to = "Tumour",
                  imageID = "imageID",
                  cellType = "cellType",
                  spatialCoords = c("x", "y"),
                  r = 50,
-                 cores = 2)
+                 cores = 1)
 }
 
 }

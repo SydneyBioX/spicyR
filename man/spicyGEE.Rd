@@ -60,17 +60,18 @@ and fit generalized estimating equation (GEE) models to test for condition effec
 }
 \examples{
 \dontrun{
+kerenSPE = SpatialDatasets::spe_Keren_2018()
 spicyResult = spicyGEE(
   cells = kerenSPE,
   condition = "tumour_type",
   subject = "DONOR_NO",
   imageID = "imageID",
-  from = c("CD8_T_cell", "Keratin_Tumour"),
-  to = c("Tumour", "CD4_T_cell"),
+  from = "CD8_T_cell",
+  to = "Tumour",
   spatialCoords = c("x", "y"),
   r = 50,
   window = "convex",
-  cores = 4)
+  cores = 1)
 }
 
 }

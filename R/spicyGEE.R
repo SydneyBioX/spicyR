@@ -28,17 +28,18 @@
 #' 
 #' @examples
 #' \dontrun{
+#' kerenSPE = SpatialDatasets::spe_Keren_2018()
 #' spicyResult = spicyGEE(
 #'   cells = kerenSPE,
 #'   condition = "tumour_type",
 #'   subject = "DONOR_NO",
 #'   imageID = "imageID",
-#'   from = c("CD8_T_cell", "Keratin_Tumour"),
-#'   to = c("Tumour", "CD4_T_cell"),
+#'   from = "CD8_T_cell",
+#'   to = "Tumour",
 #'   spatialCoords = c("x", "y"),
 #'   r = 50,
 #'   window = "convex",
-#'   cores = 4)
+#'   cores = 1)
 #' }
 #' 
 #' @importFrom cli cli_inform
@@ -103,8 +104,7 @@ spicyGEE = function(cells,
       cellType = cellType,
       spatialCoords = spatialCoords,
       window = window,
-      cores = cores,
-      includeSelf = includeSelf)
+      cores = cores)
     
     cat("Fitting GEE models for each cell type pair...\n")
     GEEresults = combineGEE(dfResult = dfList, cores = cores)
@@ -206,16 +206,17 @@ modelDataGen = function(cells,
 #' 
 #' @examples
 #' \dontrun{
+#' kerenSPE = SpatialDatasets::spe_Keren_2018()
 #' getPairwiseAssoc(cells = kerenSPE,
 #'                  condition = "tumour_type",
 #'                  subject = "DONOR_NO",
-#'                  from = c("CD8_T_cell", "DC"),
-#'                  to = c("Tumour", "CD4_T_cell"),
+#'                  from = "CD8_T_cell",
+#'                  to = "Tumour",
 #'                  imageID = "imageID",
 #'                  cellType = "cellType",
 #'                  spatialCoords = c("x", "y"),
 #'                  r = 50,
-#'                  cores = 2)
+#'                  cores = 1)
 #' }
 #'
 #' @export
@@ -368,7 +369,7 @@ buildGEE = function(dfResultPairwise) {
       family = poisson("log"),
       corstr = "independence")
   }, error = function(e) {
-    message(paste("Model fitting failed due to insufficient number of cells:", from, "→", to, "-", e$message))
+    message(paste("Model fitting failed due to insufficient number of cells:", from, "__", to, "-", e$message))
     return(NULL)
   })
   
