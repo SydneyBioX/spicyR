@@ -114,9 +114,10 @@ spicyGEE = function(cells,
   spicyGEEResult$condition = conditionVector
   if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells))[[subject]]
   
-  spicyGEEResult$comparisons = data.frame(from = from,
-      to = to,
-      labels = paste0(from, "__", to))
+  spicyGEEResult$comparisons = expand.grid(from = from,
+                                           to = to, 
+                                           stringsAsFactors = FALSE) |> 
+    dplyr::mutate(labels = paste0(from, "__", to))
   
   spicyGEEResult$nCells = table(getImageID(cells), getCellType(cells))
   spicyGEEResult$GEEresults = GEEresults
@@ -342,36 +343,26 @@ computeImage = function(dfImg,
     
     return(dfResult)
     
-  } else {
-    cat(sprintf("No reference or target cells found for image %s\n", img))
-  }
-  
-  
+  } 
 }
 
 #' @importFrom geepack geeglm
 buildGEE = function(dfResultPairwise) {
   
-  dfValid = dfResultPairwise[!is.na(dfResultPairwise$n), ]
-  
-  if (nrow(dfValid) == 0) {
-    message("No valid data for this pair. Skipping GEE.")
-    return(NULL)
-  }
-  
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
+  condition = dfResultPairwise$condition |> unique()
+  
+  if (length(condition) < 2) {
+    warning(paste("Skipping pair", from, "__", to, ": only one condition level exists"))
+    return(NULL)
+  }
 
-  GEEfit = tryCatch({
-    geepack::geeglm(n ~ 1 + condition + offset(log(density)),
-      id = dfValid$imageID,
-      data = dfValid,
+  GEEfit = geepack::geeglm(n ~ 1 + condition + offset(log(density)),
+      id = dfResultPairwise$imageID,
+      data = dfResultPairwise,
       family = poisson("log"),
       corstr = "independence")
-  }, error = function(e) {
-    message(paste("Model fitting failed due to insufficient number of cells:", from, "__", to, "-", e$message))
-    return(NULL)
-  })
   
   if (is.null(GEEfit)) return(NULL)
   
@@ -410,7 +401,6 @@ combineGEE = function(dfResult,
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores) else SerialParam()
   
   resultList = bplapply(names(dfResult), function(pairName) {
-    message("Starting pair: ", pairName)
     dfPair = dfResult[[pairName]]
     
     from_to = strsplit(pairName, "__")[[1]]
@@ -421,9 +411,26 @@ combineGEE = function(dfResult,
     modelFit$from = from
     modelFit$to = to
   
-    message("Finished pair: ", pairName)
     return(modelFit)
   }, BPPARAM = BPPARAM)
   
-  bind_rows(resultList)
+  combined = bind_rows(resultList)
+  
+  combined = combined |> dplyr::select(c("from", "to", "estimate", "std.err", "wald", "p.value"))
+  
+  combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
+    dplyr::arrange(p.adj)
 }
+
+.showSpicyGEEResults = function(df) {
+  message("Number of cell type pairs tested: ", nrow(df))
+  sigPairs = sum(df$p.value < 0.05, na.rm = TRUE)
+  message("\nNumber of differentially localised cell type pairs:", sigPairs)
+  
+}
+
+setMethod(
+  "show", methods::signature(object = "SpicyResults"), function(object) {
+    .showSpicyGEEResults(object)
+  }
+)
