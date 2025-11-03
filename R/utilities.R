@@ -257,3 +257,43 @@ argumentChecks = function(function_name, user_vals) {
 }
 
 
+checkCells = function(cells) {
+  validClasses = c("data.frame", "SingleCellExperiment", "SpatialExperiment")
+  
+  if (!any(sapply(validClasses, inherits, x = cells))) {
+    stop(paste0(
+      "'cells' must be one of the following types: ",
+      paste(validClasses, collapse = ", "),
+      ".\nYou provided an object of class: ", paste(class(cells), collapse = ", ")))
+  }
+}
+
+#' @importFrom SummarizedExperiment colData
+checkCondition = function(cells, condition) {
+  
+  if (inherits(cells, "data.frame")) {
+    cols = colnames(cells)
+  } else {
+    cols = colData(cells) |> as.data.frame() |> colnames()
+  }
+  
+  if (!condition %in% cols) {
+    stop("condition column not found in data.")
+  }
+} 
+
+#' @importFrom SummarizedExperiment colData
+checkCoords = function(cells, coords) {
+  if (length(coords) != 2) {
+    stop("'spatialCoords' must be a character vector of length 2, e.g. c('x', 'y').")
+  }
+  
+  if (is(cells, "data.frame") & !all(coords %in% colnames(cells))) {
+    stop("spatialCoords not found in data.")
+    
+  } else if (class(cells) == "SingleCellExperiment" & !all(coords %in% colnames(colData(cells)))) {
+    stop("spatialCoords not found in colData.")
+  }
+  
+}
+

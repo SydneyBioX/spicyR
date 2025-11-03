@@ -1,13 +1,14 @@
 #' `Calculates pairwise spatial associations between cell types across images
 #' and fit generalized estimating equation (GEE) models to test for condition effects.
 #' 
-#' @param cells A \code{SpatialExperiment}, \code{SingleCellExperiment}, or \code{data.frame}
+#' @param cells A \code{SpatialExperiment}, \code{SingleCellExperiment}, or \code{data.frame}. 
+#' The dataframe must have rows as markers and columns as cells.
 #' containing single-cell or spatial data with cell metadata and coordinates.
 #' @param condition  A character specifying which column in \code{cells} which contains the condition or grouping variable. 
 #' @param subject A character specifying which column in \code{cells} which contains the patient/donor ID.
 #' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
 #' @param cellType A character specifying which column in \code{cells} which contains the cell types.
-#' @param spatialCoords Character vector of length 2 specifying the columns for x and y coordinates.
+#' @param spatialCoords A character vector of length 2 specifying the columns for x and y coordinates if using a \code{SingleCellExperiment} object.
 #' @param r Radius around each reference cell to consider for counting neighboring cells.
 #' @param from Character vector of reference cell types. If NULL, all cell types are used.
 #' @param to Character vector of target cell types. If NULL, all cell types are used.
@@ -56,6 +57,37 @@ spicyGEE = function(cells,
                     window = "convex",
                     cores = 1) {
   
+  # this is a wrapper function
+  # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
+  checkCells(cells)
+  
+  # check condition is provided
+  if (is.null(condition)) {
+    stop("Please provide a condition.")
+  }
+  
+  # check condition column exists in data
+  checkCondition(cells, condition)
+  
+  # check cell types exist in data
+  if (any((!from %in% getCellType(cells)) | (!to %in% getCellType(cells)))) {
+    stop("to and from cell types not found in data.")
+  }
+  
+  # check that appropriate window is provided
+  if (!window %in% c("rectangle", "convex", "concave")) {
+    stop("Invalid value for `window`. Use 'rectangle', 'convex', or 'concave'.")
+  }
+  
+  # check spatialCoords exist in data in appropriate format
+  checkCoords(cells, spatialCoords)
+  
+  # check cores is a number
+  if (!is.numeric(cores)) {
+    stop("Please provide the number of cores you wish to use.")
+  }
+  
+  # coerce condition to factor and use first level as base group
   if (!is.null(condition)) {
     conditionVector = as.data.frame(getImagePheno(cells))[[condition]]
     wasFactor = is.factor(conditionVector)
@@ -72,6 +104,7 @@ spicyGEE = function(cells,
     ))
   }
   
+  # compute metrics and build model for single cell type pair
   if (!is.null(from) && !is.null(to) && length(from) == 1 && length(to) == 1) {
     cat("Computing pairwise spatial metrics...\n")
     dfPair = modelDataGen(cells = cells,
@@ -91,6 +124,9 @@ spicyGEE = function(cells,
     GEEresults$from = from
     GEEresults$to = to
     
+    GEEresults = GEEresults |> dplyr::select(c("from", "to", "estimate", "std.err", "wald", "p.value"))
+    
+ # compute metrics and build model for multiple cell type pairs
   } else {
     cat("Computing pairwise spatial metrics...\n")
     dfList = getPairwiseAssoc(
@@ -110,6 +146,7 @@ spicyGEE = function(cells,
     GEEresults = combineGEE(dfResult = dfList, cores = cores)
   }
   
+  # build spicy results object
   spicyGEEResult = list()
   spicyGEEResult$condition = conditionVector
   if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells))[[subject]]
@@ -139,7 +176,7 @@ modelDataGen = function(cells,
                         window = "convex", 
                         cores = cores) {
   
-  
+  # this function generates pairwise metrics for a single cell type pair across all images
   # format data into a dataframe
   if (is(cells, "SpatialExperiment")) {
     coords = as.data.frame(spatialCoords(cells))
@@ -163,7 +200,8 @@ modelDataGen = function(cells,
                     y = cells[[y]])
   }
   
-  # compute per image
+  
+  # split dataframe by image
   dfSplit = split(df, df$imageID)
   
   if (cores > 1) {
@@ -172,7 +210,8 @@ modelDataGen = function(cells,
   } else {
     BPPARAM = SerialParam()
   }
-    
+  
+  # compute pairwise metrics for each image
   resultList = bplapply(dfSplit, 
                         FUN = computeImage, 
                         r = r,
@@ -196,7 +235,7 @@ modelDataGen = function(cells,
 #' @param r Radius around each reference cell to consider for counting neighboring cells.
 #' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
 #' @param cellType A character specifying which column in \code{cells} which contains the cell types.
-#' @param spatialCoords Character vector of length 2 specifying the columns for x and y coordinates.
+#' @param spatialCoords A character vector of length 2 specifying the columns for x and y coordinates if using a \code{SingleCellExperiment} object.
 #' @param from Character vector of reference cell types. If \code{NULL}, all cell types are used.
 #' @param to Character vector of target cell types. If \code{NULL}, all cell types are used.
 #' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
@@ -234,7 +273,36 @@ getPairwiseAssoc = function(cells,
                            from = NULL,
                            to = NULL, 
                            window = "convex",
-                           cores = 1) { 
+                          cores = 1) { 
+  # this function computes pairwise metrics for all images - a wrapper for modelDataGen
+  # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
+  checkCells(cells)
+  
+  # check condition is provided
+  if (is.null(condition)) {
+    stop("Please provide a condition.")
+  }
+  
+  # check condition column exists in data
+  checkCondition(cells, condition)
+  
+  # check cell types exist in data
+  if (any((!from %in% getCellType(cells)) | (!to %in% getCellType(cells)))) {
+    stop("to and from cell types not found in data.")
+  }
+  
+  # check that appropriate window is provided
+  if (!window %in% c("rectangle", "convex", "concave")) {
+    stop("Invalid value for `window`. Use 'rectangle', 'convex', or 'concave'.")
+  }
+  
+  # check spatialCoords exist in data in appropriate format
+  checkCoords(cells, spatialCoords)
+  
+  # check cores is a number
+  if (!is.numeric(cores)) {
+    stop("Please provide the number of cores you wish to use.")
+  }
   
   # get cell type pairs
   if (!is.null(from) && !is.null(to)) {
@@ -349,6 +417,7 @@ computeImage = function(dfImg,
 #' @importFrom geepack geeglm
 buildGEE = function(dfResultPairwise) {
   
+  # fit GEE model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
   condition = dfResultPairwise$condition |> unique()
@@ -398,6 +467,8 @@ getCellTypePairs = function(cells,
 #' @importFrom dplyr bind_rows
 combineGEE = function(dfResult, 
                       cores = 1) {
+  
+  # fit GEE model for all cell type pairs - wrapper for buildGEE
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores) else SerialParam()
   
   resultList = bplapply(names(dfResult), function(pairName) {
@@ -420,13 +491,14 @@ combineGEE = function(dfResult,
   
   combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
     dplyr::arrange(p.adj)
+  
+  return(combined)
 }
 
 .showSpicyGEEResults = function(df) {
   message("Number of cell type pairs tested: ", nrow(df))
   sigPairs = sum(df$p.value < 0.05, na.rm = TRUE)
   message("\nNumber of differentially localised cell type pairs:", sigPairs)
-  
 }
 
 setMethod(
