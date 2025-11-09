@@ -124,7 +124,7 @@ spicyGEE = function(cells,
     GEEresults$from = from
     GEEresults$to = to
     
-    GEEresults = GEEresults |> dplyr::select(c("from", "to", "estimate", "std.err", "wald", "p.value"))
+    GEEresults = GEEresults |> dplyr::select(c("from", "to", "coef", "std.err", "wald", "p.value"))
     
  # compute metrics and build model for multiple cell type pairs
   } else {
@@ -151,13 +151,14 @@ spicyGEE = function(cells,
   spicyGEEResult$condition = conditionVector
   if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells))[[subject]]
   
-  spicyGEEResult$comparisons = expand.grid(from = from,
-                                           to = to, 
-                                           stringsAsFactors = FALSE) |> 
-    dplyr::mutate(labels = paste0(from, "__", to))
-  
   spicyGEEResult$nCells = table(getImageID(cells), getCellType(cells))
   spicyGEEResult$GEEresults = GEEresults
+  
+  spicyGEEResult$comparisons = data.frame(from = GEEresults$from,
+                                          to = GEEresults$to) |>
+    dplyr::mutate(labels = paste0(from, "__", to))
+  
+  spicyGEEResult$isGEE = TRUE
   
   return(spicyGEEResult)
 }
@@ -437,7 +438,8 @@ buildGEE = function(dfResultPairwise) {
   
   coefs = summary(GEEfit)$coefficients
   
-  modelFit = data.frame(estimate = coefs[2, "Estimate"],
+  modelFit = data.frame(Intercept = coefs[1, "Estimate"],
+    coef = coefs[2, "Estimate"],
     std.err = coefs[2, "Std.err"],
     wald = coefs[2, "Wald"],
     p.value = coefs[2, "Pr(>|W|)"])
@@ -487,7 +489,7 @@ combineGEE = function(dfResult,
   
   combined = bind_rows(resultList)
   
-  combined = combined |> dplyr::select(c("from", "to", "estimate", "std.err", "wald", "p.value"))
+  combined = combined |> dplyr::select(c("from", "to", "Intercept", "coef", "std.err", "wald", "p.value"))
   
   combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
     dplyr::arrange(p.adj)

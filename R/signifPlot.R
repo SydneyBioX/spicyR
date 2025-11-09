@@ -81,13 +81,9 @@ signifPlot <- function(results,
 
   
   if (type == "bubble") {
-    return(
-      bubblePlot(
-        results, fdr, breaks, coef,
+    return(bubblePlot(results, fdr, breaks, coef,
         colours = colours, cutoff = cutoff, marksToPlot = marksToPlot,
-        contextColours = contextColours, contextLabels = contextLabels
-      )
-    )
+        contextColours = contextColours, contextLabels = contextLabels))
   }
   
   if (is.null(breaks)) breaks <- c(-3, 3, 0.5)
@@ -204,6 +200,9 @@ bubblePlot <- function(test,
   if (test$alternateResult ) {
     groupA <- test$coefficient[, 1]
     groupB <- (test$coefficient[, 1] + test$coefficient[, coef])
+  } else if (test$isGEE) {
+    groupA = test$GEEresults[, "Intercept"] * sqrt(pi) * 2 / sqrt(10) / 100
+    groupB = test$GEEresults[, "Intercept"] + test$GEEresults[, "coef"] * sqrt(pi) * 2 / sqrt(10) / 100
   } else {
     groupA <- test$coefficient[, 1] * sqrt(pi) * 2 / sqrt(10) / 100
     groupB <- (
@@ -211,51 +210,70 @@ bubblePlot <- function(test,
     ) * sqrt(pi) * 2 / sqrt(10) / 100
 
   }
-  
+
   
   cellTypeA <- factor(test$comparisons$from)
   cellTypeB <- factor(test$comparisons$to)
   
+  if (test$isGEE) {
+    pvalue = test$GEEresults[, "p.value"]
+  } else {
+    pvalue = test$p.value[, coef]
+  }
   
-  pvalue = test$p.value[, coef]
   sig <- pvalue < cutoff
   sigLab <- paste0("p-value < ", cutoff)
   
   
   if (fdr) {
-    pvalue = p.adjust(test$p.value[, coef], "fdr")
+    if (test$isGEE) {
+      pvalue = p.adjust(test$GEEresults[, "p.value"], "fdr")
+    } else {
+      pvalue = p.adjust(test$p.value[, coef], "fdr")
+    }
+
     sig <- pvalue < cutoff
     sigLab <- paste0("fdr < ", cutoff)
   }
   
+  pvalue[pvalue == 0] = .Machine$double.xmin
   size <- -log10(pvalue)
   
-  
-  df <- data.frame(
-    cellTypeA, cellTypeB, groupA, groupB, size,
-    stat = test$statistic[, coef], pvalue = pvalue,
-    sig = factor(sig, levels= c("FALSE", "TRUE"))
-  )
-  rownames(df) <- rownames(test$statistic)
-  
+  if (test$isGEE) {
+    df = data.frame(cellTypeA, cellTypeB, groupA, groupB, size,
+                    stat = test$GEEresults[, "wald"], pvalue = pvalue,
+                    sig = factor(sig, levels = c("TRUE", "FALSE")))
+    rownames(df) = rownames(test$comparisons$labels)
+  } else {
+    df <- data.frame(
+      cellTypeA, cellTypeB, groupA, groupB, size,
+      stat = test$statistic[, coef], pvalue = pvalue,
+      sig = factor(sig, levels = c("FALSE", "TRUE")))
+   rownames(df) <- rownames(test$statistic)
+  }
   
   if (isTRUE(test$isKontextual)) {
     df$parent = test$comparisons$parent
   }
 
-  df <- df[df$cellTypeA %in% marksToPlot & df$cellTypeB %in% marksToPlot, ]
+  if (!test$isGEE) {
+    df <- df[df$cellTypeA %in% marksToPlot & df$cellTypeB %in% marksToPlot, ]
+  }
   
   df$cellTypeA <- droplevels(df$cellTypeA)
   df$cellTypeB <- droplevels(df$cellTypeB)
   
-  df.shape <- data.frame(
-    cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
-    condition = c(
-      levels(test$condition)[1], levels(test$condition)[coef]
-    )
-  )
+  if (test$isGEE) {
+    df.shape = data.frame(cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
+                          condition = c(levels(test$condition)[1], levels(test$condition)[2]))
+  } else {
+    df.shape <- data.frame(
+      cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
+      condition = c(
+        levels(test$condition)[1], levels(test$condition)[coef]))
+  } 
 
-  if(is.null(breaks)) {
+  if (is.null(breaks)) {
     groupAB <- c(groupA, groupB)
     
     limits <- c(min(groupAB, na.rm = TRUE), max(groupAB, na.rm = TRUE)) |>
@@ -302,8 +320,9 @@ bubblePlot <- function(test,
       )
   }
   
-  
   df.shape$condition <- factor(df.shape$condition, levels = levels(test$condition))
+  
+  print(df)
   
   plot = ggplot2::ggplot(df, ggplot2::aes(x = cellTypeB_id, y = cellTypeA)) +
     ggplot2::scale_fill_gradient2(

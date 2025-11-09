@@ -362,6 +362,7 @@ spicy <- function(cells,
   
   spicyResult$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
   spicyResult$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
+  spicyResult$isGEE = FALSE
   
   spicyResult <- methods::new("SpicyResults", spicyResult)
   spicyResult
