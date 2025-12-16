@@ -1,0 +1,16 @@
+---
+title: "test"
+format: html
+editor: visual
+---
+
+```{r}
+.libPaths("/enna/nobackup/biostat/Rpackages/v4/")
+library(SpatialDatasets)
+```
+
+
+```{r}
+
+```
+
