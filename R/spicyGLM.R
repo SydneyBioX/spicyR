@@ -45,7 +45,7 @@
 #' 
 #' @importFrom cli cli_inform
 #' 
-spicyGEE = function(cells,
+spicyGLM = function(cells,
                     condition, 
                     subject,
                     imageID = "imageID",
@@ -87,9 +87,18 @@ spicyGEE = function(cells,
     stop("Please provide the number of cores you wish to use.")
   }
   
+  # check if subject/image ID have a one-to-one mapping
+  df = colData(cells) |> as.data.frame()
+  oneToOne = FALSE
+  
+  if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
+    oneToOne = TRUE
+    warning("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
+  } 
+  
   # coerce condition to factor and use first level as base group
   if (!is.null(condition)) {
-    conditionVector = as.data.frame(getImagePheno(cells))[[condition]]
+    conditionVector = as.data.frame(getImagePheno(cells, imageID = imageID))[[condition]]
     wasFactor = is.factor(conditionVector)
     
     if (!wasFactor) conditionVector = as.factor(conditionVector)
@@ -119,12 +128,12 @@ spicyGEE = function(cells,
                           window = window,
                           cores = cores)
     
-    cat("Fitting GEE model...\n")
-    GEEresults = buildGEE(dfPair)
-    GEEresults$from = from
-    GEEresults$to = to
+    cat("Fitting GLM model...\n")
+    GLMresults = buildGLM(dfPair, oneToOne = TRUE)
+    GLMresults$from = from
+    GLMresults$to = to
     
-    GEEresults = GEEresults |> dplyr::select(c("from", "to", "coef", "std.err", "wald", "p.value"))
+    GLMresults = GLMresults |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value"))
     
     # compute metrics and build model for multiple cell type pairs
   } else {
@@ -142,25 +151,25 @@ spicyGEE = function(cells,
       window = window,
       cores = cores)
     
-    cat("Fitting GEE models for each cell type pair...\n")
-    GEEresults = combineGEE(dfResult = dfList, cores = cores)
+    cat("Fitting GLM models for each cell type pair...\n")
+    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores)
   }
   
   # build spicy results object
-  spicyGEEResult = list()
-  spicyGEEResult$condition = conditionVector
-  if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells))[[subject]]
+  spicyGLMResult = list()
+  spicyGLMResult$condition = conditionVector
+  if (!is.null(subject)) spicyGLMResult$subject = as.data.frame(getImagePheno(cells, imageID = imageID))[[subject]]
   
-  spicyGEEResult$nCells = table(getImageID(cells), getCellType(cells))
-  spicyGEEResult$GEEresults = GEEresults
+  spicyGLMResult$nCells = table(getImageID(cells), getCellType(cells))
+  spicyGLMResult$GLMresults = GLMresults
   
-  spicyGEEResult$comparisons = data.frame(from = GEEresults$from,
-                                          to = GEEresults$to) |>
+  spicyGLMResult$comparisons = data.frame(from = GLMresults$from,
+                                          to = GLMresults$to) |>
     dplyr::mutate(labels = paste0(from, "__", to))
   
-  spicyGEEResult$isGEE = TRUE
+  spicyGLMResult$isGLM = TRUE
   
-  return(spicyGEEResult)
+  return(spicyGLMResult)
 }
 
 #' @importFrom BiocParallel bplapply MulticoreParam SerialParam
@@ -183,26 +192,28 @@ modelDataGen = function(cells,
     coords = as.data.frame(spatialCoords(cells))
     colnames(coords)[1:2] = c("x", "y")
     
-    df = data.frame(subject  = cells[[subject]],
-                    imageID  = cells[[imageID]],
+    df = data.frame(imageID = cells[[imageID]],
+                    subject = cells[[subject]],
                     condition = cells[[condition]],
                     cellType = cells[[cellType]],
                     x = coords$x,
                     y = coords$y)
+
     
   } else if (is(cells, "SingleCellExperiment") | is(cells, "data.frame")) {
     x = spatialCoords[[1]]
     y = spatialCoords[[2]]
-    df = data.frame(subject  = cells[[subject]],
-                    imageID  = cells[[imageID]],
+    
+    df = data.frame(imageID = cells[[imageID]],
+                    subject = cells[[subject]],
                     condition = cells[[condition]],
                     cellType = cells[[cellType]],
                     x = cells[[x]],
                     y = cells[[y]])
+  
   }
   
-  
-  # split dataframe by image
+  # split dataframe by cluster
   dfSplit = split(df, df$imageID)
   
   if (cores > 1) {
@@ -404,6 +415,8 @@ computeImage = function(dfImg,
     
     # assemble result dataframe
     dfResult = data.frame(cellID = as.factor(imgCellID[idxFrom]),
+                          from = from,
+                          to = to,
                           imageID = as.factor(img),
                           subject = as.factor(subjectImg),
                           n = countsToFrom,
@@ -413,12 +426,13 @@ computeImage = function(dfImg,
     return(dfResult)
     
   } 
+  
+  print("here")
 }
 
 #' @importFrom fixest feglm
-buildGLM = function(dfResultPairwise) {
-  
-  # fit GEE model for one cell type pair
+buildGLM = function(dfResultPairwise, oneToOne) {
+  # fit GLM model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
   condition = dfResultPairwise$condition |> unique()
@@ -428,12 +442,17 @@ buildGLM = function(dfResultPairwise) {
     return(NULL)
   }
   
-  GLMfit = fixest::feglm(n ~ 1 + condition,
+  GLMfit = fixest::feglm(n ~ 0 + condition,
                          offset = log(dfResultPairwise$density),
                          family = "poisson",
                          data = dfResultPairwise)
   
-  V = vcov_fixest_cluster(GLMfit, type = "CR2", cluster = dat[[cluster]])
+  if (oneToOne) {
+    V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$imageID)
+  } else {
+    V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$subject)
+  }
+  
   beta = stats::coef(GLMfit)
   
   if (length(beta) != 2) {
@@ -441,10 +460,31 @@ buildGLM = function(dfResultPairwise) {
   }
   
   L = matrix(c(-1, 1), nrow = 1)
-  print(wald_p(GLMfit, L = L, V = V))
-                         
   
- 
+  waldP = clubSandwich::Wald_test(GLMfit, L, V, test = "EDT", tidy = TRUE)$p_val[1] |> as.numeric()
+  
+  # log rate ratio?
+  logRR = unname(beta[2]) - unname(beta[1])
+  tmp = sub("^condition", "", names(beta))
+  out = data.frame(conditionRef = tmp[1],
+                   conditionComp = tmp[2],
+                   coef = logRR,
+                   rateRatio = exp(logRR),
+                   p.value = waldP)
+  
+  return(out)
+}
+
+#' @importFrom clubSandwich vcovCR
+vcovFixestCluster = function(fit,
+                             type = c("naive", "CR0", "CR2", "CR3"),
+                             cluster) {
+  type = match.arg(type)
+  
+  if (type == "naive") return(stats::vcov(fit))
+  if (missing(cluster)) stop("Provide 'cluster' for clustered vcov.")
+  
+  clubSandwich::vcovCR(fit, cluster = cluster, type = type)
 }
 
 getCellTypePairs = function(cells,
@@ -467,10 +507,11 @@ getCellTypePairs = function(cells,
 
 #' @importFrom BiocParallel MulticoreParam SerialParam bplapply
 #' @importFrom dplyr bind_rows
-combineGEE = function(dfResult, 
+combineGLM = function(dfResult,
+                      oneToOne,
                       cores = 1) {
   
-  # fit GEE model for all cell type pairs - wrapper for buildGEE
+  # fit GLM model for all cell type pairs - wrapper for buildGLM
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores) else SerialParam()
   
   resultList = bplapply(names(dfResult), function(pairName) {
@@ -480,7 +521,7 @@ combineGEE = function(dfResult,
     from = from_to[1]
     to = from_to[2]
     
-    modelFit = buildGEE(dfPair)
+    modelFit = buildGLM(dfPair, oneToOne = oneToOne)
     modelFit$from = from
     modelFit$to = to
     
@@ -489,7 +530,7 @@ combineGEE = function(dfResult,
   
   combined = bind_rows(resultList)
   
-  combined = combined |> dplyr::select(c("from", "to", "Intercept", "coef", "std.err", "wald", "p.value"))
+  combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value"))
   
   combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
     dplyr::arrange(p.adj)

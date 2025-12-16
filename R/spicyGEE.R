@@ -47,7 +47,7 @@
 #' 
 spicyGEE = function(cells,
                     condition, 
-                    subject,
+                    subject = NULL,
                     imageID = "imageID",
                     cellType = "cellType",
                     spatialCoords = c("x", "y"),
@@ -70,7 +70,7 @@ spicyGEE = function(cells,
   checkCondition(cells, condition)
   
   # check cell types exist in data
-  if (any((!from %in% getCellType(cells)) | (!to %in% getCellType(cells)))) {
+  if (any((!from %in% getCellType(cells, cellType = cellType)) | (!to %in% getCellType(cells, cellType = cellType)))) {
     stop("to and from cell types not found in data.")
   }
   
@@ -89,7 +89,7 @@ spicyGEE = function(cells,
   
   # coerce condition to factor and use first level as base group
   if (!is.null(condition)) {
-    conditionVector = as.data.frame(getImagePheno(cells))[[condition]]
+    conditionVector = as.data.frame(getImagePheno(cells, imageID = imageID))[[condition]]
     wasFactor = is.factor(conditionVector)
     
     if (!wasFactor) conditionVector = as.factor(conditionVector)
@@ -149,9 +149,9 @@ spicyGEE = function(cells,
   # build spicy results object
   spicyGEEResult = list()
   spicyGEEResult$condition = conditionVector
-  if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells))[[subject]]
+  if (!is.null(subject)) spicyGEEResult$subject = as.data.frame(getImagePheno(cells, imageID = imageID))[[subject]]
   
-  spicyGEEResult$nCells = table(getImageID(cells), getCellType(cells))
+  spicyGEEResult$nCells = table(getImageID(cells, imageID = imageID), getCellType(cells, cellType = cellType))
   spicyGEEResult$GEEresults = GEEresults
   
   spicyGEEResult$comparisons = data.frame(from = GEEresults$from,
@@ -167,7 +167,7 @@ spicyGEE = function(cells,
 #' @importFrom dplyr bind_rows
 modelDataGen = function(cells, 
                         condition,
-                        subject,
+                        subject = NULL,
                         from, 
                         to, 
                         r, 
@@ -183,22 +183,29 @@ modelDataGen = function(cells,
     coords = as.data.frame(spatialCoords(cells))
     colnames(coords)[1:2] = c("x", "y")
     
-    df = data.frame(subject  = cells[[subject]],
-                    imageID  = cells[[imageID]],
+    df = data.frame(imageID = cells[[imageID]],
                     condition = cells[[condition]],
                     cellType = cells[[cellType]],
                     x = coords$x,
                     y = coords$y)
     
+    if (!is.null(subject)) {
+      df$subject = cells[[subject]]
+    }
+    
   } else if (is(cells, "SingleCellExperiment") | is(cells, "data.frame")) {
     x = spatialCoords[[1]]
     y = spatialCoords[[2]]
-    df = data.frame(subject  = cells[[subject]],
-                    imageID  = cells[[imageID]],
+    df = data.frame(imageID  = cells[[imageID]],
                     condition = cells[[condition]],
                     cellType = cells[[cellType]],
                     x = cells[[x]],
                     y = cells[[y]])
+    
+    if (!is.null(subject)) {
+      df$subject = cells[[subject]]
+    }
+    
   }
   
   
@@ -266,7 +273,7 @@ modelDataGen = function(cells,
 #' @importFrom dplyr mutate
 getPairwiseAssoc = function(cells,
                            condition,
-                           subject,
+                           subject = NULL,
                            r = NULL,
                            imageID,
                            cellType,
@@ -288,7 +295,7 @@ getPairwiseAssoc = function(cells,
   checkCondition(cells, condition)
   
   # check cell types exist in data
-  if (any((!from %in% getCellType(cells)) | (!to %in% getCellType(cells)))) {
+  if (any((!from %in% getCellType(cells, cellType = cellType)) | (!to %in% getCellType(cells, cellType = cellType)))) {
     stop("to and from cell types not found in data.")
   }
   
@@ -367,7 +374,11 @@ computeImage = function(dfImg,
                         window = "convex") {
   # extract image metadata
   img = dfImg$imageID[1]
-  subjectImg = dfImg$subject[1]
+  
+  if (!is.null(dfImg$subject)) {
+    subjectImg = dfImg$subject[1]
+  }
+
   conditionImg = dfImg$condition[1]
   typesImg = dfImg$cellType
   coordsImg = dfImg[, c("x", "y")]
@@ -410,6 +421,10 @@ computeImage = function(dfImg,
       condition = as.factor(conditionImg),
       density = dens)
     
+    if (!is.null(dfImg$subject)) {
+      dfResult$subject = as.factor(subjectImg)
+    }
+    
     return(dfResult)
     
   } 
@@ -427,12 +442,23 @@ buildGEE = function(dfResultPairwise) {
     warning(paste("Skipping pair", from, "__", to, ": only one condition level exists"))
     return(NULL)
   }
+  
+  # if subject is provided, cluster based on patient ID
+  # otherwise cluster by image ID
+  if (!is.null(dfResultPairwise$subject)) {
+    GEEfit = geepack::geeglm(n ~ 1 + condition + offset(log(density)),
+                             id = dfResultPairwise$subject,
+                             data = dfResultPairwise,
+                             family = poisson("log"),
+                             corstr = "independence")
+  } else {
+    GEEfit = geepack::geeglm(n ~ 1 + condition + offset(log(density)),
+                             id = dfResultPairwise$imageID,
+                             data = dfResultPairwise,
+                             family = poisson("log"),
+                             corstr = "independence")
+  }
 
-  GEEfit = geepack::geeglm(n ~ 1 + condition + offset(log(density)),
-      id = dfResultPairwise$imageID,
-      data = dfResultPairwise,
-      family = poisson("log"),
-      corstr = "independence")
   
   if (is.null(GEEfit)) return(NULL)
   

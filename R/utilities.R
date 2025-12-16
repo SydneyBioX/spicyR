@@ -137,38 +137,30 @@ getCellSummary <- function(
 }
 
 
-getImageID = function(x, imageID = NULL) {
+getImageID = function(x, imageID = "imageID") {
 
   if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
-    df <- as.data.frame(SummarizedExperiment::colData(x))
+    df = as.data.frame(SummarizedExperiment::colData(x))
+  } else if (is.data.frame(x)) {
+    df = x
+  } 
+
+  return(df[[imageID]])
+}
+
+getCellType = function(x, cellType = "cellType") {
+
+  if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
+    df = as.data.frame(SummarizedExperiment::colData(x))
   } else if (is.data.frame(x)) {
     df = x
   } 
   
-  if (!is.null(imageID)) {
-    df = df[df$imageID == imageID, , drop = FALSE]
-  }
-  
-  return(df$imageID)
-}
-
-getCellType = function(x, imageID = NULL) {
-
-  if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
-    df <- as.data.frame(SummarizedExperiment::colData(x))
-  } else if (is.data.frame(x)) {
-    df = x
-  } 
-  
-  if (!is.null(imageID)) {
-    df = df[df$imageID == imageID, , drop = FALSE]
-  }
-  
-  return(df$cellType)
+  return(df[[cellType]])
 }
 
 
-getImagePheno = function(x, imageID = "imageID") {
+getImagePheno = function(x, imageID) {
   
   if (inherits(x, "SpatialExperiment") || inherits(x, "SingleCellExperiment")) {
     df = as.data.frame(SummarizedExperiment::colData(x))
