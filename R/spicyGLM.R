@@ -70,9 +70,13 @@ spicyGLM = function(cells,
   checkCondition(cells, condition)
   
   # check cell types exist in data
-  if (any((!from %in% getCellType(cells)) | (!to %in% getCellType(cells)))) {
-    stop("to and from cell types not found in data.")
+  if (!is.null(from) && !is.null(to)) {
+    if (any(!from %in% getCellType(cells)) ||
+        any(!to   %in% getCellType(cells))) {
+      stop("`from` or `to` cell types not found in data.")
+    }
   }
+  
   
   # check that appropriate window is provided
   if (!window %in% c("rectangle", "convex", "concave")) {
@@ -93,7 +97,7 @@ spicyGLM = function(cells,
   
   if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
     oneToOne = TRUE
-    warning("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
+    message("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
   } 
   
   # coerce condition to factor and use first level as base group
@@ -129,7 +133,7 @@ spicyGLM = function(cells,
                           cores = cores)
     
     cat("Fitting GLM model...\n")
-    GLMresults = buildGLM(dfPair, oneToOne = TRUE)
+    GLMresults = buildGLM(dfPair, oneToOne = oneToOne)
     GLMresults$from = from
     GLMresults$to = to
     
@@ -153,7 +157,8 @@ spicyGLM = function(cells,
     
     cat("Fitting GLM models for each cell type pair...\n")
     GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores)
-  }
+    
+  } 
   
   # build spicy results object
   spicyGLMResult = list()
@@ -299,8 +304,11 @@ getPairwiseAssoc = function(cells,
   checkCondition(cells, condition)
   
   # check cell types exist in data
-  if (any((!from %in% getCellType(cells)) | (!to %in% getCellType(cells)))) {
-    stop("to and from cell types not found in data.")
+  if (!is.null(from) && !is.null(to)) {
+    if (any(!from %in% getCellType(cells)) ||
+        any(!to   %in% getCellType(cells))) {
+      stop("`from` or `to` cell types not found in data.")
+    }
   }
   
   # check that appropriate window is provided
@@ -317,7 +325,7 @@ getPairwiseAssoc = function(cells,
   }
   
   # get cell type pairs
-  if (!is.null(from) && !is.null(to)) {
+  if (!is.null(from) || !is.null(to)) {
     # expand all combinations of from × to
     cellPairs = expand.grid(from = from, to = to, stringsAsFactors = FALSE)
   } else {
@@ -341,7 +349,7 @@ getPairwiseAssoc = function(cells,
     seq_len(nrow(cellPairs)),
     FUN = function(i) {
       from.i = cellPairs$from[i]
-      to.i   = cellPairs$to[i]
+      to.i = cellPairs$to[i]
       
       df = modelDataGen(cells = cells,
                         condition = condition,
@@ -426,8 +434,6 @@ computeImage = function(dfImg,
     return(dfResult)
     
   } 
-  
-  print("here")
 }
 
 #' @importFrom fixest feglm
