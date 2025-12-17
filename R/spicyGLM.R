@@ -161,6 +161,7 @@ spicyGLM = function(cells,
   } 
   
   # build spicy results object
+  s1 = Sys.time()
   spicyGLMResult = list()
   spicyGLMResult$condition = conditionVector
   if (!is.null(subject)) spicyGLMResult$subject = as.data.frame(getImagePheno(cells, imageID = imageID))[[subject]]
@@ -173,6 +174,9 @@ spicyGLM = function(cells,
     dplyr::mutate(labels = paste0(from, "__", to))
   
   spicyGLMResult$isGLM = TRUE
+  s2 = Sys.time()
+  cat("Time to build spicyGLM results: ")
+  cat(s2 - s1, "\n")
   
   return(spicyGLMResult)
 }
@@ -447,17 +451,27 @@ buildGLM = function(dfResultPairwise, oneToOne) {
     warning(paste("Skipping pair", from, "__", to, ": only one condition level exists"))
     return(NULL)
   }
+  s1 = Sys.time()
   
   GLMfit = fixest::feglm(n ~ 0 + condition,
                          offset = log(dfResultPairwise$density),
                          family = "poisson",
                          data = dfResultPairwise)
   
+  s2 = Sys.time()
+  cat("Time to fit GLM: ")
+  cat(s2 - s1, "\n")
+  
+  s1 = Sys.time()
   if (oneToOne) {
     V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$imageID)
   } else {
     V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$subject)
   }
+  s2 = Sys.time()
+  cat("Time for vcov: ")
+  cat(s2 - s1, "\n")
+  
   
   beta = stats::coef(GLMfit)
   
@@ -467,7 +481,11 @@ buildGLM = function(dfResultPairwise, oneToOne) {
   
   L = matrix(c(-1, 1), nrow = 1)
   
+  s1 = Sys.time()
   waldP = clubSandwich::Wald_test(GLMfit, L, V, test = "EDT", tidy = TRUE)$p_val[1] |> as.numeric()
+  s2 = Sys.time()
+  cat("Time for p-value: ")
+  cat(s2 - s1, "\n")
   
   # log rate ratio?
   logRR = unname(beta[2]) - unname(beta[1])
