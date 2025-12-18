@@ -10,7 +10,7 @@ library(SpatialDatasets)
 
 ```{r}
 spe = spe_Keren_2018()
-spe = spe[, spe$imageID %in% c(1, 3, 7, 9)]
+# spe = spe[, spe$imageID %in% c(1, 3, 7, 9)]
 spe$tumour_type = droplevels(spe$tumour_type)
 ```
 
@@ -47,9 +47,10 @@ spicyTest = spicyR:::spicyGLM(cells = spe,
                               cellType = "cellType",
                               spatialCoords = c("x", "y"),
                               r = 50,
-                              from = c("Tregs", "Macrophages"),
-                              to = c("Tumour", "Keratin_Tumour"))
-
+                              from = "CD8_T_cell",
+                              to = "Tumour",
+                              cores = 1)
+spicyTest
 ```
 
 
