@@ -453,9 +453,8 @@ buildGLM = function(dfResultPairwise, oneToOne) {
                          family = "poisson",
                          data = dfResultPairwise)
   
-  print(GLMfit)
-  
-  print(anyNA(dfResultPairwise$imageID))
+  dfResultPairwise$subject = as.character(dfResultPairwise$subject)
+  dfResultPairwise$imageID = as.character(dfResultPairwise$imageID)
   
   if (oneToOne) {
     V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$imageID)
