@@ -50,7 +50,6 @@ spicyTest = spicyR:::spicyGLM(cells = spe,
                               from = "CD8_T_cell",
                               to = "Tumour",
                               cores = 1)
-spicyTest
 ```
 
 

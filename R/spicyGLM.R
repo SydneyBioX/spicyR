@@ -451,16 +451,19 @@ buildGLM = function(dfResultPairwise, oneToOne) {
   GLMfit = fixest::feglm(n ~ 0 + condition,
                          offset = log(dfResultPairwise$density),
                          family = "poisson",
-                         data = dfResultPairwise)
+                         data = dfResultPairwise,
+                         data.save = TRUE)
   
-  dfResultPairwise$subject = as.character(dfResultPairwise$subject)
-  dfResultPairwise$imageID = as.character(dfResultPairwise$imageID)
   
-  if (oneToOne) {
-    V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$imageID)
+  clusterVec = if (oneToOne) {
+    GLMfit$data$imageID
   } else {
-    V = vcovFixestCluster(GLMfit, type = "CR2", cluster = dfResultPairwise$subject)
+    GLMfit$data$subject
   }
+  
+  print(GLMfit$obs_selection)
+  
+  V = vcovFixestCluster(GLMfit, type = "CR2", cluster = clusterVec)
   
   beta = stats::coef(GLMfit)
   
@@ -489,7 +492,7 @@ vcovFixestCluster = function(fit,
                              type = c("naive", "CR0", "CR2", "CR3"),
                              cluster) {
   type = match.arg(type)
-  
+
   if (type == "naive") return(stats::vcov(fit))
   if (missing(cluster)) stop("Provide 'cluster' for clustered vcov.")
   
