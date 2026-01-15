@@ -47,7 +47,7 @@
 #' 
 spicyGLM = function(cells,
                     condition, 
-                    subject,
+                    subject = NULL,
                     imageID = "imageID",
                     cellType = "cellType",
                     spatialCoords = c("x", "y"),
@@ -95,7 +95,10 @@ spicyGLM = function(cells,
   df = colData(cells) |> as.data.frame()
   oneToOne = FALSE
   
-  if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
+  if (is.null(subject)) {
+    oneToOne = TRUE
+    message("No subject ID provided. Clustering by image ID instead of subject.")
+  } else if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
     oneToOne = TRUE
     message("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
   } 
@@ -130,7 +133,8 @@ spicyGLM = function(cells,
                           cellType = cellType,
                           spatialCoords = spatialCoords,
                           window = window,
-                          cores = cores)
+                          cores = cores,
+                          oneToOne = oneToOne)
     
     cat("Fitting GLM model...\n")
     GLMresults = buildGLM(dfPair, oneToOne = oneToOne)
@@ -174,6 +178,7 @@ spicyGLM = function(cells,
   
   spicyGLMResult$isGLM = TRUE
   
+  class(spicyGLMResult) = "SpicyResults"
   return(spicyGLMResult)
 }
 
@@ -181,7 +186,7 @@ spicyGLM = function(cells,
 #' @importFrom dplyr bind_rows
 modelDataGen = function(cells, 
                         condition,
-                        subject,
+                        subject = NULL,
                         from, 
                         to, 
                         r, 
@@ -189,7 +194,8 @@ modelDataGen = function(cells,
                         cellType,
                         spatialCoords = c("x", "y"),
                         window = "convex", 
-                        cores = cores) {
+                        cores = cores,
+                        oneToOne) {
   
   # this function generates pairwise metrics for a single cell type pair across all images
   # format data into a dataframe
@@ -198,11 +204,14 @@ modelDataGen = function(cells,
     colnames(coords)[1:2] = c("x", "y")
     
     df = data.frame(imageID = cells[[imageID]],
-                    subject = cells[[subject]],
                     condition = cells[[condition]],
                     cellType = cells[[cellType]],
                     x = coords$x,
                     y = coords$y)
+    
+    if (!is.null(subject)) {
+       df$subject = cells[[subject]]
+    }
 
     
   } else if (is(cells, "SingleCellExperiment") | is(cells, "data.frame")) {
@@ -210,16 +219,23 @@ modelDataGen = function(cells,
     y = spatialCoords[[2]]
     
     df = data.frame(imageID = cells[[imageID]],
-                    subject = cells[[subject]],
                     condition = cells[[condition]],
                     cellType = cells[[cellType]],
                     x = cells[[x]],
                     y = cells[[y]])
+    
+    if (!is.null(subject)) {
+      df$subject = cells[[subject]]
+    }
   
   }
   
   # split dataframe by cluster
-  dfSplit = split(df, df$imageID)
+  if (oneToOne) {
+    dfSplit = split(df, df$imageID)
+  } else {
+    dfSplit = split(df, df$subject)
+  }
   
   if (cores > 1) {
     # parallel processing using parallel::mclapply (Unix only)
@@ -282,7 +298,7 @@ modelDataGen = function(cells,
 #' @importFrom dplyr mutate
 getPairwiseAssoc = function(cells,
                             condition,
-                            subject,
+                            subject = NULL,
                             r = NULL,
                             imageID,
                             cellType,
@@ -324,6 +340,13 @@ getPairwiseAssoc = function(cells,
     stop("Please provide the number of cores you wish to use.")
   }
   
+  # check mapping between image ID and subject
+  if (is.null(subject)) {
+    oneToOne = TRUE
+  } else if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
+    oneToOne = TRUE
+  } 
+  
   # get cell type pairs
   if (!is.null(from) || !is.null(to)) {
     # expand all combinations of from × to
@@ -361,7 +384,8 @@ getPairwiseAssoc = function(cells,
                         cellType = cellType,
                         spatialCoords = spatialCoords,
                         window = window,
-                        cores = 1) |>
+                        cores = 1,
+                        oneToOne = oneToOne) |>
         mutate(from = from.i, to = to.i)
       
       pairName = paste0(from.i, "__", to.i)
@@ -383,14 +407,21 @@ computeImage = function(dfImg,
                         from,
                         to,
                         r,
-                        window = "convex") {
+                        window = "convex",
+                        oneToOne) {
   # extract image metadata
   img = dfImg$imageID[1]
-  subjectImg = dfImg$subject[1]
   conditionImg = dfImg$condition[1]
   typesImg = dfImg$cellType
   coordsImg = dfImg[, c("x", "y")]
   
+  # need image ID
+  subjectImg = if ("subject" %in% colnames(dfImg)) {
+    dfImg$subject[1]
+  } else {
+    NA
+  }
+      
   # generate unique cell IDs for each cell per type
   typeCounts = ave(seq_along(typesImg), typesImg, FUN = seq_along)
   imgCellID = paste0(typesImg, "_", img, "_", typeCounts)
@@ -426,10 +457,13 @@ computeImage = function(dfImg,
                           from = from,
                           to = to,
                           imageID = as.factor(img),
-                          subject = as.factor(subjectImg),
                           n = countsToFrom,
                           condition = as.factor(conditionImg),
                           density = dens)
+    
+    if ("subject" %in% colnames(dfImg)) {
+      dfResult$subject = as.factor(dfImg$subject[1])
+    }
     
     return(dfResult)
     
@@ -437,7 +471,7 @@ computeImage = function(dfImg,
 }
 
 #' @importFrom fixest feglm
-buildGLM = function(dfResultPairwise, oneToOne) {
+ buildGLM = function(dfResultPairwise, oneToOne) {
   # fit GLM model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
@@ -460,8 +494,6 @@ buildGLM = function(dfResultPairwise, oneToOne) {
   } else {
     GLMfit$data$subject
   }
-  
-  print(GLMfit$obs_selection)
   
   V = vcovFixestCluster(GLMfit, type = "CR2", cluster = clusterVec)
   
@@ -555,7 +587,7 @@ combineGLM = function(dfResult,
   return(combined)
 }
 
-.showSpicyGEEResults = function(df) {
+.showSpicyGLMResults = function(df) {
   message("Number of cell type pairs tested: ", nrow(df))
   sigPairs = sum(df$p.value < 0.05, na.rm = TRUE)
   message("\nNumber of differentially localised cell type pairs:", sigPairs)
@@ -563,6 +595,6 @@ combineGLM = function(dfResult,
 
 setMethod(
   "show", methods::signature(object = "SpicyResults"), function(object) {
-    .showSpicyGEEResults(object)
+    .showSpicyGLMResults(object)
   }
 )
