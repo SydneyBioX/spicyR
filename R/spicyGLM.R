@@ -340,6 +340,8 @@ getPairwiseAssoc = function(cells,
     stop("Please provide the number of cores you wish to use.")
   }
   
+  oneToOne = FALSE
+  
   # check mapping between image ID and subject
   if (is.null(subject)) {
     oneToOne = TRUE
@@ -364,7 +366,7 @@ getPairwiseAssoc = function(cells,
   if (cores > 1) {
     BPPARAM = MulticoreParam(workers = cores, progressbar = TRUE)
   } else {
-    BPPARAM = SerialParam()
+    BPPARAM = SerialParam(progressbar = TRUE)
   }
   
   # compute for all pairs
@@ -475,10 +477,14 @@ computeImage = function(dfImg,
   # fit GLM model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
-  condition = dfResultPairwise$condition |> unique()
   
-  if (length(condition) < 2) {
-    warning(paste("Skipping pair", from, "__", to, ": only one condition level exists"))
+  dfResultPairwise$condition = droplevels(factor(dfResultPairwise$condition))
+  
+  if (length(unique(dfResultPairwise$condition)) < 2) {
+    warning(paste(
+      "Skipping pair", from, "__", to,
+      ": only one condition level after dropping unused levels"
+    ))
     return(NULL)
   }
   
@@ -556,27 +562,42 @@ combineGLM = function(dfResult,
                       cores = 1) {
   
   # fit GLM model for all cell type pairs - wrapper for buildGLM
-  BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam()
+  BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam(progressbar = TRUE)
   
-  resultList = bplapply(names(dfResult), function(pairName) {
-    dfPair = dfResult[[pairName]]
-    
-    from_to = strsplit(pairName, "__")[[1]]
-    from = from_to[1]
-    to = from_to[2]
-    
-    modelFit = buildGLM(dfPair, oneToOne = oneToOne)
-    
-    if (is.null(modelFit)) {
-      return(NULL)
-    }
-    
-    modelFit$from = from
-    modelFit$to = to
-    
-    return(modelFit)
-  }, BPPARAM = BPPARAM)
+  resultList = bplapply(
+    names(dfResult),
+    function(pairName) {
+      
+      tryCatch({
+        dfPair = dfResult[[pairName]]
+        
+        from_to = strsplit(pairName, "__")[[1]]
+        from = from_to[1]
+        to = from_to[2]
+        
+        modelFit = buildGLM(dfPair, oneToOne = oneToOne)
+        
+        if (is.null(modelFit)) return(NULL)
+        
+        modelFit$from = from
+        modelFit$to = to
+        modelFit
+        
+      }, error = function(e) {
+        structure(
+          list(
+            pair = pairName,
+            message = conditionMessage(e),
+            call = conditionCall(e)
+          ),
+          class = "spicy_error"
+        )
+      })
+    },
+    BPPARAM = BPPARAM
+  )
   
+  print(resultList[[94]])
   combined = bind_rows(resultList)
   
   combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value"))
