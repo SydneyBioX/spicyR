@@ -506,7 +506,7 @@ computeImage = function(dfImg,
   beta = stats::coef(GLMfit)
   
   if (length(beta) != 2) {
-    stop("Expected exactly 2 condition coefficients, got: ", paste(names(beta), collapse = ", "))
+     stop("Expected exactly 2 condition coefficients, got: ", paste(names(beta), collapse = ", "))
   }
   
   L = matrix(c(-1, 1), nrow = 1)
@@ -564,40 +564,26 @@ combineGLM = function(dfResult,
   # fit GLM model for all cell type pairs - wrapper for buildGLM
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam(progressbar = TRUE)
   
-  resultList = bplapply(
-    names(dfResult),
-    function(pairName) {
-      
-      tryCatch({
-        dfPair = dfResult[[pairName]]
-        
-        from_to = strsplit(pairName, "__")[[1]]
-        from = from_to[1]
-        to = from_to[2]
-        
-        modelFit = buildGLM(dfPair, oneToOne = oneToOne)
-        
-        if (is.null(modelFit)) return(NULL)
-        
-        modelFit$from = from
-        modelFit$to = to
-        modelFit
-        
-      }, error = function(e) {
-        structure(
-          list(
-            pair = pairName,
-            message = conditionMessage(e),
-            call = conditionCall(e)
-          ),
-          class = "spicy_error"
-        )
-      })
-    },
-    BPPARAM = BPPARAM
-  )
+  resultList = bplapply(names(dfResult), function(pairName) {
+    dfPair = dfResult[[pairName]]
+    
+    from_to = strsplit(pairName, "__")[[1]]
+    from = from_to[1]
+    to = from_to[2]
+    
+    modelFit = buildGLM(dfPair, oneToOne = oneToOne)
+    
+    if (is.null(modelFit)) {
+      return(NULL)
+    }
+    
+    modelFit$from = from
+    modelFit$to = to
+    
+    return(modelFit)
+  }, BPPARAM = BPPARAM)
+    
   
-  print(resultList[[94]])
   combined = bind_rows(resultList)
   
   combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value"))
