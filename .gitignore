@@ -18,3 +18,5 @@ debug
 docs
 /doc/
 /Meta/
+.DS_Store
+.RDataTmp
