@@ -206,7 +206,7 @@ spicy <- function(cells,
         window.length = window.length,
         edgeCorrect = edgeCorrect,
         includeZeroCells = includeZeroCells,
-        BPPARAM = BPPARAM
+        cores = cores
     )
     pairwiseAssoc <- as.data.frame(pairwiseAssoc)
     pairwiseAssoc <- pairwiseAssoc[labels]
