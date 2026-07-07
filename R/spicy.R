@@ -142,7 +142,7 @@ spicy <- function(cells,
   
   
   if (!is.null(condition)) {
-    conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
+    conditionVector <- as.data.frame(getImagePheno(cells, imageID = imageID))[condition][, 1]
     
     if (!inherits(conditionVector, "Surv")) {
       wasFactor <- is.factor(conditionVector)
@@ -258,7 +258,7 @@ spicy <- function(cells,
     survivalResult = spatialSurv(
       measurementMat = pairwiseAssocMatrix,
       condition = condition,
-      pheno = as.data.frame(getImagePheno(cells)),
+      pheno = as.data.frame(getImagePheno(cells, imageID = imageID)),
       covariates = covariates,
       subject = subject,
       weights = weightFunction,
@@ -283,7 +283,7 @@ spicy <- function(cells,
         condition = condition,
         covariates = covariates,
         cellCounts = table(getImageID(cells), getCellType(cells)),
-        pheno = as.data.frame(getImagePheno(cells))
+        pheno = as.data.frame(getImagePheno(cells, imageID = imageID))
       )
 
 
@@ -317,7 +317,7 @@ spicy <- function(cells,
         condition = condition,
         covariates = covariates,
         cellCounts = table(getImageID(cells), getCellType(cells)),
-        pheno = as.data.frame(getImagePheno(cells))
+        pheno = as.data.frame(getImagePheno(cells, imageID = imageID))
       )
 
 
@@ -351,7 +351,7 @@ spicy <- function(cells,
   }
 
   if (!is.null(subject)) {
-    spicyResult$subject <- as.data.frame(getImagePheno(cells))[subject][, 1]
+    spicyResult$subject <- as.data.frame(getImagePheno(cells, imageID = imageID))[subject][, 1]
   }
    
   spicyResult$pairwiseAssoc <- pairwiseAssoc
@@ -360,7 +360,7 @@ spicy <- function(cells,
   spicyResult$weights <- weightFunction
   spicyResult$nCells <- nCells
   
-  spicyResult$imageIDs <- as.data.frame(getImagePheno(cells))["imageID"][, 1]
+  spicyResult$imageIDs <- as.data.frame(getImagePheno(cells, imageID = imageID))["imageID"][, 1]
   spicyResult$alternateResult <- ifelse(is.null(alternateResult), FALSE, TRUE)
   spicyResult$isGEE = FALSE
   

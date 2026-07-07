@@ -79,7 +79,7 @@
   nCellsTab <- table(getImageID(cells), getCellType(cells))
   
   # --- enforce fixed schema for GLMresults ---
-  required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value")
+  required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value")
   if (is.null(GLMresults)) {
     GLMresults <- data.frame(
       from = character(0),
@@ -259,8 +259,9 @@ spicyGLM = function(cells,
     
     GLMresults$from <- from
     GLMresults$to <- to
+    
     GLMresults <- GLMresults |>
-      dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value"))
+      dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value"))
     
     # Fill the base object with results (keeps schema consistent)
     base_out$GLMresults <- GLMresults
@@ -633,8 +634,8 @@ computeImage = function(dfImg,
   )
 }
 
-#' @importFrom fixest feglm
-buildGLM = function(dfResultPairwise, oneToOne) {
+buildGLM = function(dfResultPairwise, 
+                    oneToOne) {
   # fit GLM model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
@@ -684,20 +685,35 @@ buildGLM = function(dfResultPairwise, oneToOne) {
   }
   
   
-  GLMfit = fixest::feglm(n ~ 0 + condition,
-                         offset = log(dfResultPairwise$density),
-                         family = "poisson",
-                         data = dfResultPairwise,
-                         data.save = TRUE)
+  GLMfit = glm(n ~ 0 + condition,
+               offset = log(dfResultPairwise$density),
+               family = poisson(link = "log"),
+               data = dfResultPairwise)
+  
+  assign("debug_X", model.matrix(GLMfit), envir = .GlobalEnv)
+  cat("X dim:", paste(dim(model.matrix(GLMfit)), collapse = " x "), "\n")
+  cat("X colnames:", paste(colnames(model.matrix(GLMfit)), collapse = ", "), "\n")
+  
+  message("--- GLM inspection ---")
+  message("X dim: ", paste(dim(model.matrix(GLMfit)), collapse = " x "))
+  message("p (ncol X): ", ncol(model.matrix(GLMfit)))
+  message("N (nrow X): ", nrow(model.matrix(GLMfit)))
+  message("family: ", GLMfit$family$family)
+  message("link: ", GLMfit$family$link)
+  message("fitted values range: ", paste(round(range(GLMfit$fitted.values), 3), collapse = " to "))
+  message("weights range: ", paste(round(range(GLMfit$weights), 3), collapse = " to "))
+  message("first 5 weights: ", paste(round(GLMfit$weights[1:5], 4), collapse = ", "))
+  message("first 5 fitted values: ", paste(round(GLMfit$fitted.values[1:5], 4), collapse = ", "))
+  message("--- end GLM inspection ---")
   
   clusterVec = if (oneToOne) {
-    GLMfit$data$imageID
+    dfResultPairwise$imageID
   } else {
-    GLMfit$data$subject
+    dfResultPairwise$subject
   }
   
   V = vcovClubSandwichCluster(GLMfit, type = "CR2", cluster = clusterVec)
-  
+
   beta = stats::coef(GLMfit)
   
   if (length(beta) != 2) {
@@ -719,11 +735,14 @@ buildGLM = function(dfResultPairwise, oneToOne) {
   # log rate ratio?
   logRR = unname(beta[2]) - unname(beta[1])
   tmp = sub("^condition", "", names(beta))
-  out = data.frame(conditionRef = tmp[1],
+  
+  out = data.frame(conditionRef  = tmp[1],
                    conditionComp = tmp[2],
-                   coef = logRR,
-                   rateRatio = exp(logRR),
-                   p.value = waldP)
+                   coef_ref      = unname(beta[1]),
+                   coef_comp     = unname(beta[2]),
+                   logRateRatio  = logRR,
+                   rateRatio     = exp(logRR),
+                   p.value       = waldP)
   
   return(out)
 }
@@ -767,7 +786,7 @@ combineGLM = function(dfResult,
   # fit GLM model for all cell type pairs - wrapper for buildGLM
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam(progressbar = TRUE)
   
-<<<<<<< HEAD
+# <<<<<<< HEAD
   resultList = bplapply(names(dfResult), function(pairName) {
     dfPair = dfResult[[pairName]]
     
@@ -787,7 +806,6 @@ combineGLM = function(dfResult,
     return(modelFit)
   }, BPPARAM = BPPARAM)
     
-=======
   resultList = bplapply(
     names(dfResult),
     function(pairName) {
@@ -825,7 +843,7 @@ combineGLM = function(dfResult,
     },
     BPPARAM = BPPARAM
   )
->>>>>>> b27909f431b26ab75a3d1a9bb9b8b53f2dcda3c8
+# >>>>>>> b27909f431b26ab75a3d1a9bb9b8b53f2dcda3c8
   
   combined = bind_rows(resultList)
   
@@ -840,8 +858,7 @@ combineGLM = function(dfResult,
     combined <- combined[is.na(combined$reason), , drop = FALSE]
   }
   
-  
-  combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef", "rateRatio", "p.value"))
+  combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value"))
   
   combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
     dplyr::arrange(p.adj)
@@ -849,6 +866,55 @@ combineGLM = function(dfResult,
   attr(combined, "skipped") <- skipped
 
   return(combined)
+}
+
+vcovCR2_fast <- function(GLMfit, clusterVec, conditionVec) {
+  
+  mu    <- GLMfit$fitted.values
+  imgs  <- as.character(clusterVec)
+  grp   <- as.character(conditionVec)
+  
+  clusters <- unique(imgs)
+  
+  cluster_df <- data.frame(
+    cluster = clusters,
+    c_i     = sapply(clusters, function(cl) mu[imgs == cl][1]),
+    m_i     = sapply(clusters, function(cl) sum(imgs == cl)),
+    group   = sapply(clusters, function(cl) grp[imgs == cl][1]),
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  
+  groups <- unique(cluster_df$group)
+  S_g <- sapply(groups, function(g) {
+    idx <- cluster_df$group == g
+    sum(cluster_df$m_i[idx] * cluster_df$c_i[idx])
+  })
+  names(S_g) <- groups
+  
+  cluster_df$S_g      <- S_g[cluster_df$group]
+  cluster_df$alpha    <- cluster_df$c_i / cluster_df$S_g
+  cluster_df$b_tilde  <- (1 / (cluster_df$c_i * cluster_df$m_i)) * 
+    (1 / sqrt(1 - cluster_df$alpha * cluster_df$m_i) - 1)
+  cluster_df$A_offdiag <- cluster_df$c_i * cluster_df$b_tilde
+  
+  X    <- model.matrix(GLMfit)
+  r    <- GLMfit$residuals
+  meat <- matrix(0, nrow = 2, ncol = 2)
+  
+  for (i in seq_len(nrow(cluster_df))) {
+    idx   <- imgs == cluster_df$cluster[i]
+    X_i   <- X[idx, ]
+    r_i   <- r[idx]
+    mu_i  <- cluster_df$c_i[i]
+    b_i   <- cluster_df$A_offdiag[i]
+    
+    Ar_i  <- r_i + b_i * sum(r_i)
+    psi_i <- t(X_i) %*% Ar_i
+    meat  <- meat + psi_i %*% t(psi_i)
+  }
+  
+  meat
 }
 
 .showSpicyGLMResults <- function(object) {
