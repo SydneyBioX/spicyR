@@ -14,7 +14,13 @@
 #' @param to Character vector of target cell types. If NULL, all cell types are used.
 #' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
 #' @param cores Number of cores to use for parallel computation. 
-#' 
+#' @param cr2Method Character specifying how to compute the CR2-adjusted variance and p-value. 
+#'   \code{"fast"} (default) closely matches \code{clubSandwich} at substantially lower cost.  
+#'   \code{"clubSandwich"} uses the \code{clubSandwich} package directly.
+#' @param fastMethod Eigendecomposition routine used internally when
+#'   \code{cr2Method = "fast"}. \code{"direct"} (default) is faster in practice; \code{"dpr1"} is a validated reference alternative.
+#'   
+#'
 #' @return A list with the following elements:
 #' \describe{
 #'   \item{condition}{Factor vector of the condition used in the GEE models.}
@@ -80,15 +86,13 @@
   
   # --- enforce fixed schema for GLMresults ---
   required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value")
+  char_cols <- c("from", "to", "conditionRef", "conditionComp")
   if (is.null(GLMresults)) {
-    GLMresults <- data.frame(
-      from = character(0),
-      to = character(0),
-      conditionRef = character(0),
-      conditionComp = character(0),
-      coef = numeric(0),
-      rateRatio = numeric(0),
-      p.value = numeric(0),
+    GLMresults <- as.data.frame(
+      setNames(
+        lapply(required_cols, function(cn) if (cn %in% char_cols) character(0) else numeric(0)),
+        required_cols
+      ),
       stringsAsFactors = FALSE
     )
   } else {
@@ -141,7 +145,12 @@ spicyGLM = function(cells,
                     from = NULL,
                     to = NULL,
                     window = "convex",
-                    cores = 1) {
+                    cores = 1,
+                    cr2Method = c("fast", "clubSandwich"),
+                    fastMethod = c("direct", "dpr1")) {
+  
+  cr2Method <- match.arg(cr2Method)
+  fastMethod <- match.arg(fastMethod)
   
   # this is a wrapper function
   # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
@@ -183,7 +192,9 @@ spicyGLM = function(cells,
   
   if (is.null(subject)) {
     oneToOne = TRUE
-    message("No subject ID provided. Clustering by image ID instead of subject.")
+    message("No subject ID provided. Clustering by image ID instead of subject. If your data includes ",
+            "multiple images from the same subject, provide subject ID to cluster by ",
+            "subject instead.")
   } else if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
     oneToOne = TRUE
     message("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
@@ -238,7 +249,7 @@ spicyGLM = function(cells,
     }
     
     cat("Fitting GLM model...\n")
-    GLMresults <- buildGLM(dfPair, oneToOne = oneToOne)
+    GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method, fastMethod = fastMethod)
     
     # buildGLM may return a "skip record" data.frame instead of results
     if (is.data.frame(GLMresults) && "reason" %in% colnames(GLMresults)) {
@@ -291,7 +302,7 @@ spicyGLM = function(cells,
       cores = cores)
     
     cat("Fitting GLM models for each cell type pair...\n")
-    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores)
+    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores, cr2Method = cr2Method, fastMethod = fastMethod)
     
     skipped <- attr(GLMresults, "skipped")
     if (!is.null(skipped) && nrow(skipped) > 0) {
@@ -302,6 +313,7 @@ spicyGLM = function(cells,
   
   # Fill base_out with multi-pair results
   base_out$GLMresults <- GLMresults
+  base_out$leverage <- attr(GLMresults, "leverage")
   base_out$comparisons <- data.frame(
     from = GLMresults$from,
     to = GLMresults$to,
@@ -324,7 +336,7 @@ modelDataGen = function(cells,
                         cellType,
                         spatialCoords = c("x", "y"),
                         window = "convex", 
-                        cores = cores,
+                        cores = 1,
                         oneToOne) {
   
   # this function generates pairwise metrics for a single cell type pair across all images
@@ -602,7 +614,8 @@ computeImage = function(dfImg,
   
   # compute density
   areaImg = spatstat.geom::area.owin(win)
-  dens = (length(idxFrom) / areaImg) * (pi * r^2)
+  ## should NOT BE idxFrom
+  dens = (length(idxTo) / areaImg) * (pi * r^2)
   
   # compute target counts per reference cell
   D = fields::rdist(as.matrix(coordsImg[idxFrom, ]), as.matrix(coordsImg[idxTo, ]))
@@ -635,12 +648,19 @@ computeImage = function(dfImg,
 }
 
 buildGLM = function(dfResultPairwise, 
-                    oneToOne) {
+                    oneToOne, 
+                    cr2Method = c("fast", "clubSandwich"),
+                    fastMethod = c("direct", "dpr1")) {
+  
+  cr2Method <- match.arg(cr2Method)
+  fastMethod <- match.arg(fastMethod)
+  
   # fit GLM model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
   
   dfResultPairwise$condition = droplevels(factor(dfResultPairwise$condition))
+  condition_levels <- levels(dfResultPairwise$condition)
   
   if (length(unique(dfResultPairwise$condition)) < 2) {
     msg <- paste(
@@ -660,7 +680,6 @@ buildGLM = function(dfResultPairwise,
     warning(msg, call. = FALSE)
     return(.new_spicy_skip(from, to, reason = "all_zero", message = msg))
   }
-  
   
   pos_by_cond <- tapply(
     dfResultPairwise$n > 0,
@@ -684,27 +703,10 @@ buildGLM = function(dfResultPairwise,
     return(.new_spicy_skip(from, to, reason = "one_condition_zero", message = msg))
   }
   
-  
   GLMfit = glm(n ~ 0 + condition,
                offset = log(dfResultPairwise$density),
                family = poisson(link = "log"),
                data = dfResultPairwise)
-  
-  assign("debug_X", model.matrix(GLMfit), envir = .GlobalEnv)
-  cat("X dim:", paste(dim(model.matrix(GLMfit)), collapse = " x "), "\n")
-  cat("X colnames:", paste(colnames(model.matrix(GLMfit)), collapse = ", "), "\n")
-  
-  message("--- GLM inspection ---")
-  message("X dim: ", paste(dim(model.matrix(GLMfit)), collapse = " x "))
-  message("p (ncol X): ", ncol(model.matrix(GLMfit)))
-  message("N (nrow X): ", nrow(model.matrix(GLMfit)))
-  message("family: ", GLMfit$family$family)
-  message("link: ", GLMfit$family$link)
-  message("fitted values range: ", paste(round(range(GLMfit$fitted.values), 3), collapse = " to "))
-  message("weights range: ", paste(round(range(GLMfit$weights), 3), collapse = " to "))
-  message("first 5 weights: ", paste(round(GLMfit$weights[1:5], 4), collapse = ", "))
-  message("first 5 fitted values: ", paste(round(GLMfit$fitted.values[1:5], 4), collapse = ", "))
-  message("--- end GLM inspection ---")
   
   clusterVec = if (oneToOne) {
     dfResultPairwise$imageID
@@ -712,8 +714,6 @@ buildGLM = function(dfResultPairwise,
     dfResultPairwise$subject
   }
   
-  V = vcovClubSandwichCluster(GLMfit, type = "CR2", cluster = clusterVec)
-
   beta = stats::coef(GLMfit)
   
   if (length(beta) != 2) {
@@ -726,15 +726,63 @@ buildGLM = function(dfResultPairwise,
     return(.new_spicy_skip(from, to, reason = "one_condition_dropped", message = msg))
   }
   
-  
-  
-  L = matrix(c(-1, 1), nrow = 1)
-  
-  waldP = clubSandwich::Wald_test(GLMfit, L, V, tidy = TRUE)$p_val[1] |> as.numeric()
-  
-  # log rate ratio?
   logRR = unname(beta[2]) - unname(beta[1])
   tmp = sub("^condition", "", names(beta))
+  
+  # --- branch on cr2Method ---
+  if (cr2Method == "fast") {
+    
+    cluster_ids <- unique(clusterVec)
+    patients <- lapply(cluster_ids, build_patient,
+                       cluster_vec = clusterVec,
+                       df_result = dfResultPairwise,
+                       fit = GLMfit,
+                       condition_levels = condition_levels)
+    
+    group_of_patient <- sapply(patients, function(p) p$group)
+    group_sizes <- table(group_of_patient)
+    
+    if (any(group_sizes < 2)) {
+      msg <- paste0(
+        "Skipping pair ", from, "__", to,
+        ": group(s) ", paste(names(group_sizes)[group_sizes < 2], collapse = ", "),
+        " contain only one patient/cluster. CR2's leverage correction is undefined ",
+        "for a singleton group, since it works by measuring how much a patient's ",
+        "data pulled the fit relative to everyone else in their group - with ",
+        "no one else in the group, there's nothing to measure that against."
+      )
+      warning(msg, call. = FALSE)
+      return(.new_spicy_skip(from, to, reason = "one_patient_per_group", message = msg))
+    }
+    
+    V = vcovCR2_fast_multi(patients, method = fastMethod)
+    
+    S_g_vec  <- attr(V, "S_g")
+    grp_idx  <- attr(V, "group")
+    
+    leverage_tbl <- data.frame(
+      patient_id = as.character(cluster_ids),
+      group      = condition_levels[grp_idx],
+      N_i        = sapply(patients, function(p) sum(p$n_ij)),
+      T_i        = sapply(patients, patient_total),
+      stringsAsFactors = FALSE
+    )
+    leverage_tbl$S_g       <- S_g_vec[grp_idx]
+    leverage_tbl$leverage  <- leverage_tbl$T_i / leverage_tbl$S_g
+    leverage_tbl$from      <- from
+    leverage_tbl$to        <- to
+    
+    waldResult = waldTest_CR2_fast(logRR, V, patients, method = fastMethod)
+    waldP = waldResult$p.value
+    
+  } else {
+    
+    V = vcovClubSandwichCluster(GLMfit, type = "CR2", cluster = clusterVec)
+    
+    L = matrix(c(-1, 1), nrow = 1)
+    waldP = clubSandwich::Wald_test(GLMfit, L, V, tidy = TRUE)$p_val[1] |> as.numeric()
+    
+  }
   
   out = data.frame(conditionRef  = tmp[1],
                    conditionComp = tmp[2],
@@ -744,6 +792,7 @@ buildGLM = function(dfResultPairwise,
                    rateRatio     = exp(logRR),
                    p.value       = waldP)
   
+  attr(out, "leverage") <- leverage_tbl
   return(out)
 }
 
@@ -781,31 +830,16 @@ getCellTypePairs = function(cells,
 #' @importFrom dplyr bind_rows
 combineGLM = function(dfResult,
                       oneToOne,
-                      cores = 1) {
+                      cores = 1,
+                      cr2Method = c("fast", "clubSandwich"),
+                      fastMethod = c("direct", "dpr1")) {
+  
+  cr2Method <- match.arg(cr2Method)
+  fastMethod <- match.arg(fastMethod)
   
   # fit GLM model for all cell type pairs - wrapper for buildGLM
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam(progressbar = TRUE)
   
-# <<<<<<< HEAD
-  resultList = bplapply(names(dfResult), function(pairName) {
-    dfPair = dfResult[[pairName]]
-    
-    from_to = strsplit(pairName, "__")[[1]]
-    from = from_to[1]
-    to = from_to[2]
-    
-    modelFit = buildGLM(dfPair, oneToOne = oneToOne)
-    
-    if (is.null(modelFit)) {
-      return(NULL)
-    }
-    
-    modelFit$from = from
-    modelFit$to = to
-    
-    return(modelFit)
-  }, BPPARAM = BPPARAM)
-    
   resultList = bplapply(
     names(dfResult),
     function(pairName) {
@@ -821,14 +855,14 @@ combineGLM = function(dfResult,
         from = from_to[1]
         to = from_to[2]
         
-        modelFit = buildGLM(dfPair, oneToOne = oneToOne)
+        modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method, fastMethod = fastMethod)
         
         if (is.null(modelFit)) return(NULL)
         
         if (!("from" %in% names(modelFit))) modelFit$from <- from
         if (!("to" %in% names(modelFit))) modelFit$to <- to
-    
-        modelFit
+        
+        list(fit = modelFit, leverage = attr(modelFit, "leverage"))
         
       }, error = function(e) {
         structure(
@@ -843,9 +877,12 @@ combineGLM = function(dfResult,
     },
     BPPARAM = BPPARAM
   )
-# >>>>>>> b27909f431b26ab75a3d1a9bb9b8b53f2dcda3c8
   
-  combined = bind_rows(resultList)
+  fitList      <- lapply(resultList, `[[`, "fit")
+  leverageList <- lapply(resultList, `[[`, "leverage")
+  
+  combined     <- bind_rows(fitList)          # was: bind_rows(resultList)
+  leverage_all <- bind_rows(leverageList)      # was: undefined
   
   # Split successful fits vs skipped-pair records (returned by buildGLM)
   if (!("reason" %in% colnames(combined))) {
@@ -864,57 +901,8 @@ combineGLM = function(dfResult,
     dplyr::arrange(p.adj)
   
   attr(combined, "skipped") <- skipped
-
+  attr(combined, "leverage") <- leverage_all
   return(combined)
-}
-
-vcovCR2_fast <- function(GLMfit, clusterVec, conditionVec) {
-  
-  mu    <- GLMfit$fitted.values
-  imgs  <- as.character(clusterVec)
-  grp   <- as.character(conditionVec)
-  
-  clusters <- unique(imgs)
-  
-  cluster_df <- data.frame(
-    cluster = clusters,
-    c_i     = sapply(clusters, function(cl) mu[imgs == cl][1]),
-    m_i     = sapply(clusters, function(cl) sum(imgs == cl)),
-    group   = sapply(clusters, function(cl) grp[imgs == cl][1]),
-    stringsAsFactors = FALSE,
-    row.names = NULL
-  )
-  
-  groups <- unique(cluster_df$group)
-  S_g <- sapply(groups, function(g) {
-    idx <- cluster_df$group == g
-    sum(cluster_df$m_i[idx] * cluster_df$c_i[idx])
-  })
-  names(S_g) <- groups
-  
-  cluster_df$S_g      <- S_g[cluster_df$group]
-  cluster_df$alpha    <- cluster_df$c_i / cluster_df$S_g
-  cluster_df$b_tilde  <- (1 / (cluster_df$c_i * cluster_df$m_i)) * 
-    (1 / sqrt(1 - cluster_df$alpha * cluster_df$m_i) - 1)
-  cluster_df$A_offdiag <- cluster_df$c_i * cluster_df$b_tilde
-  
-  X    <- model.matrix(GLMfit)
-  r    <- GLMfit$residuals
-  meat <- matrix(0, nrow = 2, ncol = 2)
-  
-  for (i in seq_len(nrow(cluster_df))) {
-    idx   <- imgs == cluster_df$cluster[i]
-    X_i   <- X[idx, ]
-    r_i   <- r[idx]
-    mu_i  <- cluster_df$c_i[i]
-    b_i   <- cluster_df$A_offdiag[i]
-    
-    Ar_i  <- r_i + b_i * sum(r_i)
-    psi_i <- t(X_i) %*% Ar_i
-    meat  <- meat + psi_i %*% t(psi_i)
-  }
-  
-  meat
 }
 
 .showSpicyGLMResults <- function(object) {

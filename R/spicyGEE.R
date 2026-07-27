@@ -406,7 +406,8 @@ computeImage = function(dfImg,
   
   # compute density
   areaImg = spatstat.geom::area.owin(win)
-  dens = (length(idxFrom) / areaImg) * (pi * r^2)
+  # should be idxTo not idxFrom
+  dens = (length(idxTo) / areaImg) * (pi * r^2)
   
   # compute target counts per reference cell
   if (length(idxFrom) > 0 && length(idxTo) > 0) {
