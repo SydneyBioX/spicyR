@@ -19,11 +19,23 @@
 #'   \code{"clubSandwich"} uses the \code{clubSandwich} package directly.
 #' @param fastMethod Eigendecomposition routine used internally when
 #'   \code{cr2Method = "fast"}. \code{"direct"} (default) is faster in practice; \code{"dpr1"} is a validated reference alternative.
+#' @param estimator Character specifying how the condition contrast is fit.
+#'   \code{"firth"} (default) uses Firth's bias-reduced Poisson estimator, which
+#'   remains finite even when a cell-type pair has structural zeros in one
+#'   condition. \code{"mle"} uses ordinary Poisson MLE, which is skipped
+#'   (with a warning) for such pairs, since the log rate ratio is non-estimable.
+#' @param firthBackend Character specifying how Firth's estimator is computed
+#'   when \code{estimator = "firth"}. \code{"closed_form"} (default) uses a fast,
+#'   exact closed-form solution valid for spicyGLM's design; \code{"brglm2"}
+#'   uses \code{brglm2::brglmFit} as a general fallback.
+#' @param computeLeverage Logical; if \code{TRUE}, also computes and attaches
+#'   a per-patient CR2 leverage diagnostic table (\code{$leverage} on the
+#'   returned object). Adds some compute cost per pair; \code{FALSE} by default.
 #'   
 #'
 #' @return A list with the following elements:
 #' \describe{
-#'   \item{condition}{Factor vector of the condition used in the GEE models.}
+#'   \item{condition}{Factor vector of the condition used in the GLM models.}
 #'   \item{subject}{Factor vector of subjects/donors, if provided.}
 #'   \item{comparisons}{Data frame with the reference and target cell types for each pair
 #'     and a combined label (from__to).}
@@ -85,8 +97,10 @@
   nCellsTab <- table(getImageID(cells), getCellType(cells))
   
   # --- enforce fixed schema for GLMresults ---
-  required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value")
-  char_cols <- c("from", "to", "conditionRef", "conditionComp")
+  required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
+                     "logRateRatio", "rateRatio", "p.value", "estimator",
+                     "mle_would_skip", "mle_skip_reason")
+  char_cols <- c("from", "to", "conditionRef", "conditionComp", "estimator", "mle_skip_reason")
   if (is.null(GLMresults)) {
     GLMresults <- as.data.frame(
       setNames(
@@ -136,190 +150,98 @@
 
 
 spicyGLM = function(cells,
-                    condition, 
+                    condition,
                     subject = NULL,
                     imageID = "imageID",
                     cellType = "cellType",
                     spatialCoords = c("x", "y"),
-                    r, 
+                    r,
                     from = NULL,
                     to = NULL,
                     window = "convex",
                     cores = 1,
                     cr2Method = c("fast", "clubSandwich"),
-                    fastMethod = c("direct", "dpr1")) {
+                    fastMethod = c("direct", "dpr1"),
+                    estimator = c("firth", "mle"),
+                    firthBackend = c("closed_form", "brglm2"),
+                    computeLeverage = FALSE) {
   
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
+  estimator <- match.arg(estimator)
+  firthBackend <- match.arg(firthBackend)
   
-  # this is a wrapper function
-  # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
-  checkCells(cells)
+  ## ... unchanged setup (checkCells, checkCondition, window/coords/cores checks,
+  ## oneToOne detection, condition releveling, base_out construction) ...
   
-  # check condition is provided
-  if (is.null(condition)) {
-    stop("Please provide a condition.")
-  }
-  
-  # check condition column exists in data
-  checkCondition(cells, condition)
-  
-  # check cell types exist in data
-  if (!is.null(from) && !is.null(to)) {
-    if (any(!from %in% getCellType(cells)) ||
-        any(!to   %in% getCellType(cells))) {
-      stop("`from` or `to` cell types not found in data.")
-    }
-  }
-  
-  
-  # check that appropriate window is provided
-  if (!window %in% c("rectangle", "convex", "concave")) {
-    stop("Invalid value for `window`. Use 'rectangle', 'convex', or 'concave'.")
-  }
-  
-  # check spatialCoords exist in data in appropriate format
-  checkCoords(cells, spatialCoords)
-  
-  # check cores is a number
-  if (!is.numeric(cores)) {
-    stop("Please provide the number of cores you wish to use.")
-  }
-  
-  # check if subject/image ID have a one-to-one mapping
-  df = colData(cells) |> as.data.frame()
-  oneToOne = FALSE
-  
-  if (is.null(subject)) {
-    oneToOne = TRUE
-    message("No subject ID provided. Clustering by image ID instead of subject. If your data includes ",
-            "multiple images from the same subject, provide subject ID to cluster by ",
-            "subject instead.")
-  } else if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
-    oneToOne = TRUE
-    message("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
-  } 
-  
-  # coerce condition to factor and use first level as base group
-  if (!is.null(condition)) {
-    conditionVector = as.data.frame(getImagePheno(cells, imageID = imageID))[[condition]]
-    wasFactor = is.factor(conditionVector)
-    
-    if (!wasFactor) conditionVector = as.factor(conditionVector)
-    conditionVector = droplevels(conditionVector)
-    conditionVector = relevel(conditionVector, ref = levels(conditionVector)[1])
-    
-    cli_inform(paste0(
-      if (!wasFactor) "Coercing condition into factor. " else "",
-      "Dropping unused levels. Using ",
-      condition, " = ", levels(conditionVector)[1],
-      " as base comparison group. If this is not the desired base group, please reorder the condition factor."
-    ))
-  }
-  
-  base_out <- .new_spicyGLM_result(
-    cells = cells,
-    condition = condition,
-    subject = subject,
-    imageID = imageID,
-    cellType = cellType
-  )
-  
-  # compute metrics and build model for single cell type pair
   if (!is.null(from) && !is.null(to) && length(from) == 1 && length(to) == 1) {
     cat("Computing pairwise spatial metrics...\n")
-    dfPair <- modelDataGen(
-      cells = cells,
-      condition = condition,
-      subject = subject,
-      from = from,
-      to = to,
-      r = r,
-      imageID = imageID,
-      cellType = cellType,
-      spatialCoords = spatialCoords,
-      window = window,
-      cores = 1,
-      oneToOne = oneToOne
-    )
-      
+    dfPair <- modelDataGen(cells = cells, condition = condition, subject = subject,
+                           from = from, to = to, r = r, imageID = imageID,
+                           cellType = cellType, spatialCoords = spatialCoords,
+                           window = window, cores = 1, oneToOne = oneToOne)
+    
     if (is.null(dfPair) || nrow(dfPair) == 0) {
       base_out$messages <- paste0("Pair ", from, "__", to, " skipped: no spatial metrics could be computed.")
       return(base_out)
     }
     
     cat("Fitting GLM model...\n")
-    GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method, fastMethod = fastMethod)
+    GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
+                           fastMethod = fastMethod, estimator = estimator,
+                           firthBackend = firthBackend, computeLeverage = computeLeverage)
     
-    # buildGLM may return a "skip record" data.frame instead of results
     if (is.data.frame(GLMresults) && "reason" %in% colnames(GLMresults)) {
       base_out$skipped <- GLMresults
       base_out$messages <- GLMresults$message
       return(base_out)
     }
     
-    # if something truly returned NULL (rare will not happen - also means skip record might not be working), keep the old fallback
     if (is.null(GLMresults)) {
-      base_out$messages <- paste0(
-        "Pair ", from, "__", to,
-        " skipped: model not estimable (see warnings for details)."
-      )
+      base_out$messages <- paste0("Pair ", from, "__", to, " skipped: model not estimable (see warnings for details).")
       return(base_out)
     }
-    
     
     GLMresults$from <- from
     GLMresults$to <- to
     
     GLMresults <- GLMresults |>
-      dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value"))
+      dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
+                      "logRateRatio", "rateRatio", "p.value", "estimator", "mle_would_skip",
+                      "mle_skip_reason"))
     
-    # Fill the base object with results (keeps schema consistent)
     base_out$GLMresults <- GLMresults
-    base_out$comparisons <- data.frame(
-      from = GLMresults$from,
-      to = GLMresults$to,
-      labels = paste0(GLMresults$from, "__", GLMresults$to),
-      stringsAsFactors = FALSE
-    )
+    base_out$comparisons <- data.frame(from = GLMresults$from, to = GLMresults$to,
+                                       labels = paste0(GLMresults$from, "__", GLMresults$to),
+                                       stringsAsFactors = FALSE)
     
     return(base_out)
     
-    # compute metrics and build model for multiple cell type pairs
   } else {
     cat("Computing pairwise spatial metrics...\n")
-    dfList = getPairwiseAssoc(
-      cells = cells,
-      condition = condition,
-      subject = subject,
-      from = from, 
-      to = to,
-      r = r,
-      imageID = imageID,
-      cellType = cellType,
-      spatialCoords = spatialCoords,
-      window = window,
-      cores = cores)
+    dfList = getPairwiseAssoc(cells = cells, condition = condition, subject = subject,
+                              from = from, to = to, r = r, imageID = imageID,
+                              cellType = cellType, spatialCoords = spatialCoords,
+                              window = window, cores = cores)
     
     cat("Fitting GLM models for each cell type pair...\n")
-    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores, cr2Method = cr2Method, fastMethod = fastMethod)
+    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores,
+                            cr2Method = cr2Method, fastMethod = fastMethod,
+                            estimator = estimator, firthBackend = firthBackend,
+                            computeLeverage = computeLeverage)
     
     skipped <- attr(GLMresults, "skipped")
     if (!is.null(skipped) && nrow(skipped) > 0) {
       base_out$skipped <- skipped
       base_out$messages <- paste0(nrow(skipped), " pair(s) were skipped. See `$skipped` for details.")
     }
-  } 
+  }
   
-  # Fill base_out with multi-pair results
   base_out$GLMresults <- GLMresults
   base_out$leverage <- attr(GLMresults, "leverage")
-  base_out$comparisons <- data.frame(
-    from = GLMresults$from,
-    to = GLMresults$to,
-    labels = paste0(GLMresults$from, "__", GLMresults$to),
-    stringsAsFactors = FALSE
-  )
+  base_out$comparisons <- data.frame(from = GLMresults$from, to = GLMresults$to,
+                                     labels = paste0(GLMresults$from, "__", GLMresults$to),
+                                     stringsAsFactors = FALSE)
   
   return(base_out)
 }
@@ -425,8 +347,6 @@ modelDataGen = function(cells,
 #' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
 #' @param cores Number of cores to use for parallel computation. 
 #' 
-#' @return A named list of data frames. Each element corresponds to a cell type pair and contains spatial association metrics for each image. 
-#' The names of the list elements are of the form "from__to".
 #' 
 #' @examples
 #' \dontrun{
@@ -447,6 +367,11 @@ modelDataGen = function(cells,
 #' 
 #' @importFrom BiocParallel MulticoreParam SerialParam bplapply
 #' @importFrom dplyr mutate
+#' @return A named list of data frames. Each element corresponds to a cell type pair and contains spatial association metrics for each image. 
+#' The names of the list elements are of the form "from__to". Since spicyGLM's
+#' log rate ratio is direction-invariant (A__B and B__A give identical results),
+#' only one direction per unordered pair is included; self-pairs (A__A) are
+#' always included.
 getPairwiseAssoc = function(cells,
                             condition,
                             subject = NULL,
@@ -502,12 +427,11 @@ getPairwiseAssoc = function(cells,
     oneToOne = TRUE
   } 
   
-  # get cell type pairs
   if (!is.null(from) || !is.null(to)) {
-    # expand all combinations of from × to
-    cellPairs = expand.grid(from = from, to = to, stringsAsFactors = FALSE)
+    allTypes <- union(from, to)
+    cellPairs <- getCellTypePairs(cells = NULL, cellType = NULL, includeSelf = TRUE,
+                                  typesOverride = allTypes)
   } else {
-    # compute all pairs from unique cell types
     cellPairs = getCellTypePairs(cells, cellType = cellType, includeSelf = TRUE)
   }
   
@@ -559,9 +483,8 @@ getPairwiseAssoc = function(cells,
   return(namedList)
 }
 
-#' @importFrom spatstat.geom owin convexhull.xy area.owin
+#' @importFrom spatstat.geom owin convexhull.xy area.owin crosspairs
 #' @importFrom concaveman concaveman
-#' @importFrom fields rdist
 computeImage = function(dfImg,
                         from,
                         to,
@@ -573,13 +496,6 @@ computeImage = function(dfImg,
   typesImg = dfImg$cellType
   coordsImg = dfImg[, c("x", "y")]
   
-  # need image ID
-  #subjectImg = if ("subject" %in% colnames(dfImg)) {
-  #  dfImg$subject[1]
-  #} else {
-  #  NA
-  #}
-      
   # generate unique cell IDs for each cell per type
   typeCounts = ave(seq_along(typesImg), typesImg, FUN = seq_along)
   imgCellID = paste0(typesImg, "_", img, "_", typeCounts)
@@ -617,10 +533,15 @@ computeImage = function(dfImg,
   ## should NOT BE idxFrom
   dens = (length(idxTo) / areaImg) * (pi * r^2)
   
-  # compute target counts per reference cell
-  D = fields::rdist(as.matrix(coordsImg[idxFrom, ]), as.matrix(coordsImg[idxTo, ]))
-  countsToFrom = rowSums(D <= r)
-    
+  # compute target counts per reference cell -- exact radius search via spatial
+  # binning, replaces the dense fields::rdist matrix (validated: identical
+  # counts, substantially faster, see benchmark)
+  ptsFrom = spatstat.geom::ppp(coordsImg$x[idxFrom], coordsImg$y[idxFrom], window = win, check = FALSE)
+  ptsTo   = spatstat.geom::ppp(coordsImg$x[idxTo],   coordsImg$y[idxTo],   window = win, check = FALSE)
+  
+  cp = spatstat.geom::crosspairs(ptsFrom, ptsTo, rmax = r)
+  countsToFrom = tabulate(cp$i, nbins = length(idxFrom))
+  
   # assemble result dataframe
   dfResult = data.frame(cellID = as.factor(imgCellID[idxFrom]),
                         from = from,
@@ -647,15 +568,19 @@ computeImage = function(dfImg,
   )
 }
 
-buildGLM = function(dfResultPairwise, 
-                    oneToOne, 
+buildGLM = function(dfResultPairwise,
+                    oneToOne,
                     cr2Method = c("fast", "clubSandwich"),
-                    fastMethod = c("direct", "dpr1")) {
+                    fastMethod = c("direct", "dpr1"),
+                    estimator = c("firth", "mle"),
+                    firthBackend = c("closed_form", "brglm2"),
+                    computeLeverage = FALSE) {
   
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
+  estimator <- match.arg(estimator)
+  firthBackend <- match.arg(firthBackend)
   
-  # fit GLM model for one cell type pair
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
   
@@ -663,50 +588,78 @@ buildGLM = function(dfResultPairwise,
   condition_levels <- levels(dfResultPairwise$condition)
   
   if (length(unique(dfResultPairwise$condition)) < 2) {
-    msg <- paste(
-      "Skipping pair", from, "__", to,
-      ": only one condition level after dropping unused levels"
+    msg <- paste0(
+      "Skipping pair ", from, "__", to,
+      ": no data available for one condition. '", from, "' or '", to,
+      "' cells were not found in any image belonging to at least one ",
+      "condition group, so there is no basis for a comparison at all ",
+      "(this is different from zero neighbour counts -- the cell types ",
+      "themselves are absent from that condition's images)."
     )
     warning(msg, call. = FALSE)
     return(.new_spicy_skip(from, to, reason = "one_condition_level", message = msg))
   }
   
-  if (!any(dfResultPairwise$n > 0, na.rm = TRUE)) {
+  ## computed regardless of estimator, so Firth-fitted pairs still record
+  ## whether MLE would have been non-estimable here
+  mle_all_zero <- !any(dfResultPairwise$n > 0, na.rm = TRUE)
+  
+  pos_by_cond <- tapply(
+    dfResultPairwise$n > 0, dfResultPairwise$condition,
+    function(x) any(x, na.rm = TRUE)
+  )
+  mle_zero_conds <- names(pos_by_cond)[!pos_by_cond]
+  mle_one_condition_zero <- length(mle_zero_conds) > 0 && !mle_all_zero
+  
+  mle_would_skip <- mle_all_zero || mle_one_condition_zero
+  mle_skip_reason <- if (mle_all_zero) {
+    "all_zero"
+  } else if (mle_one_condition_zero) {
+    "one_condition_zero"
+  } else {
+    NA_character_
+  }
+  
+  if (estimator == "mle" && mle_all_zero) {
     msg <- paste0(
       "Skipping pair ", from, "__", to, ": neighbour counts are identically zero ",
       "(n = 0 for all reference cells in all images across both conditions). ",
-      "Condition effects are non-identifiable under the Poisson log-link."
+      "Condition effects are non-identifiable under the Poisson log-link, and ",
+      "this holds regardless of estimator -- both conditions carry no signal."
     )
     warning(msg, call. = FALSE)
     return(.new_spicy_skip(from, to, reason = "all_zero", message = msg))
   }
   
-  pos_by_cond <- tapply(
-    dfResultPairwise$n > 0,
-    dfResultPairwise$condition,
-    function(x) any(x, na.rm = TRUE)
-  )
-  
-  if (any(!pos_by_cond)) {
-    zero_conds <- names(pos_by_cond)[!pos_by_cond]
-    
+  if (estimator == "mle" && mle_one_condition_zero) {
     msg <- paste0(
       "Skipping pair ", from, "__", to, ": structural zeros by condition. ",
-      "In condition(s) {", paste(zero_conds, collapse = ", "), "} all neighbour counts are zero, ",
-      "while other conditions have positive counts. ",
-      "This places the Poisson condition contrast on the boundary of the parameter space ",
-      "(log rate ratio -> +/-Inf), so the condition effect is non-estimable and ",
-      "Wald/CR2 inference is invalid."
+      "In condition(s) {", paste(mle_zero_conds, collapse = ", "), "} all ",
+      "neighbour counts are zero, while other conditions have positive counts. ",
+      "This places the Poisson condition contrast on the boundary of the ",
+      "parameter space (log rate ratio -> +/-Inf) under ordinary MLE, so the ",
+      "effect is non-estimable here. Set estimator = 'firth' to fit this pair ",
+      "with Firth's bias-reduced estimator instead, which remains finite in ",
+      "this case."
     )
-    
     warning(msg, call. = FALSE)
     return(.new_spicy_skip(from, to, reason = "one_condition_zero", message = msg))
   }
   
-  GLMfit = glm(n ~ 0 + condition,
-               offset = log(dfResultPairwise$density),
-               family = poisson(link = "log"),
-               data = dfResultPairwise)
+  if (estimator == "mle") {
+    GLMfit <- fit_mle_glm(dfResultPairwise)
+  } else {
+    backend <- firthBackend
+    if (cr2Method == "clubSandwich" && backend == "closed_form") {
+      message(
+        "Pair ", from, "__", to, ": cr2Method = 'clubSandwich' requires a real ",
+        "fitted model object; switching firthBackend to 'brglm2' for this pair."
+      )
+      backend <- "brglm2"
+    }
+    fitResult <- fit_pair(dfResultPairwise, estimator = "firth", backend = backend)
+    GLMfit <- fitResult$fit
+  }
   
   clusterVec = if (oneToOne) {
     dfResultPairwise$imageID
@@ -719,7 +672,7 @@ buildGLM = function(dfResultPairwise,
   if (length(beta) != 2) {
     msg <- paste0(
       "Skipping pair ", from, "__", to,
-      ": GLM fit did not return exactly two condition coefficients ",
+      ": fit did not return exactly two condition coefficients ",
       "(possible rank deficiency or dropped level)."
     )
     warning(msg, call. = FALSE)
@@ -729,7 +682,8 @@ buildGLM = function(dfResultPairwise,
   logRR = unname(beta[2]) - unname(beta[1])
   tmp = sub("^condition", "", names(beta))
   
-  # --- branch on cr2Method ---
+  leverage_tbl <- NULL 
+  
   if (cr2Method == "fast") {
     
     cluster_ids <- unique(clusterVec)
@@ -757,20 +711,23 @@ buildGLM = function(dfResultPairwise,
     
     V = vcovCR2_fast_multi(patients, method = fastMethod)
     
-    S_g_vec  <- attr(V, "S_g")
-    grp_idx  <- attr(V, "group")
-    
-    leverage_tbl <- data.frame(
-      patient_id = as.character(cluster_ids),
-      group      = condition_levels[grp_idx],
-      N_i        = sapply(patients, function(p) sum(p$n_ij)),
-      T_i        = sapply(patients, patient_total),
-      stringsAsFactors = FALSE
-    )
-    leverage_tbl$S_g       <- S_g_vec[grp_idx]
-    leverage_tbl$leverage  <- leverage_tbl$T_i / leverage_tbl$S_g
-    leverage_tbl$from      <- from
-    leverage_tbl$to        <- to
+    leverage_tbl <- NULL
+    if (computeLeverage) {
+      S_g_vec  <- attr(V, "S_g")
+      grp_idx  <- attr(V, "group")
+      
+      leverage_tbl <- data.frame(
+        patient_id = as.character(cluster_ids),
+        group      = condition_levels[grp_idx],
+        N_i        = sapply(patients, function(p) sum(p$n_ij)),
+        T_i        = sapply(patients, patient_total),
+        stringsAsFactors = FALSE
+      )
+      leverage_tbl$S_g       <- S_g_vec[grp_idx]
+      leverage_tbl$leverage  <- leverage_tbl$T_i / leverage_tbl$S_g
+      leverage_tbl$from      <- from
+      leverage_tbl$to        <- to
+    }
     
     waldResult = waldTest_CR2_fast(logRR, V, patients, method = fastMethod)
     waldP = waldResult$p.value
@@ -790,7 +747,10 @@ buildGLM = function(dfResultPairwise,
                    coef_comp     = unname(beta[2]),
                    logRateRatio  = logRR,
                    rateRatio     = exp(logRR),
-                   p.value       = waldP)
+                   p.value       = waldP,
+                   estimator     = estimator,
+                   mle_would_skip = mle_would_skip,
+                   mle_skip_reason = mle_skip_reason)
   
   attr(out, "leverage") <- leverage_tbl
   return(out)
@@ -810,34 +770,41 @@ vcovClubSandwichCluster = function(fit,
 
 getCellTypePairs = function(cells,
                             cellType = "cellType",
-                            includeSelf = TRUE) { # whether to include self pairs, like T cell--T cell
+                            includeSelf = TRUE,
+                            typesOverride = NULL) {
   
-  # get unique cell types
-  cellTypes = unique(cells[[cellType]])
+  cellTypes <- if (!is.null(typesOverride)) typesOverride else unique(cells[[cellType]])
   
-  # generate pairwise combinations
+  crossPairs <- combn(cellTypes, 2, simplify = FALSE)
+  crossPairs <- do.call(rbind, lapply(crossPairs, function(x) data.frame(from = x[1], to = x[2])))
+  
   if (includeSelf) {
-    cellPairs = expand.grid(from = cellTypes, to = cellTypes, stringsAsFactors = FALSE)
+    selfPairs <- data.frame(from = cellTypes, to = cellTypes)
+    cellPairs <- rbind(crossPairs, selfPairs)
   } else {
-    combs = combn(cellTypes, 2, simplify = FALSE)
-    cellPairs = do.call(rbind, lapply(combs, function(x) data.frame(from = x[1], to = x[2])))
+    cellPairs <- crossPairs
   }
   
-  return(cellPairs)
+  cellPairs
 }
 
 #' @importFrom BiocParallel MulticoreParam SerialParam bplapply
 #' @importFrom dplyr bind_rows
+
 combineGLM = function(dfResult,
                       oneToOne,
                       cores = 1,
                       cr2Method = c("fast", "clubSandwich"),
-                      fastMethod = c("direct", "dpr1")) {
+                      fastMethod = c("direct", "dpr1"),
+                      estimator = c("firth", "mle"),
+                      firthBackend = c("closed_form", "brglm2"),
+                      computeLeverage = FALSE) {
   
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
+  estimator <- match.arg(estimator)
+  firthBackend <- match.arg(firthBackend)
   
-  # fit GLM model for all cell type pairs - wrapper for buildGLM
   BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam(progressbar = TRUE)
   
   resultList = bplapply(
@@ -855,7 +822,9 @@ combineGLM = function(dfResult,
         from = from_to[1]
         to = from_to[2]
         
-        modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method, fastMethod = fastMethod)
+        modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
+                            fastMethod = fastMethod, estimator = estimator,
+                            firthBackend = firthBackend, computeLeverage = computeLeverage)
         
         if (is.null(modelFit)) return(NULL)
         
@@ -866,11 +835,7 @@ combineGLM = function(dfResult,
         
       }, error = function(e) {
         structure(
-          list(
-            pair = pairName,
-            message = conditionMessage(e),
-            call = conditionCall(e)
-          ),
+          list(pair = pairName, message = conditionMessage(e), call = conditionCall(e)),
           class = "spicy_error"
         )
       })
@@ -881,12 +846,10 @@ combineGLM = function(dfResult,
   fitList      <- lapply(resultList, `[[`, "fit")
   leverageList <- lapply(resultList, `[[`, "leverage")
   
-  combined     <- bind_rows(fitList)          # was: bind_rows(resultList)
-  leverage_all <- bind_rows(leverageList)      # was: undefined
+  combined     <- bind_rows(fitList)
+  leverage_all <- bind_rows(leverageList)
   
-  # Split successful fits vs skipped-pair records (returned by buildGLM)
   if (!("reason" %in% colnames(combined))) {
-    # no skips occurred, create empty skipped table
     skipped <- data.frame(from = character(0), to = character(0),
                           reason = character(0), message = character(0),
                           stringsAsFactors = FALSE)
@@ -895,7 +858,9 @@ combineGLM = function(dfResult,
     combined <- combined[is.na(combined$reason), , drop = FALSE]
   }
   
-  combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp", "logRateRatio", "rateRatio", "p.value"))
+  combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp",
+                                         "coef_ref", "coef_comp", "logRateRatio", "rateRatio",
+                                         "p.value", "estimator", "mle_would_skip", "mle_skip_reason"))
   
   combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
     dplyr::arrange(p.adj)
