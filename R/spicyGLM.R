@@ -248,6 +248,8 @@ spicyGLM = function(cells,
 
 #' @importFrom BiocParallel bplapply MulticoreParam SerialParam
 #' @importFrom dplyr bind_rows
+#' @importFrom BiocParallel bplapply MulticoreParam SerialParam
+#' @importFrom dplyr bind_rows
 modelDataGen = function(cells, 
                         condition,
                         subject = NULL,
@@ -274,9 +276,9 @@ modelDataGen = function(cells,
                     y = coords$y)
     
     if (!is.null(subject)) {
-       df$subject = cells[[subject]]
+      df$subject = cells[[subject]]
     }
-
+    
     
   } else if (is(cells, "SingleCellExperiment") | is(cells, "data.frame")) {
     x = spatialCoords[[1]]
@@ -291,7 +293,7 @@ modelDataGen = function(cells,
     if (!is.null(subject)) {
       df$subject = cells[[subject]]
     }
-  
+    
   }
   
   # Always compute spatial metrics per image.
@@ -299,22 +301,17 @@ modelDataGen = function(cells,
   # but we should never mix images inside computeImage().
   dfSplit = split(df, df$imageID)
   
-  
-  if (cores > 1) {
-    # parallel processing using parallel::mclapply (Unix only)
-    BPPARAM = MulticoreParam(workers = cores)
-  } else {
-    BPPARAM = SerialParam()
+  ## same bplapply/SerialParam fix as combineGLM/getPairwiseAssoc
+  worker <- function(dfImg) {
+    computeImage(dfImg, r = r, window = window, from = from, to = to)
   }
   
-  # compute pairwise metrics for each image
-  resultList = bplapply(dfSplit, 
-                        FUN = computeImage, 
-                        r = r,
-                        window = window,
-                        from = from,
-                        to = to,
-                        BPPARAM = BPPARAM)
+  if (cores > 1) {
+    BPPARAM = MulticoreParam(workers = cores)
+    resultList = bplapply(dfSplit, worker, BPPARAM = BPPARAM)
+  } else {
+    resultList = lapply(dfSplit, worker)
+  }
   
   # combine results
   finalTable = bind_rows(resultList)
@@ -438,42 +435,40 @@ getPairwiseAssoc = function(cells,
   if (is.null(r)) {
     r = 50
   }
-  
-  # parallelisation
-  if (cores > 1) {
-    BPPARAM = MulticoreParam(workers = cores, progressbar = TRUE)
-  } else {
-    BPPARAM = SerialParam(progressbar = TRUE)
+
+  ## same bplapply/SerialParam fix as combineGLM
+  worker <- function(i) {
+    from.i = cellPairs$from[i]
+    to.i = cellPairs$to[i]
+    
+    df = modelDataGen(cells = cells,
+                      condition = condition,
+                      subject = subject,
+                      from = from.i,
+                      to = to.i,
+                      r = r,
+                      imageID = imageID,
+                      cellType = cellType,
+                      spatialCoords = spatialCoords,
+                      window = window,
+                      cores = 1,
+                      oneToOne = oneToOne) 
+    if (is.null(df) || nrow(df) == 0) {
+      df = NULL
+    } else {
+      df = dplyr::mutate(df, from = from.i, to = to.i)
+    }
+    
+    pairName = paste0(from.i, "__", to.i)
+    list(pairName = pairName, data = df)
   }
   
-  # compute for all pairs
-  resultList = bplapply(
-    seq_len(nrow(cellPairs)),
-    FUN = function(i) {
-      from.i = cellPairs$from[i]
-      to.i = cellPairs$to[i]
-      
-      df = modelDataGen(cells = cells,
-                        condition = condition,
-                        subject = subject,
-                        from = from.i,
-                        to = to.i,
-                        r = r,
-                        imageID = imageID,
-                        cellType = cellType,
-                        spatialCoords = spatialCoords,
-                        window = window,
-                        cores = 1,
-                        oneToOne = oneToOne) 
-      if (is.null(df) || nrow(df) == 0) {
-        df = NULL
-      } else {
-        df = dplyr::mutate(df, from = from.i, to = to.i)
-      }
-      
-      pairName = paste0(from.i, "__", to.i)
-      list(pairName = pairName, data = df)
-    }, BPPARAM = BPPARAM)
+  if (cores > 1) {
+    BPPARAM = MulticoreParam(workers = cores, progressbar = TRUE)
+    resultList = bplapply(seq_len(nrow(cellPairs)), worker, BPPARAM = BPPARAM)
+  } else {
+    resultList = lapply(seq_len(nrow(cellPairs)), worker)
+  }
   
   # convert to named list
   namedList = setNames(
@@ -790,7 +785,6 @@ getCellTypePairs = function(cells,
 
 #' @importFrom BiocParallel MulticoreParam SerialParam bplapply
 #' @importFrom dplyr bind_rows
-
 combineGLM = function(dfResult,
                       oneToOne,
                       cores = 1,
@@ -805,43 +799,47 @@ combineGLM = function(dfResult,
   estimator <- match.arg(estimator)
   firthBackend <- match.arg(firthBackend)
   
-  BPPARAM = if (cores > 1) MulticoreParam(workers = cores, progressbar = TRUE) else SerialParam(progressbar = TRUE)
-  
-  resultList = bplapply(
-    names(dfResult),
-    function(pairName) {
+  worker <- function(pairName) {
+    tryCatch({
+      dfPair = dfResult[[pairName]]
       
-      tryCatch({
-        dfPair = dfResult[[pairName]]
-        
-        if (is.null(dfPair) || nrow(dfPair) == 0) {
-          return(NULL)
-        }
-        
-        from_to = strsplit(pairName, "__")[[1]]
-        from = from_to[1]
-        to = from_to[2]
-        
-        modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
-                            fastMethod = fastMethod, estimator = estimator,
-                            firthBackend = firthBackend, computeLeverage = computeLeverage)
-        
-        if (is.null(modelFit)) return(NULL)
-        
-        if (!("from" %in% names(modelFit))) modelFit$from <- from
-        if (!("to" %in% names(modelFit))) modelFit$to <- to
-        
-        list(fit = modelFit, leverage = attr(modelFit, "leverage"))
-        
-      }, error = function(e) {
-        structure(
-          list(pair = pairName, message = conditionMessage(e), call = conditionCall(e)),
-          class = "spicy_error"
-        )
-      })
-    },
-    BPPARAM = BPPARAM
-  )
+      if (is.null(dfPair) || nrow(dfPair) == 0) {
+        return(NULL)
+      }
+      
+      from_to = strsplit(pairName, "__")[[1]]
+      from = from_to[1]
+      to = from_to[2]
+      
+      modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
+                          fastMethod = fastMethod, estimator = estimator,
+                          firthBackend = firthBackend, computeLeverage = computeLeverage)
+      
+      if (is.null(modelFit)) return(NULL)
+      
+      if (!("from" %in% names(modelFit))) modelFit$from <- from
+      if (!("to" %in% names(modelFit))) modelFit$to <- to
+      
+      list(fit = modelFit, leverage = attr(modelFit, "leverage"))
+      
+    }, error = function(e) {
+      structure(
+        list(pair = pairName, message = conditionMessage(e), call = conditionCall(e)),
+        class = "spicy_error"
+      )
+    })
+  }
+  
+  ## bplapply's promise-evaluation machinery misbehaves for this package even
+  ## under SerialParam (cores == 1); plain lapply is equivalent when serial
+  ## and avoids the issue entirely. Only route through BiocParallel when
+  ## genuine parallelism is requested.
+  if (cores > 1) {
+    BPPARAM = MulticoreParam(workers = cores, progressbar = TRUE)
+    resultList = bplapply(names(dfResult), worker, BPPARAM = BPPARAM)
+  } else {
+    resultList = lapply(names(dfResult), worker)
+  }
   
   fitList      <- lapply(resultList, `[[`, "fit")
   leverageList <- lapply(resultList, `[[`, "leverage")
