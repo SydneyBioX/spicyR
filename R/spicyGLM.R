@@ -171,8 +171,77 @@ spicyGLM = function(cells,
   estimator <- match.arg(estimator)
   firthBackend <- match.arg(firthBackend)
   
-  ## ... unchanged setup (checkCells, checkCondition, window/coords/cores checks,
-  ## oneToOne detection, condition releveling, base_out construction) ...
+  # this is a wrapper function
+  # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
+  checkCells(cells)
+  
+  # check condition is provided
+  if (is.null(condition)) {
+    stop("Please provide a condition.")
+  }
+  
+  # check condition column exists in data
+  checkCondition(cells, condition)
+  
+  # check cell types exist in data
+  if (!is.null(from) && !is.null(to)) {
+    if (any(!from %in% getCellType(cells)) ||
+        any(!to   %in% getCellType(cells))) {
+      stop("`from` or `to` cell types not found in data.")
+    }
+  }
+  
+  # check that appropriate window is provided
+  if (!window %in% c("rectangle", "convex", "concave")) {
+    stop("Invalid value for `window`. Use 'rectangle', 'convex', or 'concave'.")
+  }
+  
+  # check spatialCoords exist in data in appropriate format
+  checkCoords(cells, spatialCoords)
+  
+  # check cores is a number
+  if (!is.numeric(cores)) {
+    stop("Please provide the number of cores you wish to use.")
+  }
+  
+  # check if subject/image ID have a one-to-one mapping
+  df = colData(cells) |> as.data.frame()
+  oneToOne = FALSE
+  
+  if (is.null(subject)) {
+    oneToOne = TRUE
+    message("No subject ID provided. Clustering by image ID instead of subject. If your data includes ",
+            "multiple images from the same subject, provide subject ID to cluster by ",
+            "subject instead.")
+  } else if (nrow(as.data.frame(unique(df[, subject]))) == nrow(as.data.frame(unique(df[, imageID])))) {
+    oneToOne = TRUE
+    message("Your specified subject parameter has a one-to-one mapping with imageID. Clustering by image ID instead of subject.")
+  } 
+  
+  # coerce condition to factor and use first level as base group
+  if (!is.null(condition)) {
+    conditionVector = as.data.frame(getImagePheno(cells, imageID = imageID))[[condition]]
+    wasFactor = is.factor(conditionVector)
+    
+    if (!wasFactor) conditionVector = as.factor(conditionVector)
+    conditionVector = droplevels(conditionVector)
+    conditionVector = relevel(conditionVector, ref = levels(conditionVector)[1])
+    
+    cli_inform(paste0(
+      if (!wasFactor) "Coercing condition into factor. " else "",
+      "Dropping unused levels. Using ",
+      condition, " = ", levels(conditionVector)[1],
+      " as base comparison group. If this is not the desired base group, please reorder the condition factor."
+    ))
+  }
+  
+  base_out <- .new_spicyGLM_result(
+    cells = cells,
+    condition = condition,
+    subject = subject,
+    imageID = imageID,
+    cellType = cellType
+  )
   
   if (!is.null(from) && !is.null(to) && length(from) == 1 && length(to) == 1) {
     cat("Computing pairwise spatial metrics...\n")
