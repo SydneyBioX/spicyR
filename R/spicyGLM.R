@@ -94,7 +94,7 @@
   }
   
   # --- nCells table (image x cellType) ---
-  nCellsTab <- table(getImageID(cells), getCellType(cells))
+  nCellsTab <- table(getImageID(cells, imageID = imageID), getCellType(cells, cellType = cellType))
   
   # --- enforce fixed schema for GLMresults ---
   required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
@@ -540,10 +540,9 @@ getPairwiseAssoc = function(cells,
   # check condition column exists in data
   checkCondition(cells, condition)
   
-  # check cell types exist in data
   if (!is.null(from) && !is.null(to)) {
-    if (any(!from %in% getCellType(cells)) ||
-        any(!to   %in% getCellType(cells))) {
+    if (any(!from %in% getCellType(cells, cellType = cellType)) ||
+        any(!to   %in% getCellType(cells, cellType = cellType))) {
       stop("`from` or `to` cell types not found in data.")
     }
   }
