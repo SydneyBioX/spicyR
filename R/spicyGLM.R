@@ -185,8 +185,8 @@ spicyGLM = function(cells,
   
   # check cell types exist in data
   if (!is.null(from) && !is.null(to)) {
-    if (any(!from %in% getCellType(cells)) ||
-        any(!to   %in% getCellType(cells))) {
+    if (any(!from %in% getCellType(cells, cellType = cellType)) ||
+        any(!to   %in% getCellType(cells, cellType = cellType))) {
       stop("`from` or `to` cell types not found in data.")
     }
   }

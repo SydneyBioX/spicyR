@@ -72,6 +72,12 @@ plotImage = function(cells,
                      y = coords[["y"]],
                      cellType = subset[[cellType]])
   
+  cData = data.frame(x = coords[["x"]],
+                     y = coords[["y"]],
+                     cellType = subset[[cellType]])
+  
+  cData$cellType = as.character(cData$cellType)
+  
   cData[[cellType]] = as.character(cData[[cellType]])
   cData = cData |> mutate(cellTypeNew = 
                             ifelse(cellType %in% c(from, to), cellType, "Other"))
