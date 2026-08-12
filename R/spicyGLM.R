@@ -204,6 +204,10 @@ spicyGLM = function(cells,
     stop("Please provide the number of cores you wish to use.")
   }
   
+  cellTypePresence <- computeCellTypePresence(
+    cells = cells, condition = condition, imageID = imageID, cellType = cellType
+  )
+  
   # check if subject/image ID have a one-to-one mapping
   df = colData(cells) |> as.data.frame()
   oneToOne = FALSE
@@ -248,17 +252,20 @@ spicyGLM = function(cells,
     dfPair <- modelDataGen(cells = cells, condition = condition, subject = subject,
                            from = from, to = to, r = r, imageID = imageID,
                            cellType = cellType, spatialCoords = spatialCoords,
-                           window = window, cores = 1, oneToOne = oneToOne)
+                           window = window, cores = 1, oneToOne = oneToOne, cellTypePresence = cellTypePresence)
     
-    if (is.null(dfPair) || nrow(dfPair) == 0) {
-      base_out$messages <- paste0("Pair ", from, "__", to, " skipped: no spatial metrics could be computed.")
+    if (nrow(dfPair) == 0) {
+      base_out$messages <- attr(dfPair, "skipMessage")
+      base_out$skipped <- .new_spicy_skip(from, to, reason = attr(dfPair, "skipReason"),
+                                          message = attr(dfPair, "skipMessage"))
       return(base_out)
     }
     
     cat("Fitting GLM model...\n")
     GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
                            fastMethod = fastMethod, estimator = estimator,
-                           firthBackend = firthBackend, computeLeverage = computeLeverage)
+                           firthBackend = firthBackend, computeLeverage = computeLeverage,
+                           cellTypePresence = cellTypePresence)
     
     if (is.data.frame(GLMresults) && "reason" %in% colnames(GLMresults)) {
       base_out$skipped <- GLMresults
@@ -291,13 +298,13 @@ spicyGLM = function(cells,
     dfList = getPairwiseAssoc(cells = cells, condition = condition, subject = subject,
                               from = from, to = to, r = r, imageID = imageID,
                               cellType = cellType, spatialCoords = spatialCoords,
-                              window = window, cores = cores)
+                              window = window, cores = cores, cellTypePresence = cellTypePresence)
     
     cat("Fitting GLM models for each cell type pair...\n")
     GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores,
                             cr2Method = cr2Method, fastMethod = fastMethod,
                             estimator = estimator, firthBackend = firthBackend,
-                            computeLeverage = computeLeverage)
+                            computeLeverage = computeLeverage, cellTypePresence = cellTypePresence)
     
     skipped <- attr(GLMresults, "skipped")
     if (!is.null(skipped) && nrow(skipped) > 0) {
@@ -315,6 +322,74 @@ spicyGLM = function(cells,
   return(base_out)
 }
 
+#' Diagnose why a cell type pair has no usable data for one or more condition groups
+#'
+#' Shared by modelDataGen() (fires before any spatial metrics exist) and
+#' buildGLM() (fires when a specific condition group's rows are entirely
+#' absent after the fact). Distinguishes three real causes: `from` absent,
+#' `to` absent, or both individually present but never co-occurring in the
+#' same image within that group.
+#'
+#' @param from,to Character; the reference/target cell types for this pair.
+#' @param missingConditions Character vector of condition group(s) with no
+#'   usable rows for this pair.
+#' @param cellTypePresence The presence table from computeCellTypePresence().
+#' @param context "spatial" (modelDataGen) or "comparison" (buildGLM) --
+#'   only changes the closing clause of the message.
+#'
+#' @return A list: reason (a short code) and message (the full skip text).
+diagnoseMissingConditions <- function(from, to, missingConditions, cellTypePresence,
+                                      context = c("spatial", "comparison")) {
+  context <- match.arg(context)
+  closing <- if (context == "spatial") {
+    "No spatial associations could be computed for this group."
+  } else {
+    "No basis for a comparison in this group."
+  }
+  
+  perGroup <- lapply(missingConditions, function(g) {
+    fromRow <- cellTypePresence[cellTypePresence$cellType == from & cellTypePresence$condition == g, ]
+    toRow   <- cellTypePresence[cellTypePresence$cellType == to   & cellTypePresence$condition == g, ]
+    
+    fromPresent <- fromRow$n_images_with_type > 0
+    toPresent   <- toRow$n_images_with_type > 0
+    nTotal      <- fromRow$n_images_total
+    
+    if (!fromPresent && !toPresent) {
+      list(reason = "both_absent", text = sprintf(
+        'condition level "%s" has 0 images containing "%s" and 0 images containing "%s". %s',
+        g, from, to, closing
+      ))
+    } else if (!fromPresent) {
+      list(reason = "type_absent", text = sprintf(
+        'condition level "%s" has 0 images where "%s" is present at all (0 of %d images in this group contain any %s cells). %s',
+        g, from, nTotal, from, closing
+      ))
+    } else if (!toPresent) {
+      list(reason = "type_absent", text = sprintf(
+        'condition level "%s" has 0 images where "%s" is present at all (0 of %d images in this group contain any %s cells). %s',
+        g, to, nTotal, to, closing
+      ))
+    } else {
+      list(reason = "no_cooccurrence", text = sprintf(
+        'condition level "%s" has both cell types present somewhere (%s in %d of %d images, %s in %d of %d images), but no single image in this group contains both simultaneously. %s',
+        g, from, fromRow$n_images_with_type, nTotal, to, toRow$n_images_with_type, nTotal, closing
+      ))
+    }
+  })
+  
+  reasons <- unique(vapply(perGroup, `[[`, character(1), "reason"))
+  reasonCode <- if (length(reasons) == 1) reasons else "mixed"
+  
+  list(
+    reason = reasonCode,
+    message = paste0(
+      "Skipping pair ", from, "__", to, ": ",
+      paste(vapply(perGroup, `[[`, character(1), "text"), collapse = " ")
+    )
+  )
+}
+
 #' @importFrom BiocParallel bplapply MulticoreParam SerialParam
 #' @importFrom dplyr bind_rows
 #' @importFrom BiocParallel bplapply MulticoreParam SerialParam
@@ -330,7 +405,8 @@ modelDataGen = function(cells,
                         spatialCoords = c("x", "y"),
                         window = "convex", 
                         cores = 1,
-                        oneToOne) {
+                        oneToOne,
+                        cellTypePresence) {
   
   # this function generates pairwise metrics for a single cell type pair across all images
   # format data into a dataframe
@@ -386,16 +462,18 @@ modelDataGen = function(cells,
   finalTable = bind_rows(resultList)
   
   if (nrow(finalTable) == 0) {
-    warning(paste0(
-      "Skipping pair ", from, "__", to,
-      ": all images lacked at least one of the required cell types ",
-      "(", from, " or ", to, "), so no spatial associations could be computed."
-    ), call. = FALSE)
-    return(NULL)
+    # every condition group lacked usable data for this pair -- diagnose all of them
+    allConditions <- unique(cellTypePresence$condition)
+    diag <- diagnoseMissingConditions(from, to, allConditions, cellTypePresence, context = "spatial")
+    warning(diag$message, call. = FALSE)
+    
+    emptyResult <- finalTable
+    attr(emptyResult, "skipReason")  <- diag$reason
+    attr(emptyResult, "skipMessage") <- diag$message
+    return(emptyResult)
   }
   
   return(finalTable)
-  
 }
 
 #' Compute pairwise spatial associations between cell types
@@ -448,7 +526,8 @@ getPairwiseAssoc = function(cells,
                             from = NULL,
                             to = NULL, 
                             window = "convex",
-                            cores = 1) { 
+                            cores = 1,
+                            cellTypePresence) { 
   # this function computes pairwise metrics for all images - a wrapper for modelDataGen
   # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
   checkCells(cells)
@@ -521,9 +600,14 @@ getPairwiseAssoc = function(cells,
                       spatialCoords = spatialCoords,
                       window = window,
                       cores = 1,
-                      oneToOne = oneToOne) 
-    if (is.null(df) || nrow(df) == 0) {
+                      oneToOne = oneToOne,
+                      cellTypePresence = cellTypePresence)
+    
+    if (is.null(df)) {
       df = NULL
+    } else if (nrow(df) == 0) {
+      # keep df as-is (zero rows, but tagged with skipReason/skipMessage)
+      df = df
     } else {
       df = dplyr::mutate(df, from = from.i, to = to.i)
     }
@@ -632,13 +716,63 @@ computeImage = function(dfImg,
   )
 }
 
+#' Compute per-cell-type presence across condition groups
+#'
+#' For each cell type and each condition group, records how many images in
+#' that group contain at least one cell of that type, out of how many images
+#' total belong to that group. This is the shared diagnostic used by both
+#' modelDataGen() and buildGLM() to explain *why* a pair has no testable
+#' data in a given condition group, rather than just reporting that it doesn't.
+#'
+#' @param cells A SpatialExperiment, SingleCellExperiment, or data.frame.
+#' @param condition Character; condition/grouping column name.
+#' @param imageID Character; image/sample ID column name.
+#' @param cellType Character; cell type column name.
+#'
+#' @return A data frame with columns: cellType, condition, n_images_with_type,
+#'   n_images_total. One row per (cellType, condition) combination, including
+#'   zero rows for cell types entirely absent from a condition group.
+computeCellTypePresence <- function(cells, condition, imageID, cellType) {
+  
+  df <- data.frame(
+    imageID   = as.character(cells[[imageID]]),
+    condition = as.character(cells[[condition]]),
+    cellType  = as.character(cells[[cellType]]),
+    stringsAsFactors = FALSE
+  )
+  
+  # total images per condition group
+  imagesPerCondition <- df |>
+    dplyr::distinct(imageID, condition) |>
+    dplyr::count(condition, name = "n_images_total")
+  
+  # images per (cellType, condition) that actually contain that type
+  imagesWithType <- df |>
+    dplyr::distinct(cellType, imageID, condition) |>
+    dplyr::count(cellType, condition, name = "n_images_with_type")
+  
+  # full grid: every cell type x every condition, filling zeros where a
+  # cell type never appears in a given condition group at all
+  full <- expand.grid(
+    cellType  = unique(df$cellType),
+    condition = unique(df$condition),
+    stringsAsFactors = FALSE
+  )
+  
+  full |>
+    dplyr::left_join(imagesWithType, by = c("cellType", "condition")) |>
+    dplyr::mutate(n_images_with_type = ifelse(is.na(n_images_with_type), 0L, n_images_with_type)) |>
+    dplyr::left_join(imagesPerCondition, by = "condition")
+}
+
 buildGLM = function(dfResultPairwise,
                     oneToOne,
                     cr2Method = c("fast", "clubSandwich"),
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
-                    computeLeverage = FALSE) {
+                    computeLeverage = FALSE,
+                    cellTypePresence) {
   
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
@@ -652,16 +786,13 @@ buildGLM = function(dfResultPairwise,
   condition_levels <- levels(dfResultPairwise$condition)
   
   if (length(unique(dfResultPairwise$condition)) < 2) {
-    msg <- paste0(
-      "Skipping pair ", from, "__", to,
-      ": no data available for one condition. '", from, "' or '", to,
-      "' cells were not found in any image belonging to at least one ",
-      "condition group, so there is no basis for a comparison at all ",
-      "(this is different from zero neighbour counts -- the cell types ",
-      "themselves are absent from that condition's images)."
-    )
-    warning(msg, call. = FALSE)
-    return(.new_spicy_skip(from, to, reason = "one_condition_level", message = msg))
+    allConditions <- unique(cellTypePresence$condition)
+    missingConditions <- setdiff(allConditions, condition_levels)
+    
+    diag <- diagnoseMissingConditions(from, to, missingConditions, cellTypePresence,
+                                      context = "comparison")
+    warning(diag$message, call. = FALSE)
+    return(.new_spicy_skip(from, to, reason = diag$reason, message = diag$message))
   }
   
   ## computed regardless of estimator, so Firth-fitted pairs still record
@@ -861,7 +992,8 @@ combineGLM = function(dfResult,
                       fastMethod = c("direct", "dpr1"),
                       estimator = c("firth", "mle"),
                       firthBackend = c("closed_form", "brglm2"),
-                      computeLeverage = FALSE) {
+                      computeLeverage = FALSE,
+                      cellTypePresence) {
   
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
@@ -871,18 +1003,30 @@ combineGLM = function(dfResult,
   worker <- function(pairName) {
     tryCatch({
       dfPair = dfResult[[pairName]]
-      
-      if (is.null(dfPair) || nrow(dfPair) == 0) {
-        return(NULL)
-      }
-      
       from_to = strsplit(pairName, "__")[[1]]
       from = from_to[1]
       to = from_to[2]
       
+      if (is.null(dfPair)) {
+        return(NULL)  
+      }
+      
+      if (nrow(dfPair) == 0) {
+        skipMessage <- attr(dfPair, "skipMessage")
+        skipReason  <- attr(dfPair, "skipReason")
+        if (is.null(skipMessage)) {
+          # defensive fallback in case attributes are missing for any reason
+          skipMessage <- paste0("Pair ", from, "__", to, ": no spatial metrics could be computed.")
+          skipReason  <- "no_spatial_metrics"
+        }
+        skipRow <- .new_spicy_skip(from, to, reason = skipReason, message = skipMessage)
+        return(list(fit = skipRow, leverage = NULL))
+      }
+      
       modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
                           fastMethod = fastMethod, estimator = estimator,
-                          firthBackend = firthBackend, computeLeverage = computeLeverage)
+                          firthBackend = firthBackend, computeLeverage = computeLeverage,
+                          cellTypePresence = cellTypePresence)
       
       if (is.null(modelFit)) return(NULL)
       
