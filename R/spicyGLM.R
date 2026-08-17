@@ -281,12 +281,15 @@ spicyGLM = function(cells,
     GLMresults$from <- from
     GLMresults$to <- to
     
+    leverage_tbl <- attr(GLMresults, "leverage")
+    
     GLMresults <- GLMresults |>
       dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
                       "logRateRatio", "rateRatio", "p.value", "estimator", "mle_would_skip",
                       "mle_skip_reason"))
     
     base_out$GLMresults <- GLMresults
+    base_out$leverage <- leverage_tbl
     base_out$comparisons <- data.frame(from = GLMresults$from, to = GLMresults$to,
                                        labels = paste0(GLMresults$from, "__", GLMresults$to),
                                        stringsAsFactors = FALSE)
