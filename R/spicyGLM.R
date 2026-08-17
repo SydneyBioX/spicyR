@@ -262,7 +262,7 @@ spicyGLM = function(cells,
     }
     
     cat("Fitting GLM model...\n")
-    GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
+    GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                            fastMethod = fastMethod, estimator = estimator,
                            firthBackend = firthBackend, computeLeverage = computeLeverage,
                            cellTypePresence = cellTypePresence)
@@ -301,7 +301,7 @@ spicyGLM = function(cells,
                               window = window, cores = cores, cellTypePresence = cellTypePresence)
     
     cat("Fitting GLM models for each cell type pair...\n")
-    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, cores = cores,
+    GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, subject = subject, cores = cores,
                             cr2Method = cr2Method, fastMethod = fastMethod,
                             estimator = estimator, firthBackend = firthBackend,
                             computeLeverage = computeLeverage, cellTypePresence = cellTypePresence)
@@ -766,6 +766,7 @@ computeCellTypePresence <- function(cells, condition, imageID, cellType) {
 
 buildGLM = function(dfResultPairwise,
                     oneToOne,
+                    subject = NULL,
                     cr2Method = c("fast", "clubSandwich"),
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
@@ -891,13 +892,53 @@ buildGLM = function(dfResultPairwise,
     group_sizes <- table(group_of_patient)
     
     if (any(group_sizes < 2)) {
+      failingGroups <- names(group_sizes)[group_sizes < 2]
+      unit <- if (!is.null(subject)) "patient" else "image"
+      
+      perGroupMsgs <- vapply(failingGroups, function(gIdx) {
+        gLabel <- condition_levels[as.integer(gIdx)]
+        idx <- which(group_of_patient == as.integer(gIdx))
+        
+        survivorText <- if (length(idx) == 1) {
+          p <- patients[[idx]]
+          survivorID <- as.character(cluster_ids[idx])
+          nImg <- length(p$n_ij)
+          sprintf(
+            'only %s "%s" has any data for this pair (%d qualifying image%s)',
+            unit, survivorID, nImg, if (nImg == 1) "" else "s"
+          )
+        } else {
+          sprintf("no %s has any data for this pair", unit)
+        }
+        
+        fromRow <- cellTypePresence[cellTypePresence$cellType == from & cellTypePresence$condition == gLabel, ]
+        toRow   <- cellTypePresence[cellTypePresence$cellType == to   & cellTypePresence$condition == gLabel, ]
+        
+        sprintf(
+          'in "%s", %s -- every other %s in this group has zero images where %s and %s co-occur. For context, %s appears in %d of %d images in this group, and %s appears in %d of %d.',
+          gLabel, survivorText, unit, from, to,
+          from, fromRow$n_images_with_type, fromRow$n_images_total,
+          to, toRow$n_images_with_type, toRow$n_images_total
+        )
+      }, character(1))
+      
+      subjectCaveat <- if (is.null(subject)) {
+        paste0(
+          " Note: no `subject` was provided, so images could not be grouped by patient -- ",
+          "if these images do in fact come from multiple donors, that's fine, but if they ",
+          "share a donor, consider passing `subject` for correct clustering."
+        )
+      } else {
+        ""
+      }
+      
       msg <- paste0(
-        "Skipping pair ", from, "__", to,
-        ": group(s) ", paste(names(group_sizes)[group_sizes < 2], collapse = ", "),
-        " contain only one patient/cluster. CR2's leverage correction is undefined ",
-        "for a singleton group, since it works by measuring how much a patient's ",
-        "data pulled the fit relative to everyone else in their group - with ",
-        "no one else in the group, there's nothing to measure that against."
+        "Skipping pair ", from, "__", to, ": ",
+        paste(perGroupMsgs, collapse = " "),
+        " CR2's leverage correction needs at least two independent ", unit, "s per group ",
+        "to measure how much any one ", unit, "'s data pulled the fit relative to the rest ",
+        "of the group; with only one, there's nothing to compare it against.",
+        subjectCaveat
       )
       warning(msg, call. = FALSE)
       return(.new_spicy_skip(from, to, reason = "one_patient_per_group", message = msg))
@@ -909,18 +950,20 @@ buildGLM = function(dfResultPairwise,
     if (computeLeverage) {
       S_g_vec  <- attr(V, "S_g")
       grp_idx  <- attr(V, "group")
+      unit     <- if (!is.null(subject)) "patient" else "image"
+      idCol    <- paste0(unit, "_id")
       
       leverage_tbl <- data.frame(
-        patient_id = as.character(cluster_ids),
-        group      = condition_levels[grp_idx],
-        N_i        = sapply(patients, function(p) sum(p$n_ij)),
-        T_i        = sapply(patients, patient_total),
         stringsAsFactors = FALSE
       )
-      leverage_tbl$S_g       <- S_g_vec[grp_idx]
-      leverage_tbl$leverage  <- leverage_tbl$T_i / leverage_tbl$S_g
-      leverage_tbl$from      <- from
-      leverage_tbl$to        <- to
+      leverage_tbl[[idCol]] <- as.character(cluster_ids)
+      leverage_tbl$group    <- condition_levels[grp_idx]
+      leverage_tbl$N_i      <- sapply(patients, function(p) sum(p$n_ij))
+      leverage_tbl$T_i      <- sapply(patients, patient_total)
+      leverage_tbl$S_g      <- S_g_vec[grp_idx]
+      leverage_tbl$leverage <- leverage_tbl$T_i / leverage_tbl$S_g
+      leverage_tbl$from     <- from
+      leverage_tbl$to       <- to
     }
     
     waldResult = waldTest_CR2_fast(logRR, V, patients, method = fastMethod)
@@ -986,6 +1029,7 @@ getCellTypePairs = function(cells,
 #' @importFrom dplyr bind_rows
 combineGLM = function(dfResult,
                       oneToOne,
+                      subject = NULL,
                       cores = 1,
                       cr2Method = c("fast", "clubSandwich"),
                       fastMethod = c("direct", "dpr1"),
@@ -1022,7 +1066,7 @@ combineGLM = function(dfResult,
         return(list(fit = skipRow, leverage = NULL))
       }
       
-      modelFit = buildGLM(dfPair, oneToOne = oneToOne, cr2Method = cr2Method,
+      modelFit = buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                           fastMethod = fastMethod, estimator = estimator,
                           firthBackend = firthBackend, computeLeverage = computeLeverage,
                           cellTypePresence = cellTypePresence)
