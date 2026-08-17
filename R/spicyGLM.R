@@ -954,16 +954,17 @@ buildGLM = function(dfResultPairwise,
       idCol    <- paste0(unit, "_id")
       
       leverage_tbl <- data.frame(
+        id_col_placeholder = as.character(cluster_ids),
+        group      = condition_levels[grp_idx],
+        N_i        = sapply(patients, function(p) sum(p$n_ij)),
+        T_i        = sapply(patients, patient_total),
         stringsAsFactors = FALSE
       )
-      leverage_tbl[[idCol]] <- as.character(cluster_ids)
-      leverage_tbl$group    <- condition_levels[grp_idx]
-      leverage_tbl$N_i      <- sapply(patients, function(p) sum(p$n_ij))
-      leverage_tbl$T_i      <- sapply(patients, patient_total)
-      leverage_tbl$S_g      <- S_g_vec[grp_idx]
-      leverage_tbl$leverage <- leverage_tbl$T_i / leverage_tbl$S_g
-      leverage_tbl$from     <- from
-      leverage_tbl$to       <- to
+      names(leverage_tbl)[1] <- idCol
+      leverage_tbl$S_g       <- S_g_vec[grp_idx]
+      leverage_tbl$leverage  <- leverage_tbl$T_i / leverage_tbl$S_g
+      leverage_tbl$from      <- from
+      leverage_tbl$to        <- to
     }
     
     waldResult = waldTest_CR2_fast(logRR, V, patients, method = fastMethod)

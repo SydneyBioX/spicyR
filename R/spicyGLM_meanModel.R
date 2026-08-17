@@ -50,7 +50,7 @@ fit_mle_closed_form <- function(dfPair) {
   
   mu_hat <- exp(beta[g]) * dfPair$density
   
-  new_spicyFit(beta = unname(beta), mu_hat = unname(mu_hat), y = dfPair$n,
+  new_spicyFit(beta = beta, mu_hat = unname(mu_hat), y = dfPair$n,
                estimator = "mle", backend = "closed_form")
 }
 
@@ -67,7 +67,7 @@ fit_firth_closed_form <- function(dfPair) {
   
   mu_hat <- exp(beta[g]) * dfPair$density
   
-  new_spicyFit(beta = unname(beta), mu_hat = unname(mu_hat), y = dfPair$n,
+  new_spicyFit(beta = beta, mu_hat = unname(mu_hat), y = dfPair$n,
                estimator = "firth", backend = "closed_form")
 }
 
