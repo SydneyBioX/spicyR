@@ -27,6 +27,7 @@ Imports:
     SingleCellExperiment,
     SpatialExperiment,
     SummarizedExperiment,
+    binom,
     cli,
     concaveman,
     coxme,

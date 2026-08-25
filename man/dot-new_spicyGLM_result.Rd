@@ -46,16 +46,50 @@ containing single-cell or spatial data with cell metadata and coordinates.}
 
 \item{fastMethod}{Eigendecomposition routine used internally when
 \code{cr2Method = "fast"}. \code{"direct"} (default) is faster in practice; \code{"dpr1"} is a validated reference alternative.}
+
+\item{estimator}{Character specifying how the condition contrast is fit.
+\code{"firth"} (default) uses Firth's bias-reduced Poisson estimator, which
+remains finite even when a cell-type pair has structural zeros in one
+condition. \code{"mle"} uses ordinary Poisson MLE, which is skipped
+(with a warning) for such pairs, since the log rate ratio is non-estimable.}
+
+\item{firthBackend}{Character specifying how Firth's estimator is computed
+when \code{estimator = "firth"}. \code{"closed_form"} (default) uses a fast,
+exact closed-form solution valid for spicyGLM's design; \code{"brglm2"}
+uses \code{brglm2::brglmFit} as a general fallback.}
+
+\item{computeDiagnostics}{Logical; if \code{TRUE}, also computes and attaches
+a QC diagnostics table set on the returned object: \code{$diagnostics =
+list(pair = <df>, patient = <df>, image = <df>, crossPair = list(patient = <df>,
+image = <df>))}. \code{pair} (Table 1) is a one-row-per-pair summary (patient
+count, Satterthwaite df, which patient dominates influence/point-estimate shift);
+\code{patient} (Table 2) and \code{image} (Table 3) merge pre-fit leverage share,
+post-fit CR2 variance-share influence, closed-form leave-one-out point-estimate
+shift, and within-pair relative/percentile-rank versions of leverage and
+influence, at the patient and image level respectively; \code{crossPair}
+(Table 4) aggregates those percentile ranks across every cell-type pair a
+patient (or patient/image) appears in, with a Wilson interval on the
+proportion flagged, for the leverage and influence pathways independently.
+Diagnostics are only assembled when \code{cr2Method = "fast"} and
+\code{estimator = "firth"} with \code{firthBackend = "closed_form"} --
+the point-estimate-shift formula is the exact closed-form Firth
+solution, and influence depends on the fast CR2 sandwich machinery, so
+other estimator/backend/cr2Method combinations leave \code{$diagnostics}
+\code{NULL} for that pair. Adds some compute cost per pair; \code{FALSE}
+by default.}
 }
 \value{
 A list with the following elements:
 \describe{
-  \item{condition}{Factor vector of the condition used in the GEE models.}
+  \item{condition}{Factor vector of the condition used in the GLM models.}
   \item{subject}{Factor vector of subjects/donors, if provided.}
   \item{comparisons}{Data frame with the reference and target cell types for each pair
     and a combined label (from__to).}
   \item{nCells}{Table of cell counts per image and cell type.}
   \item{GLMresults}{Data frame of Poisson GLM results for each cell type pair using CR2.}
+  \item{diagnostics}{If \code{computeDiagnostics = TRUE}, \code{list(pair = <df>,
+    patient = <df>, image = <df>, crossPair = list(patient = <df>, image = <df>))}
+    of QC diagnostics across all pairs -- see \code{computeDiagnostics} above.}
 }
 }
 \description{

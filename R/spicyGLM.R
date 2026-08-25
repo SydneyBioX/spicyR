@@ -28,10 +28,26 @@
 #'   when \code{estimator = "firth"}. \code{"closed_form"} (default) uses a fast,
 #'   exact closed-form solution valid for spicyGLM's design; \code{"brglm2"}
 #'   uses \code{brglm2::brglmFit} as a general fallback.
-#' @param computeLeverage Logical; if \code{TRUE}, also computes and attaches
-#'   a per-patient CR2 leverage diagnostic table (\code{$leverage} on the
-#'   returned object). Adds some compute cost per pair; \code{FALSE} by default.
-#'   
+#' @param computeDiagnostics Logical; if \code{TRUE}, also computes and attaches
+#'   a QC diagnostics table set on the returned object: \code{$diagnostics =
+#'   list(pair = <df>, patient = <df>, image = <df>, crossPair = list(patient = <df>,
+#'   image = <df>))}. \code{pair} (Table 1) is a one-row-per-pair summary (patient
+#'   count, Satterthwaite df, which patient dominates influence/point-estimate shift);
+#'   \code{patient} (Table 2) and \code{image} (Table 3) merge pre-fit leverage share,
+#'   post-fit CR2 variance-share influence, closed-form leave-one-out point-estimate
+#'   shift, and within-pair relative/percentile-rank versions of leverage and
+#'   influence, at the patient and image level respectively; \code{crossPair}
+#'   (Table 4) aggregates those percentile ranks across every cell-type pair a
+#'   patient (or patient/image) appears in, with a Wilson interval on the
+#'   proportion flagged, for the leverage and influence pathways independently.
+#'   Diagnostics are only assembled when \code{cr2Method = "fast"} and
+#'   \code{estimator = "firth"} with \code{firthBackend = "closed_form"} --
+#'   the point-estimate-shift formula is the exact closed-form Firth
+#'   solution, and influence depends on the fast CR2 sandwich machinery, so
+#'   other estimator/backend/cr2Method combinations leave \code{$diagnostics}
+#'   \code{NULL} for that pair. Adds some compute cost per pair; \code{FALSE}
+#'   by default.
+#'
 #'
 #' @return A list with the following elements:
 #' \describe{
@@ -41,6 +57,9 @@
 #'     and a combined label (from__to).}
 #'   \item{nCells}{Table of cell counts per image and cell type.}
 #'   \item{GLMresults}{Data frame of Poisson GLM results for each cell type pair using CR2.}
+#'   \item{diagnostics}{If \code{computeDiagnostics = TRUE}, \code{list(pair = <df>,
+#'     patient = <df>, image = <df>, crossPair = list(patient = <df>, image = <df>))}
+#'     of QC diagnostics across all pairs -- see \code{computeDiagnostics} above.}
 #' }
 #' 
 #' @export
@@ -164,8 +183,8 @@ spicyGLM = function(cells,
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
-                    computeLeverage = FALSE) {
-  
+                    computeDiagnostics = FALSE) {
+
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
   estimator <- match.arg(estimator)
@@ -264,7 +283,7 @@ spicyGLM = function(cells,
     cat("Fitting GLM model...\n")
     GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                            fastMethod = fastMethod, estimator = estimator,
-                           firthBackend = firthBackend, computeLeverage = computeLeverage,
+                           firthBackend = firthBackend, computeDiagnostics = computeDiagnostics,
                            cellTypePresence = cellTypePresence)
     
     if (is.data.frame(GLMresults) && "reason" %in% colnames(GLMresults)) {
@@ -281,15 +300,23 @@ spicyGLM = function(cells,
     GLMresults$from <- from
     GLMresults$to <- to
     
-    leverage_tbl <- attr(GLMresults, "leverage")
-    
+    diagnostics_tbl <- attr(GLMresults, "diagnostics")
+    if (!is.null(diagnostics_tbl)) {
+      diagnostics_tbl$patient <- computeRelativeDiagnostics(diagnostics_tbl, level = "patient")
+      diagnostics_tbl$image   <- computeRelativeDiagnostics(diagnostics_tbl, level = "image")
+      diagnostics_tbl$crossPair <- list(
+        patient = crossPairDiagnostics(diagnostics_tbl$patient),
+        image   = crossPairDiagnostics(diagnostics_tbl$image)
+      )
+    }
+
     GLMresults <- GLMresults |>
       dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
                       "logRateRatio", "rateRatio", "p.value", "estimator", "mle_would_skip",
                       "mle_skip_reason"))
-    
+
     base_out$GLMresults <- GLMresults
-    base_out$leverage <- leverage_tbl
+    base_out$diagnostics <- diagnostics_tbl
     base_out$comparisons <- data.frame(from = GLMresults$from, to = GLMresults$to,
                                        labels = paste0(GLMresults$from, "__", GLMresults$to),
                                        stringsAsFactors = FALSE)
@@ -307,7 +334,7 @@ spicyGLM = function(cells,
     GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, subject = subject, cores = cores,
                             cr2Method = cr2Method, fastMethod = fastMethod,
                             estimator = estimator, firthBackend = firthBackend,
-                            computeLeverage = computeLeverage, cellTypePresence = cellTypePresence)
+                            computeDiagnostics = computeDiagnostics, cellTypePresence = cellTypePresence)
     
     skipped <- attr(GLMresults, "skipped")
     if (!is.null(skipped) && nrow(skipped) > 0) {
@@ -317,7 +344,16 @@ spicyGLM = function(cells,
   }
   
   base_out$GLMresults <- GLMresults
-  base_out$leverage <- attr(GLMresults, "leverage")
+  diagnostics_tbl <- attr(GLMresults, "diagnostics")
+  if (!is.null(diagnostics_tbl)) {
+    diagnostics_tbl$patient <- computeRelativeDiagnostics(diagnostics_tbl, level = "patient")
+    diagnostics_tbl$image   <- computeRelativeDiagnostics(diagnostics_tbl, level = "image")
+    diagnostics_tbl$crossPair <- list(
+      patient = crossPairDiagnostics(diagnostics_tbl$patient),
+      image   = crossPairDiagnostics(diagnostics_tbl$image)
+    )
+  }
+  base_out$diagnostics <- diagnostics_tbl
   base_out$comparisons <- data.frame(from = GLMresults$from, to = GLMresults$to,
                                      labels = paste0(GLMresults$from, "__", GLMresults$to),
                                      stringsAsFactors = FALSE)
@@ -704,8 +740,395 @@ computeImage = function(dfImg,
   if ("subject" %in% colnames(dfImg)) {
     dfResult$subject = as.factor(dfImg$subject[1])
   }
-  
+
   return(dfResult)
+}
+
+#' Compute pre-fit CR2 leverage shares from raw counts and density
+#'
+#' Leverage share is exactly pre-fit computable (the `exp(beta_hat)` term
+#' cancels in the T_i / S_g ratio within a condition group), so this needs
+#' no model fit -- only per-image reference-cell counts and the density
+#' offset from \code{computeImage()}.
+#'
+#' @param dfResultPairwise Data frame for one cell-type pair, one row per
+#'   reference cell, with columns \code{imageID}, \code{condition},
+#'   \code{density}, and \code{subject} if \code{oneToOne} is \code{FALSE}.
+#' @param oneToOne Logical; if \code{TRUE} cluster by \code{imageID},
+#'   otherwise by \code{subject}.
+#' @param subject Unused; kept for signature consistency with
+#'   \code{buildGLM()}.
+#'
+#' @return A list with \code{patient} (columns \code{patient_id}, \code{group},
+#'   \code{T_i}, \code{S_g}, \code{l_i}) and \code{image} (columns
+#'   \code{patient_id}, \code{image_id}, \code{group}, \code{n_ij},
+#'   \code{density_ij}, \code{l_ij}) data frames.
+computeLeverage <- function(dfResultPairwise, oneToOne, subject = NULL) {
+
+  patient_id <- if (oneToOne) {
+    as.character(dfResultPairwise$imageID)
+  } else {
+    as.character(dfResultPairwise$subject)
+  }
+
+  df <- data.frame(
+    patient_id = patient_id,
+    image_id   = as.character(dfResultPairwise$imageID),
+    group      = as.character(dfResultPairwise$condition),
+    density    = dfResultPairwise$density,
+    stringsAsFactors = FALSE
+  )
+
+  image_tbl <- df |>
+    dplyr::group_by(patient_id, image_id) |>
+    dplyr::summarise(
+      group      = dplyr::first(group),
+      n_ij       = dplyr::n(),
+      density_ij = dplyr::first(density),
+      .groups = "drop"
+    )
+
+  patient_tbl <- image_tbl |>
+    dplyr::group_by(patient_id) |>
+    dplyr::summarise(
+      group = dplyr::first(group),
+      T_i   = sum(n_ij * density_ij),
+      .groups = "drop"
+    )
+
+  group_tbl <- patient_tbl |>
+    dplyr::group_by(group) |>
+    dplyr::summarise(S_g = sum(T_i), .groups = "drop")
+
+  patient_tbl <- patient_tbl |>
+    dplyr::left_join(group_tbl, by = "group") |>
+    dplyr::mutate(l_i = T_i / S_g) |>
+    as.data.frame()
+
+  image_tbl <- image_tbl |>
+    dplyr::left_join(
+      dplyr::select(patient_tbl, patient_id, T_i),
+      by = "patient_id"
+    ) |>
+    dplyr::mutate(l_ij = (n_ij * density_ij) / T_i) |>
+    dplyr::select(patient_id, image_id, group, n_ij, density_ij, l_ij) |>
+    as.data.frame()
+
+  list(patient = patient_tbl, image = image_tbl)
+}
+
+#' Compute closed-form leave-one-out shift in the fitted log rate ratio
+#'
+#' No CR2 machinery required -- pure aggregation of raw counts/densities,
+#' exploiting the closed-form Firth solution \code{beta_g = log((Y_g+0.5)/D_g)}.
+#' \code{GLMfit} is used only to verify the recomputed group coefficients
+#' against the actual fit, not for any computation.
+#'
+#' @param dfResultPairwise Data frame for one cell-type pair, one row per
+#'   reference cell, with columns \code{n}, \code{density}, \code{condition},
+#'   \code{imageID}, and \code{subject} if \code{oneToOne} is \code{FALSE}.
+#' @param oneToOne Logical; if \code{TRUE} cluster by \code{imageID},
+#'   otherwise by \code{subject}.
+#' @param subject Unused; kept for signature consistency with
+#'   \code{computeLeverage()}/\code{buildGLM()}.
+#' @param GLMfit The fitted model object for this pair, used only for the
+#'   step-5 correctness check.
+#'
+#' @return A data frame with columns \code{patient_id}, \code{group},
+#'   \code{y_i}, \code{d_i}, \code{delta_i}.
+computePointEstimateShift <- function(dfResultPairwise, oneToOne, subject = NULL, GLMfit) {
+
+  patient_id <- if (oneToOne) {
+    as.character(dfResultPairwise$imageID)
+  } else {
+    as.character(dfResultPairwise$subject)
+  }
+
+  group_levels <- levels(droplevels(factor(dfResultPairwise$condition)))
+
+  df <- data.frame(
+    patient_id = patient_id,
+    group      = as.character(dfResultPairwise$condition),
+    n          = dfResultPairwise$n,
+    density    = dfResultPairwise$density,
+    stringsAsFactors = FALSE
+  )
+
+  patient_tbl <- df |>
+    dplyr::group_by(patient_id) |>
+    dplyr::summarise(
+      group = dplyr::first(group),
+      y_i   = sum(n),
+      d_i   = sum(density),
+      .groups = "drop"
+    ) |>
+    as.data.frame()
+
+  group_tbl <- patient_tbl |>
+    dplyr::group_by(group) |>
+    dplyr::summarise(Y_g = sum(y_i), D_g = sum(d_i), .groups = "drop")
+
+  Y_g <- stats::setNames(group_tbl$Y_g, group_tbl$group)[group_levels]
+  D_g <- stats::setNames(group_tbl$D_g, group_tbl$group)[group_levels]
+
+  beta_g_hat <- log((Y_g + 0.5) / D_g)
+  names(beta_g_hat) <- paste0("condition", group_levels)
+
+  fit_beta <- stats::coef(GLMfit)
+  if (!isTRUE(all.equal(as.numeric(beta_g_hat), as.numeric(fit_beta)))) {
+    stop(
+      "computePointEstimateShift(): recomputed group coefficients do not match ",
+      "coef(GLMfit) -- aggregation of n/density by patient/group disagrees with ",
+      "the actual fit; do not trust delta_i until this is resolved.",
+      call. = FALSE
+    )
+  }
+
+  delta_i <- vapply(seq_len(nrow(patient_tbl)), function(idx) {
+    g   <- patient_tbl$group[idx]
+    y_i <- patient_tbl$y_i[idx]
+    d_i <- patient_tbl$d_i[idx]
+
+    # sole-contributor patients hit log(0.5 / 0) here -- the same degenerate
+    # boundary as l_i -> 1 / CR2 singularity for a group of size 1.
+    if (y_i == Y_g[[g]] && d_i == D_g[[g]]) {
+      return(NA_real_)
+    }
+
+    beta_g_hat_minus_i <- log((Y_g[[g]] - y_i + 0.5) / (D_g[[g]] - d_i))
+    unname(beta_g_hat[[paste0("condition", g)]] - beta_g_hat_minus_i)
+  }, numeric(1))
+
+  data.frame(
+    patient_id = patient_tbl$patient_id,
+    group      = patient_tbl$group,
+    y_i        = patient_tbl$y_i,
+    d_i        = patient_tbl$d_i,
+    delta_i    = delta_i,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Assemble patient-level (Table 2) and image-level (Table 3) QC diagnostics
+#'
+#' Joins the outputs of \code{computeLeverage()}, \code{computeInfluence()},
+#' and \code{computePointEstimateShift()} into two merged tables. Verifies
+#' the three sources agree on patient identity and group assignment before
+#' merging -- a disagreement means one of the three functions is using a
+#' different patient/group derivation than the others.
+#'
+#' @param leverage_result \code{list(patient=, image=)} from \code{computeLeverage()}.
+#' @param influence_result \code{list(patient=, image=)} from \code{computeInfluence()}.
+#' @param shift_result Data frame from \code{computePointEstimateShift()}.
+#'
+#' @return \code{list(patient = <Table 2>, image = <Table 3>)}.
+assembleDiagnosticsTables <- function(leverage_result, influence_result, shift_result) {
+
+  ids_leverage  <- sort(leverage_result$patient$patient_id)
+  ids_influence <- sort(influence_result$patient$patient_id)
+  ids_shift     <- sort(shift_result$patient_id)
+  stopifnot(identical(ids_leverage, ids_influence), identical(ids_leverage, ids_shift))
+
+  group_leverage  <- stats::setNames(leverage_result$patient$group, leverage_result$patient$patient_id)
+  group_influence <- stats::setNames(influence_result$patient$group, influence_result$patient$patient_id)
+  group_shift     <- stats::setNames(shift_result$group, shift_result$patient_id)
+  stopifnot(
+    identical(unname(group_leverage[ids_leverage]), unname(group_influence[ids_leverage])),
+    identical(unname(group_leverage[ids_leverage]), unname(group_shift[ids_leverage]))
+  )
+
+  n_i_tbl <- leverage_result$image |>
+    dplyr::group_by(patient_id) |>
+    dplyr::summarise(n_i = sum(n_ij), .groups = "drop")
+
+  residual_sums_tbl <- influence_result$image |>
+    dplyr::group_by(patient_id) |>
+    dplyr::summarise(
+      raw_residual_sum      = sum(raw_residual_sum_ij),
+      adjusted_residual_sum = sum(adjusted_residual_sum_ij),
+      .groups = "drop"
+    )
+
+  table2 <- leverage_result$patient |>
+    dplyr::inner_join(n_i_tbl, by = "patient_id") |>
+    dplyr::inner_join(influence_result$patient, by = c("patient_id", "group")) |>
+    dplyr::inner_join(residual_sums_tbl, by = "patient_id") |>
+    dplyr::inner_join(shift_result, by = c("patient_id", "group")) |>
+    dplyr::select(patient_id, group, n_i, T_i, S_g, l_i, raw_residual_sum,
+                  adjusted_residual_sum, e_i, influence_i, y_i, d_i, delta_i) |>
+    as.data.frame()
+
+  n_ij_leverage <- leverage_result$image |>
+    dplyr::arrange(patient_id, image_id) |>
+    dplyr::pull(n_ij)
+  n_ij_influence <- influence_result$image |>
+    dplyr::arrange(patient_id, image_id) |>
+    dplyr::pull(n_ij)
+  stopifnot(isTRUE(all.equal(n_ij_leverage, n_ij_influence)))
+
+  table3 <- leverage_result$image |>
+    dplyr::inner_join(
+      dplyr::select(influence_result$image, -n_ij),
+      by = c("patient_id", "image_id", "group")
+    ) |>
+    dplyr::select(patient_id, image_id, group, n_ij, density_ij, l_ij,
+                  raw_residual_sum_ij, adjusted_residual_sum_ij, e_ij, influence_ij) |>
+    as.data.frame()
+
+  list(patient = table2, image = table3)
+}
+
+#' Assemble the one-row pair-level QC summary (Table 1)
+#'
+#' @param waldResult Return value of \code{waldTest_CR2_fast()}; needs \code{$df} (nu).
+#' @param table2 The merged patient-level table from \code{assembleDiagnosticsTables()}.
+#'
+#' @return A one-row data frame: \code{n_patients | nu | max_influence |
+#'   patient_with_max_influence | max_abs_delta_logRR | patient_with_max_delta_logRR}.
+computePairSummary <- function(waldResult, table2) {
+  nu <- waldResult$df
+  n_patients <- nrow(table2)
+
+  max_influence <- max(table2$influence_i)
+  patient_with_max_influence <- table2$patient_id[which.max(table2$influence_i)]
+
+  max_abs_delta_logRR <- max(abs(table2$delta_i), na.rm = TRUE)
+  patient_with_max_delta_logRR <- table2$patient_id[which.max(abs(table2$delta_i))]
+
+  data.frame(
+    n_patients = n_patients,
+    nu = nu,
+    max_influence = max_influence,
+    patient_with_max_influence = patient_with_max_influence,
+    max_abs_delta_logRR = max_abs_delta_logRR,
+    patient_with_max_delta_logRR = patient_with_max_delta_logRR,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Compute within-pair relative leverage/influence and percentile ranks
+#'
+#' Rescales pre-fit leverage share and post-fit variance-share influence
+#' against their own natural comparison scope (leverage: within-group or
+#' within-patient; influence: pair-wide), so values become comparable across
+#' cell-type pairs with different patient/image counts. Computes both the
+#' leverage and influence pathways in one pass, since \code{crossPairDiagnostics()}
+#' needs both.
+#'
+#' @param diagnostics The stacked, multi-pair \code{list(pair=, patient=, image=)}
+#'   from \code{buildGLM()}/\code{combineGLM()}'s \code{computeDiagnostics = TRUE} path.
+#' @param level \code{"patient"} or \code{"image"}; selects which of
+#'   \code{diagnostics$patient} / \code{diagnostics$image} to operate on.
+#'
+#' @return A data frame -- the input to \code{crossPairDiagnostics()}.
+computeRelativeDiagnostics <- function(diagnostics, level = c("patient", "image")) {
+  level <- match.arg(level)
+
+  if (level == "patient") {
+    out <- diagnostics$patient |>
+      dplyr::group_by(from, to, group) |>
+      dplyr::mutate(
+        n_patients_per_group = dplyr::n(),
+        rel_l_i = l_i * n_patients_per_group,
+        percentile_rank_leverage = dplyr::percent_rank(rel_l_i)
+      ) |>
+      dplyr::group_by(from, to) |>
+      dplyr::mutate(
+        n_patients_in_pair = dplyr::n(),
+        rel_influence_i = influence_i * n_patients_in_pair,
+        percentile_rank_influence = dplyr::percent_rank(rel_influence_i)
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::mutate(
+        percentile_rank_leverage  = ifelse(is.nan(percentile_rank_leverage),  NA_real_, percentile_rank_leverage),
+        percentile_rank_influence = ifelse(is.nan(percentile_rank_influence), NA_real_, percentile_rank_influence)
+      ) |>
+      dplyr::select(patient_id, group, from, to, n_patients_per_group, n_patients_in_pair,
+                    l_i, influence_i, delta_i, rel_l_i, percentile_rank_leverage,
+                    rel_influence_i, percentile_rank_influence,
+                    n_i, T_i, S_g, raw_residual_sum, adjusted_residual_sum, e_i, y_i, d_i) |>
+      as.data.frame()
+  } else {
+    out <- diagnostics$image |>
+      dplyr::group_by(from, to, patient_id) |>
+      dplyr::mutate(
+        n_images_for_patient = dplyr::n(),
+        rel_l_ij = l_ij * n_images_for_patient,
+        percentile_rank_leverage = dplyr::percent_rank(rel_l_ij)
+      ) |>
+      dplyr::group_by(from, to) |>
+      dplyr::mutate(
+        n_images_in_pair = dplyr::n(),
+        rel_influence_ij = influence_ij * n_images_in_pair,
+        percentile_rank_influence = dplyr::percent_rank(rel_influence_ij)
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::mutate(
+        percentile_rank_leverage  = ifelse(is.nan(percentile_rank_leverage),  NA_real_, percentile_rank_leverage),
+        percentile_rank_influence = ifelse(is.nan(percentile_rank_influence), NA_real_, percentile_rank_influence)
+      ) |>
+      dplyr::select(patient_id, image_id, group, from, to,
+                    n_images_for_patient, n_images_in_pair,
+                    l_ij, influence_ij, rel_l_ij, percentile_rank_leverage,
+                    rel_influence_ij, percentile_rank_influence,
+                    density_ij, raw_residual_sum_ij, adjusted_residual_sum_ij, e_ij) |>
+      as.data.frame()
+  }
+
+  out
+}
+
+#' Aggregate relative diagnostics across cell-type pairs (Table 4)
+#'
+#' For each patient (or patient/image), across every cell-type pair it
+#' appears in, computes how often it lands in the top \code{topPercent} of
+#' the within-pair percentile rank, for both the leverage and influence
+#' pathways independently, with a Wilson score interval around each
+#' proportion to discount thin evidence (few pairs present).
+#'
+#' @param relative_table Output of \code{computeRelativeDiagnostics()}.
+#'   Patient- vs. image-level is inferred from whether an \code{image_id}
+#'   column is present.
+#' @param topPercent Numeric in (0,1); the top fraction of the within-pair
+#'   percentile rank counted as "flagged". Default 0.05.
+#'
+#' @return A data frame, one row per patient (or patient/image), sorted by
+#'   \code{wilson_lower_influence} descending.
+#'
+#' @importFrom binom binom.wilson
+crossPairDiagnostics <- function(relative_table, topPercent = 0.05) {
+
+  isImageLevel <- "image_id" %in% names(relative_table)
+  groupVars <- if (isImageLevel) c("patient_id", "image_id") else "patient_id"
+
+  result <- relative_table |>
+    dplyr::mutate(
+      flagged_influence = percentile_rank_influence >= (1 - topPercent),
+      flagged_leverage  = percentile_rank_leverage  >= (1 - topPercent)
+    ) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(groupVars))) |>
+    dplyr::summarise(
+      n_pairs_present = dplyr::n(),
+      n_pairs_flagged_influence = sum(flagged_influence, na.rm = TRUE),
+      n_pairs_flagged_leverage  = sum(flagged_leverage,  na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      prop_flagged_influence = n_pairs_flagged_influence / n_pairs_present,
+      prop_flagged_leverage  = n_pairs_flagged_leverage  / n_pairs_present
+    )
+
+  wilson_inf <- binom::binom.wilson(result$n_pairs_flagged_influence, result$n_pairs_present)
+  wilson_lev <- binom::binom.wilson(result$n_pairs_flagged_leverage,  result$n_pairs_present)
+
+  result$wilson_lower_influence <- wilson_inf$lower
+  result$wilson_upper_influence <- wilson_inf$upper
+  result$wilson_lower_leverage  <- wilson_lev$lower
+  result$wilson_upper_leverage  <- wilson_lev$upper
+
+  result |>
+    dplyr::arrange(dplyr::desc(wilson_lower_influence)) |>
+    as.data.frame()
 }
 
 .new_spicy_skip <- function(from, to, reason, message) {
@@ -774,9 +1197,9 @@ buildGLM = function(dfResultPairwise,
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
-                    computeLeverage = FALSE,
+                    computeDiagnostics = FALSE,
                     cellTypePresence) {
-  
+
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
   estimator <- match.arg(estimator)
@@ -880,8 +1303,8 @@ buildGLM = function(dfResultPairwise,
   logRR = unname(beta[2]) - unname(beta[1])
   tmp = sub("^condition", "", names(beta))
   
-  leverage_tbl <- NULL 
-  
+  diagnostics <- NULL
+
   if (cr2Method == "fast") {
     
     cluster_ids <- unique(clusterVec)
@@ -948,31 +1371,10 @@ buildGLM = function(dfResultPairwise,
     }
     
     V = vcovCR2_fast_multi(patients, method = fastMethod)
-    
-    leverage_tbl <- NULL
-    if (computeLeverage) {
-      S_g_vec  <- attr(V, "S_g")
-      grp_idx  <- attr(V, "group")
-      unit     <- if (!is.null(subject)) "patient" else "image"
-      idCol    <- paste0(unit, "_id")
-      
-      leverage_tbl <- data.frame(
-        id_col_placeholder = as.character(cluster_ids),
-        group      = condition_levels[grp_idx],
-        N_i        = sapply(patients, function(p) sum(p$n_ij)),
-        T_i        = sapply(patients, patient_total),
-        stringsAsFactors = FALSE
-      )
-      names(leverage_tbl)[1] <- idCol
-      leverage_tbl$S_g       <- S_g_vec[grp_idx]
-      leverage_tbl$leverage  <- leverage_tbl$T_i / leverage_tbl$S_g
-      leverage_tbl$from      <- from
-      leverage_tbl$to        <- to
-    }
-    
+
     waldResult = waldTest_CR2_fast(logRR, V, patients, method = fastMethod)
     waldP = waldResult$p.value
-    
+
   } else {
     
     V = vcovClubSandwichCluster(GLMfit, type = "CR2", cluster = clusterVec)
@@ -981,7 +1383,22 @@ buildGLM = function(dfResultPairwise,
     waldP = clubSandwich::Wald_test(GLMfit, L, V, tidy = TRUE)$p_val[1] |> as.numeric()
     
   }
-  
+
+  if (computeDiagnostics && cr2Method == "fast" && estimator == "firth" && firthBackend == "closed_form") {
+    leverage_result <- computeLeverage(dfResultPairwise, oneToOne, subject)
+    influence_result <- computeInfluence(patients, waldResult, condition_levels, V)
+    shift_result <- computePointEstimateShift(dfResultPairwise, oneToOne, subject, GLMfit)
+
+    merged <- assembleDiagnosticsTables(leverage_result, influence_result, shift_result)
+    table1 <- computePairSummary(waldResult, merged$patient)
+    table1 <- cbind(data.frame(from = from, to = to, stringsAsFactors = FALSE), table1)
+
+    merged$patient$from <- from;  merged$patient$to <- to
+    merged$image$from <- from;    merged$image$to <- to
+
+    diagnostics <- list(pair = table1, patient = merged$patient, image = merged$image)
+  }
+
   out = data.frame(conditionRef  = tmp[1],
                    conditionComp = tmp[2],
                    coef_ref      = unname(beta[1]),
@@ -992,8 +1409,8 @@ buildGLM = function(dfResultPairwise,
                    estimator     = estimator,
                    mle_would_skip = mle_would_skip,
                    mle_skip_reason = mle_skip_reason)
-  
-  attr(out, "leverage") <- leverage_tbl
+
+  attr(out, "diagnostics") <- diagnostics
   return(out)
 }
 
@@ -1039,9 +1456,9 @@ combineGLM = function(dfResult,
                       fastMethod = c("direct", "dpr1"),
                       estimator = c("firth", "mle"),
                       firthBackend = c("closed_form", "brglm2"),
-                      computeLeverage = FALSE,
+                      computeDiagnostics = FALSE,
                       cellTypePresence) {
-  
+
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
   estimator <- match.arg(estimator)
@@ -1067,12 +1484,12 @@ combineGLM = function(dfResult,
           skipReason  <- "no_spatial_metrics"
         }
         skipRow <- .new_spicy_skip(from, to, reason = skipReason, message = skipMessage)
-        return(list(fit = skipRow, leverage = NULL))
+        return(list(fit = skipRow, diagnostics = NULL))
       }
       
       modelFit = buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                           fastMethod = fastMethod, estimator = estimator,
-                          firthBackend = firthBackend, computeLeverage = computeLeverage,
+                          firthBackend = firthBackend, computeDiagnostics = computeDiagnostics,
                           cellTypePresence = cellTypePresence)
       
       if (is.null(modelFit)) return(NULL)
@@ -1080,7 +1497,7 @@ combineGLM = function(dfResult,
       if (!("from" %in% names(modelFit))) modelFit$from <- from
       if (!("to" %in% names(modelFit))) modelFit$to <- to
       
-      list(fit = modelFit, leverage = attr(modelFit, "leverage"))
+      list(fit = modelFit, diagnostics = attr(modelFit, "diagnostics"))
       
     }, error = function(e) {
       structure(
@@ -1101,11 +1518,15 @@ combineGLM = function(dfResult,
     resultList = lapply(names(dfResult), worker)
   }
   
-  fitList      <- lapply(resultList, `[[`, "fit")
-  leverageList <- lapply(resultList, `[[`, "leverage")
-  
-  combined     <- bind_rows(fitList)
-  leverage_all <- bind_rows(leverageList)
+  fitList         <- lapply(resultList, `[[`, "fit")
+  diagnosticsList <- lapply(resultList, `[[`, "diagnostics")
+
+  combined <- bind_rows(fitList)
+  diagnostics_all <- list(
+    pair    = bind_rows(lapply(diagnosticsList, `[[`, "pair")),
+    patient = bind_rows(lapply(diagnosticsList, `[[`, "patient")),
+    image   = bind_rows(lapply(diagnosticsList, `[[`, "image"))
+  )
   
   if (!("reason" %in% colnames(combined))) {
     skipped <- data.frame(from = character(0), to = character(0),
@@ -1124,7 +1545,7 @@ combineGLM = function(dfResult,
     dplyr::arrange(p.adj)
   
   attr(combined, "skipped") <- skipped
-  attr(combined, "leverage") <- leverage_all
+  attr(combined, "diagnostics") <- diagnostics_all
   return(combined)
 }
 

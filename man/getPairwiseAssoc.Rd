@@ -15,7 +15,8 @@ getPairwiseAssoc(
   from = NULL,
   to = NULL,
   window = "convex",
-  cores = 1
+  cores = 1,
+  cellTypePresence
 )
 
 getPairwiseAssoc(
@@ -29,7 +30,8 @@ getPairwiseAssoc(
   from = NULL,
   to = NULL,
   window = "convex",
-  cores = 1
+  cores = 1,
+  cellTypePresence
 )
 }
 \arguments{
@@ -61,7 +63,10 @@ A named list of data frames. Each element corresponds to a cell type pair and co
 The names of the list elements are of the form "from__to".
 
 A named list of data frames. Each element corresponds to a cell type pair and contains spatial association metrics for each image. 
-The names of the list elements are of the form "from__to".
+The names of the list elements are of the form "from__to". Since spicyGLM's
+log rate ratio is direction-invariant (A__B and B__A give identical results),
+only one direction per unordered pair is included; self-pairs (A__A) are
+always included.
 }
 \description{
 Compute pairwise spatial associations between cell types

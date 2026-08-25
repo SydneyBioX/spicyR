@@ -87,25 +87,33 @@ vcovCR2_fast_multi <- function(patients, method = c("direct", "dpr1")) {
   M_tilde <- matrix(0, nrow = 2, ncol = 2)
   raw_sum_list <- numeric(length(patients))
   group_list <- integer(length(patients))
-  
+  image_sum_list <- vector("list", length(patients))
+  raw_residual_image_sum_list <- vector("list", length(patients))
+
   for (idx in seq_along(patients)) {
     patient <- patients[[idx]]
     adjusted <- apply_Ai(patient$r_i, patient, patient$image_index, S_g[patient$group], method = method)
     score <- numeric(2)
     score[patient$group] <- sum(adjusted)
     M_tilde <- M_tilde + score %*% t(score)
-    
+
     raw_sum_list[idx] <- sum(adjusted)
     group_list[idx] <- patient$group
+
+    image_index_f <- factor(patient$image_index, levels = seq_len(length(patient$n_ij)))
+    image_sum_list[[idx]] <- as.numeric(tapply(adjusted, image_index_f, sum))
+    raw_residual_image_sum_list[[idx]] <- as.numeric(tapply(patient$r_i, image_index_f, sum))
   }
-  
+
   B <- diag(1 / S_g)
   V <- B %*% M_tilde %*% B
-  
+
   attr(V, "S_g") <- S_g
   attr(V, "group") <- group_list
   attr(V, "raw_sum") <- raw_sum_list
-  
+  attr(V, "image_sum") <- image_sum_list
+  attr(V, "raw_residual_image_sum") <- raw_residual_image_sum_list
+
   V
 }
 
@@ -123,12 +131,67 @@ build_patient <- function(cluster_id, cluster_vec, df_result, fit, condition_lev
   group <- as.integer(factor(subj_df$condition[1], levels = condition_levels))
   
   list(
+    patient_id = as.character(cluster_id),
+    image_ids = as.character(image_order),
     n_ij = n_ij,
     mu_hat = mu_hat,
     group = group,
     r_i = unname(subj_resid),
     image_index = image_index
   )
+}
+
+computeInfluence <- function(patients, waldResult, condition_levels, V) {
+  patient_id <- vapply(patients, function(p) p$patient_id, character(1))
+  group      <- vapply(patients, function(p) p$group, integer(1))
+  e_i        <- waldResult$e_i
+  v_hat      <- waldResult$v_hat
+  influence_i <- e_i^2 / v_hat
+
+  patient_tbl <- data.frame(
+    patient_id  = patient_id,
+    group       = condition_levels[group],
+    e_i         = e_i,
+    influence_i = influence_i,
+    stringsAsFactors = FALSE
+  )
+
+  S_g <- attr(V, "S_g")
+  image_sum_list <- attr(V, "image_sum")
+  raw_residual_image_sum_list <- attr(V, "raw_residual_image_sum")
+
+  image_rows <- lapply(seq_along(patients), function(idx) {
+    patient <- patients[[idx]]
+    image_sum <- image_sum_list[[idx]]
+    raw_residual_sum <- raw_residual_image_sum_list[[idx]]
+
+    w_g <- if (patient$group == 1) -1 / S_g[1] else 1 / S_g[2]
+    e_ij <- w_g * image_sum
+
+    stopifnot(isTRUE(all.equal(as.numeric(sum(e_ij)), as.numeric(e_i[idx]))))
+
+    influence_ij <- if (e_i[idx] == 0) {
+      rep(NA_real_, length(e_ij))
+    } else {
+      influence_i[idx] * (e_ij / e_i[idx])
+    }
+
+    data.frame(
+      patient_id               = patient$patient_id,
+      image_id                 = patient$image_ids,
+      group                    = condition_levels[patient$group],
+      n_ij                     = patient$n_ij,
+      raw_residual_sum_ij      = raw_residual_sum,
+      adjusted_residual_sum_ij = image_sum,
+      e_ij                     = e_ij,
+      influence_ij             = influence_ij,
+      stringsAsFactors = FALSE
+    )
+  })
+
+  image_tbl <- do.call(rbind, image_rows)
+
+  list(patient = patient_tbl, image = image_tbl)
 }
 
 compute_e_i <- function(raw_sum, group, S_g) {
@@ -184,5 +247,5 @@ waldTest_CR2_fast <- function(L_beta, V, patients, method = "direct") {
   t_stat <- L_beta / sqrt(v_hat)
   p_value <- 2 * stats::pt(abs(t_stat), df = nu_hat, lower.tail = FALSE)
   
-  list(t = t_stat, df = nu_hat, p.value = p_value, v_hat = v_hat)
+  list(t = t_stat, df = nu_hat, p.value = p_value, v_hat = v_hat, e_i = e_i)
 }
