@@ -21,7 +21,10 @@ otherwise by \code{subject}.}
 A list with \code{patient} (columns \code{patient_id}, \code{group},
   \code{T_i}, \code{S_g}, \code{l_i}) and \code{image} (columns
   \code{patient_id}, \code{image_id}, \code{group}, \code{n_ij},
-  \code{density_ij}, \code{l_ij}) data frames.
+  \code{density_ij}, \code{l_ij}, \code{l_ij_group_share}) data frames.
+  \code{l_ij_group_share = l_i * l_ij} is each image's share of its
+  patient's group-wide leverage share, so it sums to \code{l_i} across a
+  patient's images.
 }
 \description{
 Leverage share is exactly pre-fit computable (the `exp(beta_hat)` term

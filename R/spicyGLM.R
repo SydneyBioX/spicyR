@@ -762,7 +762,10 @@ computeImage = function(dfImg,
 #' @return A list with \code{patient} (columns \code{patient_id}, \code{group},
 #'   \code{T_i}, \code{S_g}, \code{l_i}) and \code{image} (columns
 #'   \code{patient_id}, \code{image_id}, \code{group}, \code{n_ij},
-#'   \code{density_ij}, \code{l_ij}) data frames.
+#'   \code{density_ij}, \code{l_ij}, \code{l_ij_group_share}) data frames.
+#'   \code{l_ij_group_share = l_i * l_ij} is each image's share of its
+#'   patient's group-wide leverage share, so it sums to \code{l_i} across a
+#'   patient's images.
 computeLeverage <- function(dfResultPairwise, oneToOne, subject = NULL) {
 
   patient_id <- if (oneToOne) {
@@ -807,11 +810,14 @@ computeLeverage <- function(dfResultPairwise, oneToOne, subject = NULL) {
 
   image_tbl <- image_tbl |>
     dplyr::left_join(
-      dplyr::select(patient_tbl, patient_id, T_i),
+      dplyr::select(patient_tbl, patient_id, T_i, l_i),
       by = "patient_id"
     ) |>
-    dplyr::mutate(l_ij = (n_ij * density_ij) / T_i) |>
-    dplyr::select(patient_id, image_id, group, n_ij, density_ij, l_ij) |>
+    dplyr::mutate(
+      l_ij = (n_ij * density_ij) / T_i,
+      l_ij_group_share = l_i * l_ij
+    ) |>
+    dplyr::select(patient_id, image_id, group, n_ij, density_ij, l_ij, l_ij_group_share) |>
     as.data.frame()
 
   list(patient = patient_tbl, image = image_tbl)
@@ -971,8 +977,9 @@ assembleDiagnosticsTables <- function(leverage_result, influence_result, shift_r
       dplyr::select(influence_result$image, -n_ij),
       by = c("patient_id", "image_id", "group")
     ) |>
-    dplyr::select(patient_id, image_id, group, n_ij, density_ij, l_ij,
-                  raw_residual_sum_ij, adjusted_residual_sum_ij, e_ij, influence_ij) |>
+    dplyr::select(patient_id, image_id, group, n_ij, density_ij, l_ij, l_ij_group_share,
+                  raw_residual_sum_ij, adjusted_residual_sum_ij, e_ij, e_ij_share_within_patient,
+                  influence_ij) |>
     as.data.frame()
 
   list(patient = table2, image = table3)
@@ -1013,7 +1020,10 @@ computePairSummary <- function(waldResult, table2) {
 #' within-patient; influence: pair-wide), so values become comparable across
 #' cell-type pairs with different patient/image counts. Computes both the
 #' leverage and influence pathways in one pass, since \code{crossPairDiagnostics()}
-#' needs both.
+#' needs both. At \code{level = "patient"}, also ranks the point-estimate
+#' shift \code{delta_i} pair-wide by raw \code{abs(delta_i)} -- no rescaling,
+#' since \code{delta_i} has no natural "share of a total" baseline. There is
+#' no image-level equivalent: no \code{delta_ij} exists to rank.
 #'
 #' @param diagnostics The stacked, multi-pair \code{list(pair=, patient=, image=)}
 #'   from \code{buildGLM()}/\code{combineGLM()}'s \code{computeDiagnostics = TRUE} path.
@@ -1036,16 +1046,18 @@ computeRelativeDiagnostics <- function(diagnostics, level = c("patient", "image"
       dplyr::mutate(
         n_patients_in_pair = dplyr::n(),
         rel_influence_i = influence_i * n_patients_in_pair,
-        percentile_rank_influence = dplyr::percent_rank(rel_influence_i)
+        percentile_rank_influence = dplyr::percent_rank(rel_influence_i),
+        percentile_rank_delta = dplyr::percent_rank(abs(delta_i))
       ) |>
       dplyr::ungroup() |>
       dplyr::mutate(
         percentile_rank_leverage  = ifelse(is.nan(percentile_rank_leverage),  NA_real_, percentile_rank_leverage),
-        percentile_rank_influence = ifelse(is.nan(percentile_rank_influence), NA_real_, percentile_rank_influence)
+        percentile_rank_influence = ifelse(is.nan(percentile_rank_influence), NA_real_, percentile_rank_influence),
+        percentile_rank_delta     = ifelse(is.nan(percentile_rank_delta),     NA_real_, percentile_rank_delta)
       ) |>
       dplyr::select(patient_id, group, from, to, n_patients_per_group, n_patients_in_pair,
                     l_i, influence_i, delta_i, rel_l_i, percentile_rank_leverage,
-                    rel_influence_i, percentile_rank_influence,
+                    rel_influence_i, percentile_rank_influence, percentile_rank_delta,
                     n_i, T_i, S_g, raw_residual_sum, adjusted_residual_sum, e_i, y_i, d_i) |>
       as.data.frame()
   } else {
@@ -1069,9 +1081,10 @@ computeRelativeDiagnostics <- function(diagnostics, level = c("patient", "image"
       ) |>
       dplyr::select(patient_id, image_id, group, from, to,
                     n_images_for_patient, n_images_in_pair,
-                    l_ij, influence_ij, rel_l_ij, percentile_rank_leverage,
+                    l_ij, l_ij_group_share, influence_ij, rel_l_ij, percentile_rank_leverage,
                     rel_influence_ij, percentile_rank_influence,
-                    density_ij, raw_residual_sum_ij, adjusted_residual_sum_ij, e_ij) |>
+                    density_ij, raw_residual_sum_ij, adjusted_residual_sum_ij, e_ij,
+                    e_ij_share_within_patient) |>
       as.data.frame()
   }
 
@@ -1082,9 +1095,33 @@ computeRelativeDiagnostics <- function(diagnostics, level = c("patient", "image"
 #'
 #' For each patient (or patient/image), across every cell-type pair it
 #' appears in, computes how often it lands in the top \code{topPercent} of
-#' the within-pair percentile rank, for both the leverage and influence
-#' pathways independently, with a Wilson score interval around each
-#' proportion to discount thin evidence (few pairs present).
+#' the within-pair percentile rank, for the leverage and influence pathways
+#' independently, with a Wilson score interval around each proportion to
+#' discount thin evidence (few pairs present). At patient level, also adds
+#' a third, independent pathway for the point-estimate shift
+#' (\code{percentile_rank_delta}); there is no image-level equivalent, since
+#' \code{computeRelativeDiagnostics(level = "image")} never computes
+#' \code{percentile_rank_delta}.
+#'
+#' At image level, also adds four summary columns, each the average (over
+#' every cell-type pair that image appears in for its patient, not
+#' restricted to flagged pairs) of a per-pair share -- always in [0,1] since
+#' \code{v_hat = sum(e_i^2)} makes \code{influence_i} bounded exactly like
+#' \code{l_i}:
+#' \itemize{
+#'   \item \code{mean_influence_share_ij} -- average influence share of this
+#'     image \emph{for this patient} (mean of \code{e_ij_share_within_patient},
+#'     algebraically identical to \code{influence_ij / influence_i}).
+#'   \item \code{mean_influence_ij} -- average influence share of this image
+#'     \emph{across all patients} (both condition groups pooled, since
+#'     \code{v_hat} sums \code{e_i^2} over every patient in the pair).
+#'   \item \code{mean_l_ij} -- average leverage share of this image
+#'     \emph{for this patient}.
+#'   \item \code{mean_l_ij_group_share} -- average leverage share of this
+#'     image \emph{across the entire condition group} (own group only, since
+#'     \code{l_i = T_i/S_g} is normalized within-group, unlike
+#'     \code{influence_i}'s pooling across both groups).
+#' }
 #'
 #' @param relative_table Output of \code{computeRelativeDiagnostics()}.
 #'   Patient- vs. image-level is inferred from whether an \code{image_id}
@@ -1092,8 +1129,10 @@ computeRelativeDiagnostics <- function(diagnostics, level = c("patient", "image"
 #' @param topPercent Numeric in (0,1); the top fraction of the within-pair
 #'   percentile rank counted as "flagged". Default 0.05.
 #'
-#' @return A data frame, one row per patient (or patient/image), sorted by
-#'   \code{wilson_lower_influence} descending.
+#' @return A data frame, one row per patient (or patient/image), with a
+#'   \code{group} column (condition group, invariant across cell-type pairs
+#'   for a given patient/image), sorted by \code{wilson_lower_influence}
+#'   descending.
 #'
 #' @importFrom binom binom.wilson
 crossPairDiagnostics <- function(relative_table, topPercent = 0.05) {
@@ -1101,22 +1140,69 @@ crossPairDiagnostics <- function(relative_table, topPercent = 0.05) {
   isImageLevel <- "image_id" %in% names(relative_table)
   groupVars <- if (isImageLevel) c("patient_id", "image_id") else "patient_id"
 
-  result <- relative_table |>
+  n_distinct_group <- relative_table |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(groupVars))) |>
+    dplyr::summarise(n_distinct_group = dplyr::n_distinct(group), .groups = "drop")
+  if (any(n_distinct_group$n_distinct_group > 1)) {
+    stop(
+      "crossPairDiagnostics(): `group` varies across cell-type pairs for the ",
+      "same ", paste(groupVars, collapse = "/"), " -- a patient/image's ",
+      "condition group should be fixed, not pair-dependent.",
+      call. = FALSE
+    )
+  }
+
+  relative_table <- relative_table |>
     dplyr::mutate(
       flagged_influence = percentile_rank_influence >= (1 - topPercent),
       flagged_leverage  = percentile_rank_leverage  >= (1 - topPercent)
-    ) |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(groupVars))) |>
-    dplyr::summarise(
-      n_pairs_present = dplyr::n(),
-      n_pairs_flagged_influence = sum(flagged_influence, na.rm = TRUE),
-      n_pairs_flagged_leverage  = sum(flagged_leverage,  na.rm = TRUE),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      prop_flagged_influence = n_pairs_flagged_influence / n_pairs_present,
-      prop_flagged_leverage  = n_pairs_flagged_leverage  / n_pairs_present
     )
+
+  if (!isImageLevel) {
+    relative_table <- relative_table |>
+      dplyr::mutate(flagged_delta = percentile_rank_delta >= (1 - topPercent))
+  }
+
+  grouped <- relative_table |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(groupVars)))
+
+  if (isImageLevel) {
+    result <- grouped |>
+      dplyr::summarise(
+        group = dplyr::first(group),
+        n_pairs_present = dplyr::n(),
+        mean_influence_share_ij = mean(e_ij_share_within_patient, na.rm = TRUE),
+        mean_influence_ij       = mean(influence_ij, na.rm = TRUE),
+        mean_l_ij               = mean(l_ij, na.rm = TRUE),
+        mean_l_ij_group_share   = mean(l_ij_group_share, na.rm = TRUE),
+        n_pairs_flagged_influence = sum(flagged_influence, na.rm = TRUE),
+        n_pairs_flagged_leverage  = sum(flagged_leverage,  na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        mean_influence_share_ij = ifelse(is.nan(mean_influence_share_ij), NA_real_, mean_influence_share_ij),
+        mean_influence_ij       = ifelse(is.nan(mean_influence_ij),       NA_real_, mean_influence_ij),
+        mean_l_ij               = ifelse(is.nan(mean_l_ij),               NA_real_, mean_l_ij),
+        mean_l_ij_group_share   = ifelse(is.nan(mean_l_ij_group_share),   NA_real_, mean_l_ij_group_share),
+        prop_flagged_influence = n_pairs_flagged_influence / n_pairs_present,
+        prop_flagged_leverage  = n_pairs_flagged_leverage  / n_pairs_present
+      )
+  } else {
+    result <- grouped |>
+      dplyr::summarise(
+        group = dplyr::first(group),
+        n_pairs_present = dplyr::n(),
+        n_pairs_flagged_influence = sum(flagged_influence, na.rm = TRUE),
+        n_pairs_flagged_leverage  = sum(flagged_leverage,  na.rm = TRUE),
+        n_pairs_flagged_delta     = sum(flagged_delta,     na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        prop_flagged_influence = n_pairs_flagged_influence / n_pairs_present,
+        prop_flagged_leverage  = n_pairs_flagged_leverage  / n_pairs_present,
+        prop_flagged_delta     = n_pairs_flagged_delta     / n_pairs_present
+      )
+  }
 
   wilson_inf <- binom::binom.wilson(result$n_pairs_flagged_influence, result$n_pairs_present)
   wilson_lev <- binom::binom.wilson(result$n_pairs_flagged_leverage,  result$n_pairs_present)
@@ -1125,6 +1211,22 @@ crossPairDiagnostics <- function(relative_table, topPercent = 0.05) {
   result$wilson_upper_influence <- wilson_inf$upper
   result$wilson_lower_leverage  <- wilson_lev$lower
   result$wilson_upper_leverage  <- wilson_lev$upper
+
+  if (!isImageLevel) {
+    wilson_delta <- binom::binom.wilson(result$n_pairs_flagged_delta, result$n_pairs_present)
+    result$wilson_lower_delta <- wilson_delta$lower
+    result$wilson_upper_delta <- wilson_delta$upper
+  }
+
+  if (isImageLevel) {
+    result <- result |>
+      dplyr::select(patient_id, image_id, group, n_pairs_present,
+                    mean_influence_share_ij, mean_influence_ij, mean_l_ij, mean_l_ij_group_share,
+                    n_pairs_flagged_influence, prop_flagged_influence,
+                    wilson_lower_influence, wilson_upper_influence,
+                    n_pairs_flagged_leverage, prop_flagged_leverage,
+                    wilson_lower_leverage, wilson_upper_leverage)
+  }
 
   result |>
     dplyr::arrange(dplyr::desc(wilson_lower_influence)) |>

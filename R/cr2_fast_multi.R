@@ -176,15 +176,22 @@ computeInfluence <- function(patients, waldResult, condition_levels, V) {
       influence_i[idx] * (e_ij / e_i[idx])
     }
 
+    e_ij_share_within_patient <- if (e_i[idx] == 0) {
+      rep(NA_real_, length(e_ij))
+    } else {
+      e_ij / e_i[idx]
+    }
+
     data.frame(
-      patient_id               = patient$patient_id,
-      image_id                 = patient$image_ids,
-      group                    = condition_levels[patient$group],
-      n_ij                     = patient$n_ij,
-      raw_residual_sum_ij      = raw_residual_sum,
-      adjusted_residual_sum_ij = image_sum,
-      e_ij                     = e_ij,
-      influence_ij             = influence_ij,
+      patient_id                = patient$patient_id,
+      image_id                  = patient$image_ids,
+      group                     = condition_levels[patient$group],
+      n_ij                      = patient$n_ij,
+      raw_residual_sum_ij       = raw_residual_sum,
+      adjusted_residual_sum_ij  = image_sum,
+      e_ij                      = e_ij,
+      e_ij_share_within_patient = e_ij_share_within_patient,
+      influence_ij              = influence_ij,
       stringsAsFactors = FALSE
     )
   })

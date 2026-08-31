@@ -22,5 +22,8 @@ against their own natural comparison scope (leverage: within-group or
 within-patient; influence: pair-wide), so values become comparable across
 cell-type pairs with different patient/image counts. Computes both the
 leverage and influence pathways in one pass, since \code{crossPairDiagnostics()}
-needs both.
+needs both. At \code{level = "patient"}, also ranks the point-estimate
+shift \code{delta_i} pair-wide by raw \code{abs(delta_i)} -- no rescaling,
+since \code{delta_i} has no natural "share of a total" baseline. There is
+no image-level equivalent: no \code{delta_ij} exists to rank.
 }

@@ -15,13 +15,40 @@ column is present.}
 percentile rank counted as "flagged". Default 0.05.}
 }
 \value{
-A data frame, one row per patient (or patient/image), sorted by
-  \code{wilson_lower_influence} descending.
+A data frame, one row per patient (or patient/image), with a
+  \code{group} column (condition group, invariant across cell-type pairs
+  for a given patient/image), sorted by \code{wilson_lower_influence}
+  descending.
 }
 \description{
 For each patient (or patient/image), across every cell-type pair it
 appears in, computes how often it lands in the top \code{topPercent} of
-the within-pair percentile rank, for both the leverage and influence
-pathways independently, with a Wilson score interval around each
-proportion to discount thin evidence (few pairs present).
+the within-pair percentile rank, for the leverage and influence pathways
+independently, with a Wilson score interval around each proportion to
+discount thin evidence (few pairs present). At patient level, also adds
+a third, independent pathway for the point-estimate shift
+(\code{percentile_rank_delta}); there is no image-level equivalent, since
+\code{computeRelativeDiagnostics(level = "image")} never computes
+\code{percentile_rank_delta}.
+}
+\details{
+At image level, also adds four summary columns, each the average (over
+every cell-type pair that image appears in for its patient, not
+restricted to flagged pairs) of a per-pair share -- always in [0,1] since
+\code{v_hat = sum(e_i^2)} makes \code{influence_i} bounded exactly like
+\code{l_i}:
+\itemize{
+  \item \code{mean_influence_share_ij} -- average influence share of this
+    image \emph{for this patient} (mean of \code{e_ij_share_within_patient},
+    algebraically identical to \code{influence_ij / influence_i}).
+  \item \code{mean_influence_ij} -- average influence share of this image
+    \emph{across all patients} (both condition groups pooled, since
+    \code{v_hat} sums \code{e_i^2} over every patient in the pair).
+  \item \code{mean_l_ij} -- average leverage share of this image
+    \emph{for this patient}.
+  \item \code{mean_l_ij_group_share} -- average leverage share of this
+    image \emph{across the entire condition group} (own group only, since
+    \code{l_i = T_i/S_g} is normalized within-group, unlike
+    \code{influence_i}'s pooling across both groups).
+}
 }
