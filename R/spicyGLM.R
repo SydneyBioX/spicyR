@@ -9,12 +9,28 @@
 #' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
 #' @param cellType A character specifying which column in \code{cells} which contains the cell types.
 #' @param spatialCoords A character vector of length 2 specifying the columns for x and y coordinates if using a \code{SingleCellExperiment} object.
-#' @param r Radius around each reference cell to consider for counting neighboring cells.
+#' @param r Radius around each reference cell to consider for counting neighboring
+#'   cells. Required for \code{family = "poisson"}; ignored for
+#'   \code{family = "binomial"}.
 #' @param from Character vector of reference cell types. If NULL, all cell types are used.
 #' @param to Character vector of target cell types. If NULL, all cell types are used.
 #' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
-#' @param cores Number of cores to use for parallel computation. 
-#' @param cr2Method Character specifying how to compute the CR2-adjusted variance and p-value. 
+#' @param cores Number of cores to use for parallel computation.
+#' @param family Character specifying the neighbourhood model.
+#'   \code{"poisson"} (default) counts TARGET neighbours within radius \code{r}
+#'   and fits a no-intercept Poisson GLM with a log-density offset; the effect is
+#'   a (log) rate ratio. \code{"binomial"} searches each reference cell's \code{k}
+#'   nearest neighbours (any cell type) and models how many are TARGET as
+#'   Binomial with a logit-scale background-prevalence offset; the effect is a
+#'   (log) odds ratio, reported in \code{logOddsRatio}/\code{oddsRatio}. A
+#'   binomial run is independent of a poisson run. \code{r} and \code{window}
+#'   play no role for binomial (the neighbour search is a plain Euclidean k-NN
+#'   with no edge correction). Firth has no closed form for the binomial design,
+#'   so \code{firthBackend} is forced to \code{"brglm2"} and
+#'   \code{computeDiagnostics} is not supported.
+#' @param k Number of nearest neighbours to search per reference cell. Required
+#'   (a positive integer) when \code{family = "binomial"}; ignored otherwise.
+#' @param cr2Method Character specifying how to compute the CR2-adjusted variance and p-value.
 #'   \code{"fast"} (default) closely matches \code{clubSandwich} at substantially lower cost.  
 #'   \code{"clubSandwich"} uses the \code{clubSandwich} package directly.
 #' @param fastMethod Eigendecomposition routine used internally when
@@ -56,10 +72,19 @@
 #'   \item{comparisons}{Data frame with the reference and target cell types for each pair
 #'     and a combined label (from__to).}
 #'   \item{nCells}{Table of cell counts per image and cell type.}
-#'   \item{GLMresults}{Data frame of Poisson GLM results for each cell type pair using CR2.}
-#'   \item{diagnostics}{If \code{computeDiagnostics = TRUE}, \code{list(pair = <df>,
-#'     patient = <df>, image = <df>, crossPair = list(patient = <df>, image = <df>))}
-#'     of QC diagnostics across all pairs -- see \code{computeDiagnostics} above.}
+#'   \item{GLMresults}{Data frame of GLM results for each cell type pair using CR2.
+#'     Columns \code{coef_ref}/\code{coef_comp} are the per-group fitted
+#'     coefficients (log expected neighbour count for poisson, logit-scale for
+#'     binomial); the effect columns are \code{logRateRatio}/\code{rateRatio} for
+#'     \code{family = "poisson"} and \code{logOddsRatio}/\code{oddsRatio} for
+#'     \code{family = "binomial"}. A \code{family} column records which model was
+#'     used.}
+#'   \item{family}{\code{"poisson"} or \code{"binomial"}; the model this result
+#'     was produced with.}
+#'   \item{diagnostics}{If \code{computeDiagnostics = TRUE} (poisson only),
+#'     \code{list(pair = <df>, patient = <df>, image = <df>,
+#'     crossPair = list(patient = <df>, image = <df>))} of QC diagnostics across
+#'     all pairs -- see \code{computeDiagnostics} above.}
 #' }
 #' 
 #' @export
@@ -90,7 +115,10 @@
                                  imageID = "imageID",
                                  cellType = "cellType",
                                  GLMresults = NULL,
-                                 messages = character(0)) {
+                                 messages = character(0),
+                                 family = c("poisson", "binomial")) {
+
+  family <- match.arg(family)
   
   # --- condition vector (per image) ---
   conditionVector <- as.data.frame(getImagePheno(cells, imageID = imageID))[[condition]]
@@ -116,10 +144,12 @@
   nCellsTab <- table(getImageID(cells, imageID = imageID), getCellType(cells, cellType = cellType))
   
   # --- enforce fixed schema for GLMresults ---
+  effect_cols <- .glm_effect_cols(family)
   required_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
-                     "logRateRatio", "rateRatio", "p.value", "estimator",
+                     effect_cols[1], effect_cols[2], "p.value", "estimator", "family",
                      "mle_would_skip", "mle_skip_reason")
-  char_cols <- c("from", "to", "conditionRef", "conditionComp", "estimator", "mle_skip_reason")
+  char_cols <- c("from", "to", "conditionRef", "conditionComp", "estimator", "family",
+                 "mle_skip_reason")
   if (is.null(GLMresults)) {
     GLMresults <- as.data.frame(
       setNames(
@@ -157,14 +187,22 @@
     nCells = nCellsTab,
     GLMresults = GLMresults,
     comparisons = comparisons,
-    isGLM = TRUE
+    isGLM = TRUE,
+    family = family
   )
-  
+
   if (!is.null(subjectVector)) out$subject <- subjectVector
   if (length(messages) > 0) out$messages <- messages
-  
+
   class(out) <- "SpicyResults"
   out
+}
+
+# Effect-column names for a GLM result frame. Poisson reports a (log) rate
+# ratio; the Binomial fixed-k design reports a (log) odds ratio.
+.glm_effect_cols <- function(family = c("poisson", "binomial")) {
+  family <- match.arg(family)
+  if (family == "binomial") c("logOddsRatio", "oddsRatio") else c("logRateRatio", "rateRatio")
 }
 
 
@@ -174,22 +212,50 @@ spicyGLM = function(cells,
                     imageID = "imageID",
                     cellType = "cellType",
                     spatialCoords = c("x", "y"),
-                    r,
+                    r = NULL,
                     from = NULL,
                     to = NULL,
                     window = "convex",
                     cores = 1,
+                    family = c("poisson", "binomial"),
+                    k = NULL,
                     cr2Method = c("fast", "clubSandwich"),
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
                     computeDiagnostics = FALSE) {
 
+  family <- match.arg(family)
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
   estimator <- match.arg(estimator)
   firthBackend <- match.arg(firthBackend)
-  
+
+  # --- family-specific neighbourhood argument ---
+  if (family == "binomial") {
+    if (is.null(k) || length(k) != 1 || !is.finite(k) || k < 1 || k != as.integer(k)) {
+      stop("`family = \"binomial\"` requires `k`, a single positive integer ",
+           "(the number of nearest neighbours to search per reference cell).",
+           call. = FALSE)
+    }
+    k <- as.integer(k)
+    if (!is.null(r)) {
+      message("`family = \"binomial\"` uses `k` nearest neighbours; the `r` radius is ignored.")
+    }
+    if (estimator == "firth" && firthBackend == "closed_form") {
+      message("Firth has no closed form for the Binomial design; using firthBackend = 'brglm2'.")
+      firthBackend <- "brglm2"
+    }
+    if (isTRUE(computeDiagnostics)) {
+      message("computeDiagnostics is not supported for family = 'binomial' ",
+              "(the leverage/influence/point-shift closed forms assume closed-form Firth); ",
+              "`$diagnostics` will be NULL.")
+      computeDiagnostics <- FALSE
+    }
+  } else if (is.null(r)) {
+    stop("Please provide `r`, the radius around each reference cell.", call. = FALSE)
+  }
+
   # this is a wrapper function
   # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
   checkCells(cells)
@@ -258,21 +324,28 @@ spicyGLM = function(cells,
     ))
   }
   
+  effect_cols <- .glm_effect_cols(family)
+  keep_cols <- c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
+                 effect_cols[1], effect_cols[2], "p.value", "estimator", "family",
+                 "mle_would_skip", "mle_skip_reason")
+
   base_out <- .new_spicyGLM_result(
     cells = cells,
     condition = condition,
     subject = subject,
     imageID = imageID,
-    cellType = cellType
+    cellType = cellType,
+    family = family
   )
-  
+
   if (!is.null(from) && !is.null(to) && length(from) == 1 && length(to) == 1) {
     cat("Computing pairwise spatial metrics...\n")
     dfPair <- modelDataGen(cells = cells, condition = condition, subject = subject,
                            from = from, to = to, r = r, imageID = imageID,
                            cellType = cellType, spatialCoords = spatialCoords,
-                           window = window, cores = 1, oneToOne = oneToOne, cellTypePresence = cellTypePresence)
-    
+                           window = window, cores = 1, oneToOne = oneToOne,
+                           cellTypePresence = cellTypePresence, family = family, k = k)
+
     if (nrow(dfPair) == 0) {
       base_out$messages <- attr(dfPair, "skipMessage")
       base_out$skipped <- .new_spicy_skip(from, to, reason = attr(dfPair, "skipReason"),
@@ -284,7 +357,7 @@ spicyGLM = function(cells,
     GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                            fastMethod = fastMethod, estimator = estimator,
                            firthBackend = firthBackend, computeDiagnostics = computeDiagnostics,
-                           cellTypePresence = cellTypePresence)
+                           cellTypePresence = cellTypePresence, family = family, k = k)
     
     if (is.data.frame(GLMresults) && "reason" %in% colnames(GLMresults)) {
       base_out$skipped <- GLMresults
@@ -311,9 +384,7 @@ spicyGLM = function(cells,
     }
 
     GLMresults <- GLMresults |>
-      dplyr::select(c("from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
-                      "logRateRatio", "rateRatio", "p.value", "estimator", "mle_would_skip",
-                      "mle_skip_reason"))
+      dplyr::select(dplyr::all_of(keep_cols))
 
     base_out$GLMresults <- GLMresults
     base_out$diagnostics <- diagnostics_tbl
@@ -328,13 +399,15 @@ spicyGLM = function(cells,
     dfList = getPairwiseAssoc(cells = cells, condition = condition, subject = subject,
                               from = from, to = to, r = r, imageID = imageID,
                               cellType = cellType, spatialCoords = spatialCoords,
-                              window = window, cores = cores, cellTypePresence = cellTypePresence)
-    
+                              window = window, cores = cores, cellTypePresence = cellTypePresence,
+                              family = family, k = k)
+
     cat("Fitting GLM models for each cell type pair...\n")
     GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, subject = subject, cores = cores,
                             cr2Method = cr2Method, fastMethod = fastMethod,
                             estimator = estimator, firthBackend = firthBackend,
-                            computeDiagnostics = computeDiagnostics, cellTypePresence = cellTypePresence)
+                            computeDiagnostics = computeDiagnostics, cellTypePresence = cellTypePresence,
+                            family = family, k = k)
     
     skipped <- attr(GLMresults, "skipped")
     if (!is.null(skipped) && nrow(skipped) > 0) {
@@ -433,19 +506,21 @@ diagnoseMissingConditions <- function(from, to, missingConditions, cellTypePrese
 #' @importFrom dplyr bind_rows
 #' @importFrom BiocParallel bplapply MulticoreParam SerialParam
 #' @importFrom dplyr bind_rows
-modelDataGen = function(cells, 
+modelDataGen = function(cells,
                         condition,
                         subject = NULL,
-                        from, 
-                        to, 
-                        r, 
+                        from,
+                        to,
+                        r,
                         imageID,
                         cellType,
                         spatialCoords = c("x", "y"),
-                        window = "convex", 
+                        window = "convex",
                         cores = 1,
                         oneToOne,
-                        cellTypePresence) {
+                        cellTypePresence,
+                        family = "poisson",
+                        k = NULL) {
   
   # this function generates pairwise metrics for a single cell type pair across all images
   # format data into a dataframe
@@ -487,7 +562,8 @@ modelDataGen = function(cells,
   
   ## same bplapply/SerialParam fix as combineGLM/getPairwiseAssoc
   worker <- function(dfImg) {
-    computeImage(dfImg, r = r, window = window, from = from, to = to)
+    computeImage(dfImg, r = r, window = window, from = from, to = to,
+                 family = family, k = k)
   }
   
   if (cores > 1) {
@@ -528,9 +604,15 @@ modelDataGen = function(cells,
 #' @param from Character vector of reference cell types. If \code{NULL}, all cell types are used.
 #' @param to Character vector of target cell types. If \code{NULL}, all cell types are used.
 #' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
-#' @param cores Number of cores to use for parallel computation. 
-#' 
-#' 
+#' @param cores Number of cores to use for parallel computation.
+#' @param cellTypePresence Presence table from \code{computeCellTypePresence()};
+#'   used to explain why a pair has no testable data in a condition group.
+#' @param family \code{"poisson"} (radius-based neighbour counts, default) or
+#'   \code{"binomial"} (fixed-\code{k} nearest-neighbour design).
+#' @param k Number of nearest neighbours per reference cell; required when
+#'   \code{family = "binomial"}, ignored otherwise.
+#'
+#'
 #' @examples
 #' \dontrun{
 #' kerenSPE = SpatialDatasets::spe_Keren_2018()
@@ -566,7 +648,9 @@ getPairwiseAssoc = function(cells,
                             to = NULL, 
                             window = "convex",
                             cores = 1,
-                            cellTypePresence) { 
+                            cellTypePresence,
+                            family = "poisson",
+                            k = NULL) {
   # this function computes pairwise metrics for all images - a wrapper for modelDataGen
   # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
   checkCells(cells)
@@ -639,7 +723,9 @@ getPairwiseAssoc = function(cells,
                       window = window,
                       cores = 1,
                       oneToOne = oneToOne,
-                      cellTypePresence = cellTypePresence)
+                      cellTypePresence = cellTypePresence,
+                      family = family,
+                      k = k)
     
     if (is.null(df)) {
       df = NULL
@@ -669,13 +755,15 @@ getPairwiseAssoc = function(cells,
   return(namedList)
 }
 
-#' @importFrom spatstat.geom owin convexhull.xy area.owin crosspairs
+#' @importFrom spatstat.geom owin convexhull.xy area.owin crosspairs ppp npoints nnwhich
 #' @importFrom concaveman concaveman
 computeImage = function(dfImg,
                         from,
                         to,
                         r,
-                        window = "convex") {
+                        window = "convex",
+                        family = "poisson",
+                        k = NULL) {
   # extract image metadata
   img = dfImg$imageID[1]
   conditionImg = dfImg$condition[1]
@@ -701,7 +789,56 @@ computeImage = function(dfImg,
     ), call. = FALSE)
     return(NULL)
   }
-  
+
+  if (family == "binomial") {
+    # fixed-k nearest-neighbour design: for each REF cell, how many of its k
+    # nearest neighbours (any cell type) are TARGET, against the image-level
+    # background TARGET proportion p0. The `window` argument plays no role here
+    # -- nnwhich() is a plain Euclidean search with no edge correction, and p0
+    # is a raw cell-count ratio -- so no convex/concave hull is built.
+    nAll = nrow(coordsImg)
+    if (nAll <= k) {
+      warning(paste0(
+        "Skipping image ", img, " for pair ", from, "__", to,
+        ": only ", nAll, " cells, fewer than k + 1 = ", k + 1,
+        " needed for a k-nearest-neighbour search."
+      ), call. = FALSE)
+      return(NULL)
+    }
+
+    p0 = length(idxTo) / nAll
+    if (!is.finite(stats::qlogis(p0))) {
+      warning(paste0(
+        "Skipping image ", img, " for pair ", from, "__", to,
+        ": background TARGET proportion p0 = ", signif(p0, 3),
+        " gives a non-finite logit offset (the image contains a single cell type)."
+      ), call. = FALSE)
+      return(NULL)
+    }
+
+    bbox   = owin(xrange = range(coordsImg$x), yrange = range(coordsImg$y))
+    ppAll  = spatstat.geom::ppp(coordsImg$x, coordsImg$y, window = bbox, check = FALSE)
+    nnIdx  = spatstat.geom::nnwhich(ppAll, k = seq_len(k))
+    nnIdx  = matrix(nnIdx, ncol = k)
+    isTgt  = matrix(typesImg[nnIdx] == to, ncol = k)
+    yCount = rowSums(isTgt)[idxFrom]
+
+    dfResult = data.frame(cellID = as.factor(imgCellID[idxFrom]),
+                          from = from,
+                          to = to,
+                          imageID = as.factor(img),
+                          n = yCount,
+                          k = k,
+                          p0 = p0,
+                          condition = as.factor(conditionImg))
+
+    if ("subject" %in% colnames(dfImg)) {
+      dfResult$subject = as.factor(dfImg$subject[1])
+    }
+
+    return(dfResult)
+  }
+
   # define the spatial window for the image
   if (window == "rectangle") {
     win = owin(xrange = range(coordsImg$x), yrange = range(coordsImg$y))
@@ -713,21 +850,21 @@ computeImage = function(dfImg,
   } else {
     stop("Invalid value for `window`. Use 'rectangle', 'convex', or 'concave'.")
   }
-  
+
   # compute density
   areaImg = spatstat.geom::area.owin(win)
   ## should NOT BE idxFrom
   dens = (length(idxTo) / areaImg) * (pi * r^2)
-  
+
   # compute target counts per reference cell -- exact radius search via spatial
   # binning, replaces the dense fields::rdist matrix (validated: identical
   # counts, substantially faster, see benchmark)
   ptsFrom = spatstat.geom::ppp(coordsImg$x[idxFrom], coordsImg$y[idxFrom], window = win, check = FALSE)
   ptsTo   = spatstat.geom::ppp(coordsImg$x[idxTo],   coordsImg$y[idxTo],   window = win, check = FALSE)
-  
+
   cp = spatstat.geom::crosspairs(ptsFrom, ptsTo, rmax = r)
   countsToFrom = tabulate(cp$i, nbins = length(idxFrom))
-  
+
   # assemble result dataframe
   dfResult = data.frame(cellID = as.factor(imgCellID[idxFrom]),
                         from = from,
@@ -736,7 +873,7 @@ computeImage = function(dfImg,
                         n = countsToFrom,
                         condition = as.factor(conditionImg),
                         density = dens)
-  
+
   if ("subject" %in% colnames(dfImg)) {
     dfResult$subject = as.factor(dfImg$subject[1])
   }
@@ -1300,13 +1437,17 @@ buildGLM = function(dfResultPairwise,
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
                     computeDiagnostics = FALSE,
-                    cellTypePresence) {
+                    cellTypePresence,
+                    family = c("poisson", "binomial"),
+                    k = NULL) {
 
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
   estimator <- match.arg(estimator)
   firthBackend <- match.arg(firthBackend)
-  
+  family <- match.arg(family)
+  effect_cols <- .glm_effect_cols(family)
+
   from = dfResultPairwise$from |> unique()
   to = dfResultPairwise$to |> unique()
   
@@ -1324,55 +1465,92 @@ buildGLM = function(dfResultPairwise,
   }
   
   ## computed regardless of estimator, so Firth-fitted pairs still record
-  ## whether MLE would have been non-estimable here
-  mle_all_zero <- !any(dfResultPairwise$n > 0, na.rm = TRUE)
-  
+  ## whether ordinary MLE would have been non-estimable here. Poisson counts
+  ## are unbounded above, so only the floor (Y_g = 0) breaks the MLE; the
+  ## Binomial fixed-k response is bounded, so complete separation also occurs
+  ## at the ceiling (Y_g = k * N_g -- every neighbour is TARGET).
   pos_by_cond <- tapply(
     dfResultPairwise$n > 0, dfResultPairwise$condition,
     function(x) any(x, na.rm = TRUE)
   )
-  mle_zero_conds <- names(pos_by_cond)[!pos_by_cond]
-  mle_one_condition_zero <- length(mle_zero_conds) > 0 && !mle_all_zero
-  
-  mle_would_skip <- mle_all_zero || mle_one_condition_zero
-  mle_skip_reason <- if (mle_all_zero) {
-    "all_zero"
-  } else if (mle_one_condition_zero) {
-    "one_condition_zero"
-  } else {
+  floor_conds <- names(pos_by_cond)[!pos_by_cond]
+
+  ceil_conds <- character(0)
+  if (family == "binomial") {
+    full_by_cond <- tapply(
+      dfResultPairwise$n < k, dfResultPairwise$condition,
+      function(x) !any(x, na.rm = TRUE)
+    )
+    ceil_conds <- names(full_by_cond)[full_by_cond]
+  }
+
+  boundary_conds <- union(floor_conds, ceil_conds)
+  n_groups <- length(condition_levels)
+
+  mle_skip_reason <- if (length(boundary_conds) == 0) {
     NA_character_
+  } else if (length(boundary_conds) >= n_groups) {
+    if (all(boundary_conds %in% floor_conds)) "all_zero"
+    else if (all(boundary_conds %in% ceil_conds)) "all_max"
+    else "all_boundary"
+  } else {
+    if (all(boundary_conds %in% floor_conds)) "one_condition_zero" else "one_condition_max"
   }
-  
-  if (estimator == "mle" && mle_all_zero) {
-    msg <- paste0(
-      "Skipping pair ", from, "__", to, ": neighbour counts are identically zero ",
-      "(n = 0 for all reference cells in all images across both conditions). ",
-      "Condition effects are non-identifiable under the Poisson log-link, and ",
-      "this holds regardless of estimator -- both conditions carry no signal."
+  mle_would_skip <- !is.na(mle_skip_reason)
+
+  if (estimator == "mle" && mle_would_skip) {
+    effect_noun <- if (family == "binomial") "log odds ratio" else "log rate ratio"
+    link_noun   <- if (family == "binomial") "logit link" else "Poisson log-link"
+    fix_hint <- " Set estimator = 'firth' to fit this pair with the bias-reduced estimator, which remains finite in this case."
+    msg <- switch(
+      mle_skip_reason,
+      "all_zero" = paste0(
+        "Skipping pair ", from, "__", to, ": neighbour counts are identically zero ",
+        "across both conditions, so condition effects are non-identifiable under the ",
+        link_noun, " regardless of estimator -- both conditions carry no signal."
+      ),
+      "all_max" = paste0(
+        "Skipping pair ", from, "__", to, ": every reference cell has all ", k,
+        " nearest neighbours of type ", to, " in both conditions (complete separation ",
+        "at the upper bound), so the ", effect_noun,
+        " is non-identifiable regardless of estimator."
+      ),
+      "one_condition_zero" = paste0(
+        "Skipping pair ", from, "__", to, ": in condition(s) {",
+        paste(floor_conds, collapse = ", "), "} all neighbour counts are zero while ",
+        "other conditions have positive counts. This is complete separation (", effect_noun,
+        " -> +/-Inf) under ordinary MLE.", fix_hint
+      ),
+      "one_condition_max" = paste0(
+        "Skipping pair ", from, "__", to, ": in condition(s) {",
+        paste(ceil_conds, collapse = ", "), "} every reference cell has all ", k,
+        " neighbours of type ", to, " while other conditions do not. This is complete ",
+        "separation at the upper bound (", effect_noun, " -> +/-Inf) under ordinary MLE.",
+        fix_hint
+      ),
+      "all_boundary" = paste0(
+        "Skipping pair ", from, "__", to, ": both conditions sit at a separation boundary ",
+        "(one all-zero, the other all-", k, "). The ", effect_noun,
+        " would be driven entirely by boundary data and is not estimable under ordinary MLE.",
+        fix_hint
+      )
     )
     warning(msg, call. = FALSE)
-    return(.new_spicy_skip(from, to, reason = "all_zero", message = msg))
+    return(.new_spicy_skip(from, to, reason = mle_skip_reason, message = msg))
   }
-  
-  if (estimator == "mle" && mle_one_condition_zero) {
-    msg <- paste0(
-      "Skipping pair ", from, "__", to, ": structural zeros by condition. ",
-      "In condition(s) {", paste(mle_zero_conds, collapse = ", "), "} all ",
-      "neighbour counts are zero, while other conditions have positive counts. ",
-      "This places the Poisson condition contrast on the boundary of the ",
-      "parameter space (log rate ratio -> +/-Inf) under ordinary MLE, so the ",
-      "effect is non-estimable here. Set estimator = 'firth' to fit this pair ",
-      "with Firth's bias-reduced estimator instead, which remains finite in ",
-      "this case."
-    )
-    warning(msg, call. = FALSE)
-    return(.new_spicy_skip(from, to, reason = "one_condition_zero", message = msg))
-  }
-  
+
   if (estimator == "mle") {
-    GLMfit <- fit_mle_glm(dfResultPairwise)
+    GLMfit <- if (family == "binomial") {
+      fit_mle_binom_glm(dfResultPairwise)
+    } else {
+      fit_mle_glm(dfResultPairwise)
+    }
   } else {
     backend <- firthBackend
+    if (family == "binomial" && backend == "closed_form") {
+      # no closed-form Firth for the Binomial design (math doc, Proposition 18)
+      backend <- "brglm2"
+    }
     if (cr2Method == "clubSandwich" && backend == "closed_form") {
       message(
         "Pair ", from, "__", to, ": cr2Method = 'clubSandwich' requires a real ",
@@ -1380,7 +1558,7 @@ buildGLM = function(dfResultPairwise,
       )
       backend <- "brglm2"
     }
-    fitResult <- fit_pair(dfResultPairwise, estimator = "firth", backend = backend)
+    fitResult <- fit_pair(dfResultPairwise, estimator = "firth", backend = backend, family = family)
     GLMfit <- fitResult$fit
   }
   
@@ -1414,7 +1592,9 @@ buildGLM = function(dfResultPairwise,
                        cluster_vec = clusterVec,
                        df_result = dfResultPairwise,
                        fit = GLMfit,
-                       condition_levels = condition_levels)
+                       condition_levels = condition_levels,
+                       family = family,
+                       k = k)
     
     group_of_patient <- sapply(patients, function(p) p$group)
     group_sizes <- table(group_of_patient)
@@ -1509,8 +1689,10 @@ buildGLM = function(dfResultPairwise,
                    rateRatio     = exp(logRR),
                    p.value       = waldP,
                    estimator     = estimator,
+                   family        = family,
                    mle_would_skip = mle_would_skip,
                    mle_skip_reason = mle_skip_reason)
+  names(out)[match(c("logRateRatio", "rateRatio"), names(out))] <- effect_cols
 
   attr(out, "diagnostics") <- diagnostics
   return(out)
@@ -1559,13 +1741,17 @@ combineGLM = function(dfResult,
                       estimator = c("firth", "mle"),
                       firthBackend = c("closed_form", "brglm2"),
                       computeDiagnostics = FALSE,
-                      cellTypePresence) {
+                      cellTypePresence,
+                      family = c("poisson", "binomial"),
+                      k = NULL) {
 
   cr2Method <- match.arg(cr2Method)
   fastMethod <- match.arg(fastMethod)
   estimator <- match.arg(estimator)
   firthBackend <- match.arg(firthBackend)
-  
+  family <- match.arg(family)
+  effect_cols <- .glm_effect_cols(family)
+
   worker <- function(pairName) {
     tryCatch({
       dfPair = dfResult[[pairName]]
@@ -1592,7 +1778,7 @@ combineGLM = function(dfResult,
       modelFit = buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                           fastMethod = fastMethod, estimator = estimator,
                           firthBackend = firthBackend, computeDiagnostics = computeDiagnostics,
-                          cellTypePresence = cellTypePresence)
+                          cellTypePresence = cellTypePresence, family = family, k = k)
       
       if (is.null(modelFit)) return(NULL)
       
@@ -1624,12 +1810,17 @@ combineGLM = function(dfResult,
   diagnosticsList <- lapply(resultList, `[[`, "diagnostics")
 
   combined <- bind_rows(fitList)
-  diagnostics_all <- list(
-    pair    = bind_rows(lapply(diagnosticsList, `[[`, "pair")),
-    patient = bind_rows(lapply(diagnosticsList, `[[`, "patient")),
-    image   = bind_rows(lapply(diagnosticsList, `[[`, "image"))
-  )
-  
+  has_diagnostics <- any(!vapply(diagnosticsList, is.null, logical(1)))
+  diagnostics_all <- if (has_diagnostics) {
+    list(
+      pair    = bind_rows(lapply(diagnosticsList, `[[`, "pair")),
+      patient = bind_rows(lapply(diagnosticsList, `[[`, "patient")),
+      image   = bind_rows(lapply(diagnosticsList, `[[`, "image"))
+    )
+  } else {
+    NULL
+  }
+
   if (!("reason" %in% colnames(combined))) {
     skipped <- data.frame(from = character(0), to = character(0),
                           reason = character(0), message = character(0),
@@ -1639,9 +1830,10 @@ combineGLM = function(dfResult,
     combined <- combined[is.na(combined$reason), , drop = FALSE]
   }
   
-  combined = combined |> dplyr::select(c("from", "to", "conditionRef", "conditionComp",
-                                         "coef_ref", "coef_comp", "logRateRatio", "rateRatio",
-                                         "p.value", "estimator", "mle_would_skip", "mle_skip_reason"))
+  combined = combined |> dplyr::select(dplyr::all_of(c(
+    "from", "to", "conditionRef", "conditionComp", "coef_ref", "coef_comp",
+    effect_cols[1], effect_cols[2], "p.value", "estimator", "family",
+    "mle_would_skip", "mle_skip_reason")))
   
   combined = combined |> dplyr::mutate(p.adj = p.adjust(p.value, method = "fdr")) |>
     dplyr::arrange(p.adj)

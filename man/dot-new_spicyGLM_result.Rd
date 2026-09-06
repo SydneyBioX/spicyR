@@ -12,7 +12,8 @@ and fit generalized linear model (GLM) models to test for condition effects.}
   imageID = "imageID",
   cellType = "cellType",
   GLMresults = NULL,
-  messages = character(0)
+  messages = character(0),
+  family = c("poisson", "binomial")
 )
 }
 \arguments{
@@ -28,9 +29,24 @@ containing single-cell or spatial data with cell metadata and coordinates.}
 
 \item{cellType}{A character specifying which column in \code{cells} which contains the cell types.}
 
+\item{family}{Character specifying the neighbourhood model.
+\code{"poisson"} (default) counts TARGET neighbours within radius \code{r}
+and fits a no-intercept Poisson GLM with a log-density offset; the effect is
+a (log) rate ratio. \code{"binomial"} searches each reference cell's \code{k}
+nearest neighbours (any cell type) and models how many are TARGET as
+Binomial with a logit-scale background-prevalence offset; the effect is a
+(log) odds ratio, reported in \code{logOddsRatio}/\code{oddsRatio}. A
+binomial run is independent of a poisson run. \code{r} and \code{window}
+play no role for binomial (the neighbour search is a plain Euclidean k-NN
+with no edge correction). Firth has no closed form for the binomial design,
+so \code{firthBackend} is forced to \code{"brglm2"} and
+\code{computeDiagnostics} is not supported.}
+
 \item{spatialCoords}{A character vector of length 2 specifying the columns for x and y coordinates if using a \code{SingleCellExperiment} object.}
 
-\item{r}{Radius around each reference cell to consider for counting neighboring cells.}
+\item{r}{Radius around each reference cell to consider for counting neighboring
+cells. Required for \code{family = "poisson"}; ignored for
+\code{family = "binomial"}.}
 
 \item{from}{Character vector of reference cell types. If NULL, all cell types are used.}
 
@@ -40,7 +56,10 @@ containing single-cell or spatial data with cell metadata and coordinates.}
 
 \item{cores}{Number of cores to use for parallel computation.}
 
-\item{cr2Method}{Character specifying how to compute the CR2-adjusted variance and p-value. 
+\item{k}{Number of nearest neighbours to search per reference cell. Required
+(a positive integer) when \code{family = "binomial"}; ignored otherwise.}
+
+\item{cr2Method}{Character specifying how to compute the CR2-adjusted variance and p-value.
 \code{"fast"} (default) closely matches \code{clubSandwich} at substantially lower cost.  
 \code{"clubSandwich"} uses the \code{clubSandwich} package directly.}
 
@@ -86,10 +105,19 @@ A list with the following elements:
   \item{comparisons}{Data frame with the reference and target cell types for each pair
     and a combined label (from__to).}
   \item{nCells}{Table of cell counts per image and cell type.}
-  \item{GLMresults}{Data frame of Poisson GLM results for each cell type pair using CR2.}
-  \item{diagnostics}{If \code{computeDiagnostics = TRUE}, \code{list(pair = <df>,
-    patient = <df>, image = <df>, crossPair = list(patient = <df>, image = <df>))}
-    of QC diagnostics across all pairs -- see \code{computeDiagnostics} above.}
+  \item{GLMresults}{Data frame of GLM results for each cell type pair using CR2.
+    Columns \code{coef_ref}/\code{coef_comp} are the per-group fitted
+    coefficients (log expected neighbour count for poisson, logit-scale for
+    binomial); the effect columns are \code{logRateRatio}/\code{rateRatio} for
+    \code{family = "poisson"} and \code{logOddsRatio}/\code{oddsRatio} for
+    \code{family = "binomial"}. A \code{family} column records which model was
+    used.}
+  \item{family}{\code{"poisson"} or \code{"binomial"}; the model this result
+    was produced with.}
+  \item{diagnostics}{If \code{computeDiagnostics = TRUE} (poisson only),
+    \code{list(pair = <df>, patient = <df>, image = <df>,
+    crossPair = list(patient = <df>, image = <df>))} of QC diagnostics across
+    all pairs -- see \code{computeDiagnostics} above.}
 }
 }
 \description{
