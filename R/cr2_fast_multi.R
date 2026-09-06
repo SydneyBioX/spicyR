@@ -1,5 +1,5 @@
 patient_total <- function(patient) {
-  sum(patient$n_ij * patient$mu_hat)
+  sum(patient$n_ij * patient$var_hat)
 }
 
 compute_group_totals <- function(patients) {
@@ -8,10 +8,11 @@ compute_group_totals <- function(patients) {
   tapply(totals, groups, sum)
 }
 
-# making reduced matrix elements
+# making reduced matrix elements -- built from the working variance v_ij
+# (identical to the fitted mean under Poisson; k*pihat*(1-pihat) under Binomial)
 reduced_dpr1 <- function(patient) {
-  Lambda_bar <- patient$mu_hat^2
-  f_bar      <- sqrt(patient$n_ij) * patient$mu_hat^(3/2)
+  Lambda_bar <- patient$var_hat^2
+  f_bar      <- sqrt(patient$n_ij) * patient$var_hat^(3/2)
   list(Lambda_bar = Lambda_bar, f_bar = f_bar)
 }
 
@@ -32,9 +33,9 @@ Pi_apply <- function(v, image_index, n_ij) {
 
 # A_i bar
 
-assemble_Abar <- function(mu_hat, eigenpairs) {
-  n_i <- length(mu_hat)
-  D_bar <- sqrt(mu_hat)
+assemble_Abar <- function(var_hat, eigenpairs) {
+  n_i <- length(var_hat)
+  D_bar <- sqrt(var_hat)
   
   V_bar <- sapply(eigenpairs, function(p) p$v)
   lambda_eig <- sapply(eigenpairs, function(p) p$lambda)
@@ -71,7 +72,7 @@ apply_Ai <- function(r_i, patient, image_index, S_g, method = c("direct", "dpr1"
   } else {
     eig_Gbar_dpr1(reduced$Lambda_bar, reduced$f_bar, S_g)
   }
-  Abar <- assemble_Abar(patient$mu_hat, eigenpairs)
+  Abar <- assemble_Abar(patient$var_hat, eigenpairs)
   
   d <- Pi_adjoint(r_i, image_index, patient$n_ij)
   correction <- Abar %*% d
@@ -117,26 +118,39 @@ vcovCR2_fast_multi <- function(patients, method = c("direct", "dpr1")) {
   V
 }
 
-build_patient <- function(cluster_id, cluster_vec, df_result, fit, condition_levels) {
+build_patient <- function(cluster_id, cluster_vec, df_result, fit, condition_levels,
+                          family = "poisson", k = NULL) {
   subj_rows <- cluster_vec == cluster_id
   subj_df <- df_result[subj_rows, ]
-  subj_resid <- stats::residuals(fit, type = "response")[subj_rows]
   subj_fitted <- stats::fitted(fit)[subj_rows]
-  
+
+  if (family == "binomial") {
+    # fitted(binomial glm/brglmFit) returns probabilities; the residual is on
+    # the count scale (Y - k*pihat = the score-equation residual), and the
+    # working variance is k*pihat*(1-pihat). residuals(type = "response") on a
+    # binomial fit is a proportion residual, so Y - k*pihat is formed explicitly.
+    pi_hat     <- subj_fitted
+    var_cell   <- k * pi_hat * (1 - pi_hat)
+    resid_cell <- subj_df$n - k * pi_hat
+  } else {
+    var_cell   <- subj_fitted
+    resid_cell <- stats::residuals(fit, type = "response")[subj_rows]
+  }
+
   image_order <- unique(subj_df$imageID)
-  
+
   n_ij <- unname(sapply(image_order, function(im) sum(subj_df$imageID == im)))
-  mu_hat <- unname(sapply(image_order, function(im) subj_fitted[subj_df$imageID == im][1]))
+  var_hat <- unname(sapply(image_order, function(im) var_cell[subj_df$imageID == im][1]))
   image_index <- unname(match(subj_df$imageID, image_order))
   group <- as.integer(factor(subj_df$condition[1], levels = condition_levels))
-  
+
   list(
     patient_id = as.character(cluster_id),
     image_ids = as.character(image_order),
     n_ij = n_ij,
-    mu_hat = mu_hat,
+    var_hat = var_hat,
     group = group,
-    r_i = unname(subj_resid),
+    r_i = unname(resid_cell),
     image_index = image_index
   )
 }
@@ -207,21 +221,25 @@ compute_e_i <- function(raw_sum, group, S_g) {
 }
 
 compute_P_diag <- function(patient, S_g, method = "direct") {
-  mu_i <- patient$mu_hat[patient$image_index]
-  N_i <- length(mu_i)
+  # (A_i 1)' V_j (A_i 1): V_j is the working variance
+  v_i <- patient$var_hat[patient$image_index]
+  N_i <- length(v_i)
   w <- c(-1 / S_g[1], 1 / S_g[2])
-  
+
   A_ones <- apply_Ai(rep(1, N_i), patient, patient$image_index, S_g[patient$group], method = method)
-  
-  w[patient$group]^2 * sum(mu_i * A_ones^2)
+
+  w[patient$group]^2 * sum(v_i * A_ones^2)
 }
 
 compute_h_j <- function(patient, S_g, method = "direct") {
-  mu_i <- patient$mu_hat[patient$image_index]
-  
-  A_mu <- apply_Ai(mu_i, patient, patient$image_index, S_g[patient$group], method = method)
-  tau <- sum(A_mu)
-  
+  # tau_j = 1' A_j (d mu_j / d beta). For the rank-1 design d mu_j / d beta =
+  # V_j x_j, so the contracted vector is the working-variance diagonal V_j 1_Nj
+  # -- which equals the fitted mean only under Poisson (V_j = diag(mu)).
+  v_i <- patient$var_hat[patient$image_index]
+
+  A_v <- apply_Ai(v_i, patient, patient$image_index, S_g[patient$group], method = method)
+  tau <- sum(A_v)
+
   tau / S_g[patient$group]^1.5
 }
 

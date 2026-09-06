@@ -74,7 +74,7 @@ fit_firth_closed_form <- function(dfPair) {
 ## Firth via brglm2::brglmFit -- general, no design restriction
 fit_firth_brglm2 <- function(dfPair) {
   glm(n ~ 0 + condition, offset = log(density), family = poisson(),
-      data = dfPair, method = "brglmFit", type = "AS_mean")
+      data = dfPair, method = brglm2::brglmFit, type = "AS_mean")
 }
 
 ## ordinary MLE via glm() -- general, no design restriction
@@ -83,12 +83,41 @@ fit_mle_glm <- function(dfPair) {
       data = dfPair)
 }
 
+## Binomial (fixed-k nearest-neighbour design): response is n successes out of k,
+## logit-scale image-level offset qlogis(p0). No closed form for Firth here
+## (supplementary math doc, Proposition 18), so brglm2 is the only Firth route.
+#' @importFrom stats glm binomial poisson qlogis
+fit_mle_binom_glm <- function(dfPair) {
+  glm(cbind(n, k - n) ~ 0 + condition, offset = qlogis(p0), family = binomial(),
+      data = dfPair)
+}
+
+fit_firth_binom_brglm2 <- function(dfPair) {
+  glm(cbind(n, k - n) ~ 0 + condition, offset = qlogis(p0), family = binomial(),
+      data = dfPair, method = brglm2::brglmFit, type = "AS_mean")
+}
+
 ## dispatcher: routes to the right backend
 fit_pair <- function(dfPair, estimator = c("mle", "firth"),
-                     backend = c("closed_form", "glm", "brglm2")) {
+                     backend = c("closed_form", "glm", "brglm2"),
+                     family = c("poisson", "binomial")) {
   estimator <- match.arg(estimator)
   backend <- match.arg(backend)
-  
+  family <- match.arg(family)
+
+  if (family == "binomial") {
+    fit <- switch(
+      paste(estimator, backend),
+      "mle glm"      = fit_mle_binom_glm(dfPair),
+      "firth brglm2" = fit_firth_binom_brglm2(dfPair),
+      stop("Invalid estimator/backend combination for family = 'binomial': ",
+           estimator, "/", backend,
+           " (binomial supports 'mle'/'glm' and 'firth'/'brglm2' only).",
+           call. = FALSE)
+    )
+    return(list(fit = fit, estimator = estimator, backend = backend))
+  }
+
   fit <- switch(
     paste(estimator, backend),
     "mle closed_form"   = fit_mle_closed_form(dfPair),
@@ -98,6 +127,6 @@ fit_pair <- function(dfPair, estimator = c("mle", "firth"),
     stop("Invalid estimator/backend combination: ", estimator, "/", backend,
          call. = FALSE)
   )
-  
+
   list(fit = fit, estimator = estimator, backend = backend)
 }

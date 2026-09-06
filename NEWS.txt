@@ -1,3 +1,18 @@
+CHANGES IN VERSION 1.21.9
+-------------------------
+
+NEW FEATURES
+
+    o spicyGLM() gains a `family` argument. `family = "binomial"` fits the
+      fixed-k nearest-neighbour design: for each reference cell, the number of
+      its `k` nearest neighbours that are the target type is modelled as
+      Binomial with a logit-scale background-prevalence offset. Requires the new
+      `k` argument; the effect is reported as `logOddsRatio`/`oddsRatio`. The
+      fast closed-form CR2 and Satterthwaite degrees of freedom carry over
+      unchanged. Firth has no closed form for this design, so `firthBackend` is
+      forced to "brglm2" and `computeDiagnostics` is not supported for binomial.
+
+
 CHANGES IN VERSION 1.18.0
 -------------------------
 

@@ -16,7 +16,9 @@ getPairwiseAssoc(
   to = NULL,
   window = "convex",
   cores = 1,
-  cellTypePresence
+  cellTypePresence,
+  family = "poisson",
+  k = NULL
 )
 
 getPairwiseAssoc(
@@ -31,7 +33,9 @@ getPairwiseAssoc(
   to = NULL,
   window = "convex",
   cores = 1,
-  cellTypePresence
+  cellTypePresence,
+  family = "poisson",
+  k = NULL
 )
 }
 \arguments{
@@ -57,6 +61,15 @@ containing single-cell or spatial data with cell metadata and coordinates.}
 \item{window}{Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".}
 
 \item{cores}{Number of cores to use for parallel computation.}
+
+\item{cellTypePresence}{Presence table from \code{computeCellTypePresence()};
+used to explain why a pair has no testable data in a condition group.}
+
+\item{family}{\code{"poisson"} (radius-based neighbour counts, default) or
+\code{"binomial"} (fixed-\code{k} nearest-neighbour design).}
+
+\item{k}{Number of nearest neighbours per reference cell; required when
+\code{family = "binomial"}, ignored otherwise.}
 }
 \value{
 A named list of data frames. Each element corresponds to a cell type pair and contains spatial association metrics for each image. 
