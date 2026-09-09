@@ -26,6 +26,7 @@ spicy(
   weights = TRUE,
   weightsByPair = FALSE,
   weightFactor = 1,
+  weightZThreshold = 0.1,
   window = "convex",
   window.length = NULL,
   edgeCorrect = TRUE,
@@ -79,6 +80,14 @@ each image.}
 pair.}
 
 \item{weightFactor}{numeric that controls the convexity of the weight function.}
+
+\item{weightZThreshold}{numeric; the minimum weight-model prediction
+(\code{log10(resSq + 1)}) counted when choosing the \code{1/z} weight-cap
+floor. The default (\code{0.1}) suits the L-function's numeric scale. Pass
+\code{0} for a statistic whose residual variance is small in absolute terms
+(e.g. the observed/expected ratio from \code{\link{getPairwiseProp}}), where
+every prediction can otherwise sit below the default and collapse the
+weights to \code{NA}.}
 
 \item{window}{Should the window around the regions be 'square', 'convex' or 'concave'.}
 
