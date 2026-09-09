@@ -12,6 +12,17 @@ NEW FEATURES
       unchanged. Firth has no closed form for this design, so `firthBackend` is
       forced to "brglm2" and `computeDiagnostics` is not supported for binomial.
 
+    o getPairwiseProp() computes a fixed-k observed/expected proportion ratio
+      per image and cell-type pair: the mean fraction of a reference cell's `k`
+      nearest neighbours that are the target type, divided by the image's
+      background target proportion (null value 1, no variance-stabilising
+      transform). It is shaped like getPairwise()'s output and can be passed to
+      spicy() as `alternateResult` -- a spicyR baseline matched to the fixed-k
+      neighbourhood of `spicyGLM(family = "binomial")`. spicy()'s default
+      variance weighting works for the ratio on datasets with several (some
+      rare) cell types; on datasets with few cell types or weak structure it
+      can degenerate, in which case use `weights = FALSE`.
+
 
 CHANGES IN VERSION 1.18.0
 -------------------------
