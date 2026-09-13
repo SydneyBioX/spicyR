@@ -1,113 +1,3 @@
-#' `Calculates pairwise spatial associations between cell types across images
-#' and fit generalized linear model (GLM) models to test for condition effects.
-#' 
-#' @param cells A \code{SpatialExperiment}, \code{SingleCellExperiment}, or \code{data.frame}. 
-#' The dataframe must have rows as markers and columns as cells.
-#' containing single-cell or spatial data with cell metadata and coordinates.
-#' @param condition  A character specifying which column in \code{cells} which contains the condition or grouping variable. 
-#' @param subject A character specifying which column in \code{cells} which contains the patient/donor ID.
-#' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
-#' @param cellType A character specifying which column in \code{cells} which contains the cell types.
-#' @param spatialCoords A character vector of length 2 specifying the columns for x and y coordinates if using a \code{SingleCellExperiment} object.
-#' @param r Radius around each reference cell to consider for counting neighboring
-#'   cells. Required for \code{family = "poisson"}; ignored for
-#'   \code{family = "binomial"}.
-#' @param from Character vector of reference cell types. If NULL, all cell types are used.
-#' @param to Character vector of target cell types. If NULL, all cell types are used.
-#' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
-#' @param cores Number of cores to use for parallel computation.
-#' @param family Character specifying the neighbourhood model.
-#'   \code{"poisson"} (default) counts TARGET neighbours within radius \code{r}
-#'   and fits a no-intercept Poisson GLM with a log-density offset; the effect is
-#'   a (log) rate ratio. \code{"binomial"} searches each reference cell's \code{k}
-#'   nearest neighbours (any cell type) and models how many are TARGET as
-#'   Binomial with a logit-scale background-prevalence offset; the effect is a
-#'   (log) odds ratio, reported in \code{logOddsRatio}/\code{oddsRatio}. A
-#'   binomial run is independent of a poisson run. \code{r} and \code{window}
-#'   play no role for binomial (the neighbour search is a plain Euclidean k-NN
-#'   with no edge correction). Firth has no closed form for the binomial design,
-#'   so \code{firthBackend} is forced to \code{"brglm2"} and
-#'   \code{computeDiagnostics} is not supported.
-#' @param k Number of nearest neighbours to search per reference cell. Required
-#'   (a positive integer) when \code{family = "binomial"}; ignored otherwise.
-#' @param cr2Method Character specifying how to compute the CR2-adjusted variance and p-value.
-#'   \code{"fast"} (default) closely matches \code{clubSandwich} at substantially lower cost.  
-#'   \code{"clubSandwich"} uses the \code{clubSandwich} package directly.
-#' @param fastMethod Eigendecomposition routine used internally when
-#'   \code{cr2Method = "fast"}. \code{"direct"} (default) is faster in practice; \code{"dpr1"} is a validated reference alternative.
-#' @param estimator Character specifying how the condition contrast is fit.
-#'   \code{"firth"} (default) uses Firth's bias-reduced Poisson estimator, which
-#'   remains finite even when a cell-type pair has structural zeros in one
-#'   condition. \code{"mle"} uses ordinary Poisson MLE, which is skipped
-#'   (with a warning) for such pairs, since the log rate ratio is non-estimable.
-#' @param firthBackend Character specifying how Firth's estimator is computed
-#'   when \code{estimator = "firth"}. \code{"closed_form"} (default) uses a fast,
-#'   exact closed-form solution valid for spicyGLM's design; \code{"brglm2"}
-#'   uses \code{brglm2::brglmFit} as a general fallback.
-#' @param computeDiagnostics Logical; if \code{TRUE}, also computes and attaches
-#'   a QC diagnostics table set on the returned object: \code{$diagnostics =
-#'   list(pair = <df>, patient = <df>, image = <df>, crossPair = list(patient = <df>,
-#'   image = <df>))}. \code{pair} (Table 1) is a one-row-per-pair summary (patient
-#'   count, Satterthwaite df, which patient dominates influence/point-estimate shift);
-#'   \code{patient} (Table 2) and \code{image} (Table 3) merge pre-fit leverage share,
-#'   post-fit CR2 variance-share influence, closed-form leave-one-out point-estimate
-#'   shift, and within-pair relative/percentile-rank versions of leverage and
-#'   influence, at the patient and image level respectively; \code{crossPair}
-#'   (Table 4) aggregates those percentile ranks across every cell-type pair a
-#'   patient (or patient/image) appears in, with a Wilson interval on the
-#'   proportion flagged, for the leverage and influence pathways independently.
-#'   Diagnostics are only assembled when \code{cr2Method = "fast"} and
-#'   \code{estimator = "firth"} with \code{firthBackend = "closed_form"} --
-#'   the point-estimate-shift formula is the exact closed-form Firth
-#'   solution, and influence depends on the fast CR2 sandwich machinery, so
-#'   other estimator/backend/cr2Method combinations leave \code{$diagnostics}
-#'   \code{NULL} for that pair. Adds some compute cost per pair; \code{FALSE}
-#'   by default.
-#'
-#'
-#' @return A list with the following elements:
-#' \describe{
-#'   \item{condition}{Factor vector of the condition used in the GLM models.}
-#'   \item{subject}{Factor vector of subjects/donors, if provided.}
-#'   \item{comparisons}{Data frame with the reference and target cell types for each pair
-#'     and a combined label (from__to).}
-#'   \item{nCells}{Table of cell counts per image and cell type.}
-#'   \item{GLMresults}{Data frame of GLM results for each cell type pair using CR2.
-#'     Columns \code{coef_ref}/\code{coef_comp} are the per-group fitted
-#'     coefficients (log expected neighbour count for poisson, logit-scale for
-#'     binomial); the effect columns are \code{logRateRatio}/\code{rateRatio} for
-#'     \code{family = "poisson"} and \code{logOddsRatio}/\code{oddsRatio} for
-#'     \code{family = "binomial"}. A \code{family} column records which model was
-#'     used.}
-#'   \item{family}{\code{"poisson"} or \code{"binomial"}; the model this result
-#'     was produced with.}
-#'   \item{diagnostics}{If \code{computeDiagnostics = TRUE} (poisson only),
-#'     \code{list(pair = <df>, patient = <df>, image = <df>,
-#'     crossPair = list(patient = <df>, image = <df>))} of QC diagnostics across
-#'     all pairs -- see \code{computeDiagnostics} above.}
-#' }
-#' 
-#' @export
-#' 
-#' @examples
-#' \dontrun{
-#' kerenSPE = SpatialDatasets::spe_Keren_2018()
-#' spicyResult = spicyGLM(
-#'   cells = kerenSPE,
-#'   condition = "tumour_type",
-#'   subject = "DONOR_NO",
-#'   imageID = "imageID",
-#'   from = "CD8_T_cell",
-#'   to = "Tumour",
-#'   spatialCoords = c("x", "y"),
-#'   r = 50,
-#'   window = "convex",
-#'   cores = 1)
-#' }
-#' 
-#' @importFrom cli cli_inform
-#' 
-
 # Internal constructor for a consistent SpicyResults object (GLM version)
 .new_spicyGLM_result <- function(cells,
                                  condition,
@@ -205,7 +95,147 @@
   if (family == "binomial") c("logOddsRatio", "oddsRatio") else c("logRateRatio", "rateRatio")
 }
 
+# Reorder (and, for binomial, augment with a derived `prop = n / k` column) a
+# raw modelDataGen()/getPairwiseAssoc() pair table for storage on the returned
+# SpicyResults object. Left untouched for 0-row skip entries so their
+# skipReason/skipMessage attributes survive.
+.attach_model_data <- function(df, family = c("poisson", "binomial")) {
+  family <- match.arg(family)
+  if (nrow(df) == 0) return(df)
 
+  if (family == "binomial") {
+    df$prop <- df$n / df$k
+    ord <- c("from", "to", "condition", "subject", "imageID", "cellID", "n", "k", "prop", "p0")
+  } else {
+    ord <- c("from", "to", "condition", "subject", "imageID", "cellID", "n", "density")
+  }
+  df |> dplyr::select(dplyr::any_of(ord))
+}
+
+
+#' `Calculates pairwise spatial associations between cell types across images
+#' and fit generalized linear model (GLM) models to test for condition effects.
+#'
+#' @param cells A \code{SpatialExperiment}, \code{SingleCellExperiment}, or \code{data.frame}.
+#' The dataframe must have rows as markers and columns as cells.
+#' containing single-cell or spatial data with cell metadata and coordinates.
+#' @param condition  A character specifying which column in \code{cells} which contains the condition or grouping variable.
+#' @param subject A character specifying which column in \code{cells} which contains the patient/donor ID.
+#' @param imageID A character specifying which column in \code{cells} which contains image/sample ID.
+#' @param cellType A character specifying which column in \code{cells} which contains the cell types.
+#' @param spatialCoords A character vector of length 2 specifying the columns for x and y coordinates if using a \code{SingleCellExperiment} object.
+#' @param r Radius around each reference cell to consider for counting neighboring
+#'   cells. Required for \code{family = "poisson"}; ignored for
+#'   \code{family = "binomial"}.
+#' @param from Character vector of reference cell types. If NULL, all cell types are used.
+#' @param to Character vector of target cell types. If NULL, all cell types are used.
+#' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
+#' @param cores Number of cores to use for parallel computation.
+#' @param family Character specifying the neighbourhood model.
+#'   \code{"poisson"} (default) counts TARGET neighbours within radius \code{r}
+#'   and fits a no-intercept Poisson GLM with a log-density offset; the effect is
+#'   a (log) rate ratio. \code{"binomial"} searches each reference cell's \code{k}
+#'   nearest neighbours (any cell type) and models how many are TARGET as
+#'   Binomial with a logit-scale background-prevalence offset; the effect is a
+#'   (log) odds ratio, reported in \code{logOddsRatio}/\code{oddsRatio}. A
+#'   binomial run is independent of a poisson run. \code{r} and \code{window}
+#'   play no role for binomial (the neighbour search is a plain Euclidean k-NN
+#'   with no edge correction). Firth has no closed form for the binomial design,
+#'   so \code{firthBackend} is forced to \code{"brglm2"} and
+#'   \code{computeDiagnostics} is not supported.
+#' @param k Number of nearest neighbours to search per reference cell. Required
+#'   (a positive integer) when \code{family = "binomial"}; ignored otherwise.
+#' @param cr2Method Character specifying how to compute the CR2-adjusted variance and p-value.
+#'   \code{"fast"} (default) closely matches \code{clubSandwich} at substantially lower cost.
+#'   \code{"clubSandwich"} uses the \code{clubSandwich} package directly.
+#' @param fastMethod Eigendecomposition routine used internally when
+#'   \code{cr2Method = "fast"}. \code{"direct"} (default) is faster in practice; \code{"dpr1"} is a validated reference alternative.
+#' @param estimator Character specifying how the condition contrast is fit.
+#'   \code{"firth"} (default) uses Firth's bias-reduced Poisson estimator, which
+#'   remains finite even when a cell-type pair has structural zeros in one
+#'   condition. \code{"mle"} uses ordinary Poisson MLE, which is skipped
+#'   (with a warning) for such pairs, since the log rate ratio is non-estimable.
+#' @param firthBackend Character specifying how Firth's estimator is computed
+#'   when \code{estimator = "firth"}. \code{"closed_form"} (default) uses a fast,
+#'   exact closed-form solution valid for spicyGLM's design; \code{"brglm2"}
+#'   uses \code{brglm2::brglmFit} as a general fallback.
+#' @param computeDiagnostics Logical; if \code{TRUE}, also computes and attaches
+#'   a QC diagnostics table set on the returned object: \code{$diagnostics =
+#'   list(pair = <df>, patient = <df>, image = <df>, crossPair = list(patient = <df>,
+#'   image = <df>))}. \code{pair} (Table 1) is a one-row-per-pair summary (patient
+#'   count, Satterthwaite df, which patient dominates influence/point-estimate shift);
+#'   \code{patient} (Table 2) and \code{image} (Table 3) merge pre-fit leverage share,
+#'   post-fit CR2 variance-share influence, closed-form leave-one-out point-estimate
+#'   shift, and within-pair relative/percentile-rank versions of leverage and
+#'   influence, at the patient and image level respectively; \code{crossPair}
+#'   (Table 4) aggregates those percentile ranks across every cell-type pair a
+#'   patient (or patient/image) appears in, with a Wilson interval on the
+#'   proportion flagged, for the leverage and influence pathways independently.
+#'   Diagnostics are only assembled when \code{cr2Method = "fast"} and
+#'   \code{estimator = "firth"} with \code{firthBackend = "closed_form"} --
+#'   the point-estimate-shift formula is the exact closed-form Firth
+#'   solution, and influence depends on the fast CR2 sandwich machinery, so
+#'   other estimator/backend/cr2Method combinations leave \code{$diagnostics}
+#'   \code{NULL} for that pair. Adds some compute cost per pair; \code{FALSE}
+#'   by default.
+#' @param storeModelData Logical; if \code{TRUE}, attaches the per-image,
+#'   per-reference-cell table that the GLM fit was built from (one row per
+#'   FROM cell per image per pair -- the same shape \code{getPairwiseAssoc()}
+#'   returns) as \code{$modelData}. Works identically for both
+#'   \code{family = "poisson"} and \code{family = "binomial"}, any
+#'   \code{estimator}/\code{firthBackend}. \code{FALSE} by default to keep
+#'   result size unchanged.
+#'
+#'
+#' @return A list with the following elements:
+#' \describe{
+#'   \item{condition}{Factor vector of the condition used in the GLM models.}
+#'   \item{subject}{Factor vector of subjects/donors, if provided.}
+#'   \item{comparisons}{Data frame with the reference and target cell types for each pair
+#'     and a combined label (from__to).}
+#'   \item{nCells}{Table of cell counts per image and cell type.}
+#'   \item{GLMresults}{Data frame of GLM results for each cell type pair using CR2.
+#'     Columns \code{coef_ref}/\code{coef_comp} are the per-group fitted
+#'     coefficients (log expected neighbour count for poisson, logit-scale for
+#'     binomial); the effect columns are \code{logRateRatio}/\code{rateRatio} for
+#'     \code{family = "poisson"} and \code{logOddsRatio}/\code{oddsRatio} for
+#'     \code{family = "binomial"}. A \code{family} column records which model was
+#'     used.}
+#'   \item{family}{\code{"poisson"} or \code{"binomial"}; the model this result
+#'     was produced with.}
+#'   \item{diagnostics}{If \code{computeDiagnostics = TRUE} (poisson only),
+#'     \code{list(pair = <df>, patient = <df>, image = <df>,
+#'     crossPair = list(patient = <df>, image = <df>))} of QC diagnostics across
+#'     all pairs -- see \code{computeDiagnostics} above.}
+#'   \item{modelData}{If \code{storeModelData = TRUE}, the per-image,
+#'     per-reference-cell table(s) the fit was built from. For a single
+#'     \code{from}/\code{to} pair, a data frame with columns
+#'     \code{from, to, condition, subject, imageID, cellID, n, density}
+#'     (poisson) or \code{from, to, condition, subject, imageID, cellID, n, k,
+#'     prop, p0} (binomial), where \code{prop = n / k}. For multiple pairs, a
+#'     named list of such data frames keyed \code{"from__to"}.}
+#' }
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' kerenSPE = SpatialDatasets::spe_Keren_2018()
+#' spicyResult = spicyGLM(
+#'   cells = kerenSPE,
+#'   condition = "tumour_type",
+#'   subject = "DONOR_NO",
+#'   imageID = "imageID",
+#'   from = "CD8_T_cell",
+#'   to = "Tumour",
+#'   spatialCoords = c("x", "y"),
+#'   r = 50,
+#'   window = "convex",
+#'   cores = 1)
+#' }
+#'
+#' @importFrom cli cli_inform
+#'
 spicyGLM = function(cells,
                     condition,
                     subject = NULL,
@@ -223,7 +253,8 @@ spicyGLM = function(cells,
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
-                    computeDiagnostics = FALSE) {
+                    computeDiagnostics = FALSE,
+                    storeModelData = FALSE) {
 
   family <- match.arg(family)
   cr2Method <- match.arg(cr2Method)
@@ -346,13 +377,15 @@ spicyGLM = function(cells,
                            window = window, cores = 1, oneToOne = oneToOne,
                            cellTypePresence = cellTypePresence, family = family, k = k)
 
+    if (storeModelData) base_out$modelData <- .attach_model_data(dfPair, family)
+
     if (nrow(dfPair) == 0) {
       base_out$messages <- attr(dfPair, "skipMessage")
       base_out$skipped <- .new_spicy_skip(from, to, reason = attr(dfPair, "skipReason"),
                                           message = attr(dfPair, "skipMessage"))
       return(base_out)
     }
-    
+
     cat("Fitting GLM model...\n")
     GLMresults <- buildGLM(dfPair, oneToOne = oneToOne, subject = subject, cr2Method = cr2Method,
                            fastMethod = fastMethod, estimator = estimator,
@@ -401,6 +434,10 @@ spicyGLM = function(cells,
                               cellType = cellType, spatialCoords = spatialCoords,
                               window = window, cores = cores, cellTypePresence = cellTypePresence,
                               family = family, k = k)
+
+    if (storeModelData) {
+      base_out$modelData <- lapply(dfList, .attach_model_data, family = family)
+    }
 
     cat("Fitting GLM models for each cell type pair...\n")
     GLMresults = combineGLM(dfResult = dfList, oneToOne = oneToOne, subject = subject, cores = cores,
