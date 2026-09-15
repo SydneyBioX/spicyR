@@ -249,7 +249,7 @@ spicyGLM = function(cells,
                     cores = 1,
                     family = c("poisson", "binomial"),
                     k = NULL,
-                    cr2Method = c("fast", "clubSandwich"),
+                    cr2Method = c("fast", "clubSandwich", "naive"),
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
@@ -1469,7 +1469,7 @@ computeCellTypePresence <- function(cells, condition, imageID, cellType) {
 buildGLM = function(dfResultPairwise,
                     oneToOne,
                     subject = NULL,
-                    cr2Method = c("fast", "clubSandwich"),
+                    cr2Method = c("fast", "clubSandwich", "naive"),
                     fastMethod = c("direct", "dpr1"),
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
@@ -1588,9 +1588,9 @@ buildGLM = function(dfResultPairwise,
       # no closed-form Firth for the Binomial design (math doc, Proposition 18)
       backend <- "brglm2"
     }
-    if (cr2Method == "clubSandwich" && backend == "closed_form") {
+    if (cr2Method %in% c("clubSandwich", "naive") && backend == "closed_form") {
       message(
-        "Pair ", from, "__", to, ": cr2Method = 'clubSandwich' requires a real ",
+        "Pair ", from, "__", to, ": cr2Method = '", cr2Method, "' requires a real ",
         "fitted model object; switching firthBackend to 'brglm2' for this pair."
       )
       backend <- "brglm2"
@@ -1694,13 +1694,22 @@ buildGLM = function(dfResultPairwise,
     waldResult = waldTest_CR2_fast(logRR, V, patients, method = fastMethod)
     waldP = waldResult$p.value
 
+  } else if (cr2Method == "naive") {
+
+    V = vcovClubSandwichCluster(GLMfit, type = "naive", cluster = clusterVec)
+
+    L = matrix(c(-1, 1), nrow = 1)
+    est = as.numeric(L %*% beta)
+    se  = sqrt(as.numeric(L %*% V %*% t(L)))
+    waldP = 2 * stats::pnorm(-abs(est / se))
+
   } else {
-    
+
     V = vcovClubSandwichCluster(GLMfit, type = "CR2", cluster = clusterVec)
-    
+
     L = matrix(c(-1, 1), nrow = 1)
     waldP = clubSandwich::Wald_test(GLMfit, L, V, tidy = TRUE)$p_val[1] |> as.numeric()
-    
+
   }
 
   if (computeDiagnostics && cr2Method == "fast" && estimator == "firth" && firthBackend == "closed_form") {
@@ -1773,7 +1782,7 @@ combineGLM = function(dfResult,
                       oneToOne,
                       subject = NULL,
                       cores = 1,
-                      cr2Method = c("fast", "clubSandwich"),
+                      cr2Method = c("fast", "clubSandwich", "naive"),
                       fastMethod = c("direct", "dpr1"),
                       estimator = c("firth", "mle"),
                       firthBackend = c("closed_form", "brglm2"),
