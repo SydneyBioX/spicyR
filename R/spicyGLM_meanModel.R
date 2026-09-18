@@ -92,9 +92,19 @@ fit_mle_binom_glm <- function(dfPair) {
       data = dfPair)
 }
 
+## brglm2's default slowit = 1 (full IRLS step per iteration) fails to
+## converge under complete/quasi separation on this design: near p in {0, 1},
+## the local quadratic approximation overshoots and the fit oscillates
+## rather than settling, regardless of maxit (confirmed empirically: raising
+## maxit 100 -> 1000 did not help, and the coefficient did not even move
+## monotonically). Damping the step size (slowit = 0.1) resolves this for
+## every previously non-converging pair tested, without changing the result
+## for pairs that already converged under the default (same fixed point,
+## just reached via more, smaller steps).
 fit_firth_binom_brglm2 <- function(dfPair) {
   glm(cbind(n, k - n) ~ 0 + condition, offset = qlogis(p0), family = binomial(),
-      data = dfPair, method = brglm2::brglmFit, type = "AS_mean")
+      data = dfPair, method = brglm2::brglmFit, type = "AS_mean",
+      control = brglm2::brglmControl(slowit = 0.1))
 }
 
 ## dispatcher: routes to the right backend
