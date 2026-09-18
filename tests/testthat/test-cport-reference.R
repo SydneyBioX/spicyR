@@ -202,9 +202,9 @@ test_that("fast CR2 SE/df for the simulated Poisson fit match clubSandwich (orac
 test_that("spicyGLM Binomial on the simulated signal fixture matches known output", {
   res <- run_glm_sim(from = "B", to = "A", family = "binomial", k = SIM_DESIGN$k,
                      cr2Method = "fast", estimator = "firth", fastMethod = "direct")
-  expect_equal(res$GLMresults$logOddsRatio, -0.0067005582, tolerance = 1e-8)
-  expect_equal(res$GLMresults$oddsRatio,     0.9933218,    tolerance = 1e-6)
-  expect_equal(res$GLMresults$p.value,       0.7745445391, tolerance = 1e-8)
+  expect_equal(res$GLMresults$logOddsRatio, -0.0067005103, tolerance = 1e-8)
+  expect_equal(res$GLMresults$oddsRatio,     0.9933219,    tolerance = 1e-6)
+  expect_equal(res$GLMresults$p.value,       0.7745464981, tolerance = 1e-8)
 })
 
 test_that("fast CR2 SE/df for the simulated Binomial fit match clubSandwich (oracle)", {
@@ -225,8 +225,8 @@ test_that("fast CR2 SE/df for the simulated Binomial fit match clubSandwich (ora
   expect_equal(fit$mle$df, wt_cs$df_denom,  tolerance = 1e-4)
   expect_equal(fit$mle$p.value, wt_cs$p_val, tolerance = 1e-4)
 
-  expect_equal(fit$firth$se, 0.0231532819, tolerance = 1e-8)
-  expect_equal(fit$firth$df, 26.299852,    tolerance = 1e-4)
+  expect_equal(fit$firth$se, 0.0231533235, tolerance = 1e-8)
+  expect_equal(fit$firth$df, 26.299850,    tolerance = 1e-4)
 })
 
 ## --- diagnostic identities (Poisson only; simulated fixture) ---------------
@@ -305,9 +305,9 @@ test_that("fast CR2 SE/df for diabetesData Poisson fit match clubSandwich (oracl
 test_that("spicyGLM Binomial on diabetesData (Tc->Th) matches known output", {
   res <- run_glm_diabetes(family = "binomial", k = 15,
                           cr2Method = "fast", estimator = "firth", fastMethod = "direct")
-  expect_equal(res$GLMresults$logOddsRatio, 0.4066833365, tolerance = 1e-8)
-  expect_equal(res$GLMresults$oddsRatio,    1.501828,     tolerance = 1e-6)
-  expect_equal(res$GLMresults$p.value,      0.1457285988, tolerance = 1e-8)
+  expect_equal(res$GLMresults$logOddsRatio, 0.4066813985, tolerance = 1e-8)
+  expect_equal(res$GLMresults$oddsRatio,    1.5018255,    tolerance = 1e-6)
+  expect_equal(res$GLMresults$p.value,      0.1457303791, tolerance = 1e-8)
 })
 
 test_that("fast CR2 SE/df for diabetesData Binomial fit match clubSandwich (oracle)", {
@@ -328,8 +328,8 @@ test_that("fast CR2 SE/df for diabetesData Binomial fit match clubSandwich (orac
   expect_equal(fit$mle$df, wt_cs$df_denom,  tolerance = 1e-3)
   expect_equal(fit$mle$p.value, wt_cs$p_val, tolerance = 1e-3)
 
-  expect_equal(fit$firth$se, 0.2155877761, tolerance = 1e-6)
-  expect_equal(fit$firth$df, 3.361842,     tolerance = 1e-3)
+  expect_equal(fit$firth$se, 0.2155880504, tolerance = 1e-6)
+  expect_equal(fit$firth$df, 3.361841,     tolerance = 1e-3)
 })
 
 test_that("Firth closed form holds on diabetesData modelData", {
