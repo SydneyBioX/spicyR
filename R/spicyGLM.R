@@ -254,7 +254,8 @@ spicyGLM = function(cells,
                     estimator = c("firth", "mle"),
                     firthBackend = c("closed_form", "brglm2"),
                     computeDiagnostics = FALSE,
-                    storeModelData = FALSE) {
+                    storeModelData = FALSE,
+                    ref = NULL) {
 
   family <- match.arg(family)
   cr2Method <- match.arg(cr2Method)
@@ -345,8 +346,17 @@ spicyGLM = function(cells,
     
     if (!wasFactor) conditionVector = as.factor(conditionVector)
     conditionVector = droplevels(conditionVector)
-    conditionVector = relevel(conditionVector, ref = levels(conditionVector)[1])
-    
+
+    if (!is.null(ref)) {
+      if (!ref %in% levels(conditionVector)) {
+        stop("`ref` = \"", ref, "\" is not a level of `condition`. Available levels: ",
+             paste(levels(conditionVector), collapse = ", "), call. = FALSE)
+      }
+      conditionVector = relevel(conditionVector, ref = ref)
+    } else {
+      conditionVector = relevel(conditionVector, ref = levels(conditionVector)[1])
+    }
+
     cli_inform(paste0(
       if (!wasFactor) "Coercing condition into factor. " else "",
       "Dropping unused levels. Using ",
@@ -375,7 +385,8 @@ spicyGLM = function(cells,
                            from = from, to = to, r = r, imageID = imageID,
                            cellType = cellType, spatialCoords = spatialCoords,
                            window = window, cores = 1, oneToOne = oneToOne,
-                           cellTypePresence = cellTypePresence, family = family, k = k)
+                           cellTypePresence = cellTypePresence, family = family, k = k,
+                           ref = ref)
 
     if (storeModelData) base_out$modelData <- .attach_model_data(dfPair, family)
 
@@ -433,7 +444,7 @@ spicyGLM = function(cells,
                               from = from, to = to, r = r, imageID = imageID,
                               cellType = cellType, spatialCoords = spatialCoords,
                               window = window, cores = cores, cellTypePresence = cellTypePresence,
-                              family = family, k = k)
+                              family = family, k = k, ref = ref)
 
     if (storeModelData) {
       base_out$modelData <- lapply(dfList, .attach_model_data, family = family)
@@ -557,8 +568,9 @@ modelDataGen = function(cells,
                         oneToOne,
                         cellTypePresence,
                         family = "poisson",
-                        k = NULL) {
-  
+                        k = NULL,
+                        ref = NULL) {
+
   # this function generates pairwise metrics for a single cell type pair across all images
   # format data into a dataframe
   if (is(cells, "SpatialExperiment")) {
@@ -574,8 +586,10 @@ modelDataGen = function(cells,
     if (!is.null(subject)) {
       df$subject = cells[[subject]]
     }
-    
-    
+
+    df$condition <- droplevels(factor(df$condition))
+    if (!is.null(ref)) df$condition <- relevel(df$condition, ref = ref)
+
   } else if (is(cells, "SingleCellExperiment") | is(cells, "data.frame")) {
     x = spatialCoords[[1]]
     y = spatialCoords[[2]]
@@ -585,11 +599,14 @@ modelDataGen = function(cells,
                     cellType = cells[[cellType]],
                     x = cells[[x]],
                     y = cells[[y]])
-    
+
     if (!is.null(subject)) {
       df$subject = cells[[subject]]
     }
-    
+
+    df$condition <- droplevels(factor(df$condition))
+    if (!is.null(ref)) df$condition <- relevel(df$condition, ref = ref)
+
   }
   
   # Always compute spatial metrics per image.
@@ -687,7 +704,8 @@ getPairwiseAssoc = function(cells,
                             cores = 1,
                             cellTypePresence,
                             family = "poisson",
-                            k = NULL) {
+                            k = NULL,
+                            ref = NULL) {
   # this function computes pairwise metrics for all images - a wrapper for modelDataGen
   # check if cells is a dataframe, SingleCellExperiment, or SpatialExperiment
   checkCells(cells)
@@ -762,7 +780,8 @@ getPairwiseAssoc = function(cells,
                       oneToOne = oneToOne,
                       cellTypePresence = cellTypePresence,
                       family = family,
-                      k = k)
+                      k = k,
+                      ref = ref)
     
     if (is.null(df)) {
       df = NULL
