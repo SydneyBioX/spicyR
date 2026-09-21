@@ -1,0 +1,49 @@
+dataset,n_cells,family,diagnostics,implementation,workers,repeats,seconds_median,seconds_min,seconds_max,peak_rss_mb,stopped_for_memory
+synthetic_50000,50000,poisson,False,spicyglm,1,5,0.0551,0.0547,0.0562,142,False
+synthetic_50000,50000,poisson,False,spicyglm,4,5,0.0294,0.0291,0.0325,152,False
+synthetic_50000,50000,poisson,False,R spicyGLM(),1,3,2.1819,1.7764,2.5977,1967,False
+synthetic_50000,50000,poisson,False,R spicyGLM(),4,3,2.6962,2.5254,3.0715,2691,False
+synthetic_50000,50000,binomial,False,spicyglm,1,5,0.0678,0.0677,0.07,145,False
+synthetic_50000,50000,binomial,False,spicyglm,4,5,0.0351,0.0347,0.0369,145,False
+synthetic_50000,50000,binomial,False,R spicyGLM(),1,3,4.0569,3.313,4.8762,2222,False
+synthetic_50000,50000,binomial,False,R spicyGLM(),4,3,2.983,2.9661,3.256,2530,False
+synthetic_100000,100000,poisson,False,spicyglm,1,5,0.1058,0.1045,0.1065,161,False
+synthetic_100000,100000,poisson,False,spicyglm,4,5,0.0547,0.0543,0.0559,175,False
+synthetic_100000,100000,poisson,False,R spicyGLM(),1,3,3.8998,3.713,4.4649,2324,False
+synthetic_100000,100000,poisson,False,R spicyGLM(),4,3,3.5712,3.4702,3.6404,3184,False
+synthetic_100000,100000,binomial,False,spicyglm,1,5,0.1315,0.1312,0.1334,176,False
+synthetic_100000,100000,binomial,False,spicyglm,4,5,0.0598,0.0596,0.0616,186,False
+synthetic_100000,100000,binomial,False,R spicyGLM(),1,3,7.4371,7.2955,7.9382,2352,False
+synthetic_100000,100000,binomial,False,R spicyGLM(),4,3,4.3274,4.2464,4.792,3412,False
+synthetic_250000,250000,poisson,False,spicyglm,1,5,0.2702,0.2631,0.2792,234,False
+synthetic_250000,250000,poisson,False,spicyglm,4,5,0.1342,0.131,0.1412,258,False
+synthetic_250000,250000,poisson,False,R spicyGLM(),1,3,11.3301,10.5893,12.5459,2472,False
+synthetic_250000,250000,poisson,False,R spicyGLM(),4,3,7.2611,6.4458,7.9263,4442,False
+synthetic_250000,250000,binomial,False,spicyglm,1,5,0.3459,0.3405,0.3491,235,False
+synthetic_250000,250000,binomial,False,spicyglm,4,5,0.1806,0.1485,0.2441,265,False
+synthetic_250000,250000,binomial,False,R spicyGLM(),1,3,21.0043,20.0114,22.2967,2478,False
+synthetic_250000,250000,binomial,False,R spicyGLM(),4,3,7.742,7.6004,8.5588,4792,False
+synthetic_500000,500000,poisson,False,spicyglm,1,5,0.5311,0.526,0.5354,328,False
+synthetic_500000,500000,poisson,False,spicyglm,4,5,0.268,0.2645,0.2715,334,False
+synthetic_500000,500000,poisson,False,R spicyGLM(),1,3,25.7819,25.5571,28.4808,3276,False
+synthetic_500000,500000,poisson,False,R spicyGLM(),4,0,,,,6162,True
+synthetic_500000,500000,binomial,False,spicyglm,1,5,0.6634,0.6588,0.6661,334,False
+synthetic_500000,500000,binomial,False,spicyglm,4,5,0.2828,0.2794,0.2838,305,False
+synthetic_500000,500000,binomial,False,R spicyGLM(),1,3,40.9419,39.9077,44.5979,3047,False
+synthetic_500000,500000,binomial,False,R spicyGLM(),4,0,,,,6306,True
+synthetic_1000000,1000000,poisson,False,spicyglm,1,5,1.0724,1.0722,1.0857,427,False
+synthetic_1000000,1000000,poisson,False,spicyglm,4,5,0.5284,0.5248,0.53,433,False
+synthetic_1000000,1000000,poisson,False,R spicyGLM(),1,3,66.1811,65.7878,70.8752,4540,False
+synthetic_1000000,1000000,poisson,False,R spicyGLM(),4,0,,,,6145,True
+synthetic_1000000,1000000,binomial,False,spicyglm,1,5,1.359,1.3419,1.3834,436,False
+synthetic_1000000,1000000,binomial,False,spicyglm,4,5,0.58,0.5764,0.5854,450,False
+synthetic_1000000,1000000,binomial,False,R spicyGLM(),1,3,92.7637,90.0576,95.78,4352,False
+synthetic_1000000,1000000,binomial,False,R spicyGLM(),4,0,,,,6166,True
+Schurch 2020,258385,poisson,True,spicyglm,1,5,4.3098,4.2993,4.4122,387,False
+Schurch 2020,258385,poisson,True,spicyglm,4,5,3.9981,3.9778,4.0126,407,False
+Schurch 2020,258385,poisson,True,R spicyGLM(),1,3,92.7152,92.2914,98.2306,3127,False
+Schurch 2020,258385,poisson,True,R spicyGLM(),4,0,,,,6230,True
+Schurch 2020,258385,binomial,False,spicyglm,1,5,0.4737,0.4712,0.4883,294,False
+Schurch 2020,258385,binomial,False,spicyglm,4,5,0.2179,0.2147,0.2407,275,False
+Schurch 2020,258385,binomial,False,R spicyGLM(),1,3,132.3387,130.3419,136.283,3088,False
+Schurch 2020,258385,binomial,False,R spicyGLM(),4,0,,,,6188,True

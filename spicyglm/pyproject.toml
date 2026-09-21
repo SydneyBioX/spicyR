@@ -1,0 +1,16 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "spicyglm"
+version = "0.1.0"
+description = "spicyGLM spatial co-localisation inference with a C++ core"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pandas", "scipy"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.scikit-build]
+wheel.packages = ["python/spicyglm"]
