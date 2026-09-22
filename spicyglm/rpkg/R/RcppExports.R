@@ -25,8 +25,8 @@ dataset_binomial_model_data <- function(ptr, from, to) {
     .Call(`_spicyglm_dataset_binomial_model_data`, ptr, from, to)
 }
 
-fit_pair_poisson_cpp <- function(cluster, image, group, n, density, estimator, variance) {
-    .Call(`_spicyglm_fit_pair_poisson_cpp`, cluster, image, group, n, density, estimator, variance)
+fit_pair_poisson_cpp <- function(cluster, image, group, n, density, estimator, variance, diagnostics = FALSE) {
+    .Call(`_spicyglm_fit_pair_poisson_cpp`, cluster, image, group, n, density, estimator, variance, diagnostics)
 }
 
 fit_pair_binomial_cpp <- function(cluster, image, group, n, k, p0, estimator, variance) {

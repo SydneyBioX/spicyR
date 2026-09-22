@@ -38,17 +38,24 @@ result_columns <- function(family) {
 #' @param k Number of nearest neighbours (binomial only).
 #' @param estimator "firth" or "mle".
 #' @param cr2_method "fast" or "naive".
+#' @param compute_diagnostics Add per-patient and per-image leverage, influence and
+#'   point-estimate shift, their within-pair percentile ranks, and cross-pair
+#'   flagging. Requires \code{family = "poisson"}, \code{estimator = "firth"}
+#'   and \code{cr2_method = "fast"}.
+#' @param top_percent Fraction of the within-pair percentile rank counted as flagged.
 #' @param n_threads Threads used to build the neighbour lists.
 #'
-#' @return A list with \code{results} (one row per fitted pair) and
-#'   \code{skipped} (pairs that could not be fitted, with a reason code).
+#' @return A list with \code{results} (one row per fitted pair),
+#'   \code{skipped} (pairs that could not be fitted, with a reason code) and,
+#'   when \code{compute_diagnostics} is set, \code{diagnostics} with elements
+#'   "pair", "patient", "image" and "cross_pair".
 #' @export
 spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
                       image_id = "imageID", cell_type = "cellType",
                       spatial_coords = c("x", "y"), from = NULL, to = NULL,
                       window = "convex", family = c("poisson", "binomial"), k = NULL,
                       estimator = c("firth", "mle"), cr2_method = c("fast", "naive"),
-                      n_threads = 1) {
+                      compute_diagnostics = FALSE, top_percent = 0.05, n_threads = 1) {
   family <- match.arg(family)
   estimator <- match.arg(estimator)
   cr2_method <- match.arg(cr2_method)
@@ -63,6 +70,11 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
       stop("family = 'binomial' requires `k`, a single positive integer.")
     k <- as.integer(k)
     if (!is.null(r)) message("family = 'binomial' uses `k` nearest neighbours; `r` is ignored.")
+  }
+  if (compute_diagnostics && (family != "poisson" || estimator != "firth" || cr2_method != "fast")) {
+    warning("compute_diagnostics requires family = 'poisson', estimator = 'firth' and ",
+            "cr2_method = 'fast'; diagnostics are not computed.", call. = FALSE)
+    compute_diagnostics <- FALSE
   }
   x_col <- spatial_coords[1]; y_col <- spatial_coords[2]
   needed <- c(condition, image_id, cell_type, x_col, y_col, if (!is.null(subject)) subject)
@@ -133,8 +145,14 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
               type_index = stats::setNames(seq_along(type_labels) - 1L, type_labels),
               data = data, areas = areas, presence = presence)
 
-  outcomes <- lapply(pairs, function(p) fit_one_pair(ctx, p[1], p[2]))
+  outcomes <- lapply(pairs, function(p) fit_one_pair(ctx, p[1], p[2], compute_diagnostics))
   is_skip <- vapply(outcomes, function(o) !is.null(o$reason), logical(1))
+
+  pair_diag <- NULL
+  if (compute_diagnostics && any(!is_skip))
+    pair_diag <- lapply(outcomes[!is_skip], function(o)
+      pair_tables(o$.fit, o$from, o$to, levels_, cluster_labels, image_labels))
+  for (i in which(!is_skip)) outcomes[[i]]$.fit <- NULL
 
   skipped <- if (any(is_skip)) {
     do.call(rbind, lapply(outcomes[is_skip], function(o)
@@ -158,7 +176,8 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
   } else {
     results$p_adj <- numeric(0)
   }
-  list(results = results, skipped = skipped)
+  list(results = results, skipped = skipped,
+       diagnostics = if (!is.null(pair_diag)) assemble_diagnostics(pair_diag, top_percent))
 }
 
 condition_levels <- function(col) {
@@ -190,7 +209,7 @@ skip_pair <- function(f, t, reason, message) {
   list(from = f, to = t, reason = reason, message = message)
 }
 
-fit_one_pair <- function(ctx, f, t) {
+fit_one_pair <- function(ctx, f, t, compute_diagnostics = FALSE) {
   from_code <- ctx$type_index[[f]]; to_code <- ctx$type_index[[t]]
   md <- if (ctx$family == "poisson")
     dataset_poisson_model_data(ctx$data, ctx$areas, from_code, to_code)
@@ -220,7 +239,8 @@ fit_one_pair <- function(ctx, f, t) {
   }
 
   fit <- if (ctx$family == "poisson")
-    fit_pair_poisson_cpp(cluster, md$image, group, n, md$density, ctx$estimator, ctx$cr2_method)
+    fit_pair_poisson_cpp(cluster, md$image, group, n, md$density, ctx$estimator, ctx$cr2_method,
+                         compute_diagnostics)
   else
     fit_pair_binomial_cpp(cluster, md$image, group, n, ctx$k, md$p0, ctx$estimator, ctx$cr2_method)
 
@@ -237,6 +257,7 @@ fit_one_pair <- function(ctx, f, t) {
               p_value = p_value, estimator = ctx$estimator, family = ctx$family,
               mle_would_skip = !is.null(b$reason),
               mle_skip_reason = if (is.null(b$reason)) NA_character_ else b$reason)
+  if (compute_diagnostics) out$.fit <- fit
   names(out)[names(out) == "log_effect"] <- eff[1]
   names(out)[names(out) == "effect"] <- eff[2]
   out

@@ -68,3 +68,41 @@ test_that("results carry the effect columns for the family and are BH ordered", 
   b <- spicy_glm(make_cells(), condition = "response", family = "binomial", k = 10)
   expect_true(all(c("log_odds_ratio", "odds_ratio") %in% names(b$results)))
 })
+
+test_that("diagnostics are returned with the documented shape", {
+  out <- spicy_glm(make_cells(), condition = "response", r = 60, compute_diagnostics = TRUE)
+  d <- out$diagnostics
+  expect_named(d, c("pair", "patient", "image", "cross_pair"))
+  expect_named(d$cross_pair, c("patient", "image"))
+  expect_equal(nrow(d$pair), nrow(out$results))
+  expect_true(all(c("nu", "max_influence", "patient_with_max_influence") %in% names(d$pair)))
+  expect_true(all(c("l_i", "influence_i", "percentile_rank_leverage") %in% names(d$patient)))
+  expect_true(all(c("l_ij", "influence_ij", "e_ij_share_within_patient") %in% names(d$image)))
+  expect_true(all(c("n_pairs_present", "wilson_lower_influence") %in% names(d$cross_pair$patient)))
+})
+
+test_that("percentile ranks lie in the unit interval and leverage sums to one per group", {
+  out <- spicy_glm(make_cells(), condition = "response", r = 60, compute_diagnostics = TRUE)
+  pr <- out$diagnostics$patient$percentile_rank_influence
+  expect_true(all(pr >= 0 & pr <= 1, na.rm = TRUE))
+  by_pair_group <- split(out$diagnostics$patient$l_i,
+                         paste(out$diagnostics$patient$from, out$diagnostics$patient$to,
+                               out$diagnostics$patient$group))
+  expect_true(all(abs(vapply(by_pair_group, sum, numeric(1)) - 1) < 1e-8))
+})
+
+test_that("diagnostics are refused outside poisson/firth/fast", {
+  cells <- make_cells()
+  expect_warning(spicy_glm(cells, condition = "response", family = "binomial", k = 10,
+                           compute_diagnostics = TRUE), "compute_diagnostics requires")
+  expect_warning(out <- spicy_glm(cells, condition = "response", r = 60, cr2_method = "naive",
+                                  compute_diagnostics = TRUE), "compute_diagnostics requires")
+  expect_null(out$diagnostics)
+})
+
+test_that("the Wilson interval matches the closed form", {
+  w <- spicyglm:::wilson_interval(3, 20)
+  z <- stats::qnorm(0.975); n <- 20; p <- 3 / 20
+  lo <- (p + z^2/(2*n) - z*sqrt((p*(1-p) + z^2/(4*n))/n)) / (1 + z^2/n)
+  expect_equal(w$lower, lo, tolerance = 1e-12)
+})

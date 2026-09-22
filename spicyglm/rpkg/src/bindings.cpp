@@ -22,12 +22,45 @@ Window parse_window(const std::string& w) {
 std::vector<int> ivec(const IntegerVector& v) { return std::vector<int>(v.begin(), v.end()); }
 std::vector<double> dvec(const NumericVector& v) { return std::vector<double>(v.begin(), v.end()); }
 
-// PairFit -> list(beta, v_hat, df), matching pair_fit_dict() without diagnostics
+template <typename T>
+IntegerVector iv(const std::vector<T>& v) { return IntegerVector(v.begin(), v.end()); }
+NumericVector nv(const std::vector<double>& v) { return NumericVector(v.begin(), v.end()); }
+
+// PairFit -> list(beta, v_hat, df[, patient, image]), matching pair_fit_dict()
 List pair_fit_list(const PairFit& p) {
-  return List::create(
+  List out = List::create(
       _["beta"] = NumericVector::create(p.fit.beta[0], p.fit.beta[1]),
       _["v_hat"] = p.naive ? p.v_naive : p.cr2.v_hat,
       _["df"] = p.naive ? R_PosInf : p.cr2.df);
+  if (!p.has_diagnostics) return out;
+  const PairDiagnostics& D = p.diagnostics;
+  out["patient"] = List::create(
+      _["cluster_id"] = iv(p.cr2.cluster_id),
+      _["group"] = iv(p.cr2.group),
+      _["n_i"] = nv(D.n_i),
+      _["T_i"] = nv(D.T),
+      _["S_g"] = NumericVector::create(D.S_leverage[0], D.S_leverage[1]),
+      _["l_i"] = nv(D.l),
+      _["raw_residual_sum"] = nv(D.raw_sum),
+      _["adjusted_residual_sum"] = nv(D.adjusted_sum),
+      _["e_i"] = nv(p.cr2.e),
+      _["influence_i"] = nv(D.influence),
+      _["y_i"] = nv(D.y),
+      _["d_i"] = nv(D.d),
+      _["delta_i"] = nv(D.delta));
+  out["image"] = List::create(
+      _["cluster"] = iv(D.image_cluster),
+      _["image_id"] = iv(D.image_id),
+      _["n_ij"] = nv(D.n_ij),
+      _["density_ij"] = nv(D.density_ij),
+      _["l_ij"] = nv(D.l_ij),
+      _["l_ij_group_share"] = nv(D.l_ij_group_share),
+      _["raw_residual_sum_ij"] = nv(D.raw_sum_ij),
+      _["adjusted_residual_sum_ij"] = nv(D.adjusted_sum_ij),
+      _["e_ij"] = nv(D.e_ij),
+      _["e_ij_share_within_patient"] = nv(D.e_share_ij),
+      _["influence_ij"] = nv(D.influence_ij));
+  return out;
 }
 
 }  // namespace
@@ -81,9 +114,9 @@ List dataset_binomial_model_data(SEXP ptr, int from, int to) {
 // [[Rcpp::export]]
 List fit_pair_poisson_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group,
                           IntegerVector n, NumericVector density, std::string estimator,
-                          std::string variance) {
+                          std::string variance, bool diagnostics = false) {
   return pair_fit_list(fit_pair_poisson(ivec(cluster), ivec(image), ivec(group), ivec(n),
-                                        dvec(density), estimator, variance, false));
+                                        dvec(density), estimator, variance, diagnostics));
 }
 
 // [[Rcpp::export]]

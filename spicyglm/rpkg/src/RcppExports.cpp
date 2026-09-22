@@ -89,8 +89,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // fit_pair_poisson_cpp
-List fit_pair_poisson_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group, IntegerVector n, NumericVector density, std::string estimator, std::string variance);
-RcppExport SEXP _spicyglm_fit_pair_poisson_cpp(SEXP clusterSEXP, SEXP imageSEXP, SEXP groupSEXP, SEXP nSEXP, SEXP densitySEXP, SEXP estimatorSEXP, SEXP varianceSEXP) {
+List fit_pair_poisson_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group, IntegerVector n, NumericVector density, std::string estimator, std::string variance, bool diagnostics);
+RcppExport SEXP _spicyglm_fit_pair_poisson_cpp(SEXP clusterSEXP, SEXP imageSEXP, SEXP groupSEXP, SEXP nSEXP, SEXP densitySEXP, SEXP estimatorSEXP, SEXP varianceSEXP, SEXP diagnosticsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -101,7 +101,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type density(densitySEXP);
     Rcpp::traits::input_parameter< std::string >::type estimator(estimatorSEXP);
     Rcpp::traits::input_parameter< std::string >::type variance(varianceSEXP);
-    rcpp_result_gen = Rcpp::wrap(fit_pair_poisson_cpp(cluster, image, group, n, density, estimator, variance));
+    Rcpp::traits::input_parameter< bool >::type diagnostics(diagnosticsSEXP);
+    rcpp_result_gen = Rcpp::wrap(fit_pair_poisson_cpp(cluster, image, group, n, density, estimator, variance, diagnostics));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -131,7 +132,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyglm_dataset_build_knn", (DL_FUNC) &_spicyglm_dataset_build_knn, 3},
     {"_spicyglm_dataset_poisson_model_data", (DL_FUNC) &_spicyglm_dataset_poisson_model_data, 4},
     {"_spicyglm_dataset_binomial_model_data", (DL_FUNC) &_spicyglm_dataset_binomial_model_data, 3},
-    {"_spicyglm_fit_pair_poisson_cpp", (DL_FUNC) &_spicyglm_fit_pair_poisson_cpp, 7},
+    {"_spicyglm_fit_pair_poisson_cpp", (DL_FUNC) &_spicyglm_fit_pair_poisson_cpp, 8},
     {"_spicyglm_fit_pair_binomial_cpp", (DL_FUNC) &_spicyglm_fit_pair_binomial_cpp, 8},
     {NULL, NULL, 0}
 };

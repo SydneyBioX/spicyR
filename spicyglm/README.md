@@ -86,9 +86,15 @@ Verified against the Python front end on a 1.22M-cell, 185-image dataset:
 Poisson and Binomial, at both 10 and 21 cell types, agree to 6e-17 in the log
 effect and 7e-16 in the p-value, on all 55 and all 231 pairs.
 
-**Not yet ported:** `compute_diagnostics`. The C++ core computes the
-diagnostics, but the R side does not yet marshal or assemble them, so the
-argument is absent rather than silently ignored.
+`compute_diagnostics = TRUE` returns the same four tables as the Python front
+end: `out$diagnostics$pair`, `$patient`, `$image` and `$cross_pair`. On the
+dataset above the tables agree column by column with Python to 5e-14 relative
+(`S_g`) and 1e-16 absolute (the Wilson bounds).
+
+One cosmetic difference: rows of `cross_pair` whose Wilson lower bound is
+mathematically zero can come out in a different order, because that bound is a
+difference of two equal terms and the two languages round it to 0 and to
+1.2e-17 respectively. Sort by a second key if you need the orders to match.
 
 
 ## Benchmarks
