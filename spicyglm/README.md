@@ -52,6 +52,45 @@ out = spicy_glm(cells, condition="condition", subject="subject", r=40, cr2_metho
 `n_jobs` fits pairs on several threads (and builds the neighbour lists in
 parallel); output is identical to `n_jobs=1`.
 
+## R front end
+
+`rpkg/` is an R package that calls the same C++ core through Rcpp, so the two
+front ends can never disagree numerically. The core sources are not duplicated:
+`rpkg/src/core_*.cpp` are one-line stubs that include `cpp/src/*.cpp`, and
+`rpkg/src/Makevars` puts `cpp/include` on the include path.
+
+```sh
+Rscript -e 'Rcpp::compileAttributes("rpkg")'
+R CMD INSTALL rpkg
+```
+
+```r
+library(spicyglm)
+cells <- read.csv("cells.csv")                       # one row per cell
+cells$condition <- factor(cells$condition, levels = c("NR", "R"))   # first level is the reference
+
+out <- spicy_glm(cells, condition = "condition", subject = "subject", r = 40)
+out$results   # one row per fitted pair
+out$skipped   # pairs that could not be fitted, with a reason code
+
+spicy_glm(cells, condition = "condition", family = "binomial", k = 10)
+spicy_glm(cells, condition = "condition", r = 40, cr2_method = "naive")
+```
+
+Arguments match the Python front end, with `from_` spelled `from` and `n_jobs`
+replaced by `n_threads`, which is used to build the neighbour lists. Pairs are
+fitted sequentially, so a run takes a few seconds where the threaded Python
+front end takes under one; both are far below the R `spicyGLM()` they replace.
+
+Verified against the Python front end on a 1.22M-cell, 185-image dataset:
+Poisson and Binomial, at both 10 and 21 cell types, agree to 6e-17 in the log
+effect and 7e-16 in the p-value, on all 55 and all 231 pairs.
+
+**Not yet ported:** `compute_diagnostics`. The C++ core computes the
+diagnostics, but the R side does not yet marshal or assemble them, so the
+argument is absent rather than silently ignored.
+
+
 ## Benchmarks
 
 One laptop (Apple silicon, 10 cores, 24 GB), against spicyR's `spicyGLM()` on

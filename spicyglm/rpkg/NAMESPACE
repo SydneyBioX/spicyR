@@ -1,0 +1,4 @@
+export(spicy_glm)
+importFrom(Rcpp, sourceCpp)
+importFrom(stats, complete.cases, p.adjust, pnorm, pt)
+useDynLib(spicyglm, .registration = TRUE)

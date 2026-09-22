@@ -1,0 +1,7 @@
+# The numeric core lives one level up, shared with the Python front end, and is
+# compiled here through the one-line stubs core_*.cpp. Keeping one copy of the
+# sources means the two front ends can never drift apart.
+CXX_STD = CXX17
+PKG_CPPFLAGS = -I../../cpp/include
+PKG_CXXFLAGS = $(SHLIB_PTHREAD_FLAGS)
+PKG_LIBS = $(SHLIB_PTHREAD_FLAGS)

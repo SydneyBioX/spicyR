@@ -1,0 +1,18 @@
+Package: spicyglm
+Type: Package
+Title: Spatial Co-Localisation Inference with a Fast CR2 Sandwich Variance
+Version: 0.1.0
+Authors@R: person("Elijah", "Willie", email = "ewillie0004@gmail.com", role = c("aut", "cre"))
+Description: An R front end for the spicyGLM numeric core, a port of spicyGLM()
+    from spicyR's gee branch. For each reference cell the number of target cells
+    within a radius is modelled as Poisson with a log-density offset, or the
+    number of target cells among its k nearest neighbours as Binomial with a
+    logit background-proportion offset. One coefficient per condition, tested
+    with a cluster-robust CR2 variance and Satterthwaite degrees of freedom.
+    The C++17 core is shared with the Python front end in the same repository.
+License: GPL-3
+Encoding: UTF-8
+Imports: Rcpp
+LinkingTo: Rcpp, RcppEigen
+SystemRequirements: C++17
+RoxygenNote: 7.3.3
