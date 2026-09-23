@@ -25,7 +25,8 @@ result_columns <- function(family) {
 #'
 #' @param cells A data frame with one row per cell.
 #' @param condition Column holding the image-level condition. Exactly two levels
-#'   are required; the first level (factor order, otherwise sorted) is the reference.
+#'   are required; the reference is \code{ref} if given, otherwise the first level
+#'   (factor order, otherwise sorted).
 #' @param r Neighbourhood radius (poisson only).
 #' @param subject Optional column holding the clustering unit.
 #' @param image_id,cell_type Column names.
@@ -47,6 +48,8 @@ result_columns <- function(family) {
 #'   and \code{cr2_method = "fast"}.
 #' @param top_percent Fraction of the within-pair percentile rank counted as flagged.
 #' @param n_threads Threads used to build the neighbour lists.
+#' @param ref Reference level of \code{condition}, as spicyR's \code{spicyGLM(ref =)}.
+#'   Must be one of the levels present; the other level is the comparison.
 #'
 #' @return A list with \code{results} (one row per fitted pair),
 #'   \code{skipped} (pairs that could not be fitted, with a reason code) and,
@@ -58,7 +61,8 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
                       spatial_coords = c("x", "y"), from = NULL, to = NULL,
                       window = "convex", family = c("poisson", "binomial"), k = NULL,
                       estimator = c("firth", "mle"), cr2_method = c("fast", "naive"),
-                      compute_diagnostics = FALSE, top_percent = 0.05, n_threads = 1) {
+                      compute_diagnostics = FALSE, top_percent = 0.05, n_threads = 1,
+                      ref = NULL) {
   family <- match.arg(family)
   estimator <- match.arg(estimator)
   cr2_method <- match.arg(cr2_method)
@@ -98,6 +102,12 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
   if (length(levels_) != 2L)
     stop("spicyGLM compares exactly two conditions; found ", length(levels_), ": ",
          paste(levels_, collapse = ", "))
+  if (!is.null(ref)) {
+    if (length(ref) != 1L || !as.character(ref) %in% levels_)
+      stop("`ref` = \"", paste(ref, collapse = ", "), "\" is not a level of `condition`. Available levels: ",
+           paste(levels_, collapse = ", "), call. = FALSE)
+    levels_ <- c(as.character(ref), setdiff(levels_, as.character(ref)))
+  }
   cond_chr <- as.character(df[[condition]])
   per_image_cond <- split(cond_chr, image_codes)
   if (any(vapply(per_image_cond, function(z) length(unique(z)) > 1L, logical(1))))

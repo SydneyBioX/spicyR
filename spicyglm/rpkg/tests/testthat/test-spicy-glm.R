@@ -68,6 +68,40 @@ test_that("a character condition uses the sorted first level as reference", {
   expect_true(all(out$results$condition_ref == "alpha"))
 })
 
+test_that("ref set to the default level changes nothing", {
+  for (args in list(list(r = 60), list(family = "binomial", k = 10))) {
+    a <- do.call(spicy_glm, c(list(make_cells(), condition = "response"), args))$results
+    b <- do.call(spicy_glm, c(list(make_cells(), condition = "response", ref = "alpha"), args))$results
+    expect_identical(a, b)
+  }
+})
+
+test_that("ref set to the other level swaps the contrast and keeps the p-value", {
+  for (args in list(list(r = 60), list(family = "binomial", k = 10))) {
+    a <- do.call(spicy_glm, c(list(make_cells(), condition = "response"), args))$results
+    b <- do.call(spicy_glm, c(list(make_cells(), condition = "response", ref = "beta"), args))$results
+    b <- b[match(paste(a$from, a$to), paste(b$from, b$to)), ]
+    eff <- grep("^log_", names(a), value = TRUE)
+    expect_true(all(b$condition_ref == "beta") && all(b$condition_comp == "alpha"))
+    expect_equal(b$coef_ref, a$coef_comp, tolerance = 1e-12)
+    expect_equal(b$coef_comp, a$coef_ref, tolerance = 1e-12)
+    expect_equal(b[[eff]], -a[[eff]], tolerance = 1e-12)
+    expect_equal(b$p_value, a$p_value, tolerance = 1e-10)
+  }
+})
+
+test_that("ref overrides the factor level order", {
+  cells <- make_cells()
+  cells$response <- factor(cells$response, levels = c("beta", "alpha"))
+  out <- spicy_glm(cells, condition = "response", r = 60, ref = "alpha")
+  expect_true(all(out$results$condition_ref == "alpha"))
+})
+
+test_that("a ref that is not a condition level is an error", {
+  expect_error(spicy_glm(make_cells(), condition = "response", r = 60, ref = "gamma"),
+               "not a level of `condition`")
+})
+
 test_that("from and to select a single pair", {
   out <- spicy_glm(make_cells(), condition = "response", r = 60, from = "A", to = "B")
   expect_equal(nrow(out$results), 1L)

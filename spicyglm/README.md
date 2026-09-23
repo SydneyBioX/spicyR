@@ -38,6 +38,9 @@ out = spicy_glm(cells, condition="condition", subject="subject", r=40)
 out.results   # one row per fitted pair
 out.skipped   # pairs that could not be fitted, with a reason code
 
+out = spicy_glm(cells, condition="condition", subject="subject", r=40, ref="NR")
+# ref: the reference condition (default: first category, otherwise sorted first)
+
 out = spicy_glm(cells, condition="condition", subject="subject", r=40, compute_diagnostics=True)
 out.diagnostics["pair"]                   # one row per pair: nu, max influence, max shift
 out.diagnostics["patient"]                # leverage, influence, shift and within-pair ranks
@@ -103,6 +106,7 @@ out$skipped   # pairs that could not be fitted, with a reason code
 
 spicy_glm(cells, condition = "condition", family = "binomial", k = 10)
 spicy_glm(cells, condition = "condition", r = 40, cr2_method = "naive")
+spicy_glm(cells, condition = "condition", r = 40, ref = "R")   # overrides the factor order
 ```
 
 Arguments match the Python front end, with `from_` spelled `from` and `n_jobs`
@@ -189,7 +193,7 @@ commits. The Schürch comparison has not been rerun since those fixes.
   103 of 419 pairs R silently used the second condition and the log ratio's sign
   flipped. `d9f8b6f` factors the condition once on the full dataset, so every
   pair uses the first level as spicyglm does. It also adds a `ref=` argument,
-  which spicyglm does not have yet; set the factor levels instead.
+  which spicyglm has too.
 - **Non-converged binomial fits (fixed in `gee@08d07d9`).** At `b591b17`, on 4
   separated pairs `brglm2::brglmFit` did not converge (coefficients near -1e15)
   and R reported p-values near 1e-15. `08d07d9` damps brglm2's step
