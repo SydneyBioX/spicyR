@@ -12,7 +12,8 @@ Status:
   point-estimate shift diagnostics with cross-pair flagging.
 - Binomial family (fixed-k nearest neighbours): MLE and Firth by a
   one-dimensional root-find per condition (replacing glm / brglm2), with the
-  same CR2 and degrees of freedom. Diagnostics are Poisson-only, as in R.
+  same CR2 and degrees of freedom. The effect is directional, so every ordered
+  pair is fitted (see below). Diagnostics are Poisson-only, as in R.
 - `cr2_method="naive"` (spicyR's `cr2Method = "naive"`): model-based variance
   ignoring clustering, with a z-test. `cr2Method = "clubSandwich"` is not ported.
 
@@ -52,6 +53,33 @@ out = spicy_glm(cells, condition="condition", subject="subject", r=40, cr2_metho
 `n_jobs` fits pairs on several threads (and builds the neighbour lists in
 parallel); output is identical to `n_jobs=1`.
 
+### Which pairs are fitted
+
+The binomial effect is directional. A→B models how many of each A cell's k
+nearest neighbours are B, and B→A is a different model:
+
+- nearest-neighbour membership is not symmetric, so the directed edge totals
+  differ;
+- the logit link keeps the background-proportion offset inside
+  `expit(beta + logit(p0))`, so the two score equations differ for `beta != 0`
+  even when the edge totals agree;
+- the reference cells, and with them the CR2 working variances, differ.
+
+On simulated data the two directions gave log odds ratios of −0.789 and −0.451.
+The Poisson effect is direction-invariant. Counts within `r` are symmetric, the
+offset total `sum_j A_j B_j pi r^2 / |W_j|` is symmetric, and the log link
+reduces the estimate and CR2 to those totals. A→B and B→A give the same log
+rate ratio, SE, degrees of freedom and p-value (checked against clubSandwich).
+
+| `from_` / `to` | Poisson | Binomial |
+|---|---|---|
+| omitted | each unordered pair once, plus self-pairs: n(n+1)/2 | every ordered pair, including self-pairs: n² |
+| one type each | that pair | that direction |
+| lists | unordered pairs among the union | every pair in `from_` × `to` (an omitted side means all types) |
+
+BH is applied across every fitted pair, so a binomial run adjusts over n² tests.
+This matches spicyR's `spicyGLM()` from `gee@129b248`.
+
 ## Benchmarks
 
 One laptop (Apple silicon, 10 cores, 24 GB), against spicyR's `spicyGLM()` on
@@ -72,6 +100,10 @@ over 5 runs (spicyglm) and 3 runs (R); like-for-like workers. Plots and the raw
 
 Caveats:
 
+- The binomial rows were timed when both implementations fitted one direction
+  per unordered pair. Both now fit every ordered pair, about twice as many fits,
+  so absolute binomial times roughly double for both. The speed-ups should hold,
+  but they have not been re-timed.
 - R with 4 cores was stopped when its total memory (summed over forked
   workers, which overstates shared pages) passed 6 GB, so the 4-worker
   comparison only covers up to 250k cells.
@@ -118,6 +150,11 @@ commits. The Schürch comparison has not been rerun since those fixes.
 - **Ties at the k-th neighbour** are broken exactly as spatstat's `nnwhich()`
   (a port of R's quicksort and spatstat's search), so counts match R even with
   integer coordinates.
+
+The fixtures in `tests/r_reference/` are compared with R's `spicyGLM()` code
+path. The binomial fixtures were regenerated against `gee@129b248` (ordered
+pairs). Regenerating the Poisson and diagnostic fixtures against that commit
+reproduces the committed files to 1e-14 relative, so they were left unchanged.
 
 ## Layout
 

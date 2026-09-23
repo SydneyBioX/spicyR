@@ -1,4 +1,8 @@
 "from","to","reason"
+"Rare","Bcell","type_absent"
+"Rare","Tcell","type_absent"
+"Rare","Tumour","type_absent"
+"Rare","Macro","type_absent"
 "Bcell","Rare","type_absent"
 "Tcell","Rare","type_absent"
 "Tumour","Rare","type_absent"
