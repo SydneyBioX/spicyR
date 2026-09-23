@@ -142,18 +142,24 @@ python benchmarks/compare_real.py <data_dir>/schurch.csv <r_out_dir>  # outputs 
 
 ## Differences from the R implementation
 
-Checked on Schürch 2020 with `benchmarks/compare_real.py`, and reproduced by
-calling `spicyGLM()` itself. Everything else matches R to 1e-7 (binomial R fits
-refitted with a tight convergence tolerance).
+Checked on Schürch 2020 with `benchmarks/compare_real.py` against
+`gee@b591b17`, and reproduced by calling `spicyGLM()` itself. Everything else
+matches R to 1e-7 (binomial R fits refitted with a tight convergence tolerance).
+The first two differences below were R bugs and are fixed in later `gee`
+commits. The Schürch comparison has not been rerun since those fixes.
 
-- **Reference condition.** R's `buildGLM()` takes the reference level from the
-  first image with data for a pair (`dplyr::bind_rows` merges factor levels in
-  order of appearance), so on 103 of 419 pairs R silently uses the second
-  condition and the log ratio's sign flips. spicyglm always uses the first level.
-- **Non-converged binomial fits.** On 4 separated pairs `brglm2::brglmFit` does
-  not converge (coefficients near -1e15) and R reports p-values near 1e-15.
-  spicyglm returns the Jeffreys-penalised maximum, which matches R's own
-  `optimize()` of the same likelihood.
+- **Reference condition (fixed in `gee@d9f8b6f`).** At `b591b17`, R's
+  `buildGLM()` took the reference level from the first image with data for a
+  pair (`dplyr::bind_rows` merges factor levels in order of appearance), so on
+  103 of 419 pairs R silently used the second condition and the log ratio's sign
+  flipped. `d9f8b6f` factors the condition once on the full dataset, so every
+  pair uses the first level as spicyglm does. It also adds a `ref=` argument,
+  which spicyglm does not have yet; set the factor levels instead.
+- **Non-converged binomial fits (fixed in `gee@08d07d9`).** At `b591b17`, on 4
+  separated pairs `brglm2::brglmFit` did not converge (coefficients near -1e15)
+  and R reported p-values near 1e-15. `08d07d9` damps brglm2's step
+  (`slowit = 0.1`), which converges to the same Jeffreys-penalised maximum that
+  spicyglm returns by root-finding.
 - **Ties at the k-th neighbour** are broken exactly as spatstat's `nnwhich()`
   (a port of R's quicksort and spatstat's search), so counts match R even with
   integer coordinates.
