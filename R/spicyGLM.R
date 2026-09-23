@@ -6,7 +6,8 @@
                                  cellType = "cellType",
                                  GLMresults = NULL,
                                  messages = character(0),
-                                 family = c("poisson", "binomial")) {
+                                 family = c("poisson", "binomial"),
+                                 ref = NULL) {
 
   family <- match.arg(family)
   
@@ -18,7 +19,9 @@
   
   # NOTE: releveling is already done in spicyGLM() with cli_inform;
   # but we also do it here to ensure consistent base behavior even for early returns.
-  if (nlevels(conditionVector) >= 1) {
+  if (!is.null(ref) && ref %in% levels(conditionVector)) {
+    conditionVector <- relevel(conditionVector, ref = ref)
+  } else if (nlevels(conditionVector) >= 1) {
     conditionVector <- relevel(conditionVector, ref = levels(conditionVector)[1])
   }
   
@@ -381,7 +384,8 @@ spicyGLM = function(cells,
     subject = subject,
     imageID = imageID,
     cellType = cellType,
-    family = family
+    family = family,
+    ref = ref
   )
 
   if (!is.null(from) && !is.null(to) && length(from) == 1 && length(to) == 1) {
