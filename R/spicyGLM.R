@@ -129,6 +129,11 @@
 #'   \code{family = "binomial"}.
 #' @param from Character vector of reference cell types. If NULL, all cell types are used.
 #' @param to Character vector of target cell types. If NULL, all cell types are used.
+#'   For \code{family = "poisson"} the effect is direction-invariant, so one
+#'   direction is fitted per unordered pair among \code{union(from, to)}. For
+#'   \code{family = "binomial"} the effect is directional (\code{from -> to} and
+#'   \code{to -> from} differ), so every ordered pair in
+#'   \code{expand.grid(from, to)} is fitted, including self-pairs.
 #' @param window Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".
 #' @param cores Number of cores to use for parallel computation.
 #' @param family Character specifying the neighbourhood model.
@@ -749,7 +754,12 @@ getPairwiseAssoc = function(cells,
     oneToOne = TRUE
   } 
   
-  if (!is.null(from) || !is.null(to)) {
+  if (family == "binomial") {
+    allTypes <- as.character(unique(cells[[cellType]]))
+    cellPairs <- expand.grid(from = unique(as.character(if (is.null(from)) allTypes else from)),
+                             to   = unique(as.character(if (is.null(to))   allTypes else to)),
+                             stringsAsFactors = FALSE)
+  } else if (!is.null(from) || !is.null(to)) {
     allTypes <- union(from, to)
     cellPairs <- getCellTypePairs(cells = NULL, cellType = NULL, includeSelf = TRUE,
                                   typesOverride = allTypes)

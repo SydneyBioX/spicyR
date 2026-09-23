@@ -87,13 +87,54 @@ test_that("Binomial single pair fits and reports an odds ratio", {
   expect_identical(res$GLMresults$estimator, "firth")
 })
 
-test_that("Binomial all-pairs run produces one row per unordered pair", {
+test_that("Binomial all-pairs run produces one row per ordered pair", {
   spe <- make_spe()
   res <- run_glm(spe, family = "binomial", k = 12)
-  expect_true(nrow(res$GLMresults) >= 3)
+  expect_equal(nrow(res$GLMresults) + NROW(res$skipped), 9L)
   expect_true(all(res$GLMresults$family == "binomial"))
   expect_true("p.adj" %in% names(res$GLMresults))
   expect_null(res$diagnostics)
+})
+
+## --- directionality ----------------------------------------------------------
+
+test_that("Binomial fits both directions and they differ", {
+  spe <- make_spe()
+  res <- run_glm(spe, family = "binomial", k = 12)$GLMresults
+  key <- paste(res$from, res$to, sep = "->")
+  expect_setequal(key, as.vector(outer(c("Tcell", "Tumour", "Bcell"),
+                                       c("Tcell", "Tumour", "Bcell"), paste, sep = "->")))
+  ab <- res$logOddsRatio[key == "Tcell->Tumour"]
+  ba <- res$logOddsRatio[key == "Tumour->Tcell"]
+  expect_gt(abs(ab - ba), 1e-3)
+})
+
+test_that("Binomial all-pairs rows equal the single-pair fits in each direction", {
+  spe <- make_spe()
+  res <- run_glm(spe, family = "binomial", k = 12)$GLMresults
+  for (p in list(c("Tcell", "Tumour"), c("Tumour", "Tcell"))) {
+    one <- run_glm(spe, family = "binomial", k = 12, from = p[1], to = p[2])$GLMresults
+    row <- res[res$from == p[1] & res$to == p[2], ]
+    expect_equal(row$logOddsRatio, one$logOddsRatio, tolerance = 1e-10)
+    expect_equal(row$p.value, one$p.value, tolerance = 1e-10)
+  }
+})
+
+test_that("Binomial from/to vectors fit exactly expand.grid(from, to)", {
+  spe <- make_spe()
+  res <- run_glm(spe, family = "binomial", k = 12, from = "Tcell",
+                 to = c("Tumour", "Bcell"))$GLMresults
+  expect_setequal(paste(res$from, res$to, sep = "->"), c("Tcell->Tumour", "Tcell->Bcell"))
+})
+
+test_that("Poisson keeps one row per unordered pair and is direction-invariant", {
+  spe <- make_spe()
+  res <- run_glm(spe, family = "poisson", r = 50)
+  expect_equal(nrow(res$GLMresults) + NROW(res$skipped), 6L)
+  ab <- run_glm(spe, family = "poisson", r = 50, from = "Tcell", to = "Tumour")$GLMresults
+  ba <- run_glm(spe, family = "poisson", r = 50, from = "Tumour", to = "Tcell")$GLMresults
+  expect_equal(ab$logRateRatio, ba$logRateRatio, tolerance = 1e-10)
+  expect_equal(ab$p.value, ba$p.value, tolerance = 1e-8)
 })
 
 test_that("Binomial direct and dpr1 agree", {
