@@ -115,6 +115,20 @@ test_that("ref lets the user override the base group, consistently across pairs"
   expect_equal(unique(target$conditionRef), "B")
 })
 
+test_that("result$condition puts the reference level first, with and without ref", {
+  spe <- make_spe_asymmetric()
+  fit <- function(...) suppressMessages(suppressWarnings(
+    spicyGLM(spe, condition = "condition", subject = "subject",
+             imageID = "imageID", cellType = "cellType",
+             spatialCoords = c("x", "y"), cores = 1, r = 50, family = "poisson", ...)
+  ))
+  expect_equal(levels(fit(from = "Tcell", to = "Tumour")$condition), c("A", "B"))
+  expect_equal(levels(fit(from = "Tcell", to = "Tumour", ref = "B")$condition), c("B", "A"))
+  res <- fit(from = c("Tcell", "Rare"), to = "Tumour", ref = "B")
+  expect_equal(levels(res$condition), c("B", "A"))
+  expect_equal(levels(res$condition)[1], unique(res$GLMresults$conditionRef))
+})
+
 test_that("an invalid ref errors with the available levels", {
   spe <- make_spe_asymmetric()
   expect_error(
