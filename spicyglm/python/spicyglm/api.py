@@ -39,7 +39,7 @@ class SpicyGLMResult:
 def spicy_glm(cells, condition, r=None, subject=None, image_id="imageID", cell_type="cellType",
               spatial_coords=("x", "y"), from_=None, to=None, window="convex", family="poisson",
               k=None, estimator="firth", cr2_method="fast", compute_diagnostics=False, top_percent=0.05,
-              n_jobs=1):
+              n_jobs=1, ref=None):
     """Test for a change in co-localisation of cell-type pairs between two conditions.
 
     ``family="poisson"``: for each reference cell (``from_``) the number of
@@ -58,7 +58,8 @@ def spicy_glm(cells, condition, r=None, subject=None, image_id="imageID", cell_t
         One row per cell.
     condition : str
         Column with the image-level condition. Exactly two levels are required;
-        the first level (category order, otherwise sorted) is the reference.
+        the reference is ``ref`` if given, otherwise the first level (category
+        order, otherwise sorted).
     r : float
         Neighbourhood radius (poisson only).
     from_, to : str or list of str, optional
@@ -87,6 +88,9 @@ def spicy_glm(cells, condition, r=None, subject=None, image_id="imageID", cell_t
     n_jobs : int
         Threads used to fit pairs concurrently. Memory grows with n_jobs only by
         the per-pair working data; the cell index is shared.
+    ref : optional
+        Reference level of ``condition``, as spicyR's ``spicyGLM(ref=)``. Must be
+        one of the levels present; the other level is the comparison.
     """
     if estimator not in ("firth", "mle"):
         raise ValueError("estimator must be 'firth' or 'mle'")
@@ -122,6 +126,11 @@ def spicy_glm(cells, condition, r=None, subject=None, image_id="imageID", cell_t
     levels = _condition_levels(cells[condition])
     if len(levels) != 2:
         raise ValueError(f"spicyGLM compares exactly two conditions; found {len(levels)}: {list(levels)}")
+    if ref is not None:
+        if not any(ref == lv for lv in levels):
+            raise ValueError(f"`ref` = {ref!r} is not a level of `condition`. Available levels: "
+                             f"{', '.join(map(str, levels))}")
+        levels = [lv for lv in levels if lv == ref] + [lv for lv in levels if lv != ref]
     if (df.groupby(image_codes)[condition].nunique() > 1).any():
         raise ValueError(f"'{condition}' must be constant within each image")
     if subject and (cells.groupby(subject)[condition].nunique() > 1).any():
