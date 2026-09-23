@@ -86,35 +86,39 @@ This matches spicyR's `spicyGLM()` from `gee@129b248`.
 ## Benchmarks
 
 One laptop (Apple silicon, 10 cores, 24 GB), against spicyR's `spicyGLM()` on
-the `gee` branch at `b591b17` (loaded with `devtools::load_all`), default
-`cr2Method = "fast"`. The later `gee` commits (`2adb696`, `7ff4f90`) only add
-the naive option and untrack files; the timed path is unchanged. Fitting time only; medians
-over 5 runs (spicyglm) and 3 runs (R); like-for-like workers. Plots and the raw
-`timings.csv` are in `benchmarks/results/`.
+the `gee` branch at `40260c4` (loaded with `devtools::load_all`), default
+`cr2Method = "fast"`. Fitting time only; medians over 5 runs (spicyglm) and
+3 runs (R); like-for-like workers. Both implementations fit every ordered pair
+for Binomial and one direction per unordered pair for Poisson. Plots and the
+raw `timings.csv` are in `benchmarks/results/`.
 
 | Data | Family | R, 1 core | spicyglm, 1 thread | R, 4 cores | spicyglm, 4 threads |
 |---|---|---|---|---|---|
-| Synthetic, 250k cells | Poisson | 11.3 s | 0.27 s (42x) | 7.3 s | 0.13 s (54x) |
-| Synthetic, 250k cells | Binomial | 21.0 s | 0.35 s (61x) | 7.7 s | 0.18 s (43x) |
-| Synthetic, 1M cells | Poisson | 66 s | 1.07 s (62x) | stopped at 6 GB | 0.53 s |
-| Synthetic, 1M cells | Binomial | 93 s | 1.36 s (68x) | stopped at 6 GB | 0.58 s |
-| Schürch 2020, 258k cells | Poisson + diagnostics | 93 s | 4.3 s (22x) | stopped at 6 GB | 4.0 s |
-| Schürch 2020, 258k cells | Binomial | 132 s | 0.47 s (279x) | stopped at 6 GB | 0.22 s |
+| Synthetic, 250k cells | Poisson | 12 s | 0.26 s (44x) | 6.3 s | 0.13 s (47x) |
+| Synthetic, 250k cells | Binomial | 35 s | 0.37 s (94x) | stopped at 6 GB | 0.16 s |
+| Synthetic, 500k cells | Poisson | 25 s | 0.53 s (47x) | stopped at 6 GB | 0.26 s |
+| Synthetic, 500k cells | Binomial | 72 s | 0.75 s (96x) | stopped at 6 GB | 0.31 s |
+| Synthetic, 1M cells | Poisson | 77 s | 1.07 s (72x) | stopped at 6 GB | 0.56 s |
+| Synthetic, 1M cells | Binomial | 169 s | 1.55 s (109x) | stopped at 6 GB | 0.63 s |
+| Schürch 2020, 258k cells | Poisson + diagnostics | 95 s | 4.23 s (22x) | stopped at 6 GB | 3.95 s |
+| Schürch 2020, 258k cells | Binomial | 282 s | 0.58 s (485x) | stopped at 6 GB | 0.28 s |
 
 Caveats:
 
-- The binomial rows were timed when both implementations fitted one direction
-  per unordered pair. Both now fit every ordered pair, about twice as many fits,
-  so absolute binomial times roughly double for both. The speed-ups should hold,
-  but they have not been re-timed.
-- R with 4 cores was stopped when its total memory (summed over forked
-  workers, which overstates shared pages) passed 6 GB, so the 4-worker
-  comparison only covers up to 250k cells.
-- Peak memory at 1M cells: R 4.4 GB (1 core, including about 2 GB for loading
-  spicyR's dependencies) vs spicyglm 0.43 GB.
+- Fitting both directions for Binomial roughly doubles R's time (1.7x to 2.1x
+  over the earlier one-direction run) but costs spicyglm only 1.1x to 1.2x,
+  because the k-nearest-neighbour index is built once and shared across the two
+  directions while only the fits are duplicated. Binomial speed-ups therefore
+  rose: 61x to 94x at 250k cells, 68x to 109x at 1M, and 279x to 485x on
+  Schürch. Poisson is direction-invariant and its timings are unchanged.
+- R with 4 cores was stopped when its total memory (summed over forked workers,
+  which overstates shared pages) passed 6 GB. With the doubled Binomial work it
+  now stops from 250k cells for Binomial, where the earlier run reached 250k.
+- Peak memory at 1M cells, 1 core: R 3.6 GB (including about 2 GB for loading
+  spicyR's dependencies) against spicyglm 0.44 GB.
 - Synthetic cells are uniformly scattered; on real tissue the single-thread
   speed-up ranged from 22x (Poisson with diagnostics, where building the pandas
-  tables dominates) to 279x (binomial).
+  tables dominates) to 485x (Binomial).
 
 Reproduce:
 
