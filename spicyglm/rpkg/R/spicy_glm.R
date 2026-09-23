@@ -31,8 +31,11 @@ result_columns <- function(family) {
 #' @param image_id,cell_type Column names.
 #' @param spatial_coords Length-two character vector naming the coordinate columns.
 #' @param from,to Cell types. A single \code{from} and \code{to} fits that pair
-#'   only; otherwise every pair among the given (or all) cell types is fitted,
-#'   one direction per unordered pair plus self-pairs.
+#'   only. Otherwise, for \code{family = "poisson"} (direction-invariant) every
+#'   pair among the given (or all) cell types is fitted, one direction per
+#'   unordered pair plus self-pairs; for \code{family = "binomial"} (directional:
+#'   from -> to and to -> from differ) every ordered pair in \code{from} x
+#'   \code{to} is fitted, where an omitted side means all cell types.
 #' @param window Observation window for each image's area, "convex" or "rectangle".
 #' @param family "poisson" or "binomial".
 #' @param k Number of nearest neighbours (binomial only).
@@ -136,7 +139,7 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
     dataset_build_knn(data, k, as.integer(n_threads))
   }
 
-  pairs <- enumerate_pairs(from, to, type_labels)
+  pairs <- enumerate_pairs(from, to, type_labels, family)
   unknown <- setdiff(unique(unlist(pairs)), type_labels)
   if (length(unknown)) stop("cell type not found: ", paste(unknown, collapse = ", "))
 
@@ -188,9 +191,16 @@ condition_levels <- function(col) {
   sort(unique(as.character(col[!is.na(col)])))
 }
 
-enumerate_pairs <- function(from, to, all_types) {
+enumerate_pairs <- function(from, to, all_types, family) {
   if (is.character(from) && length(from) == 1L && is.character(to) && length(to) == 1L)
     return(list(c(from, to)))
+  # the kNN effect is directional (A->B != B->A), so fit every ordered pair
+  if (family == "binomial") {
+    from_types <- if (is.null(from)) all_types else unique(from)
+    to_types <- if (is.null(to)) all_types else unique(to)
+    return(unlist(lapply(from_types, function(f) lapply(to_types, function(t) c(f, t))),
+                  recursive = FALSE))
+  }
   types <- if (!is.null(from) || !is.null(to)) unique(c(from, to)) else all_types
   cross <- if (length(types) >= 2L)
     utils::combn(types, 2L, simplify = FALSE) else list()

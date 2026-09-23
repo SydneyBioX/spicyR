@@ -15,11 +15,44 @@ make_cells <- function(n_img = 8, per_type = 60, types = c("A", "B", "C"), seed 
   }))
 }
 
-test_that("every unordered pair is fitted once, plus the self-pairs", {
+test_that("poisson fits every unordered pair once, plus the self-pairs", {
   out <- spicy_glm(make_cells(), condition = "response", r = 60)
   key <- paste(pmin(out$results$from, out$results$to), pmax(out$results$from, out$results$to))
   expect_equal(nrow(out$results) + nrow(out$skipped), 6L)   # choose(3,2) + 3
   expect_false(any(duplicated(key)))
+})
+
+test_that("poisson is direction-invariant", {
+  ab <- spicy_glm(make_cells(), condition = "response", r = 60, from = "A", to = "B")$results
+  ba <- spicy_glm(make_cells(), condition = "response", r = 60, from = "B", to = "A")$results
+  expect_equal(ab$log_rate_ratio, ba$log_rate_ratio, tolerance = 1e-12)
+  expect_equal(ab$p_value, ba$p_value, tolerance = 1e-10)
+})
+
+test_that("binomial fits every ordered pair, and the two directions differ", {
+  out <- spicy_glm(make_cells(), condition = "response", family = "binomial", k = 10)
+  key <- paste(out$results$from, out$results$to, sep = "->")
+  expect_setequal(key, as.vector(outer(c("A", "B", "C"), c("A", "B", "C"), paste, sep = "->")))
+  expect_gt(abs(out$results$log_odds_ratio[key == "A->B"] - out$results$log_odds_ratio[key == "B->A"]), 1e-3)
+})
+
+test_that("binomial all-pairs rows equal the single-pair fits in each direction", {
+  out <- spicy_glm(make_cells(), condition = "response", family = "binomial", k = 10)$results
+  for (p in list(c("A", "B"), c("B", "A"))) {
+    one <- spicy_glm(make_cells(), condition = "response", family = "binomial", k = 10,
+                     from = p[1], to = p[2])$results
+    row <- out[out$from == p[1] & out$to == p[2], ]
+    expect_equal(row$log_odds_ratio, one$log_odds_ratio, tolerance = 1e-12)
+    expect_equal(row$p_value, one$p_value, tolerance = 1e-12)
+  }
+})
+
+test_that("binomial from and to vectors fit exactly from x to", {
+  out <- spicy_glm(make_cells(), condition = "response", family = "binomial", k = 10,
+                   from = "A", to = c("B", "C"))
+  expect_setequal(paste(out$results$from, out$results$to, sep = "->"), c("A->B", "A->C"))
+  only_to <- spicy_glm(make_cells(), condition = "response", family = "binomial", k = 10, to = "A")
+  expect_setequal(paste(only_to$results$from, only_to$results$to, sep = "->"), c("A->A", "B->A", "C->A"))
 })
 
 test_that("a factor condition sets the reference from its level order", {

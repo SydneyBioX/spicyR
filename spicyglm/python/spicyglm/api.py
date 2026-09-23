@@ -7,7 +7,7 @@ freedom) happens in the C++ core, ``spicyglm._core``.
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from itertools import combinations
+from itertools import combinations, product
 from types import SimpleNamespace
 
 import numpy as np
@@ -62,9 +62,12 @@ def spicy_glm(cells, condition, r=None, subject=None, image_id="imageID", cell_t
     r : float
         Neighbourhood radius (poisson only).
     from_, to : str or list of str, optional
-        Cell types. A single ``from_`` and ``to`` fits that pair only; otherwise
-        every pair among the given (or all) cell types is fitted, one direction
-        per unordered pair plus self-pairs.
+        Cell types. A single ``from_`` and ``to`` fits that pair only. Otherwise,
+        for ``family="poisson"`` (direction-invariant) every pair among the given
+        (or all) cell types is fitted, one direction per unordered pair plus
+        self-pairs; for ``family="binomial"`` (directional: from->to and to->from
+        differ) every ordered pair in ``from_`` x ``to`` is fitted, where an
+        omitted side means all cell types.
     window : {"convex", "rectangle"}
         Observation window used for each image's area (poisson only).
     family : {"poisson", "binomial"}
@@ -149,7 +152,7 @@ def spicy_glm(cells, condition, r=None, subject=None, image_id="imageID", cell_t
     else:
         ctx.data.build_knn(k, n_jobs)
 
-    pairs = _pairs(from_, to, list(type_labels))
+    pairs = _pairs(from_, to, list(type_labels), family)
     for f, t in pairs:
         if f not in ctx.type_index or t not in ctx.type_index:
             raise KeyError(f"cell type not found: {f if f not in ctx.type_index else t}")
@@ -259,15 +262,23 @@ def _condition_levels(col):
     return sorted(col.dropna().unique())
 
 
-def _pairs(from_, to, all_types):
+def _unique_types(group):
+    types = []
+    for ct in ([group] if isinstance(group, str) else (group or [])):
+        if ct not in types:
+            types.append(ct)
+    return types
+
+
+def _pairs(from_, to, all_types, family):
     if isinstance(from_, str) and isinstance(to, str):
         return [(from_, to)]
+    if family == "binomial":
+        # the kNN effect is directional (A->B != B->A), so fit every ordered pair
+        return list(product(_unique_types(from_) if from_ is not None else all_types,
+                            _unique_types(to) if to is not None else all_types))
     if from_ is not None or to is not None:
-        types = []
-        for group in (from_, to):
-            for ct in ([group] if isinstance(group, str) else (group or [])):
-                if ct not in types:
-                    types.append(ct)
+        types = _unique_types(from_) + [ct for ct in _unique_types(to) if ct not in _unique_types(from_)]
     else:
         types = all_types
     return list(combinations(types, 2)) + [(ct, ct) for ct in types]

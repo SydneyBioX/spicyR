@@ -47,9 +47,14 @@ run_spicyglm <- function(cells, out_dir, name, subject, window = "convex", estim
   one_to_one <- is.null(subject) || length(unique(cells[[subject]])) == length(unique(cells$imageID))
   presence <- computeCellTypePresence(cells, condition = "condition", imageID = "imageID", cellType = "cellType")
   types <- unique(cells$cellType)
-  pairs <- rbind(do.call(rbind, lapply(combn(types, 2, simplify = FALSE),
-                                       function(p) data.frame(from = p[1], to = p[2]))),
-                 data.frame(from = types, to = types))
+  # binomial is directional, as in spicyGLM() since gee@129b248: every ordered pair
+  pairs <- if (family == "binomial") {
+    expand.grid(from = types, to = types, stringsAsFactors = FALSE)
+  } else {
+    rbind(do.call(rbind, lapply(combn(types, 2, simplify = FALSE),
+                                function(p) data.frame(from = p[1], to = p[2]))),
+          data.frame(from = types, to = types))
+  }
   fits <- list(); skips <- list(); diags <- list()
   for (i in seq_len(nrow(pairs))) {
     from <- pairs$from[i]; to <- pairs$to[i]
