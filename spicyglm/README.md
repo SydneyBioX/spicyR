@@ -132,11 +132,23 @@ python benchmarks/compare_real.py <data_dir>/schurch.csv <r_out_dir>  # outputs 
 
 ## Differences from the R implementation
 
-Checked on Schürch 2020 with `benchmarks/compare_real.py` against
-`gee@b591b17`, and reproduced by calling `spicyGLM()` itself. Everything else
-matches R to 1e-7 (binomial R fits refitted with a tight convergence tolerance).
-The first two differences below were R bugs and are fixed in later `gee`
-commits. The Schürch comparison has not been rerun since those fixes.
+Checked on Schürch 2020 (258k cells, 140 images, 35 patients, 29 cell types)
+with `benchmarks/compare_real.py`. The first comparison, against `gee@b591b17`,
+found the two differences below. Both were R bugs and are fixed in later `gee`
+commits.
+
+Rerun against `gee@40260c4` (R references from `benchmarks/run_r.R` with
+`tight`), every run matches R to 1e-7, with no pair where R used the other
+reference and no pair excluded as non-converged:
+
+| Run | Fitted pairs | Skipped pairs |
+|---|---|---|
+| Poisson, r = 50, with diagnostics (all five tables match) | 419 / 419 | 16 / 16 |
+| Binomial, k = 10 (ordered pairs) | 809 / 809 | 32 / 32 |
+| Poisson, r = 50, `cr2_method = "naive"` | 429 / 429 | 6 / 6 |
+| Binomial, k = 10, `cr2_method = "naive"` | 829 / 829 | 12 / 12 |
+
+`n_jobs = 4` output is identical to `n_jobs = 1` in every run.
 
 - **Reference condition (fixed in `gee@d9f8b6f`).** At `b591b17`, R's
   `buildGLM()` took the reference level from the first image with data for a
@@ -149,7 +161,10 @@ commits. The Schürch comparison has not been rerun since those fixes.
   separated pairs `brglm2::brglmFit` did not converge (coefficients near -1e15)
   and R reported p-values near 1e-15. `08d07d9` damps brglm2's step
   (`slowit = 0.1`), which converges to the same Jeffreys-penalised maximum that
-  spicyglm returns by root-finding.
+  spicyglm returns by root-finding. The tight refit in
+  `tests/r_reference/run_spicyglm.R` uses the same damping; without it, 10 of
+  the 809 binomial pairs diverge in the refit even though `gee`'s own fit
+  converges.
 - **Ties at the k-th neighbour** are broken exactly as spatstat's `nnwhich()`
   (a port of R's quicksort and spatstat's search), so counts match R even with
   integer coordinates.

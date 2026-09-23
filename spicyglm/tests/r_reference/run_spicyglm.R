@@ -37,7 +37,7 @@ tighten_iterative_fits <- function() {
   }, envir = globalenv())
   assign("fit_firth_binom_brglm2", function(dfPair) {
     glm(cbind(n, k - n) ~ 0 + condition, offset = qlogis(p0), family = binomial(), data = dfPair,
-        method = brglm2::brglmFit, type = "AS_mean", epsilon = 1e-14, maxit = 1000)
+        method = brglm2::brglmFit, type = "AS_mean", epsilon = 1e-14, maxit = 1000, slowit = 0.1)
   }, envir = globalenv())
 }
 
