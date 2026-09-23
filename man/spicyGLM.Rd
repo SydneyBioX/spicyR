@@ -19,12 +19,13 @@ spicyGLM(
   cores = 1,
   family = c("poisson", "binomial"),
   k = NULL,
-  cr2Method = c("fast", "clubSandwich"),
+  cr2Method = c("fast", "clubSandwich", "naive"),
   fastMethod = c("direct", "dpr1"),
   estimator = c("firth", "mle"),
   firthBackend = c("closed_form", "brglm2"),
   computeDiagnostics = FALSE,
-  storeModelData = FALSE
+  storeModelData = FALSE,
+  ref = NULL
 )
 }
 \arguments{
@@ -48,7 +49,12 @@ cells. Required for \code{family = "poisson"}; ignored for
 
 \item{from}{Character vector of reference cell types. If NULL, all cell types are used.}
 
-\item{to}{Character vector of target cell types. If NULL, all cell types are used.}
+\item{to}{Character vector of target cell types. If NULL, all cell types are used.
+For \code{family = "poisson"} the effect is direction-invariant, so one
+direction is fitted per unordered pair among \code{union(from, to)}. For
+\code{family = "binomial"} the effect is directional (\code{from -> to} and
+\code{to -> from} differ), so every ordered pair in
+\code{expand.grid(from, to)} is fitted, including self-pairs.}
 
 \item{window}{Defines the spatial window for each image. Options: "convex", "concave", or "rectangle".}
 

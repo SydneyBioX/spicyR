@@ -18,7 +18,8 @@ getPairwiseAssoc(
   cores = 1,
   cellTypePresence,
   family = "poisson",
-  k = NULL
+  k = NULL,
+  ref = NULL
 )
 
 getPairwiseAssoc(
@@ -35,7 +36,8 @@ getPairwiseAssoc(
   cores = 1,
   cellTypePresence,
   family = "poisson",
-  k = NULL
+  k = NULL,
+  ref = NULL
 )
 }
 \arguments{
