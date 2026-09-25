@@ -87,6 +87,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// getPairwisePropCpp
+Rcpp::NumericMatrix getPairwisePropCpp(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::IntegerVector type, Rcpp::IntegerVector offset, int nTypes, int k, Rcpp::IntegerVector labI, Rcpp::IntegerVector labJ, bool includeZeroCells, int nThreads);
+RcppExport SEXP _spicyR_getPairwisePropCpp(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP offsetSEXP, SEXP nTypesSEXP, SEXP kSEXP, SEXP labISEXP, SEXP labJSEXP, SEXP includeZeroCellsSEXP, SEXP nThreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< int >::type nTypes(nTypesSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labI(labISEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type labJ(labJSEXP);
+    Rcpp::traits::input_parameter< bool >::type includeZeroCells(includeZeroCellsSEXP);
+    Rcpp::traits::input_parameter< int >::type nThreads(nThreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(getPairwisePropCpp(x, y, type, offset, nTypes, k, labI, labJ, includeZeroCells, nThreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // scamMonoFit
 Rcpp::List scamMonoFit(Rcpp::NumericMatrix XtX, Rcpp::NumericVector Xty, double yty, int n, Rcpp::List S, Rcpp::LogicalVector iv, Rcpp::NumericVector start, Rcpp::IntegerVector blockStart, Rcpp::IntegerVector blockLen);
 RcppExport SEXP _spicyR_scamMonoFit(SEXP XtXSEXP, SEXP XtySEXP, SEXP ytySEXP, SEXP nSEXP, SEXP SSEXP, SEXP ivSEXP, SEXP startSEXP, SEXP blockStartSEXP, SEXP blockLenSEXP) {
@@ -112,6 +132,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},
     {"_spicyR_lmerRandomIntercept", (DL_FUNC) &_spicyR_lmerRandomIntercept, 5},
     {"_spicyR_getPairwiseCpp", (DL_FUNC) &_spicyR_getPairwiseCpp, 14},
+    {"_spicyR_getPairwisePropCpp", (DL_FUNC) &_spicyR_getPairwisePropCpp, 10},
     {"_spicyR_scamMonoFit", (DL_FUNC) &_spicyR_scamMonoFit, 9},
     {NULL, NULL, 0}
 };

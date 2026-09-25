@@ -17,6 +17,10 @@ getPairwiseCpp <- function(x, y, type, offset, nTypes, Rs, square, isFrom, isTo,
     .Call(`_spicyR_getPairwiseCpp`, x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads)
 }
 
+getPairwisePropCpp <- function(x, y, type, offset, nTypes, k, labI, labJ, includeZeroCells, nThreads) {
+    .Call(`_spicyR_getPairwisePropCpp`, x, y, type, offset, nTypes, k, labI, labJ, includeZeroCells, nThreads)
+}
+
 scamMonoFit <- function(XtX, Xty, yty, n, S, iv, start, blockStart, blockLen) {
     .Call(`_spicyR_scamMonoFit`, XtX, Xty, yty, n, S, iv, start, blockStart, blockLen)
 }

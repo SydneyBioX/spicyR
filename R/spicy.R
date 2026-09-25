@@ -22,6 +22,13 @@
 #' @param weightsByPair logical indicating whether weights should be calculated for each cell type
 #'   pair.
 #' @param weightFactor numeric that controls the convexity of the weight function.
+#' @param weightZThreshold numeric; the minimum weight-model prediction
+#'   (\code{log10(resSq + 1)}) counted when choosing the \code{1/z} weight-cap
+#'   floor. The default (\code{0.1}) suits the L-function's numeric scale. Pass
+#'   \code{0} for a statistic whose residual variance is small in absolute terms
+#'   (e.g. the observed/expected ratio from \code{\link{getPairwiseProp}}), where
+#'   every prediction can otherwise sit below the default and collapse the
+#'   weights to \code{NA}.
 #' @param window 	Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
@@ -82,6 +89,7 @@ spicy <- function(cells,
                   weights = TRUE,
                   weightsByPair = FALSE,
                   weightFactor = 1,
+                  weightZThreshold = 0.1,
                   window = "convex",
                   window.length = NULL,
                   edgeCorrect = TRUE,
@@ -245,7 +253,8 @@ spicy <- function(cells,
   
   
   weightFunction <- getWeightFunction(
-    pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor
+    pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor,
+    weightZThreshold
   )
   
   # Matrix needed for survival analysis
@@ -1053,7 +1062,7 @@ borderEdge <- function(X, maxD) {
 
 #' @importFrom scam scam
 #' @importFrom stats quantile
-calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
+calcWeights <- function(rS, M1, M2, nCells, weightFactor, weightZThreshold = 0.1) {
   count1 <- as.vector(nCells[, M1])
   count2 <- as.vector(nCells[, M2])
   rS <- as.vector(rS)
@@ -1080,7 +1089,19 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
       count2ToWeight = as.numeric(count2)
     )))
   }
-  w <- 1 / pmax(z1, stats::quantile(z1[z1 > 0.1], 0.01, na.rm = TRUE))
+
+  # Floor for 1/z1 (caps the maximum weight): the 1st percentile of the weight-model
+  # predictions above `weightZThreshold`. The default cutoff is calibrated to the
+  # L-function's numeric scale; for a statistic whose residual variance is small in
+  # absolute terms (e.g. getPairwiseProp()'s obs/exp ratio) every prediction can sit
+  # below it, making the quantile NA and every weight NA -- pass weightZThreshold = 0
+  # for such statistics.
+  zFloor <- stats::quantile(z1[z1 > weightZThreshold], 0.01, na.rm = TRUE)
+  if (is.na(zFloor)) {
+    warning("Weight model predictions are all <= weightZThreshold; returning unweighted (weights = 1).") # nolint
+    return(rep(1, length(count1)))
+  }
+  w <- 1 / pmax(z1, zFloor)
   w <- w / mean(w, na.rm = TRUE)
   w^weightFactor
 }
@@ -1184,7 +1205,8 @@ getWeightFunction <- function(
     BPPARAM,
     weights,
     weightsByPair,
-    weightFactor) {
+    weightFactor,
+    weightZThreshold = 0.1) {
   if (!weights) {
     weightFunction <- rep(1, nrow(pairwiseAssoc) * ncol(pairwiseAssoc))
     pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
@@ -1209,10 +1231,10 @@ getWeightFunction <- function(
     weightFunction <- BiocParallel::bpmapply(
       calcWeights,
       rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM = BPPARAM,
-      MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE
+      MoreArgs = list(nCells = nCells, weightFactor, weightZThreshold), SIMPLIFY = FALSE
     )
   } else {
-    weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor)
+    weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor, weightZThreshold)
     pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
     weightFunction <- split(weightFunction, pair)
   }
