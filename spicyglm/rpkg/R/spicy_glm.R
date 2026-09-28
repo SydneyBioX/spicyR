@@ -5,9 +5,9 @@ EFFECT_COLUMNS <- list(poisson = c("log_rate_ratio", "rate_ratio"),
                        binomial = c("log_odds_ratio", "odds_ratio"))
 SKIP_COLUMNS <- c("from", "to", "reason", "message")
 
-result_columns <- function(family) {
+result_columns <- function(family, effect = "ratio") {
   c("from", "to", "condition_ref", "condition_comp", "coef_ref", "coef_comp",
-    EFFECT_COLUMNS[[family]], "p_value", "estimator", "family",
+    if (effect == "excess") "excess_difference" else EFFECT_COLUMNS[[family]], "p_value", "estimator", "family",
     "mle_would_skip", "mle_skip_reason", "p_adj")
 }
 
@@ -37,9 +37,119 @@ result_columns <- function(family) {
 #'   unordered pair plus self-pairs; for \code{family = "binomial"} (directional:
 #'   from -> to and to -> from differ) every ordered pair in \code{from} x
 #'   \code{to} is fitted, where an omitted side means all cell types.
-#' @param window Observation window for each image's area, "convex" or "rectangle".
+#' @param window Observation window of each image, "convex" (the cells' convex
+#'   hull) or "rectangle" (their bounding box): its area sets the offset, and in
+#'   the inhomogeneous design it also bounds the intensity discs and the
+#'   translation edge correction.
 #' @param family "poisson" or "binomial".
 #' @param k Number of nearest neighbours (binomial only).
+#' @param sigma Radius of the disc kernel for the inhomogeneous cross-K design
+#'   (poisson only), in the units of \code{spatial_coords}. \code{NULL} (default)
+#'   fits the homogeneous design, whose null is complete spatial randomness over
+#'   each image. When supplied, each cell type's intensity at each of its cells
+#'   is the number of other cells of the type within \code{sigma} over the area
+#'   of that disc inside the window, and every reference--target pair within
+#'   \code{r} is weighted by the renormalised inverse intensities of its two
+#'   cells times a translation edge correction, so the group coefficients are
+#'   the pooled inhomogeneous cross-K function over \code{pi * r^2} and the
+#'   effect is the log ratio of intensity-adjusted co-localisation. Structure at
+#'   scales up to about \code{sigma} is treated as trend rather than
+#'   interaction, so choose \code{sigma} several times \code{r}. As spicyR's
+#'   \code{spicyGLM(sigma =)}.
+#' @param min_lambda Floor for the estimated intensities, as a fraction of each
+#'   image's average intensity for the type (inhomogeneous design only).
+#' @param edge_correct Apply the edge correction: the translation correction
+#'   to each neighbour pair in the inhomogeneous design, or in the Kontextual
+#'   Poisson design the correction of each cell's context count for the part of
+#'   its disc outside the window (as Statial's Kontextual). No effect otherwise.
+#' @param parent Cell types forming the context (parent) population for
+#'   Kontextual (Ameen et al.; Statial's \code{Kontextual()}): the co-localisation
+#'   of \code{from} with \code{to} is judged against where the context lies, so
+#'   the null is that \code{to} cells are a random subset of the context cells.
+#'   The \code{to} type must belong to \code{parent}. For \code{family =
+#'   "poisson"}, each reference cell's \code{to} neighbours within \code{r} are
+#'   weighted by its context intensity over theirs, against an offset of the
+#'   \code{to} share of the context times its context cells within \code{r}; a
+#'   reference cell's weight is its context intensity, so cells with no context
+#'   cell within \code{r} drop out. For \code{family = "binomial"}, the context
+#'   cells among each reference cell's \code{k} nearest neighbours are the
+#'   trials and the \code{to} cells among them the successes, against the
+#'   \code{to} share of the context. Pairs are directional: every ordered pair
+#'   in \code{from} x \code{to} with \code{to} in \code{parent} is fitted, an
+#'   omitted \code{to} meaning all of \code{parent}. Self-pairs leave the cell
+#'   itself out of the counts. \code{NULL} (default) is the ordinary design.
+#' @param null For family = "poisson": the null the offset expresses. "csr"
+#'   (default): complete spatial randomness in the window, n_to / area * pi r^2.
+#'   "random_labelling": condition on every cell's location and on the REF
+#'   cells; each REF cell's offset is its number of candidate neighbours
+#'   within r (the non-REF cells, or all other cells for a self-pair) times the
+#'   TARGET share of the candidates. This removes the image-wide shift in
+#'   co-localisation that arises when tissue fills a window unevenly. Pairs are
+#'   then directional, as for the binomial design.
+#' @param frailty TRUE fits the cell-level GLM with an image (subject) frailty and
+#'   the random-labelling within-image variance: each image's cells get the
+#'   prior weight a_u / phi_i, where phi_i is the exact random-labelling
+#'   variance of the image's count over its Poisson (binomial) variance and
+#'   a_u = 1 / (1 + tau2 J_u) interpolates between count weighting and equal
+#'   weighting of subjects. tau2 is estimated per pair (Paule-Mandel), and the
+#'   test uses the CR2 variance under this working covariance with
+#'   Satterthwaite df. Available for every design: for Kontextual (`parent`)
+#'   phi is the random-labelling variance within the context; for the
+#'   inhomogeneous design (`sigma`) it is the variance under an inhomogeneous
+#'   Poisson null for the TARGET (Campbell's theorem). Per-pair tau2, df and SE
+#'   are returned in `$frailty`.
+#' @param label_clustering With frailty = TRUE: inflate each image's phi for
+#'   TARGET cells that cluster among themselves, which random labelling ignores.
+#'   A spatial HAC (Conley) estimate of Var(O) (Bartlett weights, bandwidth 2r,
+#'   residuals of the TARGET indicator within the image) is divided by the
+#'   random-labelling variance, and the ratio is pooled to one factor per
+#'   (image, TARGET type), the median over the fitted REF types, floored at 1. Not
+#'   used for the inhomogeneous design, whose phi comes from a Poisson-process null.
+#' @param moderate With frailty = TRUE: shrink each pair's CR2 variance toward
+#'   its frailty-model variance at a common tau2 (the median of the per-pair
+#'   estimates) by empirical Bayes (Smyth's
+#'   hyperparameter estimates, with no trend: the model variance already
+#'   carries the dependence on counts). The test uses the moderated variance
+#'   on d + d0 degrees of freedom. Needs several pairs. `$frailty` then holds
+#'   the prior df d0 and scale s0 as attributes.
+#' @param effect "ratio" (default): the effect is a log rate (odds) ratio, as
+#'   described above. "excess": the additive effect under random labelling. For
+#'   a directional pair REF -> TARGET, each group coefficient is the mean number
+#'   of extra REF cells among a TARGET cell's neighbours (within \code{r}, or among
+#'   its \code{k} nearest) beyond random labelling of the non-REF cells; for the
+#'   radius graph that is lambda_REF (K - K under random labelling), the
+#'   KAMP-adjusted cross-K in neighbour units. Recruiting a fraction f of the
+#'   TARGET cells next to REF cells gives f whatever the density or abundance of
+#'   either type, whereas a ratio is capped by composition (the observed/expected
+#'   ratio cannot exceed 1 / the share of candidates near a REF cell) and so
+#'   shrinks in dense images. Each image's count has its exact random-labelling
+#'   mean and variance; the fit is the frailty GEE (frailty = TRUE; tau2 by
+#'   Paule-Mandel, on the scale of neighbours per cell squared) or working
+#'   independence (frailty = FALSE), with the closed-form CR2 variance and
+#'   Satterthwaite df. \code{label_clustering} applies. Returns
+#'   \code{excess_difference} (comparison minus reference) and per-pair tau2, df
+#'   and SE in \code{$frailty}. \code{moderate = TRUE} shrinks each pair's CR2
+#'   variance toward its working-model variance as for the ratio (one prior df, no
+#'   trend), which matters when a few high-information units dominate and the CR2
+#'   df are small. Not available with \code{sigma}, \code{parent} or
+#'   \code{test = "moderated"}; \code{null} and \code{estimator} are not used.
+#' @param test "glm" (default): the cell-level GLM with CR2 variance described
+#'   above. "moderated": an image-level test. Each image is summarised by its
+#'   log observed / expected ratio (Poisson designs) or log odds ratio against
+#'   its background (binomial designs), images are averaged within
+#'   \code{subject}, and the two conditions are compared by a two-sample
+#'   t-test whose variance is moderated across all fitted pairs by empirical
+#'   Bayes with a trend on the pair's mean log count (limma's \code{eBayes(trend
+#'   = TRUE)}). It weights units equally rather than by cell counts, so one
+#'   large or unusual image cannot dominate, and the moderation borrows degrees
+#'   of freedom across pairs. Needs several pairs; diagnostics are not
+#'   available.
+#' @param density_adjust For \code{test = "moderated"}: remove the dependence of
+#'   the image summaries on the two cell types' abundances (log counts per
+#'   image). The two slopes are shared by all fitted pairs and estimated
+#'   within each pair and condition (an analysis of covariance with a common
+#'   slope), so that a difference in abundance between conditions is not
+#'   reported as a change in co-localisation.
 #' @param estimator "firth" or "mle".
 #' @param cr2_method "fast" or "naive".
 #' @param compute_diagnostics Add per-patient and per-image leverage, influence and
@@ -60,10 +170,39 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
                       image_id = "imageID", cell_type = "cellType",
                       spatial_coords = c("x", "y"), from = NULL, to = NULL,
                       window = "convex", family = c("poisson", "binomial"), k = NULL,
+                      sigma = NULL, min_lambda = 0.05, edge_correct = TRUE, parent = NULL,
+                      null = c("csr", "random_labelling"), frailty = FALSE, moderate = FALSE,
+                      label_clustering = TRUE, effect = c("ratio", "excess"),
+                      test = c("glm", "moderated"), density_adjust = FALSE,
                       estimator = c("firth", "mle"), cr2_method = c("fast", "naive"),
                       compute_diagnostics = FALSE, top_percent = 0.05, n_threads = 1,
                       ref = NULL) {
   family <- match.arg(family)
+  null <- match.arg(null)
+  test <- match.arg(test)
+  effect <- match.arg(effect)
+  if (effect == "excess") {
+    if (!is.null(sigma) || !is.null(parent))
+      stop("effect = 'excess' uses the random-labelling null; it is not available with `sigma` or `parent`.")
+    if (test == "moderated")
+      stop("effect = 'excess' is a cell-level model; it is not available with test = 'moderated'.")
+  }
+  if (!is.logical(frailty) || length(frailty) != 1 || is.na(frailty))
+    stop("`frailty` must be TRUE or FALSE.")
+  if (null == "random_labelling" && family != "poisson")
+    stop("null = 'random_labelling' applies to family = 'poisson'; the k-nearest-neighbour ",
+         "design already conditions on each cell's neighbourhood.")
+  if (null == "random_labelling" && (!is.null(sigma) || !is.null(parent)))
+    stop("null = 'random_labelling' replaces `sigma` and `parent`; supply only one adjustment.")
+  if (!is.logical(moderate) || length(moderate) != 1 || is.na(moderate))
+    stop("`moderate` must be TRUE or FALSE.")
+  if (moderate && !frailty && effect[1] != "excess") stop("moderate = TRUE needs frailty = TRUE.")
+  if (!is.logical(label_clustering) || length(label_clustering) != 1 || is.na(label_clustering))
+    stop("`label_clustering` must be TRUE or FALSE.")
+  if (frailty && test == "moderated")
+    stop("frailty = TRUE is a cell-level model; use it with test = 'glm'.")
+  if (frailty && effect == "ratio" && (estimator[1] != "firth" || cr2_method[1] == "naive"))
+    stop("frailty = TRUE uses the Firth-adjusted estimate and the CR2 variance.")
   estimator <- match.arg(estimator)
   cr2_method <- match.arg(cr2_method)
   if (!is.data.frame(cells)) stop("`cells` must be a data frame with one row per cell.")
@@ -77,6 +216,43 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
       stop("family = 'binomial' requires `k`, a single positive integer.")
     k <- as.integer(k)
     if (!is.null(r)) message("family = 'binomial' uses `k` nearest neighbours; `r` is ignored.")
+  }
+  if (!is.null(sigma)) {
+    if (family == "binomial") {
+      message("`sigma` applies to family = 'poisson' only (the k-nearest-neighbour design ",
+              "already adapts to local cell density); ignoring it.")
+      sigma <- NULL
+    } else {
+      if (!is.numeric(sigma) || length(sigma) != 1 || !is.finite(sigma) || sigma <= 0)
+        stop("`sigma` must be a single positive number: the radius of the disc kernel ",
+             "used to estimate each cell type's intensity.")
+      if (!is.numeric(min_lambda) || length(min_lambda) != 1 || !is.finite(min_lambda) ||
+          min_lambda <= 0)
+        stop("`min_lambda` must be a single positive number.")
+      if (!is.logical(edge_correct) || length(edge_correct) != 1 || is.na(edge_correct))
+        stop("`edge_correct` must be TRUE or FALSE.")
+      if (sigma <= r)
+        message("`sigma` (", sigma, ") is no larger than `r` (", r, "): intensity smoothing at ",
+                "the scale of the test radius absorbs the co-localisation being tested. ",
+                "Consider `sigma` several times `r`.")
+    }
+  }
+  if (!is.null(parent)) {
+    if (!is.character(parent) || !length(parent) || anyNA(parent))
+      stop("`parent` must be a character vector of cell types (the Kontextual context).")
+    if (!is.null(sigma))
+      stop("`sigma` and `parent` are alternative adjustments; supply one of them.")
+    parent <- unique(parent)
+  }
+  if (compute_diagnostics && (test == "moderated" || frailty || null != "csr" || effect == "excess")) {
+    warning("compute_diagnostics is available for the default CSR GLM only; diagnostics are not computed.",
+            call. = FALSE)
+    compute_diagnostics <- FALSE
+  }
+  if (compute_diagnostics && test == "moderated") {
+    warning("compute_diagnostics is not available for test = 'moderated'; diagnostics are not computed.",
+            call. = FALSE)
+    compute_diagnostics <- FALSE
   }
   if (compute_diagnostics && (family != "poisson" || estimator != "firth" || cr2_method != "fast")) {
     warning("compute_diagnostics requires family = 'poisson', estimator = 'firth' and ",
@@ -142,30 +318,94 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
                          type_codes, image_offsets, length(type_labels))
   presence <- presence_table(type_codes, image_codes, image_group, length(type_labels))
   areas <- NULL
+  if (!is.null(parent)) {
+    unknown <- setdiff(parent, type_labels)
+    if (length(unknown)) stop("`parent` cell type not found: ", paste(unknown, collapse = ", "))
+  }
   if (family == "poisson") {
     areas <- dataset_image_areas(data, window)
     dataset_build_radius_index(data, r)
+    if (!is.null(sigma)) dataset_build_intensity(data, sigma, min_lambda, window)
   } else {
     dataset_build_knn(data, k, as.integer(n_threads))
   }
+  if (!is.null(parent))
+    dataset_build_context(data, as.integer(match(parent, type_labels) - 1L), window, edge_correct)
 
-  pairs <- enumerate_pairs(from, to, type_labels, family)
+  pairs <- enumerate_pairs(from, to, type_labels, if (null == "random_labelling" || effect == "excess") "binomial" else family, parent)
   unknown <- setdiff(unique(unlist(pairs)), type_labels)
   if (length(unknown)) stop("cell type not found: ", paste(unknown, collapse = ", "))
+  if (!is.null(parent)) {
+    outside <- setdiff(unique(vapply(pairs, `[`, character(1), 2L)), parent)
+    if (length(outside))
+      stop("Kontextual needs every `to` cell type inside `parent` (the context); not in it: ",
+           paste(outside, collapse = ", "))
+  }
 
-  ctx <- list(family = family, k = k, estimator = estimator, cr2_method = cr2_method,
+  frailty_data <- NULL
+  if (effect == "excess") {
+    knn <- family == "binomial"
+    frailty_data <- list(totals = dataset_pair_neighbour_totals(data, knn, length(type_labels)),
+                         out_sq_totals = dataset_pair_neighbour_out_sq_totals(data, knn, length(type_labels)),
+                         counts = unclass(table(factor(image_codes, levels = seq_len(n_images) - 1L),
+                                                factor(type_codes, levels = seq_along(type_labels) - 1L))))
+  } else if (frailty && is.null(sigma) && is.null(parent)) {
+    knn <- family == "binomial"
+    frailty_data <- list(totals = dataset_pair_neighbour_totals(data, knn, length(type_labels)),
+                         sq_totals = dataset_pair_neighbour_sq_totals(data, knn, length(type_labels)),
+                         counts = unclass(table(factor(image_codes, levels = seq_len(n_images) - 1L),
+                                                factor(type_codes, levels = seq_along(type_labels) - 1L))))
+  }
+  if (frailty && is.null(frailty_data))
+    frailty_data <- list(counts = unclass(table(factor(image_codes, levels = seq_len(n_images) - 1L),
+                                                factor(if (is.null(parent)) type_codes else type_codes,
+                                                       levels = seq_along(type_labels) - 1L))))
+  ctx <- c(frailty_data, list(null = null, frailty = frailty, moderate = moderate, effect = effect))
+  ctx <- c(ctx, list(family = family, r = r, k = k, sigma = sigma, edge_correct = edge_correct, parent = parent,
+              estimator = estimator, cr2_method = cr2_method,
               levels = levels_, image_group = image_group, image_cluster = image_cluster,
               type_index = stats::setNames(seq_along(type_labels) - 1L, type_labels),
-              data = data, areas = areas, presence = presence)
+              data = data, areas = areas, presence = presence))
 
-  outcomes <- lapply(pairs, function(p) fit_one_pair(ctx, p[1], p[2], compute_diagnostics))
+  if ((frailty || effect == "excess") && label_clustering && is.null(sigma)) {
+    if (family == "binomial") {
+      # the HAC bandwidth needs a distance: twice the typical k-NN radius
+      n_img_cells <- tabulate(image_codes + 1L, nbins = n_images)
+      scale <- stats::median(sqrt(k / (pi * n_img_cells / dataset_image_areas(data, window))))
+      dataset_build_radius_index(data, scale)
+      ctx$hac_h <- 2 * scale
+    } else ctx$hac_h <- 2 * r
+    if (is.null(ctx$totals)) {
+      if (family == "poisson" && is.null(parent)) ctx$pair_totals <- dataset_pair_neighbour_totals(data, FALSE, length(type_labels))
+      else if (family == "binomial") ctx$pair_totals <- dataset_pair_neighbour_totals(data, TRUE, length(type_labels))
+    } else ctx$pair_totals <- ctx$totals
+    ctx$phi_inflation <- frailty_label_clustering(ctx, pairs)
+  }
+  outcomes <- if (test == "moderated") {
+    moderated_tests(ctx, pairs, density_adjust,
+                    table(factor(image_codes, levels = seq_len(n_images) - 1L),
+                          factor(type_codes, levels = seq_along(type_labels) - 1L)))
+  } else if (effect == "excess") {
+    lapply(pairs, function(p) excess_outcome(ctx, p[1], p[2]))
+  } else {
+    lapply(pairs, function(p) fit_one_pair(ctx, p[1], p[2], compute_diagnostics))
+  }
+  frailty_prior <- NULL
+  if (moderate && effect == "excess") { outcomes <- excess_moderate(outcomes, ctx); frailty_prior <- attr(outcomes, "frailty_prior") }
+  else if (frailty && moderate) { outcomes <- frailty_moderate(outcomes, ctx); frailty_prior <- attr(outcomes, "frailty_prior") }
+  moderation <- attr(outcomes, "moderation")
   is_skip <- vapply(outcomes, function(o) !is.null(o$reason), logical(1))
 
   pair_diag <- NULL
   if (compute_diagnostics && any(!is_skip))
     pair_diag <- lapply(outcomes[!is_skip], function(o)
       pair_tables(o$.fit, o$from, o$to, levels_, cluster_labels, image_labels))
-  for (i in which(!is_skip)) outcomes[[i]]$.fit <- NULL
+  frailty_table <- NULL
+  if ((frailty || effect == "excess") && any(!is_skip))
+    frailty_table <- do.call(rbind, lapply(outcomes[!is_skip], function(o)
+      data.frame(from = o$from, to = o$to, tau2 = o$.frailty[["tau2"]], df = o$.frailty[["df"]],
+                 se = o$.frailty[["se"]], stringsAsFactors = FALSE)))
+  for (i in which(!is_skip)) { outcomes[[i]]$.fit <- NULL; outcomes[[i]]$.frailty <- NULL; outcomes[[i]]$.images <- NULL }
 
   skipped <- if (any(is_skip)) {
     do.call(rbind, lapply(outcomes[is_skip], function(o)
@@ -175,7 +415,7 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
     stats::setNames(data.frame(matrix(character(0), 0, 4), stringsAsFactors = FALSE), SKIP_COLUMNS)
   }
 
-  cols <- result_columns(family)
+  cols <- result_columns(family, effect)
   results <- if (any(!is_skip)) {
     do.call(rbind, lapply(outcomes[!is_skip], function(o)
       as.data.frame(o[cols[-length(cols)]], stringsAsFactors = FALSE)))
@@ -184,13 +424,17 @@ spicy_glm <- function(cells, condition, r = NULL, subject = NULL,
   }
   if (nrow(results)) {
     results$p_adj <- stats::p.adjust(results$p_value, method = "BH")
-    results <- results[order(results$p_adj, method = "radix"), , drop = FALSE]
+    results <- results[order(results$p_value, method = "radix"), , drop = FALSE]
     rownames(results) <- NULL
   } else {
     results$p_adj <- numeric(0)
   }
-  list(results = results, skipped = skipped,
-       diagnostics = if (!is.null(pair_diag)) assemble_diagnostics(pair_diag, top_percent))
+  out <- list(results = results, skipped = skipped,
+              diagnostics = if (!is.null(pair_diag)) assemble_diagnostics(pair_diag, top_percent))
+  if (!is.null(parent)) out$parent <- parent
+  if (!is.null(moderation)) out$moderation <- moderation
+  if (!is.null(frailty_table)) { if (!is.null(frailty_prior)) attr(frailty_table, "prior") <- frailty_prior; out$frailty <- frailty_table }
+  out
 }
 
 condition_levels <- function(col) {
@@ -201,9 +445,16 @@ condition_levels <- function(col) {
   sort(unique(as.character(col[!is.na(col)])))
 }
 
-enumerate_pairs <- function(from, to, all_types, family) {
+enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (is.character(from) && length(from) == 1L && is.character(to) && length(to) == 1L)
     return(list(c(from, to)))
+  # Kontextual is directional too, and needs `to` in the context
+  if (!is.null(parent)) {
+    from_types <- if (is.null(from)) all_types else unique(from)
+    to_types <- if (is.null(to)) parent else unique(to)
+    return(unlist(lapply(from_types, function(f) lapply(to_types, function(t) c(f, t))),
+                  recursive = FALSE))
+  }
   # the kNN effect is directional (A->B != B->A), so fit every ordered pair
   if (family == "binomial") {
     from_types <- if (is.null(from)) all_types else unique(from)
@@ -229,12 +480,28 @@ skip_pair <- function(f, t, reason, message) {
   list(from = f, to = t, reason = reason, message = message)
 }
 
-fit_one_pair <- function(ctx, f, t, compute_diagnostics = FALSE) {
+pair_model_data <- function(ctx, f, t) {
   from_code <- ctx$type_index[[f]]; to_code <- ctx$type_index[[t]]
-  md <- if (ctx$family == "poisson")
-    dataset_poisson_model_data(ctx$data, ctx$areas, from_code, to_code)
-  else
+  if (ctx$family == "binomial" && !is.null(ctx$parent))
+    dataset_kontextual_binomial_model_data(ctx$data, from_code, to_code)
+  else if (ctx$family == "binomial")
     dataset_binomial_model_data(ctx$data, from_code, to_code)
+  else if (!is.null(ctx$parent))
+    dataset_kontextual_model_data(ctx$data, from_code, to_code)
+  else if (ctx$null == "random_labelling") {
+    # REF cells with no candidate neighbour have offset 0 and carry no information
+    md <- dataset_rl_model_data(ctx$data, from_code, to_code)
+    keep <- md$density > 0
+    lapply(md, `[`, keep)
+  }
+  else if (!is.null(ctx$sigma))
+    dataset_inhom_model_data(ctx$data, ctx$areas, from_code, to_code, ctx$edge_correct)
+  else
+    dataset_poisson_model_data(ctx$data, ctx$areas, from_code, to_code)
+}
+
+fit_one_pair <- function(ctx, f, t, compute_diagnostics = FALSE) {
+  md <- pair_model_data(ctx, f, t)
 
   group <- ctx$image_group[md$image + 1L]
   present <- unique(group)
@@ -244,11 +511,13 @@ fit_one_pair <- function(ctx, f, t, compute_diagnostics = FALSE) {
   }
 
   n <- md$n
-  b <- boundary_reason(f, t, n, group, ctx)
+  trials <- if (!is.null(md$trials)) md$trials else ctx$k
+  b <- boundary_reason(f, t, n, group, ctx, trials)
   if (ctx$estimator == "mle" && !is.null(b$reason))
     return(skip_pair(f, t, b$reason, b$message))
 
   cluster <- ctx$image_cluster[md$image + 1L]
+  if (ctx$frailty) return(frailty_outcome(md, ctx, f, t, b))
   if (ctx$cr2_method == "fast") {
     for (g in 0:1) {
       if (length(unique(cluster[group == g])) < 2L)
@@ -261,6 +530,9 @@ fit_one_pair <- function(ctx, f, t, compute_diagnostics = FALSE) {
   fit <- if (ctx$family == "poisson")
     fit_pair_poisson_cpp(cluster, md$image, group, n, md$density, ctx$estimator, ctx$cr2_method,
                          compute_diagnostics)
+  else if (!is.null(md$trials))
+    fit_pair_binomial_trials_cpp(cluster, md$image, group, n, md$trials, md$p0, ctx$estimator,
+                                 ctx$cr2_method)
   else
     fit_pair_binomial_cpp(cluster, md$image, group, n, ctx$k, md$p0, ctx$estimator, ctx$cr2_method)
 
@@ -283,11 +555,12 @@ fit_one_pair <- function(ctx, f, t, compute_diagnostics = FALSE) {
   out
 }
 
-# Conditions where the MLE is infinite: all counts zero, or (binomial) all k.
-boundary_reason <- function(f, t, n, group, ctx) {
+# Conditions where the MLE is infinite: all counts zero, or (binomial) all trials.
+boundary_reason <- function(f, t, n, group, ctx, trials = ctx$k) {
   floor_g <- ctx$levels[vapply(0:1, function(g) !any(n[group == g] > 0), logical(1))]
+  full <- n == trials
   ceil_g <- if (ctx$family == "binomial")
-    ctx$levels[vapply(0:1, function(g) all(n[group == g] == ctx$k), logical(1))] else character(0)
+    ctx$levels[vapply(0:1, function(g) all(full[group == g]), logical(1))] else character(0)
   boundary <- c(floor_g, setdiff(ceil_g, floor_g))
   if (!length(boundary)) return(list(reason = NULL, message = NULL))
   reason <- if (length(boundary) == 2L) {

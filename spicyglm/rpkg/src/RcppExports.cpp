@@ -75,6 +75,73 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_build_intensity
+void dataset_build_intensity(SEXP ptr, double sigma, double min_lambda, std::string window);
+RcppExport SEXP _spicyglm_dataset_build_intensity(SEXP ptrSEXP, SEXP sigmaSEXP, SEXP min_lambdaSEXP, SEXP windowSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type min_lambda(min_lambdaSEXP);
+    Rcpp::traits::input_parameter< std::string >::type window(windowSEXP);
+    dataset_build_intensity(ptr, sigma, min_lambda, window);
+    return R_NilValue;
+END_RCPP
+}
+// dataset_inhom_model_data
+List dataset_inhom_model_data(SEXP ptr, NumericVector image_area, int from, int to, bool edge_correct);
+RcppExport SEXP _spicyglm_dataset_inhom_model_data(SEXP ptrSEXP, SEXP image_areaSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP edge_correctSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type image_area(image_areaSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    Rcpp::traits::input_parameter< bool >::type edge_correct(edge_correctSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_inhom_model_data(ptr, image_area, from, to, edge_correct));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_build_context
+void dataset_build_context(SEXP ptr, IntegerVector context_types, std::string window, bool edge_correct);
+RcppExport SEXP _spicyglm_dataset_build_context(SEXP ptrSEXP, SEXP context_typesSEXP, SEXP windowSEXP, SEXP edge_correctSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type context_types(context_typesSEXP);
+    Rcpp::traits::input_parameter< std::string >::type window(windowSEXP);
+    Rcpp::traits::input_parameter< bool >::type edge_correct(edge_correctSEXP);
+    dataset_build_context(ptr, context_types, window, edge_correct);
+    return R_NilValue;
+END_RCPP
+}
+// dataset_kontextual_model_data
+List dataset_kontextual_model_data(SEXP ptr, int from, int to);
+RcppExport SEXP _spicyglm_dataset_kontextual_model_data(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_kontextual_model_data(ptr, from, to));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_kontextual_binomial_model_data
+List dataset_kontextual_binomial_model_data(SEXP ptr, int from, int to);
+RcppExport SEXP _spicyglm_dataset_kontextual_binomial_model_data(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_kontextual_binomial_model_data(ptr, from, to));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_binomial_model_data
 List dataset_binomial_model_data(SEXP ptr, int from, int to);
 RcppExport SEXP _spicyglm_dataset_binomial_model_data(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP) {
@@ -89,7 +156,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // fit_pair_poisson_cpp
-List fit_pair_poisson_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group, IntegerVector n, NumericVector density, std::string estimator, std::string variance, bool diagnostics);
+List fit_pair_poisson_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group, NumericVector n, NumericVector density, std::string estimator, std::string variance, bool diagnostics);
 RcppExport SEXP _spicyglm_fit_pair_poisson_cpp(SEXP clusterSEXP, SEXP imageSEXP, SEXP groupSEXP, SEXP nSEXP, SEXP densitySEXP, SEXP estimatorSEXP, SEXP varianceSEXP, SEXP diagnosticsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -97,7 +164,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerVector >::type cluster(clusterSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type n(nSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type n(nSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type density(densitySEXP);
     Rcpp::traits::input_parameter< std::string >::type estimator(estimatorSEXP);
     Rcpp::traits::input_parameter< std::string >::type variance(varianceSEXP);
@@ -124,6 +191,106 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fit_pair_binomial_trials_cpp
+List fit_pair_binomial_trials_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group, IntegerVector n, IntegerVector trials, NumericVector p0, std::string estimator, std::string variance);
+RcppExport SEXP _spicyglm_fit_pair_binomial_trials_cpp(SEXP clusterSEXP, SEXP imageSEXP, SEXP groupSEXP, SEXP nSEXP, SEXP trialsSEXP, SEXP p0SEXP, SEXP estimatorSEXP, SEXP varianceSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type cluster(clusterSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type n(nSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type trials(trialsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type p0(p0SEXP);
+    Rcpp::traits::input_parameter< std::string >::type estimator(estimatorSEXP);
+    Rcpp::traits::input_parameter< std::string >::type variance(varianceSEXP);
+    rcpp_result_gen = Rcpp::wrap(fit_pair_binomial_trials_cpp(cluster, image, group, n, trials, p0, estimator, variance));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_pair_neighbour_totals
+NumericVector dataset_pair_neighbour_totals(SEXP ptr, bool knn, int n_types);
+RcppExport SEXP _spicyglm_dataset_pair_neighbour_totals(SEXP ptrSEXP, SEXP knnSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_pair_neighbour_totals(ptr, knn, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_pair_neighbour_sq_totals
+NumericVector dataset_pair_neighbour_sq_totals(SEXP ptr, bool knn, int n_types);
+RcppExport SEXP _spicyglm_dataset_pair_neighbour_sq_totals(SEXP ptrSEXP, SEXP knnSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_pair_neighbour_sq_totals(ptr, knn, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_pair_neighbour_out_sq_totals
+NumericVector dataset_pair_neighbour_out_sq_totals(SEXP ptr, bool knn, int n_types);
+RcppExport SEXP _spicyglm_dataset_pair_neighbour_out_sq_totals(SEXP ptrSEXP, SEXP knnSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_pair_neighbour_out_sq_totals(ptr, knn, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_rl_model_data
+List dataset_rl_model_data(SEXP ptr, int from, int to);
+RcppExport SEXP _spicyglm_dataset_rl_model_data(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_rl_model_data(ptr, from, to));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_weighted_phi_sums
+NumericMatrix dataset_weighted_phi_sums(SEXP ptr, int from, int to, int design, bool edge_correct);
+RcppExport SEXP _spicyglm_dataset_weighted_phi_sums(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP designSEXP, SEXP edge_correctSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    Rcpp::traits::input_parameter< int >::type design(designSEXP);
+    Rcpp::traits::input_parameter< bool >::type edge_correct(edge_correctSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_weighted_phi_sums(ptr, from, to, design, edge_correct));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_hac_phi_sums
+NumericMatrix dataset_hac_phi_sums(SEXP ptr, int from, int to, int design, double h);
+RcppExport SEXP _spicyglm_dataset_hac_phi_sums(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP designSEXP, SEXP hSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    Rcpp::traits::input_parameter< int >::type design(designSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_hac_phi_sums(ptr, from, to, design, h));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_spicyglm_dataset_create", (DL_FUNC) &_spicyglm_dataset_create, 5},
@@ -131,9 +298,21 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyglm_dataset_build_radius_index", (DL_FUNC) &_spicyglm_dataset_build_radius_index, 2},
     {"_spicyglm_dataset_build_knn", (DL_FUNC) &_spicyglm_dataset_build_knn, 3},
     {"_spicyglm_dataset_poisson_model_data", (DL_FUNC) &_spicyglm_dataset_poisson_model_data, 4},
+    {"_spicyglm_dataset_build_intensity", (DL_FUNC) &_spicyglm_dataset_build_intensity, 4},
+    {"_spicyglm_dataset_inhom_model_data", (DL_FUNC) &_spicyglm_dataset_inhom_model_data, 5},
+    {"_spicyglm_dataset_build_context", (DL_FUNC) &_spicyglm_dataset_build_context, 4},
+    {"_spicyglm_dataset_kontextual_model_data", (DL_FUNC) &_spicyglm_dataset_kontextual_model_data, 3},
+    {"_spicyglm_dataset_kontextual_binomial_model_data", (DL_FUNC) &_spicyglm_dataset_kontextual_binomial_model_data, 3},
     {"_spicyglm_dataset_binomial_model_data", (DL_FUNC) &_spicyglm_dataset_binomial_model_data, 3},
     {"_spicyglm_fit_pair_poisson_cpp", (DL_FUNC) &_spicyglm_fit_pair_poisson_cpp, 8},
     {"_spicyglm_fit_pair_binomial_cpp", (DL_FUNC) &_spicyglm_fit_pair_binomial_cpp, 8},
+    {"_spicyglm_fit_pair_binomial_trials_cpp", (DL_FUNC) &_spicyglm_fit_pair_binomial_trials_cpp, 8},
+    {"_spicyglm_dataset_pair_neighbour_totals", (DL_FUNC) &_spicyglm_dataset_pair_neighbour_totals, 3},
+    {"_spicyglm_dataset_pair_neighbour_sq_totals", (DL_FUNC) &_spicyglm_dataset_pair_neighbour_sq_totals, 3},
+    {"_spicyglm_dataset_pair_neighbour_out_sq_totals", (DL_FUNC) &_spicyglm_dataset_pair_neighbour_out_sq_totals, 3},
+    {"_spicyglm_dataset_rl_model_data", (DL_FUNC) &_spicyglm_dataset_rl_model_data, 3},
+    {"_spicyglm_dataset_weighted_phi_sums", (DL_FUNC) &_spicyglm_dataset_weighted_phi_sums, 5},
+    {"_spicyglm_dataset_hac_phi_sums", (DL_FUNC) &_spicyglm_dataset_hac_phi_sums, 5},
     {NULL, NULL, 0}
 };
 

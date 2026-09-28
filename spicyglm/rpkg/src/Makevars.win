@@ -5,3 +5,14 @@ CXX_STD = CXX17
 PKG_CPPFLAGS = -I../../cpp/include
 PKG_CXXFLAGS = $(SHLIB_PTHREAD_FLAGS)
 PKG_LIBS = $(SHLIB_PTHREAD_FLAGS)
+
+# The stubs only #include the core, so make cannot see that they depend on it:
+# list the dependencies, or a change to the core links stale objects. `all`
+# comes first so it stays the default target.
+all: $(SHLIB)
+CORE_H = ../../cpp/include/spicyglm/core.hpp
+core_binomial.o: ../../cpp/src/binomial.cpp $(CORE_H)
+core_diagnostics.o: ../../cpp/src/diagnostics.cpp $(CORE_H)
+core_model.o: ../../cpp/src/model.cpp $(CORE_H)
+core_spatial.o: ../../cpp/src/spatial.cpp $(CORE_H)
+bindings.o: $(CORE_H)

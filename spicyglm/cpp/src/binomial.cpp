@@ -239,6 +239,52 @@ GlmFit fit_binomial(const std::vector<int>& n, int k, const std::vector<double>&
   return fit;
 }
 
+GlmFit fit_binomial(const std::vector<int>& n, const std::vector<int>& trials,
+                    const std::vector<double>& p0, const std::vector<int>& group,
+                    const std::string& estimator) {
+  if (estimator != "mle" && estimator != "firth") throw std::invalid_argument("estimator must be 'mle' or 'firth'");
+  // as the fixed-k fit, but cells sharing an offset pool their trials
+  std::array<double, 2> Y{0.0, 0.0};
+  std::array<std::unordered_map<double, double>, 2> trials_at_offset;
+  std::vector<double> offset(n.size());
+  for (std::size_t i = 0; i < n.size(); ++i) {
+    offset[i] = std::log(p0[i] / (1 - p0[i]));
+    Y[group[i]] += n[i];
+    trials_at_offset[group[i]][offset[i]] += trials[i];
+  }
+  GlmFit fit;
+  for (int g = 0; g < 2; ++g) {
+    std::vector<double> m, o;
+    for (const auto& [off, total] : trials_at_offset[g]) { o.push_back(off); m.push_back(total); }
+    fit.beta[g] = solve_group(Y[g], m, o, 1, estimator == "firth");
+  }
+  fit.mu.resize(n.size());
+  for (std::size_t i = 0; i < n.size(); ++i) fit.mu[i] = trials[i] * expit(fit.beta[group[i]] + offset[i]);
+  return fit;
+}
+
+PairFit fit_pair_binomial(const std::vector<int>& cluster, const std::vector<int>& image,
+                          const std::vector<int>& group, const std::vector<int>& n,
+                          const std::vector<int>& trials, const std::vector<double>& p0,
+                          const std::string& estimator, const std::string& variance) {
+  if (variance != "fast" && variance != "naive") throw std::invalid_argument("variance must be 'fast' or 'naive'");
+  PairFit out;
+  out.fit = fit_binomial(n, trials, p0, group, estimator);
+  std::vector<double> var(n.size()), resid(n.size());
+  for (std::size_t c = 0; c < n.size(); ++c) {
+    double p = out.fit.mu[c] / trials[c];
+    var[c] = trials[c] * p * (1 - p);
+    resid[c] = n[c] - out.fit.mu[c];
+  }
+  if (variance == "naive") {
+    out.naive = true;
+    out.v_naive = naive_variance(group, var);
+    return out;
+  }
+  out.cr2 = cr2_wald(cluster, image, group, var, resid);
+  return out;
+}
+
 PairFit fit_pair_binomial(const std::vector<int>& cluster, const std::vector<int>& image,
                           const std::vector<int>& group, const std::vector<int>& n, int k,
                           const std::vector<double>& p0, const std::string& estimator,

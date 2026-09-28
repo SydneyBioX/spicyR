@@ -12,7 +12,7 @@ Description: An R front end for the spicyGLM numeric core, a port of spicyGLM()
     The C++17 core is shared with the Python front end in the same repository.
 License: GPL-3
 Encoding: UTF-8
-Imports: Rcpp
+Imports: Rcpp, splines, stats
 LinkingTo: Rcpp, RcppEigen
 SystemRequirements: C++17
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

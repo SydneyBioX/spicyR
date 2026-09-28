@@ -102,6 +102,53 @@ List dataset_poisson_model_data(SEXP ptr, NumericVector image_area, int from, in
 }
 
 // [[Rcpp::export]]
+void dataset_build_intensity(SEXP ptr, double sigma, double min_lambda, std::string window) {
+  XPtr<Dataset> d(ptr);
+  d->build_intensity(sigma, min_lambda, parse_window(window));
+}
+
+// [[Rcpp::export]]
+List dataset_inhom_model_data(SEXP ptr, NumericVector image_area, int from, int to, bool edge_correct) {
+  XPtr<Dataset> d(ptr);
+  InhomModelData md = d->inhom_model_data(dvec(image_area), from, to, edge_correct);
+  return List::create(_["row"] = IntegerVector(md.row.begin(), md.row.end()),
+                      _["image"] = IntegerVector(md.image.begin(), md.image.end()),
+                      _["n"] = nv(md.n),
+                      _["n_raw"] = IntegerVector(md.n_raw.begin(), md.n_raw.end()),
+                      _["weight"] = nv(md.weight),
+                      _["density"] = nv(md.density));
+}
+
+// [[Rcpp::export]]
+void dataset_build_context(SEXP ptr, IntegerVector context_types, std::string window, bool edge_correct) {
+  XPtr<Dataset> d(ptr);
+  d->build_context(ivec(context_types), parse_window(window), edge_correct);
+}
+
+// [[Rcpp::export]]
+List dataset_kontextual_model_data(SEXP ptr, int from, int to) {
+  XPtr<Dataset> d(ptr);
+  InhomModelData md = d->kontextual_model_data(from, to);
+  return List::create(_["row"] = IntegerVector(md.row.begin(), md.row.end()),
+                      _["image"] = IntegerVector(md.image.begin(), md.image.end()),
+                      _["n"] = nv(md.n),
+                      _["n_raw"] = IntegerVector(md.n_raw.begin(), md.n_raw.end()),
+                      _["weight"] = nv(md.weight),
+                      _["density"] = nv(md.density));
+}
+
+// [[Rcpp::export]]
+List dataset_kontextual_binomial_model_data(SEXP ptr, int from, int to) {
+  XPtr<Dataset> d(ptr);
+  BinomialTrialsModelData md = d->kontextual_binomial_model_data(from, to);
+  return List::create(_["row"] = IntegerVector(md.row.begin(), md.row.end()),
+                      _["image"] = IntegerVector(md.image.begin(), md.image.end()),
+                      _["n"] = IntegerVector(md.n.begin(), md.n.end()),
+                      _["trials"] = IntegerVector(md.trials.begin(), md.trials.end()),
+                      _["p0"] = nv(md.p0));
+}
+
+// [[Rcpp::export]]
 List dataset_binomial_model_data(SEXP ptr, int from, int to) {
   XPtr<Dataset> d(ptr);
   BinomialModelData md = d->binomial_model_data(from, to);
@@ -111,11 +158,13 @@ List dataset_binomial_model_data(SEXP ptr, int from, int to) {
                       _["p0"] = NumericVector(md.p0.begin(), md.p0.end()));
 }
 
+// n is numeric so the inhomogeneous design's pair-weighted counts pass through;
+// integer counts convert exactly, leaving the homogeneous fit unchanged.
 // [[Rcpp::export]]
 List fit_pair_poisson_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group,
-                          IntegerVector n, NumericVector density, std::string estimator,
+                          NumericVector n, NumericVector density, std::string estimator,
                           std::string variance, bool diagnostics = false) {
-  return pair_fit_list(fit_pair_poisson(ivec(cluster), ivec(image), ivec(group), ivec(n),
+  return pair_fit_list(fit_pair_poisson(ivec(cluster), ivec(image), ivec(group), dvec(n),
                                         dvec(density), estimator, variance, diagnostics));
 }
 
@@ -125,4 +174,73 @@ List fit_pair_binomial_cpp(IntegerVector cluster, IntegerVector image, IntegerVe
                            std::string variance) {
   return pair_fit_list(fit_pair_binomial(ivec(cluster), ivec(image), ivec(group), ivec(n), k,
                                          dvec(p0), estimator, variance));
+}
+
+// [[Rcpp::export]]
+List fit_pair_binomial_trials_cpp(IntegerVector cluster, IntegerVector image, IntegerVector group,
+                                  IntegerVector n, IntegerVector trials, NumericVector p0,
+                                  std::string estimator, std::string variance) {
+  return pair_fit_list(fit_pair_binomial(ivec(cluster), ivec(image), ivec(group), ivec(n),
+                                         ivec(trials), dvec(p0), estimator, variance));
+}
+
+// Every pair's per-image neighbour totals, as an n_types x n_types x n_images
+// array [from, to, image] (see Dataset::pair_neighbour_totals).
+// [[Rcpp::export]]
+NumericVector dataset_pair_neighbour_totals(SEXP ptr, bool knn, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->pair_neighbour_totals(knn);
+  NumericVector out(v.begin(), v.end());
+  // stored [img][from][to] row-major, i.e. column-major [to, from, img]
+  out.attr("dim") = IntegerVector::create(n_types, n_types, static_cast<int>(v.size() / (n_types * n_types)));
+  return out;
+}
+
+// Sum over each image's `to` cells of the squared number of `from` cells that
+// count it as a neighbour, [to, from, image] like dataset_pair_neighbour_totals.
+// [[Rcpp::export]]
+NumericVector dataset_pair_neighbour_sq_totals(SEXP ptr, bool knn, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->pair_neighbour_sq_totals(knn);
+  NumericVector out(v.begin(), v.end());
+  out.attr("dim") = IntegerVector::create(n_types, n_types, static_cast<int>(v.size() / (n_types * n_types)));
+  return out;
+}
+
+// [[Rcpp::export]]
+NumericVector dataset_pair_neighbour_out_sq_totals(SEXP ptr, bool knn, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->pair_neighbour_out_sq_totals(knn);
+  NumericVector out(v.begin(), v.end());
+  out.attr("dim") = IntegerVector::create(n_types, n_types, static_cast<int>(v.size() / (n_types * n_types)));
+  return out;
+}
+
+// [[Rcpp::export]]
+List dataset_rl_model_data(SEXP ptr, int from, int to) {
+  XPtr<Dataset> d(ptr);
+  ModelData md = d->rl_model_data(from, to);
+  return List::create(_["row"] = IntegerVector(md.row.begin(), md.row.end()),
+                      _["image"] = IntegerVector(md.image.begin(), md.image.end()),
+                      _["n"] = IntegerVector(md.n.begin(), md.n.end()),
+                      _["density"] = NumericVector(md.density.begin(), md.density.end()));
+}
+
+// [[Rcpp::export]]
+NumericMatrix dataset_weighted_phi_sums(SEXP ptr, int from, int to, int design, bool edge_correct) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->weighted_phi_sums(from, to, design, edge_correct);
+  NumericMatrix out(3, static_cast<int>(v.size() / 3));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: sum c_b, sum c_b^2, number of candidates; one column per image
+}
+
+// [[Rcpp::export]]
+NumericMatrix dataset_hac_phi_sums(SEXP ptr, int from, int to, int design, double h) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->hac_phi_sums(from, to, design, h);
+  NumericMatrix out(4, static_cast<int>(v.size() / 4));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: HAC variance of O, sum c_b, number of candidates, and G with
+                // E[HAC] = p (1 - p) G under random labelling; one column per image
 }

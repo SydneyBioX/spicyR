@@ -11,8 +11,9 @@ namespace {
 
 const double NaN = std::numeric_limits<double>::quiet_NaN();
 
+template <typename Count>
 PairDiagnostics compute_diagnostics(const std::vector<int>& cluster, const std::vector<int>& image,
-                                    const std::vector<int>& group, const std::vector<int>& n,
+                                    const std::vector<int>& group, const std::vector<Count>& n,
                                     const std::vector<double>& density, const CR2Result& cr2) {
   std::size_t m = cr2.cluster_id.size();
   std::unordered_map<int, std::size_t> cluster_pos;
@@ -28,15 +29,23 @@ PairDiagnostics compute_diagnostics(const std::vector<int>& cluster, const std::
   std::size_t n_images = image_offset[m];
   D.n_i.assign(m, 0.0); D.T.assign(m, 0.0); D.y.assign(m, 0.0); D.d.assign(m, 0.0);
   D.n_ij.assign(n_images, 0.0); D.density_ij.assign(n_images, 0.0);
+  std::vector<double> density_sum(n_images, 0.0);
+  std::vector<bool> varies(n_images, false);
   for (std::size_t c = 0; c < cluster.size(); ++c) {
     std::size_t i = cluster_pos.at(cluster[c]);
     std::size_t k = image_offset[i] + image_pos[i].at(image[c]);
     D.n_i[i] += 1.0;
     D.y[i] += n[c];
     D.d[i] += density[c];
+    if (D.n_ij[k] == 0.0) D.density_ij[k] = density[c];
+    else if (density[c] != D.density_ij[k]) varies[k] = true;
     D.n_ij[k] += 1.0;
-    D.density_ij[k] = density[c];  // constant within an image
+    density_sum[k] += density[c];
   }
+  // constant within an image, except in the inhomogeneous design, whose
+  // per-cell offsets enter as the image mean (as spicyR's computeLeverage())
+  for (std::size_t k = 0; k < n_images; ++k)
+    if (varies[k]) D.density_ij[k] = density_sum[k] / D.n_ij[k];
 
   // leverage (pre-fit; exp(beta) cancels within a group)
   D.S_leverage = {0.0, 0.0};
@@ -81,12 +90,11 @@ PairDiagnostics compute_diagnostics(const std::vector<int>& cluster, const std::
   return D;
 }
 
-}  // namespace
-
-PairFit fit_pair_poisson(const std::vector<int>& cluster, const std::vector<int>& image,
-                         const std::vector<int>& group, const std::vector<int>& n,
-                         const std::vector<double>& density, const std::string& estimator,
-                         const std::string& variance, bool diagnostics) {
+template <typename Count>
+PairFit fit_pair_poisson_counts(const std::vector<int>& cluster, const std::vector<int>& image,
+                                const std::vector<int>& group, const std::vector<Count>& n,
+                                const std::vector<double>& density, const std::string& estimator,
+                                const std::string& variance, bool diagnostics) {
   if (variance != "fast" && variance != "naive") throw std::invalid_argument("variance must be 'fast' or 'naive'");
   if (diagnostics && (estimator != "firth" || variance != "fast"))
     throw std::invalid_argument("diagnostics require estimator = 'firth' and variance = 'fast'");
@@ -105,6 +113,22 @@ PairFit fit_pair_poisson(const std::vector<int>& cluster, const std::vector<int>
     out.has_diagnostics = true;
   }
   return out;
+}
+
+}  // namespace
+
+PairFit fit_pair_poisson(const std::vector<int>& cluster, const std::vector<int>& image,
+                         const std::vector<int>& group, const std::vector<int>& n,
+                         const std::vector<double>& density, const std::string& estimator,
+                         const std::string& variance, bool diagnostics) {
+  return fit_pair_poisson_counts(cluster, image, group, n, density, estimator, variance, diagnostics);
+}
+
+PairFit fit_pair_poisson(const std::vector<int>& cluster, const std::vector<int>& image,
+                         const std::vector<int>& group, const std::vector<double>& n,
+                         const std::vector<double>& density, const std::string& estimator,
+                         const std::string& variance, bool diagnostics) {
+  return fit_pair_poisson_counts(cluster, image, group, n, density, estimator, variance, diagnostics);
 }
 
 }  // namespace spicyglm

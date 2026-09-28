@@ -14,6 +14,25 @@ Status:
   one-dimensional root-find per condition (replacing glm / brglm2), with the
   same CR2 and degrees of freedom. The effect is directional, so every ordered
   pair is fitted (see below). Diagnostics are Poisson-only, as in R.
+- Inhomogeneous cross-K design (spicyR's `spicyGLM(sigma =)`), R front end
+  only for now: `spicy_glm(..., r = 20, sigma = 100)` weights every
+  reference-target pair within `r` by the inverse disc-kernel intensities of
+  its two cells (radius `sigma`) and an exact translation edge correction. The
+  offsets then vary by cell, so CR2 is applied by quadrature of a resolvent
+  integral, in time linear in the number of cells, instead of by
+  eigendecomposition (Section 14 of the supplementary math).
+- Kontextual (Statial's `Kontextual()`), R front end only for now:
+  `spicy_glm(..., parent = c("CD8", "CD4", "Mac"))` tests the co-localisation
+  of `from` with `to` against the null that `to` cells are a random subset of
+  the context (`parent`, which must contain `to`). Poisson: `to` neighbours
+  within `r`, weighted by the context intensity at the reference cell over
+  that at the neighbour, against the `to` share of the context times the
+  reference cell's context cells within `r`; the per-image estimate is
+  Statial's Kontextual K / (pi r^2). Binomial: among each reference cell's `k`
+  nearest neighbours, the context cells are the trials and the `to` cells the
+  successes. Both put cell-level weights (context intensity, or trials) into
+  the fit, so CR2 takes the resolvent-integral route (Section 15 of the
+  supplementary math).
 - `cr2_method="naive"` (spicyR's `cr2Method = "naive"`): model-based variance
   ignoring clustering, with a z-test. `cr2Method = "clubSandwich"` is not ported.
 
@@ -125,6 +144,90 @@ on all 16 binomial pairs.
 end: `out$diagnostics$pair`, `$patient`, `$image` and `$cross_pair`. On the
 dataset above the tables agree column by column with Python to 5e-14 relative
 (`S_g`) and 1e-16 absolute (the Wilson bounds).
+
+### Random-labelling null and image frailty (R only)
+
+`null = "random_labelling"` (Poisson) replaces the CSR offset n_to / area * pi r^2
+with each REF cell's own number of candidate neighbours within r times the
+TARGET share of the candidates. That is the expected count when labels are
+exchangeable given every cell's location. It removes the image-wide shift in
+co-localisation that arises when tissue fills its window unevenly: in the kidney
+and Myeloma data, that shift was 57% and 86% of the between-image variation for
+the CSR offset, and 4% and 1% with this one. Pairs are directional.
+
+`frailty = TRUE` fits the cell-level GLM with a subject frailty and the exact
+random-labelling within-image variance phi (one pass over the neighbour graph,
+`dataset_pair_neighbour_sq_totals`). Cells get the prior weight a_u / phi_i, with
+a_u = 1 / (1 + tau2 J_u), and the test uses CR2 in closed form under this
+diagonal-plus-rank-one working covariance (math.tex, Section 17). It is calibrated
+under permutation in both datasets and has 2-3.4 times the power of the CSR GLM
+in spike-in simulations. `moderate = TRUE` also shrinks each pair's CR2 variance
+toward its frailty-model variance (one prior df, no fitted trend). That adds
+power, mostly for rare pairs.
+
+`label_clustering = TRUE` (the default with frailty) inflates phi for TARGET cells
+that cluster among themselves, which random labelling ignores. It uses a spatial
+HAC estimate of Var(O) (`dataset_hac_phi_sums`, Bartlett weights, bandwidth 2r),
+pooled to one factor per (image, TARGET type). The HAC estimate is divided by its
+own expectation under random labelling (September 2026 fix; before it was divided
+by phi, which overstated the factor about 1.75-fold when the REF type is common),
+so the factor is about 1 when there is no label clustering. The calibration
+results with `moderate = TRUE` quoted in math.tex predate the fix and need
+rerunning. Frailty mode covers every
+design: for Kontextual, phi is the random-labelling variance within the context;
+for the inhomogeneous design, it is the Campbell variance under an inhomogeneous
+Poisson null for the TARGET (`dataset_weighted_phi_sums`).
+
+```r
+spicy_glm(cells, condition = "condition", subject = "subject", r = 40,
+          null = "random_labelling", frailty = TRUE)
+spicy_glm(cells, condition = "condition", family = "binomial", k = 20, frailty = TRUE)
+```
+
+### Additive effect: extra neighbours per target cell (R only)
+
+`effect = "excess"` keeps the same neighbour counts but measures the effect as the
+mean number of extra REF cells around each TARGET cell beyond random labelling:
+lambda_REF (K - K under random labelling) for the radius graph, or extra REF cells
+among the k nearest. A rate ratio is capped by composition (it cannot exceed 1 /
+the share of cells near a REF cell), so the same recruitment gives a smaller ratio
+in dense images, which are the informative ones. The excess does not: recruiting a
+fraction f of TARGET cells next to REF cells gives f whatever the density or
+abundance (math.tex, Section 18). Each image's count has its exact random-labelling
+mean and variance, and the fit is the frailty GEE with the closed-form CR2, as
+above. In simulation it matched per-image permutation z-scores (squidpy) in power
+when tissue structure is homogeneous. It kept its power and calibration when tumour
+architecture varies or shifts between conditions, where the z-scores lose power or
+reject most null pairs. Pairs are directional, and only the direction with the
+recruited type as TARGET is invariant to abundance. The radius design is
+recommended: the k-NN version is sensitive to dense background structure.
+
+```r
+spicy_glm(cells, condition = "condition", subject = "subject", r = 25, effect = "excess")
+```
+
+### Image-level moderated test (R only)
+
+`test = "moderated"` summarises each image by its log observed/expected ratio
+(Poisson designs) or its log odds ratio (binomial designs). It averages images
+within `subject`, then compares conditions with a two-sample t-test whose
+variance is moderated across pairs by empirical Bayes, with a trend on the
+pair's mean log count. This is limma's `eBayes(trend = TRUE, legacy = TRUE)`,
+reproduced to 1e-13 without depending on limma. Each subject gets equal
+weight, where the GLM weights by cell counts. With the between-image
+heterogeneity these data show, that raises power a lot (math.tex, Section 16).
+For the homogeneous designs, every pair's summaries come from one pass over
+the neighbour graph (`dataset_pair_neighbour_totals`): 0.9 s for all 1,326
+kidney pairs, where the GLM takes 22 s.
+
+```r
+spicy_glm(cells, condition = "condition", subject = "subject", r = 40, test = "moderated")
+spicy_glm(cells, condition = "condition", family = "binomial", k = 20, parent = immune,
+          test = "moderated", density_adjust = TRUE)   # adjust for abundance (ANCOVA)
+```
+
+`out$moderation` holds the prior df, the density slopes, and the per-pair
+variances. Diagnostics are not available for this test.
 
 One cosmetic difference: rows of `cross_pair` whose Wilson lower bound is
 mathematically zero can come out in a different order, because that bound is a
