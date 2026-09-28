@@ -65,10 +65,17 @@ frailty_label_clustering <- function(ctx, pairs) {
   n_types <- ncol(ctx$counts); n_img <- nrow(ctx$counts)
   design <- if (!is.null(ctx$parent)) (if (ctx$family == "binomial") 1L else 0L) else if (ctx$family == "binomial") 4L else 3L
   h <- ctx$hac_h
-  ratios <- lapply(pairs, function(p) { f <- ctx$type_index[[p[1]]]; t <- ctx$type_index[[p[2]]]
-    H <- dataset_hac_phi_sums(ctx$data, f, t, design, h)
-    nB <- ctx$counts[, t + 1L]; Np <- H[3, ]; pr <- if (f == t) (nB - 1) / pmax(Np - 1, 1) else nB / Np
-    ratio <- H[1, ] / (pr * (1 - pr) * H[4, ])
+  # one neighbour pass per REF type for all its non-self TARGETs (dataset_hac_phi_sums_ref);
+  # self-pairs, whose candidates include the REF type, use the per-pair sums
+  codes <- t(vapply(pairs, function(p) c(ctx$type_index[[p[1]]], ctx$type_index[[p[2]]]), integer(2)))
+  by_ref <- lapply(split(seq_len(nrow(codes)), codes[, 1]), function(k) {
+    f <- codes[k[1], 1]
+    if (any(codes[k, 2] != f)) dataset_hac_phi_sums_ref(ctx$data, f, design, h, n_types) })
+  ratios <- lapply(seq_len(nrow(codes)), function(i) { f <- codes[i, 1]; t <- codes[i, 2]
+    if (f == t) { H <- dataset_hac_phi_sums(ctx$data, f, t, design, h); V <- H[1, ]; Np <- H[3, ]; G <- H[4, ] }
+    else { H <- by_ref[[as.character(f)]]; V <- H[t + 1L, ]; Np <- H[n_types + 2L, ]; G <- H[n_types + 3L, ] }
+    nB <- ctx$counts[, t + 1L]; pr <- if (f == t) (nB - 1) / pmax(Np - 1, 1) else nB / Np
+    ratio <- V / (pr * (1 - pr) * G)
     O <- dataset_pair_image_totals(ctx, f, t); ratio[O < 5] <- NA       # sparse images: too noisy to pool
     list(to = t + 1L, ratio = ratio) })
   out <- matrix(1, n_types, n_img)

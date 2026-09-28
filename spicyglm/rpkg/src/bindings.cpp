@@ -236,6 +236,15 @@ NumericMatrix dataset_weighted_phi_sums(SEXP ptr, int from, int to, int design, 
 }
 
 // [[Rcpp::export]]
+NumericMatrix dataset_hac_phi_sums_ref(SEXP ptr, int from, int design, double h, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->hac_phi_sums_ref(from, design, h);
+  NumericMatrix out(n_types + 3, static_cast<int>(v.size() / (n_types + 3)));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: the HAC variance for each TARGET type, then sum c_b, candidates and G; one column per image
+}
+
+// [[Rcpp::export]]
 NumericMatrix dataset_hac_phi_sums(SEXP ptr, int from, int to, int design, double h) {
   XPtr<Dataset> d(ptr);
   std::vector<double> v = d->hac_phi_sums(from, to, design, h);

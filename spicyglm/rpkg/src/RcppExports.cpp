@@ -276,6 +276,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_hac_phi_sums_ref
+NumericMatrix dataset_hac_phi_sums_ref(SEXP ptr, int from, int design, double h, int n_types);
+RcppExport SEXP _spicyglm_dataset_hac_phi_sums_ref(SEXP ptrSEXP, SEXP fromSEXP, SEXP designSEXP, SEXP hSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type design(designSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_hac_phi_sums_ref(ptr, from, design, h, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_hac_phi_sums
 NumericMatrix dataset_hac_phi_sums(SEXP ptr, int from, int to, int design, double h);
 RcppExport SEXP _spicyglm_dataset_hac_phi_sums(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP designSEXP, SEXP hSEXP) {
@@ -312,6 +327,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyglm_dataset_pair_neighbour_out_sq_totals", (DL_FUNC) &_spicyglm_dataset_pair_neighbour_out_sq_totals, 3},
     {"_spicyglm_dataset_rl_model_data", (DL_FUNC) &_spicyglm_dataset_rl_model_data, 3},
     {"_spicyglm_dataset_weighted_phi_sums", (DL_FUNC) &_spicyglm_dataset_weighted_phi_sums, 5},
+    {"_spicyglm_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyglm_dataset_hac_phi_sums_ref, 5},
     {"_spicyglm_dataset_hac_phi_sums", (DL_FUNC) &_spicyglm_dataset_hac_phi_sums, 5},
     {NULL, NULL, 0}
 };

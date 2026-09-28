@@ -135,6 +135,9 @@ class Dataset {
   // weighted_phi_sums); 3: radius design without context; 4: k-NN design without
   // context. Output: image-major, 3 per image (HAC variance, sum_b c_b, candidates).
   std::vector<double> hac_phi_sums(int from, int to, int design, double h) const;
+  // hac_phi_sums for one REF and every non-self TARGET in one pass: per image, the T HAC sums,
+  // then sum c, n and G (layout T + 3 per image).
+  std::vector<double> hac_phi_sums_ref(int from, int design, double h) const;
 
   // Inhomogeneous design (Section 14): the window of each image as a polygon,
   // and every cell's weight 1 / lambda, scaled to mean one within its (image,

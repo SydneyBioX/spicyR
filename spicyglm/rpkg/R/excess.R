@@ -84,17 +84,19 @@ excess_outcome <- function(ctx, f, t) {
        .images = if (isTRUE(ctx$moderate)) list(im = im, unit = unit, group = group))
 }
 
-# moderate = TRUE with effect = "excess": as frailty_moderate(). Each pair keeps its own
-# estimate and CR2 variance V (Satterthwaite df d); the prior for V / Vm, with Vm the working-model
-# variance sum_g 1 / B_g at the median tau2 across pairs, is Smyth's scaled inverse chi-square
-# (fit_f_dist, no trend), and the test uses the posterior variance on d + d0 df.
+# moderate = TRUE with effect = "excess". Each pair keeps its own estimate and CR2 variance V
+# (Satterthwaite df d). Its working-model variance Vm = sum_g 1 / B_g is evaluated at the pair's
+# own tau2, so that only the scale of the within-image part is borrowed: a pair with real
+# between-patient heterogeneity is not shrunk toward a variance without it. The prior for V / Vm is
+# Smyth's scaled inverse chi-square (fit_f_dist, no trend), and the test uses the posterior
+# variance on d + d0 df.
 excess_moderate <- function(outcomes, ctx) {
   ok <- which(vapply(outcomes, function(o) is.null(o$reason), logical(1)))
   if (length(ok) < 3L) stop("moderate = TRUE needs at least three pairs that can be fitted.", call. = FALSE)
   tau2 <- stats::median(vapply(outcomes[ok], function(o) o$.frailty[["tau2"]], numeric(1)))
-  R <- t(vapply(outcomes[ok], function(o) { x <- o$.images
+  R <- t(vapply(outcomes[ok], function(o) { x <- o$.images; t2 <- o$.frailty[["tau2"]]
     B <- vapply(0:1, function(g) { k <- x$group == g
-      excess_fit_group(x$im[k, , drop = FALSE], droplevels(x$unit[k]), tau2)$B }, numeric(1))
+      excess_fit_group(x$im[k, , drop = FALSE], droplevels(x$unit[k]), t2)$B }, numeric(1))
     c(V = o$.frailty[["se"]]^2, d = o$.frailty[["df"]], Vm = sum(1 / B)) }, numeric(3)))
   prior <- fit_f_dist(R[, "V"] / R[, "Vm"], R[, "d"], rep(0, nrow(R)))
   s0 <- prior$s20[1]; d0 <- prior$d0

@@ -119,3 +119,21 @@ test_that("moderation keeps each pair's estimate and adds prior df", {
   pr <- attr(b$frailty, "prior"); expect_true(all(c("tau2", "d0", "s0") %in% names(pr)))
   expect_true(all(is.finite(b$results$p_value)))
 })
+
+test_that("the one-pass HAC sums per REF type equal the per-pair sums", {
+  cells <- make_excess_cells(seed = 6, n_img = 4)
+  z <- cells[order(cells$imageID), ]; tl <- sort(unique(z$cellType)); img <- match(z$imageID, sort(unique(z$imageID))) - 1L
+  off <- as.integer(c(0, cumsum(tabulate(img + 1L))))
+  for (knn in c(FALSE, TRUE)) {
+    d <- dataset_create(z$x, z$y, match(z$cellType, tl) - 1L, off, length(tl))
+    if (knn) dataset_build_knn(d, 10L, 1L)
+    dataset_build_radius_index(d, 30)
+    design <- if (knn) 4L else 3L
+    for (f in 0:3) { B <- dataset_hac_phi_sums_ref(d, f, design, 60, length(tl))
+      for (t in setdiff(0:3, f)) { A <- dataset_hac_phi_sums(d, f, t, design, 60)
+        expect_equal(B[t + 1, ], A[1, ], tolerance = 1e-8)
+        expect_equal(B[length(tl) + 1, ], A[2, ], tolerance = 1e-10)
+        expect_equal(B[length(tl) + 2, ], A[3, ], tolerance = 1e-10)
+        expect_equal(B[length(tl) + 3, ], A[4, ], tolerance = 1e-8) } }
+  }
+})

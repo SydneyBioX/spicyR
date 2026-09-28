@@ -77,6 +77,10 @@ dataset_weighted_phi_sums <- function(ptr, from, to, design, edge_correct) {
     .Call(`_spicyglm_dataset_weighted_phi_sums`, ptr, from, to, design, edge_correct)
 }
 
+dataset_hac_phi_sums_ref <- function(ptr, from, design, h, n_types) {
+    .Call(`_spicyglm_dataset_hac_phi_sums_ref`, ptr, from, design, h, n_types)
+}
+
 dataset_hac_phi_sums <- function(ptr, from, to, design, h) {
     .Call(`_spicyglm_dataset_hac_phi_sums`, ptr, from, to, design, h)
 }

@@ -593,6 +593,111 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
   return out;
 }
 
+// hac_phi_sums for one REF type and every non-self TARGET at once: one neighbour pass per image.
+// With mu = icpt_t + slope_t c and e = y_t - mu, V_t = sum K c_a c_j e_a e_j expands into
+//   V1_t - 2 (icpt_t A1_t + slope_t A2_t) + icpt_t^2 S1 + 2 icpt_t slope_t Sc + slope_t^2 Scc,
+// where V1_t sums K c_a c_j over pairs of TARGET cells, A1_t = sum_{a in t} c_a W1_a and
+// A2_t = sum_{a in t} c_a W2_a with W1_a = sum_j K c_j, W2_a = sum_j K c_j^2, S1 = sum_a c_a W1_a,
+// Sc = sum_a c_a W2_a and Scc = sum_a c_a^2 W2_a. Output per image: V_t for t = 0..T-1 (NaN for
+// the REF type and non-candidates), then sum c, n and G, as hac_phi_sums.
+std::vector<double> Dataset::hac_phi_sums_ref(int from, int design, double h) const {
+  const double pi = 3.141592653589793238462643383279502884;
+  const double r2 = r_ * r_, disc = pi * r_ * r_;
+  const bool knn = design == 1 || design == 4, context = design <= 1;
+  if (knn && k_ == 0) throw std::logic_error("call build_knn first");
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first (the HAC bandwidth uses it)");
+  if (context && is_context_.empty()) throw std::logic_error("call build_context first");
+  if (design == 0 && context_count_.empty() && n_images() > 0) throw std::logic_error("call build_context after build_radius_index");
+  const int T = n_types_; const std::size_t W = static_cast<std::size_t>(T) + 3;
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * W, std::nan("")), c;
+  std::vector<char> cand;
+  std::vector<double> sy(T), sxy(T), V1(T), A1(T), A2(T);
+  auto is_cand = [&](int t) { return context ? (is_context_[t] && t != from) : (t != from); };
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], end = image_offsets_[img + 1];
+    const int n_from = type_count(img, from);
+    double* o = out.data() + static_cast<std::size_t>(img) * W;
+    for (std::size_t k = static_cast<std::size_t>(T); k < W; ++k) o[k] = 0.0;
+    if (n_from == 0) continue;
+    const int nc = end - start;
+    c.assign(nc, 0.0); cand.assign(nc, 0);
+    for (int row = start; row < end; ++row) cand[row - start] = is_cand(type_[row]);
+    const Grid& g = grids_[img];
+    const int base = type_start_[img * n_types_ + from];
+    for (int i = base; i < base + n_from; ++i) {
+      const int row = type_rows_[i];
+      if (knn) {
+        const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
+        for (int slot = 0; slot < k_; ++slot) if (nb[slot] != row && cand[nb[slot] - start]) c[nb[slot] - start] += 1.0;
+        continue;
+      }
+      double la = 0.0, ea = 1.0;
+      if (design == 0) { la = context_count_[row] / context_area_[row]; if (!(la > 0)) continue; ea = disc / context_area_[row]; }
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+          std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+            const int j = grow_[p];
+            if (j == row || !cand[j - start]) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py;
+            if (dx * dx + dy * dy > r2) continue;
+            double w = 1.0;
+            if (design == 0) { double lb = context_count_[j] / context_area_[j]; if (!(lb > 0)) continue; w = ea * la / lb; }
+            c[j - start] += w;
+          }
+        }
+    }
+    double n = 0, sx = 0, sxx = 0;
+    std::fill(sy.begin(), sy.end(), 0.0); std::fill(sxy.begin(), sxy.end(), 0.0);
+    for (int row = start; row < end; ++row) {
+      if (!cand[row - start]) continue;
+      const double xv = c[row - start]; const int t = type_[row];
+      n += 1; sx += xv; sxx += xv * xv; sy[t] += 1; sxy[t] += xv;
+    }
+    if (n < 3) continue;
+    const long long reach = static_cast<long long>(std::ceil(h / g.side));
+    const double h2 = h * h;
+    std::fill(V1.begin(), V1.end(), 0.0); std::fill(A1.begin(), A1.end(), 0.0); std::fill(A2.begin(), A2.end(), 0.0);
+    double S1 = 0.0, Sc = 0.0, Scc = 0.0;
+    for (int row = start; row < end; ++row) {
+      const int a = row - start;
+      if (!cand[a] || c[a] == 0.0) continue;
+      const int ta = type_[row];
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      double W1 = 0.0, W2 = 0.0, same = 0.0;
+      for (long long yy = std::max(0LL, by - reach); yy <= std::min(g.nby - 1, by + reach); ++yy)
+        for (long long xx = std::max(0LL, bx - reach); xx <= std::min(g.nbx - 1, bx + reach); ++xx) {
+          std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+            const int j = grow_[p] - start;
+            if (!cand[j] || c[j] == 0.0) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py, d2 = dx * dx + dy * dy;
+            if (d2 > h2) continue;
+            const double Kc = (1.0 - std::sqrt(d2) / h) * c[j];
+            W1 += Kc; W2 += Kc * c[j];
+            if (gtype_[p] == ta) same += Kc;
+          }
+        }
+      V1[ta] += c[a] * same; A1[ta] += c[a] * W1; A2[ta] += c[a] * W2;
+      S1 += c[a] * W1; Sc += c[a] * W2; Scc += c[a] * c[a] * W2;
+    }
+    const double vx = sxx - sx * sx / n, cbar = sx / n;
+    for (int t = 0; t < T; ++t) {
+      if (t == from || !is_cand(t)) continue;
+      const double slope = vx > 0 ? (sxy[t] - sx * sy[t] / n) / vx : 0.0, icpt = (sy[t] - slope * sx) / n;
+      o[t] = V1[t] - 2.0 * (icpt * A1[t] + slope * A2[t]) + icpt * icpt * S1 + 2.0 * icpt * slope * Sc + slope * slope * Scc;
+    }
+    const double S2 = Scc - 2.0 * cbar * Sc + cbar * cbar * S1;
+    o[T] = sx; o[T + 1] = n; o[T + 2] = n / (n - 1) * (sxx - S1 / n - (vx > 0 ? S2 / vx : 0.0));
+  }
+  return out;
+}
+
 std::vector<double> Dataset::pair_neighbour_sq_totals(bool knn) const {
   const std::size_t T = static_cast<std::size_t>(n_types_);
   std::vector<double> out(static_cast<std::size_t>(n_images()) * T * T, 0.0);
