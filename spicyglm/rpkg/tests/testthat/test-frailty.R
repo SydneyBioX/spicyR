@@ -72,28 +72,28 @@ test_that("with tau2 = 0 and phi = 1 the frailty CR2 is the cell-level closed fo
 test_that("frailty = TRUE runs for the Poisson (both nulls) and binomial designs, with subjects", {
   cells <- make_frailty_cells()
   for (args in list(list(r = 40), list(r = 40, null = "random_labelling"), list(family = "binomial", k = 10))) {
-    out <- do.call(spicy_glm, c(list(cells, condition = "response", subject = "patient", frailty = TRUE), args))
+    out <- do.call(spicy_glm, c(list(cells, condition = "response", subject = "patient", frailty = TRUE, effect = "ratio"), args))
     expect_true(nrow(out$results) > 0)
     expect_true(all(is.finite(out$results$p_value)))
     expect_true(all(out$frailty$tau2 >= 0) && all(out$frailty$df > 0))
     expect_setequal(paste(out$frailty$from, out$frailty$to), paste(out$results$from, out$results$to))
   }
-  rl <- spicy_glm(cells, condition = "response", r = 40, null = "random_labelling")
+  rl <- spicy_glm(effect = "ratio", cells, condition = "response", r = 40, null = "random_labelling")
   expect_equal(nrow(rl$results) + nrow(rl$skipped), 16)           # directional pairs
-  expect_error(spicy_glm(cells, condition = "response", family = "binomial", k = 10, null = "random_labelling"),
+  expect_error(spicy_glm(effect = "ratio", cells, condition = "response", family = "binomial", k = 10, null = "random_labelling"),
                "applies to family")
 })
 
 test_that("moderate = TRUE shrinks the CR2 variances toward the frailty-model variance", {
   cells <- make_frailty_cells()
-  plain <- spicy_glm(cells, condition = "response", r = 40, null = "random_labelling", frailty = TRUE)
-  mod <- spicy_glm(cells, condition = "response", r = 40, null = "random_labelling", frailty = TRUE, moderate = TRUE)
+  plain <- spicy_glm(effect = "ratio", cells, condition = "response", r = 40, null = "random_labelling", frailty = TRUE)
+  mod <- spicy_glm(effect = "ratio", cells, condition = "response", r = 40, null = "random_labelling", frailty = TRUE, moderate = TRUE)
   pr <- attr(mod$frailty, "prior")
   expect_named(pr, c("tau2", "d0", "s0"))
   expect_equal(unname(pr["tau2"]), stats::median(plain$frailty$tau2))
   key <- paste(mod$frailty$from, mod$frailty$to); kp <- match(key, paste(plain$frailty$from, plain$frailty$to))
   if (is.finite(pr["d0"])) expect_true(all(mod$frailty$df >= plain$frailty$df[kp] - 1e-8))
-  expect_error(spicy_glm(cells, condition = "response", r = 40, moderate = TRUE), "needs frailty")
+  expect_error(spicy_glm(effect = "ratio", cells, condition = "response", r = 40, moderate = TRUE), "needs frailty")
 })
 
 test_that("the Kontextual phi is the variance over relabellings of the context", {

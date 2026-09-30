@@ -22,10 +22,11 @@ spicy_glm(
   edge_correct = TRUE,
   parent = NULL,
   null = c("csr", "random_labelling"),
-  frailty = FALSE,
+  frailty = NULL,
   moderate = FALSE,
   label_clustering = TRUE,
-  effect = c("ratio", "excess"),
+  effect = c("excess", "ratio"),
+  variance = c("cr2", "hartung_knapp"),
   test = c("glm", "moderated"),
   density_adjust = FALSE,
   estimator = c("firth", "mle"),
@@ -115,7 +116,8 @@ TARGET share of the candidates. This removes the image-wide shift in
 co-localisation that arises when tissue fills a window unevenly. Pairs are
 then directional, as for the binomial design.}
 
-\item{frailty}{TRUE fits the cell-level GLM with an image (subject) frailty and
+\item{frailty}{NULL (default) means TRUE for \code{effect = "excess"} and FALSE otherwise.
+TRUE fits the cell-level GLM with an image (subject) frailty and
 the random-labelling within-image variance: each image's cells get the
 prior weight a_u / phi_i, where phi_i is the exact random-labelling
 variance of the image's count over its Poisson (binomial) variance and
@@ -144,8 +146,7 @@ random-labelling variance, and the ratio is pooled to one factor per
 (image, TARGET type), the median over the fitted REF types, floored at 1. Not
 used for the inhomogeneous design, whose phi comes from a Poisson-process null.}
 
-\item{effect}{"ratio" (default): the effect is a log rate (odds) ratio, as
-described above. "excess": the additive effect under random labelling. For
+\item{effect}{"excess" (default): the additive effect under random labelling. For
 a directional pair REF -> TARGET, each group coefficient is the mean number
 of extra REF cells among a TARGET cell's neighbours (within \code{r}, or among
 its \code{k} nearest) beyond random labelling of the non-REF cells; for the
@@ -164,7 +165,19 @@ and SE in \code{$frailty}. \code{moderate = TRUE} shrinks each pair's CR2
 variance toward its working-model variance as for the ratio (one prior df, no
 trend), which matters when a few high-information units dominate and the CR2
 df are small. Not available with \code{sigma}, \code{parent} or
-\code{test = "moderated"}; \code{null} and \code{estimator} are not used.}
+\code{test = "moderated"} (when \code{effect} is not given, these use "ratio"); \code{null}
+and \code{estimator} are not used. "ratio": the effect is a log rate (odds) ratio, as described above.}
+
+\item{variance}{For \code{effect = "excess"}: the variance of the difference between
+conditions. "cr2" (default): the CR2
+variance on Satterthwaite df, calibrated with few units in simulations and with shuffled labels on real
+data. "hartung_knapp": the working-model variance at the pair's tau2,
+scaled up by the Pearson dispersion when that exceeds 1 (modified Hartung-Knapp) and never
+below the CR2 variance, tested on n_units - 2 df. This is exact for normal unit summaries
+whose variances are known up to a common scale, and it keeps inference informative when a
+condition has only a few patients, where the CR2 Satterthwaite df collapse, but it can be
+anti-conservative for rare types. With
+\code{moderate = TRUE} the CR2 variance is moderated and this argument is ignored.}
 
 \item{test}{"glm" (default): the cell-level GLM with CR2 variance described
 above. "moderated": an image-level test. Each image is summarised by its

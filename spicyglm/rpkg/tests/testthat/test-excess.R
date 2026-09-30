@@ -137,3 +137,33 @@ test_that("the one-pass HAC sums per REF type equal the per-pair sums", {
         expect_equal(B[length(tl) + 3, ], A[4, ], tolerance = 1e-8) } }
   }
 })
+
+test_that("variance = 'hartung_knapp' is never below CR2 and uses n_units - 2 df", {
+  cells <- make_excess_cells(seed = 11, n_img = 10)
+  a <- spicy_glm(cells, condition = "response", r = 30, effect = "excess", variance = "cr2", from = "A", to = "B")
+  b <- spicy_glm(cells, condition = "response", r = 30, effect = "excess", variance = "hartung_knapp", from = "A", to = "B")
+  expect_equal(b$results$excess_difference, a$results$excess_difference)
+  expect_gte(b$frailty$se, a$frailty$se - 1e-12)
+  expect_equal(b$frailty$df, 10 - 2)
+  cells12 <- make_excess_cells(seed = 11, n_img = 12)          # two images per patient, one condition each
+  s <- spicy_glm(cells12, condition = "response", r = 30, subject = "patient", effect = "excess", variance = "hartung_knapp", from = "A", to = "B")
+  expect_equal(s$frailty$df, length(unique(cells12$patient)) - 2)
+})
+
+test_that("Hartung-Knapp df count only the units that contain the target type", {
+  cells <- make_excess_cells(seed = 11, n_img = 12)
+  gone <- c("i01", "i02", "i07")                                 # no B cells in two alpha and one beta image
+  cells <- cells[!(cells$imageID %in% gone & cells$cellType == "B"), ]
+  b <- spicy_glm(cells, condition = "response", r = 30, effect = "excess", variance = "hartung_knapp", from = "A", to = "B")
+  expect_equal(b$frailty$df, 12 - length(gone) - 2)
+})
+
+test_that("the defaults are the excess with CR2, and the ratio-only designs fall back to the ratio", {
+  cells <- make_excess_cells(seed = 11, n_img = 10)
+  d <- spicy_glm(cells, condition = "response", r = 30, from = "A", to = "B")
+  e <- spicy_glm(cells, condition = "response", r = 30, effect = "excess", variance = "cr2", from = "A", to = "B")
+  expect_equal(d$results, e$results)
+  m <- spicy_glm(cells, condition = "response", r = 30, test = "moderated")
+  expect_false("excess_difference" %in% names(m$results))
+  expect_error(spicy_glm(cells, condition = "response", r = 30, effect = "excess", test = "moderated"), "moderated")
+})

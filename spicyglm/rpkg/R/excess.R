@@ -76,6 +76,27 @@ excess_outcome <- function(ctx, f, t) {
   cr <- lapply(fits, frailty_cr2)
   v_hat <- cr[[1]]$V + cr[[2]]$V; df <- (cr[[1]]$EV + cr[[2]]$EV)^2 / (cr[[1]]$trsq + cr[[2]]$trsq)
   diff <- fits[[2]]$beta - fits[[1]]$beta
+  # variance = "hartung_knapp": the working-model variance Vm = sum_g 1 / B_g at the pair's tau2,
+  # scaled by the Pearson dispersion when it exceeds 1 (modified Hartung-Knapp), never below the CR2
+  # variance, on n_units - 2 df. Exact t for normal unit summaries whose variances are known up to a
+  # common scale (weighted least squares), which the random-labelling within-image variance makes
+  # nearly so; the CR2 floor keeps the sandwich's protection against misspecified weights.
+  nu <- nlevels(unit) - 2
+  if (identical(ctx$variance, "hartung_knapp") && nu >= 1) {
+    if (identical(getOption("spicyglm.hk"), "welch")) {
+      # development option: a dispersion per condition (Welch). Each group's Pearson statistic has
+      # n_g - 1 df; the variance is sum_g V_g, V_g = max(1, X_g / (n_g - 1)) / B_g, on Welch-Satterthwaite
+      # df, never below CR2. For condition-associated cell types, whose between-unit spread differs
+      # between the groups, the pooled scale and n - 2 df are too generous.
+      dfg <- vapply(fits, function(fg) length(fg$J) - 1, numeric(1))
+      Vg <- vapply(1:2, function(g) max(1, sum(fits[[g]]$a * fits[[g]]$r^2 / fits[[g]]$J) / dfg[g]) / fits[[g]]$B, numeric(1))
+      v_hat <- max(v_hat, sum(Vg)); df <- sum(Vg)^2 / sum(Vg^2 / dfg)
+    } else {
+      Vm <- 1 / fits[[1]]$B + 1 / fits[[2]]$B
+      X <- sum(vapply(fits, function(fg) sum(fg$a * fg$r^2 / fg$J), numeric(1)))
+      v_hat <- max(v_hat, Vm * max(1, X / nu)); df <- nu
+    }
+  }
   list(from = f, to = t, condition_ref = ctx$levels[1], condition_comp = ctx$levels[2],
        coef_ref = fits[[1]]$beta, coef_comp = fits[[2]]$beta, excess_difference = diff,
        p_value = 2 * stats::pt(-abs(diff / sqrt(v_hat)), df),

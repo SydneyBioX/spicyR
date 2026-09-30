@@ -36,7 +36,7 @@ test_that("inhomogeneous fits reproduce spicyR's spicyGLM(sigma =)", {
   cells <- make_compartment_cells()
   for (window in names(gee_reference)) {
     ref <- gee_reference[[window]]
-    out <- spicy_glm(cells, condition = "response", subject = "subject", r = 40, sigma = 150,
+    out <- spicy_glm(effect = "ratio", cells, condition = "response", subject = "subject", r = 40, sigma = 150,
                      window = window)$results
     out <- out[match(paste(ref$from, ref$to), paste(out$from, out$to)), ]
     expect_equal(out$coef_ref, ref$coef_ref, tolerance = 1e-10)
@@ -47,8 +47,8 @@ test_that("inhomogeneous fits reproduce spicyR's spicyGLM(sigma =)", {
 
 test_that("a disc covering every window, without edge correction, is the homogeneous fit", {
   cells <- make_compartment_cells()
-  hom <- spicy_glm(cells, condition = "response", subject = "subject", r = 40)$results
-  flat <- spicy_glm(cells, condition = "response", subject = "subject", r = 40, sigma = 1e7,
+  hom <- spicy_glm(effect = "ratio", cells, condition = "response", subject = "subject", r = 40)$results
+  flat <- spicy_glm(effect = "ratio", cells, condition = "response", subject = "subject", r = 40, sigma = 1e7,
                     edge_correct = FALSE)$results
   ## cross pairs only: self-pairs of the homogeneous design count each cell as its own neighbour
   cross <- hom$from != hom$to
@@ -59,14 +59,14 @@ test_that("a disc covering every window, without edge correction, is the homogen
 
 test_that("the inhomogeneous point estimate is direction-invariant", {
   cells <- make_compartment_cells()
-  ab <- spicy_glm(cells, condition = "response", r = 40, sigma = 150, from = "A", to = "B")$results
-  ba <- spicy_glm(cells, condition = "response", r = 40, sigma = 150, from = "B", to = "A")$results
+  ab <- spicy_glm(effect = "ratio", cells, condition = "response", r = 40, sigma = 150, from = "A", to = "B")$results
+  ba <- spicy_glm(effect = "ratio", cells, condition = "response", r = 40, sigma = 150, from = "B", to = "A")$results
   expect_equal(ab$log_rate_ratio, ba$log_rate_ratio, tolerance = 1e-12)
 })
 
 test_that("inhomogeneous diagnostics run, with leverage summing to one per group", {
   cells <- make_compartment_cells()
-  out <- spicy_glm(cells, condition = "response", subject = "subject", r = 40, sigma = 150,
+  out <- spicy_glm(effect = "ratio", cells, condition = "response", subject = "subject", r = 40, sigma = 150,
                    compute_diagnostics = TRUE)
   lev <- stats::aggregate(l_i ~ from + to + group, out$diagnostics$patient, sum)
   expect_equal(lev$l_i, rep(1, nrow(lev)), tolerance = 1e-12)
@@ -74,13 +74,13 @@ test_that("inhomogeneous diagnostics run, with leverage summing to one per group
 
 test_that("sigma is validated, and ignored for the binomial family", {
   cells <- make_compartment_cells()
-  expect_error(spicy_glm(cells, condition = "response", r = 40, sigma = -1), "sigma")
-  expect_error(spicy_glm(cells, condition = "response", r = 40, sigma = 150, min_lambda = 0),
+  expect_error(spicy_glm(effect = "ratio", cells, condition = "response", r = 40, sigma = -1), "sigma")
+  expect_error(spicy_glm(effect = "ratio", cells, condition = "response", r = 40, sigma = 150, min_lambda = 0),
                "min_lambda")
-  expect_message(spicy_glm(cells, condition = "response", r = 40, sigma = 20, from = "A", to = "B"),
+  expect_message(spicy_glm(effect = "ratio", cells, condition = "response", r = 40, sigma = 20, from = "A", to = "B"),
                  "no larger than")
-  expect_message(b <- spicy_glm(cells, condition = "response", family = "binomial", k = 10,
+  expect_message(b <- spicy_glm(effect = "ratio", cells, condition = "response", family = "binomial", k = 10,
                                 sigma = 150, from = "A", to = "B"), "sigma")
-  expect_equal(b$results, spicy_glm(cells, condition = "response", family = "binomial", k = 10,
+  expect_equal(b$results, spicy_glm(effect = "ratio", cells, condition = "response", family = "binomial", k = 10,
                                     from = "A", to = "B")$results)
 })

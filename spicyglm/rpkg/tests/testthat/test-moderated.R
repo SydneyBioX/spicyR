@@ -15,7 +15,7 @@ make_mod_cells <- function(seed = 3, n_img = 12) {
 
 # the image summaries the moderated test works from, recomputed from the model data
 reference_theta <- function(cells, family, r = NULL, k = NULL) {
-  out <- spicy_glm(cells, condition = "response", r = r, k = k, family = family)
+  out <- spicy_glm(effect = "ratio", cells, condition = "response", r = r, k = k, family = family)
   pairs <- Map(c, out$results$from, out$results$to)
   cs <- cells[order(cells$imageID), ]
   labs <- sort(unique(cs$imageID)); img <- match(cs$imageID, labs) - 1L
@@ -52,7 +52,7 @@ for (family in c("poisson", "binomial")) {
     cells <- make_mod_cells()
     r <- if (family == "poisson") 50; k <- if (family == "binomial") 10
     ref <- reference_theta(cells, family, r, k)
-    mod <- spicy_glm(cells, condition = "response", r = r, k = k, family = family, test = "moderated")
+    mod <- spicy_glm(effect = "ratio", cells, condition = "response", r = r, k = k, family = family, test = "moderated")
     A <- rowMeans(log1p(ref$O))
     e <- limma::eBayes(limma::lmFit(ref$theta, stats::model.matrix(~ ref$group)), trend = A, legacy = TRUE)
     key <- paste(mod$results$from, mod$results$to)
@@ -69,7 +69,7 @@ test_that("subjects are the units: image summaries are averaged within a subject
   skip_if_not_installed("limma")
   cells <- make_mod_cells()
   ref <- reference_theta(cells, "poisson", r = 50)
-  mod <- spicy_glm(cells, condition = "response", r = 50, subject = "patient", test = "moderated")
+  mod <- spicy_glm(effect = "ratio", cells, condition = "response", r = 50, subject = "patient", test = "moderated")
   unit <- rep(1:6, each = 2)
   U <- t(apply(ref$theta, 1, function(z) tapply(z, unit, mean)))
   e <- limma::eBayes(limma::lmFit(U, stats::model.matrix(~ c(0, 0, 0, 1, 1, 1))),
@@ -80,8 +80,8 @@ test_that("subjects are the units: image summaries are averaged within a subject
 
 test_that("density adjustment removes a shared abundance slope and is invariant to condition shifts", {
   cells <- make_mod_cells()
-  plain <- spicy_glm(cells, condition = "response", r = 50, test = "moderated")
-  adj <- spicy_glm(cells, condition = "response", r = 50, test = "moderated", density_adjust = TRUE)
+  plain <- spicy_glm(effect = "ratio", cells, condition = "response", r = 50, test = "moderated")
+  adj <- spicy_glm(effect = "ratio", cells, condition = "response", r = 50, test = "moderated", density_adjust = TRUE)
   expect_length(adj$moderation$density_slopes, 2)
   expect_null(plain$moderation$density_slopes)
   expect_setequal(paste(adj$results$from, adj$results$to), paste(plain$results$from, plain$results$to))
@@ -100,16 +100,16 @@ test_that("density adjustment removes a shared abundance slope and is invariant 
 test_that("pairs with fewer than two units in a condition are skipped", {
   cells <- make_mod_cells()
   cells <- cells[!(cells$cellType == "F" & cells$response == "beta" & cells$imageID != "i12"), ]
-  mod <- spicy_glm(cells, condition = "response", r = 50, test = "moderated")
+  mod <- spicy_glm(effect = "ratio", cells, condition = "response", r = 50, test = "moderated")
   expect_true(all(mod$skipped$reason[grepl("F", paste(mod$skipped$from, mod$skipped$to))] == "one_patient_per_group"))
   expect_false(any(mod$results$from == "F" | mod$results$to == "F"))
 })
 
 test_that("Kontextual and inhomogeneous designs run through the per-pair route", {
   cells <- make_mod_cells()
-  k <- spicy_glm(cells, condition = "response", family = "binomial", k = 10, parent = c("C", "D", "E"),
+  k <- spicy_glm(effect = "ratio", cells, condition = "response", family = "binomial", k = 10, parent = c("C", "D", "E"),
                  test = "moderated")
   expect_true(nrow(k$results) > 0 && all(k$results$to %in% c("C", "D", "E")))
-  s <- spicy_glm(cells, condition = "response", r = 50, sigma = 50, test = "moderated")
+  s <- spicy_glm(effect = "ratio", cells, condition = "response", r = 50, sigma = 50, test = "moderated")
   expect_true(nrow(s$results) > 0 && all(is.finite(s$results$p_value)))
 })

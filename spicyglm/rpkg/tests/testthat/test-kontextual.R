@@ -67,23 +67,23 @@ test_that("edge correction changes only the cells whose disc leaves the window",
 })
 
 test_that("Kontextual pairs are ordered, with `to` in the context", {
-  out <- spicy_glm(make_context_cells(), condition = "response", r = 60, parent = immune)
+  out <- spicy_glm(effect = "ratio", make_context_cells(), condition = "response", r = 60, parent = immune)
   fitted <- rbind(out$results[, c("from", "to")], out$skipped[, c("from", "to")])
   expect_equal(nrow(fitted), 4 * 3)
   expect_true(all(fitted$to %in% immune))
   expect_identical(out$parent, immune)
-  expect_error(spicy_glm(make_context_cells(), condition = "response", r = 60, parent = immune,
+  expect_error(spicy_glm(effect = "ratio", make_context_cells(), condition = "response", r = 60, parent = immune,
                          from = "CD8", to = "Tum"), "inside `parent`")
-  expect_error(spicy_glm(make_context_cells(), condition = "response", r = 60, parent = immune,
+  expect_error(spicy_glm(effect = "ratio", make_context_cells(), condition = "response", r = 60, parent = immune,
                          sigma = 200), "alternative")
 })
 
 test_that("a binomial context of every cell type is the ordinary binomial design", {
   cells <- make_context_cells()
   all_types <- unique(cells$cellType)
-  ctx <- spicy_glm(cells, condition = "response", family = "binomial", k = 10, parent = all_types,
+  ctx <- spicy_glm(effect = "ratio", cells, condition = "response", family = "binomial", k = 10, parent = all_types,
                    from = "Tum", to = "CD8")$results
-  plain <- spicy_glm(cells, condition = "response", family = "binomial", k = 10,
+  plain <- spicy_glm(effect = "ratio", cells, condition = "response", family = "binomial", k = 10,
                      from = "Tum", to = "CD8")$results
   expect_equal(ctx$log_odds_ratio, plain$log_odds_ratio, tolerance = 1e-12)
   expect_equal(ctx$p_value, plain$p_value, tolerance = 1e-10)
