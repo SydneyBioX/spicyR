@@ -40,6 +40,7 @@ importFrom(grDevices,colorRampPalette)
 importFrom(methods,is)
 importFrom(splines,splineDesign)
 importFrom(stats,
+  density,
   lm,
   p.adjust,
   predict,

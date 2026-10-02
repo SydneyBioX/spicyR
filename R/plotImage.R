@@ -16,6 +16,7 @@
 #' 
 #' @export
 #' @import ggplot2
+#' @importFrom stats density
 plotImage = function(cells, 
                      imageToPlot, 
                      from,

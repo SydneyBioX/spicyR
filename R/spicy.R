@@ -94,7 +94,7 @@
       }
       
       conditionVector <- droplevels(conditionVector)
-      conditionVector <- relevel(conditionVector, ref = levels(conditionVector)[1])
+      conditionVector <- stats::relevel(conditionVector, ref = levels(conditionVector)[1])
       
       if (!wasFactor || TRUE) {  
         message(
@@ -772,7 +772,7 @@ spatialSurv <- function(measurementMat,
     nfrail <- nrow(fit$var) - nvar
     
     se <- sqrt(diag(as.matrix(fit$var))[nfrail + 1:nvar])
-    p_val <- 1 - pchisq((beta / se) ^ 2, 1)
+    p_val <- 1 - stats::pchisq((beta / se) ^ 2, 1)
     
     # Need to select first indexes of each value incase of multiple betas
     result <- c("coef" = beta[1], "se(coef)" = se[1], "Pr(>|z|)" = p_val[1])
