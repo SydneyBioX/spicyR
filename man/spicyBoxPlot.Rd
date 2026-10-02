@@ -7,7 +7,7 @@
 spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL)
 }
 \arguments{
-\item{results}{Data frame obtained from spicy.}
+\item{results}{The SpicyResults object returned by spicy() (either method).}
 
 \item{from}{Cell type which you would like to compare to the to cell type.}
 
@@ -17,7 +17,9 @@ spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL)
 the higher the rank.}
 }
 \value{
-a ggplot2 boxplot
+a ggplot2 boxplot. For \code{method = "cell"} results the y axis is the
+  per-image excess (extra \code{to} cells per \code{from} cell); for
+  \code{method = "image"} results it is the L function.
 }
 \description{
 Plots boxplot for a specified cell-cell relationship

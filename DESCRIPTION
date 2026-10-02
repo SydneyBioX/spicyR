@@ -22,49 +22,39 @@ Depends: R (>= 4.1)
 VignetteBuilder: knitr
 BugReports: https://github.com/SydneyBioX/spicyR/issues
 URL: https://ellispatrick.github.io/spicyR/ https://github.com/SydneyBioX/spicyR, https://sydneybiox.github.io/spicyR/
-Imports: 
-    BiocParallel,
-    ClassifyR,
-    S4Vectors,
-    SingleCellExperiment,
-    SpatialExperiment,
-    SummarizedExperiment,
-    cli,
-    concaveman,
-    coxme,
-    dplyr,
-    ggforce,
-    ggh4x,
-    ggnewscale,
-    ggplot2,
-    ggthemes,
-    grDevices,
-    lifecycle,
-    lmerTest,
-    magrittr,
-    methods,
-    pheatmap,
-    rlang,
-    scales,
-    scam,
-    simpleSeg,
-    spatstat.explore,
-    spatstat.geom,
-    stats,
-    survival,
-    tibble,
-    tidyr,
+Imports:
     Rcpp,
-    splines
+    methods,
+    stats,
+    utils,
+    grDevices,
+    grid,
+    splines,
+    parallel,
+    ggplot2,
+    S4Vectors,
+    survival
 LinkingTo: Rcpp, RcppEigen
 SystemRequirements: C++17
-Suggests: 
+Suggests:
+    SummarizedExperiment,
+    SingleCellExperiment,
+    SpatialExperiment,
+    lmerTest,
+    lme4,
+    scam,
+    coxme,
+    spatstat.geom,
+    spatstat.explore,
+    concaveman,
+    BiocParallel,
     SpatialDatasets,
     BiocStyle,
     knitr,
     rmarkdown,
     pkgdown,
     imcRtools,
+    limma,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0

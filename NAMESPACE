@@ -14,54 +14,11 @@ export(spicyBoxPlot)
 export(spicy_glm)
 export(topPairs)
 exportClasses(SpicyResults)
-import(SpatialExperiment)
-import(SummarizedExperiment)
-import(dplyr)
-import(ggh4x)
 import(ggplot2)
-import(ggthemes)
-importFrom(BiocParallel,
-  MulticoreParam,
-  SerialParam,
-  bplapply,
-  bpmapply,
-  bpnworkers
-)
-importFrom(ClassifyR,colCoxTests)
 importFrom(Rcpp,sourceCpp)
 importFrom(S4Vectors,as.data.frame)
-importFrom(SingleCellExperiment,
-  SingleCellExperiment,
-  colData,
-  colPair
-)
-importFrom(SpatialExperiment,spatialCoords)
-importFrom(SummarizedExperiment,colData)
-importFrom(cli,
-  cli_abort,
-  cli_inform
-)
-importFrom(concaveman,concaveman)
-importFrom(coxme,coxme)
-importFrom(dplyr,
-  across,
-  any_of,
-  arrange,
-  bind_rows,
-  filter,
-  group_by,
-  mutate,
-  rename,
-  select,
-  ungroup,
-  where
-)
-importFrom(ggforce,
-  geom_arc_bar,
-  geom_circle
-)
-importFrom(ggnewscale,new_scale)
 importFrom(ggplot2,
+  .data,
   aes,
   element_blank,
   element_text,
@@ -76,39 +33,11 @@ importFrom(ggplot2,
   scale_colour_gradient2,
   scale_shape_manual,
   theme,
-  theme_classic
+  theme_classic,
+  waiver
 )
-importFrom(grDevices,
-  colorRampPalette,
-  colors
-)
-importFrom(grid,
-  gpar,
-  grobTree,
-  polygonGrob
-)
-importFrom(lifecycle,
-  deprecate_soft,
-  deprecate_warn
-)
-importFrom(lmerTest,lmer)
-importFrom(magrittr,"%>%")
+importFrom(grDevices,colorRampPalette)
 importFrom(methods,is)
-importFrom(pheatmap,pheatmap)
-importFrom(rlang,.data)
-importFrom(scales,squish)
-importFrom(scam,scam)
-importFrom(spatstat.explore,density.ppp)
-importFrom(spatstat.geom,
-  area,
-  border,
-  convexhull,
-  inside.owin,
-  nearest.valid.pixel,
-  owin,
-  ppp,
-  union.owin
-)
 importFrom(splines,splineDesign)
 importFrom(stats,
   lm,
@@ -122,9 +51,4 @@ importFrom(stats,
   wilcox.test
 )
 importFrom(survival,coxph)
-importFrom(tibble,
-  column_to_rownames,
-  rownames_to_column
-)
-importFrom(tidyr,separate)
 useDynLib(spicyR, .registration = TRUE)

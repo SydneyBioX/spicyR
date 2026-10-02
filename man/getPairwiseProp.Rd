@@ -32,8 +32,8 @@ getPairwiseProp(
 
 \item{to}{The target cell types. Defaults to all cell types.}
 
-\item{cores}{Number of cores or a BiocParallelParam object for parallel
-processing over images.}
+\item{cores}{Number of threads for processing images in parallel (a
+BiocParallelParam object is also accepted, for backward compatibility).}
 
 \item{includeZeroCells}{If FALSE (default), image-pairs where the reference or target cell type is
 absent are returned as NA. If TRUE, image-pairs whose reference type is
@@ -42,7 +42,8 @@ at \eqn{\hat\pi_j = 0}, i.e. \eqn{v_j = 0}. Pairs whose target type is
 entirely absent (\eqn{p_{0,j} = 0}) stay NA regardless, since the ratio is
 undefined.}
 
-\item{BPPARAM}{A BiocParallelParam object. Overrides \code{cores}.}
+\item{BPPARAM}{A BiocParallelParam object; its number of workers overrides
+\code{cores}. Kept for backward compatibility.}
 }
 \value{
 A matrix with one row per image and one column per \code{from__to}

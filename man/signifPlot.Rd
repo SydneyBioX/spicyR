@@ -22,7 +22,8 @@ signifPlot(
 
 \item{fdr}{TRUE if FDR correction is used.}
 
-\item{type}{Whether to make a bubble plot or heatmap. Note: For survival results a bubble plot will be used.}
+\item{type}{Whether to make a bubble plot (\code{"bubble"}) or a heatmap (any other value). Note: For
+survival results a bubble plot will be used.}
 
 \item{breaks}{Vector of 3 numbers giving breaks used in legend. The first
 number is the minimum, the second is the maximum, the third is the
@@ -42,7 +43,7 @@ By default the Tableau colour palette is used.}
 \item{contextLabels}{Used for \code{\link[Statial]{Kontextual}} results. A named list to change the default labels for each context.}
 }
 \value{
-a ggplot or pheatmap object
+a ggplot object
 }
 \description{
 Plots result of signifPlot.
@@ -51,7 +52,7 @@ Plots result of signifPlot.
 data(spicyTest)
 
 p <- signifPlot(spicyTest, breaks = c(-3, 3, 0.5))
-# plot includes unicode characters, do not use default pdf device
-ggplot2::ggsave(p, filename = tempfile(), device = cairo_pdf)
+p
+signifPlot(spicyTest, type = "heatmap")
 
 }

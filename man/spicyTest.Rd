@@ -3,7 +3,7 @@
 \docType{data}
 \name{spicyTest}
 \alias{spicyTest}
-\title{Results from spicy for diabetesData}
+\title{Results from spicy for diabetesData (image method)}
 \format{
 spicyTest a spicy object
 }
@@ -11,9 +11,9 @@ spicyTest a spicy object
 data("spicyTest")
 }
 \description{
-Results from the call:
-spicyTest <- spicy(diabetesData, 
-                   condition = "condition", 
-                   subject = "subject")
+Results of the original image-level test, from spicyR 1.x:
+spicyTest <- spicy(diabetesData,
+                   condition = "condition",
+                   subject = "subject", method = "image")
 }
 \keyword{datasets}
