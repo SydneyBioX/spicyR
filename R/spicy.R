@@ -22,6 +22,13 @@
 #' @param weightsByPair logical indicating whether weights should be calculated for each cell type
 #'   pair.
 #' @param weightFactor numeric that controls the convexity of the weight function.
+#' @param weightZThreshold numeric; the minimum weight-model prediction
+#'   (\code{log10(resSq + 1)}) counted when choosing the \code{1/z} weight-cap
+#'   floor. The default (\code{0.1}) suits the L-function's numeric scale. Pass
+#'   \code{0} for a statistic whose residual variance is small in absolute terms
+#'   (e.g. the observed/expected ratio from \code{\link{getPairwiseProp}}), where
+#'   every prediction can otherwise sit below the default and collapse the
+#'   weights to \code{NA}.
 #' @param window 	Should the window around the regions be 'square', 'convex' or 'concave'.
 #' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
 #' @param edgeCorrect A logical indicating whether to perform edge correction.
@@ -82,6 +89,7 @@ spicy <- function(cells,
                   weights = TRUE,
                   weightsByPair = FALSE,
                   weightFactor = 1,
+                  weightZThreshold = 0.1,
                   window = "convex",
                   window.length = NULL,
                   edgeCorrect = TRUE,
@@ -100,13 +108,17 @@ spicy <- function(cells,
   argumentChecks("spicy", user_vals)
   
   if (is.null(BPPARAM)) {
-    if (cores > 1 && .Platform$OS.type != "windows") {
-      BPPARAM = BiocParallel::MulticoreParam(workers = cores)
-    } else if (cores > 1) {
-      BPPARAM = BiocParallel::SnowParam(workers = cores)
-    } else {
-      BPPARAM = BiocParallel::SerialParam()
-    } 
+    # Built on first use: making a MulticoreParam takes ~0.2 s, and only
+    # per-pair weights and survival models use it.
+    delayedAssign("BPPARAM", {
+      if (cores > 1 && .Platform$OS.type != "windows") {
+        BiocParallel::MulticoreParam(workers = cores)
+      } else if (cores > 1) {
+        BiocParallel::SnowParam(workers = cores)
+      } else {
+        BiocParallel::SerialParam()
+      }
+    })
   }
   
   if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
@@ -241,7 +253,8 @@ spicy <- function(cells,
   
   
   weightFunction <- getWeightFunction(
-    pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor
+    pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor,
+    weightZThreshold
   )
   
   # Matrix needed for survival analysis
@@ -332,15 +345,6 @@ spicy <- function(cells,
     )
 
 
-    mixed.lmer <- lapply(mixed.lmer, function(x) {
-      if (is(x, "lmerModLmerTest")) {
-        if (x@devcomp$cmp["REML"] == -Inf) {
-          return(NA)
-        }
-      }
-      x
-    })
-
     melmResult <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
     spicyResult = append(spicyResult, melmResult)
   }
@@ -403,8 +407,8 @@ cleanLM <- function(linearModels, BPPARAM) {
 #' @importFrom dplyr bind_rows
 cleanMEM <- function(mixed.lmer, BPPARAM) {
   tLmer <- lapply(mixed.lmer, function(lmer) {
-    if (is(lmer, "lmerMod")) {
-      coef <- as.data.frame(t(summary(lmer)$coef))
+    if (is.matrix(lmer)) {
+      coef <- as.data.frame(t(lmer))
       coef <-
         split(
           coef,
@@ -514,6 +518,23 @@ getPairwise <- function(
     )
   }
     
+  # Square and convex windows without density weighting: one threaded C++
+  # call for all images, with `cores` threads.
+  lev <- levels(cells$cellType)
+  if (is.null(sigma) && window %in% c("square", "convex") && !is.null(lev) &&
+      all(c(from, to) %in% lev)) {
+    nThreads <- if (!is.null(BPPARAM)) {
+      BiocParallel::bpnworkers(BPPARAM)
+    } else if (is.numeric(cores)) {
+      cores
+    } else {
+      BiocParallel::bpnworkers(cores)
+    }
+    return(getPairwiseThreaded(
+      cells, Rs, from, to, window, edgeCorrect, includeZeroCells, nThreads
+    ))
+  }
+
   if (is.null(BPPARAM)) {
     if (cores > 1 && .Platform$OS.type != "windows") {
       BPPARAM = BiocParallel::MulticoreParam(workers = cores)
@@ -523,7 +544,7 @@ getPairwise <- function(
       BPPARAM = BiocParallel::SerialParam()
     } 
   }  
-    
+
   cells2 <- getCellSummary(cells, bind = FALSE)
 
 
@@ -549,6 +570,30 @@ getPairwise <- function(
 }
 
 
+
+
+# getPairwise() for square and convex windows without density weighting: the
+# inhomLPair() computation for every image in one C++ call, with the images
+# spread over nThreads threads (src/pairwise.cpp).
+getPairwiseThreaded <- function(cells, Rs, from, to, window, edgeCorrect,
+                                includeZeroCells, nThreads) {
+  img <- droplevels(as.factor(cells$imageID))
+  o <- order(as.integer(img))
+  lev <- levels(cells$cellType)
+  if (is.null(Rs)) Rs <- c(20, 50, 100)
+  if (is.null(from)) from <- lev
+  if (is.null(to)) to <- lev
+  m1 <- rep(from, times = length(to))
+  m2 <- rep(to, each = length(from))
+  res <- getPairwiseCpp(
+    as.numeric(cells$x[o]), as.numeric(cells$y[o]), as.integer(cells$cellType)[o],
+    c(0L, cumsum(tabulate(as.integer(img), nlevels(img)))), length(lev), as.numeric(Rs),
+    window == "square", lev %in% from, lev %in% to, match(m1, lev), match(m2, lev),
+    edgeCorrect, includeZeroCells, as.integer(nThreads)
+  )
+  dimnames(res) <- list(levels(img), paste(m1, m2, sep = "__"))
+  res
+}
 
 
 #' Get proportions from a SummarizedExperiment.
@@ -644,6 +689,19 @@ spatialMEM <-
 
     spatialData$weights <- weightFunction
 
+    # Fit in C++ (lmerCoefTable()), on the rows and design lme4 would use. Cases
+    # it does not cover fall through to lmerTest below.
+    tab <- tryCatch({
+      fd <- droplevels(spatialData[stats::complete.cases(spatialData), , drop = FALSE])
+      X <- stats::model.matrix(stats::formula(sub(" \\+ \\(1\\|subject\\)", "", formula)), fd)
+      nSubject <- length(unique(fd$subject))
+      if (nSubject >= 2 && nSubject < nrow(fd) && all(fd$weights > 0) &&
+          qr(X)$rank == ncol(X)) {
+        lmerCoefTable(X, fd$spatAssoc, fd$weights, fd$subject)
+      }
+    }, error = function(e) NULL)
+    if (!is.null(tab)) return(tab)
+
     mixed.lmer <- suppressWarnings(suppressMessages(tryCatch(
       {
         lmerTest::lmer(stats::formula(formula),
@@ -658,10 +716,37 @@ spatialMEM <-
     if (!is(mixed.lmer, "lmerMod")) {
       return(NA)
     }
+    if (is(mixed.lmer, "lmerModLmerTest") && mixed.lmer@devcomp$cmp["REML"] == -Inf) {
+      return(NA)
+    }
 
 
-    mixed.lmer
+    summary(mixed.lmer)$coef
   }
+
+# Coefficient table of lmerTest::lmer(y ~ X + (1 | subject), weights = w), as
+# summary() gives it with Satterthwaite degrees of freedom. The REML fit and
+# the exact derivatives lmerTest approximates with numDeriv come from C++
+# (src/lmerRI.cpp); the rest follows lmerTest's as_lmerModLT() and contest1D().
+# Returns NULL if the C++ fit is not possible.
+#' @importFrom stats pt
+lmerCoefTable <- function(X, y, w, subject) {
+  g <- as.integer(factor(subject))
+  fit <- lmerRandomIntercept(X, y, w, g, max(g))
+  if (!fit$ok) return(NULL)
+  eh <- eigen(fit$hessian, symmetric = TRUE)
+  pos <- eh$values > 1e-8
+  vcovVarpar <- 2 * eh$vectors[, pos, drop = FALSE] %*%
+    diag(1 / eh$values[pos], nrow = sum(pos)) %*% t(eh$vectors[, pos, drop = FALSE])
+  varCon <- diag(fit$vcov)
+  grad <- cbind(diag(fit$dvcov_theta), diag(fit$dvcov_sigma))
+  df <- 2 * varCon^2 / rowSums((grad %*% vcovVarpar) * grad)
+  se <- sqrt(varCon)
+  tval <- fit$beta / se
+  tab <- cbind(fit$beta, se, df, tval, 2 * stats::pt(abs(tval), df, lower.tail = FALSE))
+  dimnames(tab) <- list(colnames(X), c("Estimate", "Std. Error", "df", "t value", "Pr(>|t|)"))
+  tab
+}
 
 #' @importFrom stats predict lm
 spatialLM <-
@@ -857,10 +942,7 @@ makeWindow <-
 
 
 #' @importFrom spatstat.explore density.ppp
-#' @importFrom spatstat.geom closepairs nearest.valid.pixel area ppp
-#' @importFrom tidyr pivot_longer
-#' @importFrom dplyr left_join
-#' @importFrom rlang .data
+#' @importFrom spatstat.geom nearest.valid.pixel area ppp
 inhomLPair <- function(data,
                        Rs = c(20, 50, 100),
                        sigma = NULL,
@@ -906,83 +988,35 @@ inhomLPair <- function(data,
   data <- data[use, ]
   X <- X[use, ]
 
-
-  p <- spatstat.geom::closepairs(X, max(Rs), what = "ijd", distinct = FALSE)
-
-  p$j <- data$cellID[p$j]
-  p$i <- data$cellID[p$i]
-
-  cT <- data$cellType
-  names(cT) <- data$cellID
-
-  p$d <- cut(p$d, Rs, labels = Rs[-1], include.lowest = TRUE)
-
   # inhom density
-  p$wt <- rep(1, length(p$d))
+  wt <- rep(1, X$n)
   if (!is.null(sigma)) {
     np <- spatstat.geom::nearest.valid.pixel(X$x, X$y, den)
     w <- den$v[cbind(np$row, np$col)]
-    names(w) <- data$cellID
-    p$wt <- 1 / w[p$j] * mean(w)
+    wt <- 1 / w * mean(w)
     rm(np)
   }
 
-
   lam <- table(data$cellType) / spatstat.geom::area(X)
+  lev <- levels(data$cellType)
 
-  p$cellTypeJ <- cT[p$j]
-  p$cellTypeI <- cT[p$i]
-  p$i <- factor(p$i, levels = data$cellID)
-
-
+  edge <- matrix(1, X$n, length(Rs) - 1)
   if (edgeCorrect) {
-    rList <- sapply(Rs[-1], function(x) {
-      p2 <- p
-      edge <- borderEdge(X, x)
-      edge <- as.data.frame(edge)
-      colnames(edge) <- x
-      edge$i <- data$cellID
-      edge <- tidyr::pivot_longer(edge, -.data$i, names_to = "d")
-      p2 <- as.data.frame(p2)
-      p2 <- p2[as.numeric(as.character(p2$d)) <= x, ]
-      p2$d <- as.character(x)
-      
-      p2$i <- as.character(p2$i)
-      p2$d <- as.character(p2$d)
-      edge$i <- as.character(edge$i)
-      edge$d <- as.character(edge$d)
-      
-      p2 <- dplyr::left_join(p2, edge, c("i", "d"))
-      p2$d <- factor(p2$d, levels = x)
-      p2 <- p2[p2$i != p2$j, ]
-      use <- p2$cellTypeI %in% from & p2$cellTypeJ %in% to
-      p2 <- p2[use, ]
-      inhomL(p2, lam, X, x)
-    }, simplify = FALSE)
-    # browser()
-    r <- do.call("rbind", rList)
-
-    r <- dplyr::group_by(r, cellTypeI, cellTypeJ)
-    r <- dplyr::summarise(r, wt = mean(wt))
-  } else {
-    p <- as.data.frame(p)
-    p$value <- 1
-
-    p$d <- factor(p$d, levels = Rs[-1])
-
-    p <- p[p$i != p$j, ]
-
-    use <- p$cellTypeI %in% from & p$cellTypeJ %in% to
-    p <- p[use, ]
-
-    r <- inhomL(p, lam, X, Rs)
+    for (k in seq_len(length(Rs) - 1)) edge[, k] <- borderEdge(X, Rs[k + 1])
   }
 
-
-
-
-  wt <- r$wt
-  names(wt) <- paste(r$cellTypeI, r$cellTypeJ, sep = "__")
+  # Pair counting, the L-function and the averaging over radii run in C++
+  # (src/inhomL.cpp). The bin labels are passed as the R code compared them.
+  L <- inhomLCpp(
+    X$x, X$y, as.integer(data$cellType), length(lev), Rs,
+    as.numeric(as.character(Rs[-1])), lev %in% from, lev %in% to,
+    wt, as.numeric(lam), spatstat.geom::area(X), edge, edgeCorrect
+  )
+  dimnames(L) <- list(lev, lev)
+  L <- as.data.frame(as.table(L), stringsAsFactors = FALSE)
+  L <- L[!is.na(L$Freq), ]
+  wt <- L$Freq
+  names(wt) <- paste(L$Var1, L$Var2, sep = "__")
 
   m1 <- rep(from, times = length(to))
   m2 <- rep(to, each = length(from))
@@ -998,31 +1032,11 @@ inhomLPair <- function(data,
 }
 
 
-#' @importFrom data.table as.data.table setkey CJ .SD ":="
-#' @importFrom spatstat.geom area
-inhomL <-
-  function(p, lam, X, Rs) {
-    r <- data.table::as.data.table(p)
-    r$wt <- r$wt / r$value / as.numeric(lam[r$cellTypeJ]) / as.numeric(lam[r$cellTypeI]) / spatstat.geom::area(X) # nolint
-    r <- r[, j := NULL] # nolint
-    r <- r[, value := NULL] # nolint
-    r <- r[, i := NULL] # nolint
-    data.table::setkey(r, d, cellTypeI, cellTypeJ) # nolint
-    r <- r[data.table::CJ(d, cellTypeI, cellTypeJ, unique = TRUE)][, lapply(.SD, sum), by = .(d, cellTypeI, cellTypeJ)][is.na(wt), wt := 0] # nolint
-    r <- r[, wt := cumsum(wt), by = list(cellTypeI, cellTypeJ)] # nolint
-    r <- r[, list(wt = sum(sqrt(wt / pi))), by = .(cellTypeI, cellTypeJ)] # nolint
-    r$wt <- r$wt - sum(Rs) # nolint
-
-    r <- as.data.frame(r)
-
-    r
-  }
 
 
-
-
-#' @importFrom spatstat.geom
-#'     union.owin border inside.owin solapply intersect.owin area discs
+#' @importFrom spatstat.geom union.owin border inside.owin
+#' @useDynLib spicyR, .registration = TRUE
+#' @importFrom Rcpp sourceCpp
 borderEdge <- function(X, maxD) {
   W <- X$window
   bW <- spatstat.geom::union.owin(
@@ -1032,12 +1046,15 @@ borderEdge <- function(X, maxD) {
   inB <- spatstat.geom::inside.owin(X$x, X$y, bW)
   e <- rep(1, X$n)
   if (any(inB)) {
-    circs <- spatstat.geom::discs(X[inB], maxD, separate = TRUE)
-    circs <- spatstat.geom::solapply(
-      circs, spatstat.geom::intersect.owin, X$window
-    )
-    areas <- unlist(lapply(circs, spatstat.geom::area)) / (pi * maxD^2)
-    e[inB] <- areas
+    # Same as area(intersect.owin(discs(X[inB], maxD), W)): each disc is the
+    # 128-gon spatstat.geom::disc() builds, clipped to the window in C++.
+    rings <- if (W$type == "rectangle") {
+      list(list(x = W$xrange[c(1, 2, 2, 1)], y = W$yrange[c(1, 1, 2, 2)]))
+    } else {
+      W$bdry
+    }
+    areas <- discWindowArea(X$x[inB], X$y[inB], maxD, 128L, rings)
+    e[inB] <- areas / (pi * maxD^2)
   }
 
   e
@@ -1045,7 +1062,7 @@ borderEdge <- function(X, maxD) {
 
 #' @importFrom scam scam
 #' @importFrom stats quantile
-calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
+calcWeights <- function(rS, M1, M2, nCells, weightFactor, weightZThreshold = 0.1) {
   count1 <- as.vector(nCells[, M1])
   count2 <- as.vector(nCells[, M2])
   rS <- as.vector(rS)
@@ -1058,20 +1075,125 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
     weightFunction <- rep(1, length(count1))
     return(weightFunction)
   }
-  weightFunction <- scam::scam(
-    log10(resSqToWeight + 1) ~ s(log10(count1ToWeight + 1), bs = "mpd") + s(log10(count2ToWeight + 1), bs = "mpd") # nolint
-  ) # , optimizer = "nlm.fd")
+  z1 <- mpdWeightFit(
+    log10(resSqToWeight + 1), log10(count1ToWeight + 1), log10(count2ToWeight + 1),
+    log10(as.numeric(count1) + 1), log10(as.numeric(count2) + 1)
+  )
+  if (is.null(z1)) {
+    weightFunction <- scam::scam(
+      log10(resSqToWeight + 1) ~ s(log10(count1ToWeight + 1), bs = "mpd") + s(log10(count2ToWeight + 1), bs = "mpd") # nolint
+    ) # , optimizer = "nlm.fd")
 
-  z1 <- suppressWarnings(stats::predict(weightFunction, data.frame(
-    count1ToWeight = as.numeric(count1),
-    count2ToWeight = as.numeric(count2)
-  )))
-  w <- 1 / pmax(z1, stats::quantile(z1[z1 > 0.1], 0.01, na.rm = TRUE))
+    z1 <- suppressWarnings(stats::predict(weightFunction, data.frame(
+      count1ToWeight = as.numeric(count1),
+      count2ToWeight = as.numeric(count2)
+    )))
+  }
+
+  # Floor for 1/z1 (caps the maximum weight): the 1st percentile of the weight-model
+  # predictions above `weightZThreshold`. The default cutoff is calibrated to the
+  # L-function's numeric scale; for a statistic whose residual variance is small in
+  # absolute terms (e.g. getPairwiseProp()'s obs/exp ratio) every prediction can sit
+  # below it, making the quantile NA and every weight NA -- pass weightZThreshold = 0
+  # for such statistics.
+  zFloor <- stats::quantile(z1[z1 > weightZThreshold], 0.01, na.rm = TRUE)
+  if (is.na(zFloor)) {
+    warning("Weight model predictions are all <= weightZThreshold; returning unweighted (weights = 1).") # nolint
+    return(rep(1, length(count1)))
+  }
+  w <- 1 / pmax(z1, zFloor)
   w <- w / mean(w, na.rm = TRUE)
   w^weightFactor
 }
 
 
+
+
+# The basis of scam's monotone-decreasing P-spline smooth, s(x, bs = "mpd")
+# with its defaults (k = 10, m = 2), as smooth.construct.mpd.smooth.spec()
+# builds it: B-splines on evenly spaced knots, reparameterised so that
+# exp(coefficients) give a decreasing curve, then centred.
+mpdBasis <- function(x, q = 10, m = 2) {
+  xk <- rep(0, q + m + 2)
+  xk[(m + 2):(q + 1)] <- seq(min(x), max(x), length = q - m)
+  for (i in 1:(m + 1)) xk[i] <- xk[m + 2] - (m + 2 - i) * (xk[m + 3] - xk[m + 2])
+  for (i in (q + 2):(q + m + 2)) xk[i] <- xk[q + 1] + (i - q - 1) * (xk[m + 3] - xk[m + 2])
+  Sig <- matrix(-1, q, q)
+  Sig[upper.tri(Sig)] <- 0
+  Sig[, 1] <- -Sig[, 1]
+  X <- splines::splineDesign(xk, x, ord = m + 2)[, -1] %*% Sig[-1, -1]
+  cmX <- colMeans(X)
+  list(X = sweep(X, 2, cmX), knots = xk, cmX = cmX, Sigma = Sig, ord = m + 2)
+}
+
+# The prediction matrix of an mpdBasis() smooth at new x, as
+# Predict.matrix.mpd.smooth() builds it: linear beyond the fitted range.
+mpdPredict <- function(b, x) {
+  ll <- b$knots[b$ord]
+  ul <- b$knots[length(b$knots) - b$ord + 1]
+  X <- matrix(0, length(x), ncol(b$Sigma))
+  inside <- x >= ll & x <= ul
+  if (any(inside)) X[inside, ] <- splines::splineDesign(b$knots, x[inside], b$ord)
+  D <- splines::splineDesign(b$knots, c(ll, ll, ul, ul), b$ord, c(0, 1, 0, 1))
+  below <- x < ll
+  above <- x > ul
+  if (any(below)) X[below, ] <- cbind(1, x[below] - ll) %*% D[1:2, ]
+  if (any(above)) X[above, ] <- cbind(1, x[above] - ul) %*% D[3:4, ]
+  sweep((X %*% b$Sigma)[, -1, drop = FALSE], 2, b$cmX)
+}
+
+# Minimise b'Qb - 2 c'b subject to b >= lower (primal active-set method). This
+# is the problem pcls() solves for scam.fit()'s starting coefficients.
+boxQP <- function(Q, c, lower) {
+  b <- ifelse(is.finite(lower), pmax(lower, 0.1), 0)
+  active <- rep(FALSE, length(c))
+  for (it in seq_len(10 * length(c))) {
+    f <- !active
+    target <- b
+    target[f] <- solve(Q[f, f, drop = FALSE], c[f] - Q[f, active, drop = FALSE] %*% b[active])
+    blocked <- f & target < lower
+    if (!any(blocked)) {
+      b <- target
+      lambda <- drop(Q %*% b - c)
+      if (!any(active & lambda < 0)) return(b)
+      active[which(active)[which.min(lambda[active])]] <- FALSE
+    } else {
+      t <- (b[blocked] - lower[blocked]) / (b[blocked] - target[blocked])
+      j <- which(blocked)[which.min(t)]
+      b <- b + min(t) * (target - b)
+      b[j] <- lower[j]
+      active[j] <- TRUE
+    }
+  }
+  b
+}
+
+# calcWeights()'s model scam(y ~ s(x1, bs = "mpd") + s(x2, bs = "mpd")) with
+# GCV smoothing parameters, fitted in C++ (src/scamMono.cpp) along the same
+# path scam() takes: penalties scaled as mgcv's smoothCon() scales them, the
+# pcls() start at sp = 0.05, then scam's BFGS search. Returns the predictions
+# at (x1new, x2new), or NULL if the C++ fit fails.
+#' @importFrom splines splineDesign
+mpdWeightFit <- function(y, x1, x2, x1new, x2new) {
+  b1 <- mpdBasis(x1)
+  b2 <- mpdBasis(x2)
+  X <- cbind(1, b1$X, b2$X)
+  k <- ncol(b1$X)
+  D <- crossprod(diff(diag(k)))
+  S1 <- S2 <- matrix(0, ncol(X), ncol(X))
+  S1[1 + seq_len(k), 1 + seq_len(k)] <- D / (norm(D) / norm(b1$X, type = "I")^2)
+  S2[1 + k + seq_len(k), 1 + k + seq_len(k)] <- D / (norm(D) / norm(b2$X, type = "I")^2)
+  iv <- c(FALSE, rep(TRUE, 2 * k))
+  XtX <- crossprod(X)
+  Xty <- drop(crossprod(X, y))
+  start <- boxQP(XtX + 0.05 * (S1 + S2), Xty, ifelse(iv, 1e-12, -Inf))
+  fit <- scamMonoFit(XtX, Xty, sum(y^2), length(y), list(S1, S2), iv, start,
+                     c(1L, 1L + k), c(k, k))
+  if (!fit$ok) return(NULL)
+  z <- drop(cbind(1, mpdPredict(b1, x1new), mpdPredict(b2, x2new)) %*% fit$coef)
+  names(z) <- seq_along(z) # as predict.scam() names them
+  z
+}
 
 
 #' @importFrom BiocParallel bpmapply
@@ -1083,7 +1205,8 @@ getWeightFunction <- function(
     BPPARAM,
     weights,
     weightsByPair,
-    weightFactor) {
+    weightFactor,
+    weightZThreshold = 0.1) {
   if (!weights) {
     weightFunction <- rep(1, nrow(pairwiseAssoc) * ncol(pairwiseAssoc))
     pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
@@ -1108,10 +1231,10 @@ getWeightFunction <- function(
     weightFunction <- BiocParallel::bpmapply(
       calcWeights,
       rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM = BPPARAM,
-      MoreArgs = list(nCells = nCells, weightFactor), SIMPLIFY = FALSE
+      MoreArgs = list(nCells = nCells, weightFactor, weightZThreshold), SIMPLIFY = FALSE
     )
   } else {
-    weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor)
+    weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor, weightZThreshold)
     pair <- rep(colnames(pairwiseAssoc), each = nrow(pairwiseAssoc))
     weightFunction <- split(weightFunction, pair)
   }

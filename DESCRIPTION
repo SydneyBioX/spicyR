@@ -30,7 +30,6 @@ Imports:
     cli,
     concaveman,
     coxme,
-    data.table,
     dplyr,
     ggforce,
     ggh4x,
@@ -52,7 +51,10 @@ Imports:
     stats,
     survival,
     tibble,
-    tidyr
+    tidyr,
+    Rcpp,
+    splines
+LinkingTo: Rcpp
 Suggests: 
     SpatialDatasets,
     BiocStyle,
