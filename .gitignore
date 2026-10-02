@@ -21,3 +21,6 @@ docs
 src/*.o
 src/*.so
 src/*.dll
+src/*.o
+src/*.so
+src/core/src/*.o

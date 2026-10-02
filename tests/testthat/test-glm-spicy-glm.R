@@ -168,7 +168,7 @@ test_that("diagnostics are refused outside poisson/firth/fast", {
 })
 
 test_that("the Wilson interval matches the closed form", {
-  w <- spicyglm:::wilson_interval(3, 20)
+  w <- spicyR:::wilson_interval(3, 20)
   z <- stats::qnorm(0.975); n <- 20; p <- 3 / 20
   lo <- (p + z^2/(2*n) - z*sqrt((p*(1-p) + z^2/(4*n))/n)) / (1 + z^2/n)
   expect_equal(w$lower, lo, tolerance = 1e-12)

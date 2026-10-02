@@ -39,7 +39,7 @@ test_that("O, its random-labelling mean and variance match a direct computation 
   for (knn in c(FALSE, TRUE)) {
     im <- excess_ctx_image(z, knn)
     for (pr in list(c("A", "B"), c("C", "A"), c("D", "C"))) {
-      got <- spicyglm:::excess_image_data(im$ctx, match(pr[1], im$tl) - 1L, match(pr[2], im$tl) - 1L)
+      got <- spicyR:::excess_image_data(im$ctx, match(pr[1], im$tl) - 1L, match(pr[2], im$tl) - 1L)
       cj <- neighbour_counts(z, pr[1], knn); cand <- z$cellType != pr[1]; y <- z$cellType == pr[2]
       cb <- cj[cand]; nB <- sum(y); M <- length(cb); p <- nB / M
       expect_equal(got$O, sum(cj[y]))
@@ -73,7 +73,7 @@ test_that("the closed-form CR2 equals the matrix CR2 of the linear GEE with seve
   ctx <- list(family = "poisson", totals = dataset_pair_neighbour_totals(d, FALSE, length(tl)),
               out_sq_totals = dataset_pair_neighbour_out_sq_totals(d, FALSE, length(tl)),
               counts = unclass(table(factor(img, levels = seq_along(labs) - 1L), factor(match(cs$cellType, tl) - 1L, levels = seq_along(tl) - 1L))))
-  im <- spicyglm:::excess_image_data(ctx, match("A", tl) - 1L, match("B", tl) - 1L)
+  im <- spicyR:::excess_image_data(ctx, match("A", tl) - 1L, match("B", tl) - 1L)
   unit <- tapply(cs$patient, img, `[`, 1)[im$img + 1L]; grp <- tapply(cs$response, img, `[`, 1)[im$img + 1L] == "beta"
   tau2 <- out$frailty$tau2
   V <- 0; EV <- 0; trsq <- 0; est <- numeric(2)

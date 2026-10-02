@@ -92,9 +92,9 @@ test_that("density adjustment removes a shared abundance slope and is invariant 
             list(O = rep(10, 6), theta = c(0.5, 1, 1.5, 0.2, 0.9, 1.1)))
   counts <- cbind(c(10, 20, 40, 15, 30, 60), c(5, 5, 5, 8, 8, 8))
   g <- c(0, 0, 0, 1, 1, 1)
-  b <- spicyglm:::density_slopes(s, list(c(1, 2), c(2, 1)), counts, g)
+  b <- spicyR:::density_slopes(s, list(c(1, 2), c(2, 1)), counts, g)
   s2 <- lapply(s, function(z) { z$theta <- z$theta + 5 * g; z })
-  expect_equal(spicyglm:::density_slopes(s2, list(c(1, 2), c(2, 1)), counts, g), b)
+  expect_equal(spicyR:::density_slopes(s2, list(c(1, 2), c(2, 1)), counts, g), b)
 })
 
 test_that("pairs with fewer than two units in a condition are skipped", {

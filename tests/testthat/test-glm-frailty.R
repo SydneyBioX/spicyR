@@ -40,7 +40,7 @@ test_that("phi is the random-labelling variance of the count over its mean", {
   tot <- dataset_pair_neighbour_totals(im$d, FALSE, T); sq <- dataset_pair_neighbour_sq_totals(im$d, FALSE, T)
   counts <- matrix(tabulate(match(im$z$cellType, im$tl), T), 1)
   f <- match("A", im$tl); t <- match("C", im$tl)
-  phi <- spicyglm:::frailty_phi(tot, sq, counts, f, t, FALSE)
+  phi <- spicyR:::frailty_phi(tot, sq, counts, f, t, FALSE)
   # exact moments over all relabellings of the non-A cells with n_C fixed
   isA <- im$z$cellType == "A"; cb <- colSums(im$dm[isA, , drop = FALSE] <= 40)[!isA]
   nC <- sum(im$z$cellType == "C"); N <- length(cb); p <- nC / N
@@ -62,8 +62,8 @@ test_that("with tau2 = 0 and phi = 1 the frailty CR2 is the cell-level closed fo
                    E = as.numeric(tapply(md$density, md$image, sum)), phi = 1)
   ctx <- list(family = "poisson", image_cluster = seq_along(labs) - 1L, image_group = grp)
   unit <- factor(ctx$image_cluster[im$img + 1L]); g <- grp[im$img + 1L]
-  fits <- lapply(0:1, function(k) spicyglm:::frailty_fit_group(im[g == k, ], droplevels(unit[g == k]), 0, FALSE))
-  cr <- lapply(fits, spicyglm:::frailty_cr2)
+  fits <- lapply(0:1, function(k) spicyR:::frailty_fit_group(im[g == k, ], droplevels(unit[g == k]), 0, FALSE))
+  cr <- lapply(fits, spicyR:::frailty_cr2)
   expect_equal(c(fits[[1]]$beta, fits[[2]]$beta), ref$beta, tolerance = 1e-10)
   expect_equal(cr[[1]]$V + cr[[2]]$V, ref$v_hat, tolerance = 1e-10)
   expect_equal((cr[[1]]$EV + cr[[2]]$EV)^2 / (cr[[1]]$trsq + cr[[2]]$trsq), ref$df, tolerance = 1e-10)

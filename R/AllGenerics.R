@@ -21,9 +21,7 @@
 #' data(spicyTest)
 #' topPairs(spicyTest)
 #'
-#' @aliases
-#' topPairs,SpicyResults-method
-#' topPairs
+#' @aliases topPairs,SpicyResults-method topPairs
 #' @rdname topPairs
 #' @export
 setGeneric("topPairs", function(x,

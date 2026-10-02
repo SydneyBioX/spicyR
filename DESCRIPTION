@@ -1,10 +1,12 @@
 Package: spicyR
 Type: Package
 Title: Spatial analysis of in situ cytometry data
-Version: 1.21.8
+Version: 1.99.0
 Authors@R: c(
     person("Nicolas", "Canete", , "nicolas.canete@sydney.edu.au", role = "aut"),
     person("Ellis", "Patrick", , "ellis.patrick@sydney.edu.au", role = c("aut", "cre")),
+    person("Sadiq", "Dohadwalla", role = "aut"),
+    person("Elijah", "Willie", , "ewillie0004@gmail.com", role = "aut"),
     person("Nicholas", "Robertson", , "nicholas.robertson@sydney.edu.au", role = "ctb"),
     person("Alex", "Qin", , "alex.qin@sydney.edu.au", role = "ctb"),
     person("Farhan", "Ameen", ,"farhan.ameen@sydney.edu.au", role = "ctb"),
@@ -54,7 +56,8 @@ Imports:
     tidyr,
     Rcpp,
     splines
-LinkingTo: Rcpp
+LinkingTo: Rcpp, RcppEigen
+SystemRequirements: C++17
 Suggests: 
     SpatialDatasets,
     BiocStyle,
@@ -63,5 +66,5 @@ Suggests:
     pkgdown,
     imcRtools,
     testthat (>= 3.0.0)
-RoxygenNote: 7.3.3
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0

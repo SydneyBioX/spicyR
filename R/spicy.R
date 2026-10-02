@@ -65,9 +65,7 @@
 #' spicy(diabetesData, condition = "condition", subject = "subject")
 #' }
 #'
-#' @aliases
-#' spicy
-#' spicy,spicy-method
+#' @aliases spicy spicy,spicy-method
 #' @importFrom scam scam
 #' @importFrom rlang .data
 #' @importFrom tibble column_to_rownames

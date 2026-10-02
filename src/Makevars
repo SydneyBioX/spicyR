@@ -1,0 +1,13 @@
+# The numeric core (src/core) is plain C++17 with Eigen, shared verbatim with the Python twin (SydneyBioX/spicyr-py).
+# The Rcpp files in src/ are the R bindings only.
+CXX_STD = CXX17
+PKG_CPPFLAGS = -Icore/include
+PKG_CXXFLAGS = $(SHLIB_PTHREAD_FLAGS)
+PKG_LIBS = $(SHLIB_PTHREAD_FLAGS)
+
+CORE_SRC = $(wildcard core/src/*.cpp)
+OBJECTS = $(patsubst %.cpp,%.o,$(wildcard *.cpp)) $(CORE_SRC:.cpp=.o)
+
+all: $(SHLIB)
+CORE_H = $(wildcard core/include/spicyglm/*.hpp)
+$(OBJECTS): $(CORE_H)
