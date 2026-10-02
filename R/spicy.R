@@ -549,17 +549,17 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     what <- if (!is.null(df$survivalOutcome)) "association with survival" else
       paste0(levels(df$condition)[-1], " vs ", levels(df$condition)[1], collapse = "; ")
     scale <- if (!is.null(df$k)) paste0("k = ", df$k, " nearest neighbours") else paste0("r = ", paste(df$r, collapse = ", "))
-    cat("spicyR Cell: ", length(unique(paste(tab$from, tab$to))), " pairs (", what, "), ", scale, "\n", sep = "")
+    cat("spicyR (cell-level test): ", length(unique(paste(tab$from, tab$to))), " pairs, ", what, ", ", scale, "\n", sep = "")
     if (is.null(df$subject)) cat("Units: ", length(df$imageID), " images (no subject given: each image is a patient)\n", sep = "")
     else cat("Units: ", length(unique(df$subject)), " patients with ", length(df$imageID), " images\n", sep = "")
-    cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), sep = "")
-    if (!is.null(tab$adjusted_p_adj)) cat(" (", sum(tab$adjusted_p_adj < 0.05, na.rm = TRUE), " at equal availability)", sep = "")
+    cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
+    if (!is.null(tab$adjusted_p_adj)) cat(" (", sum(tab$adjusted_p_adj < 0.05, na.rm = TRUE), " after adjusting for abundance)", sep = "")
     cat("\nSee topPairs() and $cellResults.\n")
     return(invisible(df))
   }
   pval <- as.data.frame(df$p.value)
   cond <- colnames(pval)[grep("condition", colnames(pval))]
-  cat("spicyR (image method): ", nrow(pval), " cell type pairs\n", sep = "")
+  cat("spicyR (image-level test): ", nrow(pval), " pairs\n", sep = "")
   cat("Pairs with BH-adjusted p < 0.05:\n")
   if (nrow(pval) == 1) print(sum(pval[cond] < 0.05, na.rm = TRUE))
   if (nrow(pval) > 1) print(colSums(apply(pval[cond], 2, p.adjust, "fdr") < 0.05, na.rm = TRUE))

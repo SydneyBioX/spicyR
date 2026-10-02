@@ -1,70 +1,66 @@
-# spicyR
+# spicyR <img src="inst/spicyR.png" align="right" width="140" alt="spicyR hex sticker" />
 
-<img src="https://raw.githubusercontent.com/SydneyBioX/spicyR/devel/inst/spicyR.png" align="right" width="200" alt="spicyR hex sticker" />
+**Test whether cell types co-localise differently between groups of patients.**
 
-**Calibrated tests for changes in cell-type co-localisation between groups of patients.**
+Do T cells gather around tumour cells more in one group of patients than in another? spicyR answers questions
+like this for every pair of cell types in imaging and spatial transcriptomics data, comparing groups of patients
+or relating co-localisation to survival. For each image it counts how many cells of one type lie within a radius of
+each cell of another, and compares that count with what random labelling of the same cells would give, so holes,
+folds and dense regions in the tissue are not mistaken for biology. Patients, not images or cells, are the units of
+the test.
 
-spicyR asks, for every pair of cell types, whether one sits closer to the other in one group of patients than in
-another, or whether their co-localisation is associated with outcome. It works with any cell-resolution spatial
-omics data: imaging mass cytometry, CODEX, MIBI, Xenium, CosMx and others.
-
-> **spicyR 2.0 (in development on the `spicyR2` branch).** The default method is now **spicyR Cell**. The original
-> image-level test is still available with `method = "image"`.
-
-## What spicyR Cell does
-
-For a pair *from* → *to*, spicyR Cell counts the *to* cells within radius *r* of each *from* cell.
-
-- **The null is random labelling of the observed cells.** Each image's count is compared with its exact
-  expectation if cell-type labels were shuffled among the cells that are there. Tissue shape, holes and density
-  are conditioned on, not modelled. The effect is the **excess**: extra *to* cells per *from* cell.
-- **Patients are the units.** Images are combined within patients by a frailty GEE, and the difference between
-  conditions is tested with a small-sample cluster-robust (CR2) variance on Satterthwaite degrees of freedom.
-- **Abundance is kept apart from attraction.** Every result also gives the difference at equal availability of
-  the counted type.
-- **And:** several conditions, covariates, k nearest neighbours, several radii (max-T or Cauchy), survival
-  outcomes, and a fast C++ core: every pair of 22 cell types from 400,000 cells in seconds.
+![T cells around proliferating tumour cells in breast cancer, compared between ER-negative and ER-positive patients](man/figures/spicyR_overview.png)
 
 ## Quick start
 
 ```r
 library(spicyR)
-res <- spicy(cells, condition = "condition", subject = "patient", r = 25)
-res                    # summary
-topPairs(res)          # the most significant pairs
-res$cellResults        # the full table, including the availability-adjusted difference
-signifPlot(res)        # every pair at a glance
-spicyBoxPlot(res, from = "T cells", to = "Tumour")
+
+res <- spicy(cells, condition = "response", subject = "patient", r = 25)
+topPairs(res)                 # the most significant pairs
+signifPlot(res)               # every pair at a glance
+spicyBoxPlot(res, from = "CD8 T cells", to = "Tumour")
 ```
 
-`cells` can be a `data.frame`, a `SingleCellExperiment` or a `SpatialExperiment`.
+`cells` can be a `SpatialExperiment`, a `SingleCellExperiment` or a `data.frame` with one row per cell, holding
+the image, cell type and coordinates of each cell.
+
+## What you get
+
+- A table with one row per pair of cell types: the number of extra neighbours per cell in each group, the
+  difference, a p-value and an FDR-adjusted p-value.
+- A plot of every pair at once, and the per-patient values behind any pair.
+- The same test with covariates, several radii, more than two groups, or a survival outcome.
 
 ## Installation
 
 ```r
 if (!require("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-BiocManager::install("spicyR")                                   # release
-remotes::install_github("SydneyBioX/spicyR", ref = "spicyR2")    # spicyR 2.0 (development)
+BiocManager::install("spicyR")
 ```
 
-## Python
+The development version: `remotes::install_github("SydneyBioX/spicyR", ref = "spicyR2")`.
 
-[`spicyr`](https://github.com/SydneyBioX/spicyr-py) is the Python twin. It uses the same C++ core and gives the same
-results, and it works with SpatialData, AnnData and pandas objects.
+## Learn more
 
-## Issues and questions
-
-- Bugs and feature requests: [GitHub issues](https://github.com/SydneyBioX/spicyR/issues).
-- Questions: [ellis.patrick@sydney.edu.au](mailto:ellis.patrick@sydney.edu.au).
-
-## Authors
-
-Nicolas Canete, Ellis Patrick (maintainer), Sadiq Dohadwalla, Elijah Willie, Nicholas Robertson, Alex Qin,
-Farhan Ameen, Shreya Rao.
+- [Introduction to spicyR](https://sydneybiox.github.io/spicyR/dev/articles/spicyR.html): a full analysis of
+  breast cancer imaging mass cytometry data.
+- [The original image-level test](https://sydneybiox.github.io/spicyR/dev/articles/image_method.html), the
+  default before spicyR 2.0, still available with `method = "image"`.
+- [spicyr](https://github.com/SydneyBioX/spicyr-py), the same analysis in Python, for SpatialData and AnnData
+  objects.
 
 ## Citation
 
 Canete NP, Iyengar SS, Ormerod JT, Baharlou H, Harman AN, Patrick E (2022). spicyR: spatial analysis of in situ
 cytometry data in R. *Bioinformatics* 38(11), 3099–3105.
-[doi:10.1093/bioinformatics/btac268](https://doi.org/10.1093/bioinformatics/btac268).
-The spicyR Cell method: manuscript in preparation.
+[doi:10.1093/bioinformatics/btac268](https://doi.org/10.1093/bioinformatics/btac268)
+
+## Contact
+
+Questions and bug reports: [GitHub issues](https://github.com/SydneyBioX/spicyR/issues) or
+[ellis.patrick@sydney.edu.au](mailto:ellis.patrick@sydney.edu.au).
+
+spicyR 2.0 is in development on the `spicyR2` branch; a paper describing its test is in preparation. Authors:
+Nicolas Canete, Ellis Patrick, Sadiq Dohadwalla, Elijah Willie, Nicholas Robertson, Alex Qin, Farhan Ameen and
+Shreya Rao.
