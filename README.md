@@ -38,20 +38,24 @@ for the columns `imageID` and `cellType` (name yours with `imageID =` and `cellT
 ## What you get
 
 - A table with one row per pair of cell types: the number of extra neighbours per cell in each group, the
-  difference, a p-value and an FDR-adjusted p-value, and the same after adjusting for how common each cell type is.
-- A plot of every pair at once, and the per-image values behind any pair.
+  difference, a p-value and an FDR-adjusted p-value. By default the test is adjusted for how common the counted
+  cell type is in each image, so that a change in abundance alone is not reported as a change in arrangement; the
+  unadjusted test is reported too.
+- A plot of every pair at once, the per-image values behind any pair (interactive, to find the images worth
+  looking at), and a plot of any image.
 - The same test with covariates, several radii, more than two groups, or a survival outcome.
 
 ## Installation
 
-spicyR 2.0, described here, is not yet on Bioconductor. Install it from GitHub:
+spicyR 2.0, described here, is in the development version of Bioconductor and will be in its next release:
 
 ```r
-if (!require("remotes", quietly = TRUE)) install.packages("remotes")
-remotes::install_github("SydneyBioX/spicyR", ref = "spicyR2")
+if (!require("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install("spicyR", version = "devel")
+BiocManager::install("SydneyBioX/spicyR")     # or the latest version from GitHub
 ```
 
-`BiocManager::install("spicyR")` installs the current release, spicyR 1.x.
+`BiocManager::install("spicyR")` with the current Bioconductor release installs spicyR 1.x.
 
 ## Coming from spicyR 1.x
 
@@ -61,8 +65,9 @@ the L-function with a mixed model, is still available, with the same results, as
 
 ## Learn more
 
-- [Introduction to spicyR](vignettes/spicyR.Rmd): a full analysis of breast cancer imaging mass cytometry data.
-- [The original image-level test](vignettes/image_method.Rmd).
+- [Introduction to spicyR](https://sydneybiox.github.io/spicyR/dev/articles/spicyR.html): a full analysis of breast
+  cancer imaging mass cytometry data.
+- [The original image-level test](https://sydneybiox.github.io/spicyR/dev/articles/image_method.html).
 - [spicyr](https://sydneybiox.github.io/spicyr-py), the same analysis in Python, for SpatialData and AnnData objects.
 
 ## Citation

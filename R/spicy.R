@@ -552,9 +552,12 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     cat("spicyR (cell-level test): ", length(unique(paste(tab$from, tab$to))), " pairs, ", what, ", ", scale, "\n", sep = "")
     if (is.null(df$subject)) cat("Units: ", length(df$imageID), " images (no subject given: each image is a patient)\n", sep = "")
     else cat("Units: ", length(unique(df$subject)), " patients with ", length(df$imageID), " images\n", sep = "")
-    adj <- if (is.null(tab$adjusted_for)) character(0) else setdiff(unique(tab$adjusted_for), "none")
+    adj <- if (is.null(tab$adjusted_for)) character(0) else unique(tab$adjusted_for)
+    fallback <- sum(startsWith(tab$adjusted_for %||% character(0), "none ("))
+    adj <- adj[!startsWith(adj, "none")]
     if (length(adj)) cat("Adjusted for: ", paste(unique(unlist(strsplit(adj, "+", fixed = TRUE))), collapse = ", "),
                          " (unadjusted test in the unadjusted_* columns)\n", sep = "")
+    if (fallback) cat(fallback, " pairs could not be adjusted and are reported unadjusted (see adjusted_for)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
     cat("\nSee topPairs() and $cellResults.\n")
@@ -1331,3 +1334,5 @@ bind <- function(results,
 
   return(df)
 }
+
+`%||%` <- function(a, b) if (is.null(a)) b else a

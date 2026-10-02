@@ -15,8 +15,13 @@ MAJOR CHANGES
 
 NEW FEATURES
 
-    o Every result also reports the difference at equal availability of the counted type
-      (adjusted for its share of all cells): columns adjusted_*.
+    o By default the test is adjusted for the abundance of the counted type (the log of its share
+      of all cells in each image; adjustAbundance = TRUE) and for any covariates; the unadjusted
+      test is reported in the unadjusted_* columns, and each adjustment's effect and p-value in
+      abundance_effect and <covariate>_effect columns.
+
+    o spicyBoxPlot() shows a point per image sized by its weight in the test, and is interactive
+      with interactive = TRUE (plotly); plotImage(r = ) draws the radius around each from cell.
 
     o Two or more conditions (each level against the reference), image- or patient-level
       covariates, k nearest neighbours (k), several radii combined by max-T with the sandwich
