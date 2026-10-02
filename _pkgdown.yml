@@ -33,6 +33,7 @@ reference:
   desc: "Every pair of cell types, between conditions or with survival."
   contents:
   - spicy
+  - SpicyResults-class
   - topPairs
   - bind
 - title: "Plot"
