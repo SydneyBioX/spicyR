@@ -1,10 +1,70 @@
-template:
-  bootstrap: 5
-  bootswatch: cosmo
-toc:
-  depth: 3
-navbar:
-  title: ~
-  bg: dark
 url: https://sydneybiox.github.io/spicyR/
 
+# spicyR 2 is built into /dev/ until it is released, so the live site keeps documenting the release.
+development:
+  mode: devel
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#b3261e"
+    base_font: {google: "Inter"}
+    heading_font: {google: "Inter"}
+    code_font: {google: "JetBrains Mono"}
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, python, github]
+  components:
+    python:
+      text: Python (spicyr)
+      href: https://github.com/SydneyBioX/spicyr-py
+
+home:
+  title: "spicyR: calibrated tests for changes in cell-type co-localisation"
+  description: >
+    Test whether two cell types co-localise more or less between groups of patients, or with outcome:
+    random-labelling null, patients as units, small-sample CR2 inference, a C++ core shared with Python.
+
+reference:
+- title: "Test"
+  desc: "Every pair of cell types, between conditions or with survival."
+  contents:
+  - spicy
+  - topPairs
+  - bind
+- title: "Plot"
+  contents:
+  - signifPlot
+  - spicyBoxPlot
+  - plotImage
+  - imageCrossPlot
+- title: "Per-image statistics (image method)"
+  desc: "Inputs and helpers for `spicy(method = \"image\")`, the original spicyR test."
+  contents:
+  - getPairwise
+  - getPairwiseProp
+  - getProp
+  - convPairs
+  - colTest
+- title: "Lower-level interface"
+  contents:
+  - spicy_glm
+- title: "Data"
+  contents:
+  - diabetesData
+  - spicyTest
+
+articles:
+- title: "Get started"
+  navbar: ~
+  contents:
+  - spicyR
+- title: "More"
+  contents:
+  - image_method
+
+news:
+  cran_dates: false

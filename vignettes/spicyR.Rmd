@@ -1,0 +1,326 @@
+---
+title: "spicyR: calibrated tests for changes in cell-type co-localisation"
+date: "`r BiocStyle::doc_date()`"
+author:
+- name: Ellis Patrick
+  affiliation:
+  - School of Mathematics and Statistics, University of Sydney, Australia
+  - Westmead Institute for Medical Research, University of Sydney, Australia
+- name: Sadiq Dohadwalla
+  affiliation: School of Mathematics and Statistics, University of Sydney, Australia
+- name: Elijah Willie
+  affiliation: School of Mathematics and Statistics, University of Sydney, Australia
+- name: Nicolas Canete
+  affiliation: Westmead Institute for Medical Research, University of Sydney, Australia
+package: "`r BiocStyle::pkg_ver('spicyR')`"
+abstract: >
+  spicyR tests whether the spatial co-localisation of two cell types changes between groups of patients, or is
+  associated with patient outcome. Its default method, spicyR Cell, counts the cells of one type around each
+  cell of another, compares the count with its exact expectation under random labelling of the observed
+  cells, and tests the difference between groups with patients, not images or cells, as the units of
+  inference. This vignette analyses about 400,000 cells from several hundred breast cancer patients.
+vignette: >
+  %\VignetteIndexEntry{spicyR: calibrated tests for changes in cell-type co-localisation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output:
+  BiocStyle::html_document:
+    toc_float: true
+    toc_depth: 2
+bibliography: REFERENCES.bib
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE, message = FALSE,
+                      fig.width = 7, fig.height = 4.5, fig.align = "center")
+```
+
+# Overview
+
+Spatial omics technologies (imaging mass cytometry, CODEX, MIBI, Xenium, CosMx and others) record the type and
+location of every cell in a tissue section. A natural question is whether two cell types sit closer together,
+or further apart, in one group of patients than in another: do T cells crowd around tumour cells more in
+responders than in non-responders?
+
+`spicy()` answers this question for every pair of cell types at once. For a pair written **from → to**, it
+asks how many **to** cells lie within a radius *r* of each **from** cell, and whether that number changes
+between conditions.
+
+Three features make the answers trustworthy:
+
+1. **The comparison is with random labelling of the observed cells.** For each image, the count of *to* cells
+   around *from* cells is compared with its exact expectation if the cell-type labels were shuffled among the
+   cells that are there. Tissue shape, holes, folds and cell density are conditioned on, not modelled. The effect
+   is the **excess**: the number of extra *to* cells per *from* cell, beyond chance.
+2. **Patients are the units.** Images are combined within patients and patients within conditions. The
+   difference between conditions is tested with a small-sample cluster-robust (CR2) variance on Satterthwaite
+   degrees of freedom. Images and cells are never treated as independent replicates, so a patient contributing
+   ten images does not count ten times.
+3. **Abundance is kept apart from attraction.** The excess of a pair can change because the counted type
+   becomes more or less common, even if cells are arranged no differently. Every result therefore also reports
+   the difference at equal availability of the counted type.
+
+The original spicyR test, which compares per-image L-function summaries with linear mixed models
+[@canete2022spicyr], is still available with `method = "image"` and has its own vignette.
+
+# Installation
+
+```{r, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install("spicyR")
+```
+
+```{r packages}
+library(spicyR)
+library(SpatialDatasets)
+library(survival)
+library(ggplot2)
+```
+
+# Data: METABRIC imaging mass cytometry
+
+We use the imaging mass cytometry data of @ali2020imaging: tumour cores from the METABRIC breast cancer cohort,
+with cell types assigned by the authors, one core per patient. It is available from the `SpatialDatasets`
+package. A data set with several images per patient follows in the section on patients as units.
+
+```{r data}
+spe <- spe_Ali_2020()
+cells <- as.data.frame(SummarizedExperiment::colData(spe))
+cells$imageID <- cells$file_id
+cells$cellType <- cells$description
+cells$x <- cells$Location_Center_X
+cells$y <- cells$Location_Center_Y
+cells <- cells[cells$ER.Status %in% c("neg", "pos"), ]
+cells$ER <- factor(cells$ER.Status, levels = c("neg", "pos"))
+```
+
+```{r data-summary}
+c(cells = nrow(cells), images = length(unique(cells$imageID)),
+  patients = length(unique(cells$metabricId)), cell_types = length(unique(cells$cellType)))
+table(unique(cells[, c("metabricId", "ER")])$ER)   # patients per group
+```
+
+`spicy()` also accepts `SingleCellExperiment` and `SpatialExperiment` objects directly; the column names are
+set with the `imageID`, `cellType` and `spatialCoords` arguments.
+
+```{r plot-image, fig.height = 5}
+one <- cells[cells$imageID == cells$imageID[1], ]
+ggplot(one, aes(x, y, colour = cellType)) +
+  geom_point(size = 0.6) +
+  coord_equal() +
+  labs(title = one$imageID[1], colour = NULL) +
+  theme_void() +
+  theme(legend.text = element_text(size = 7))
+```
+
+# Testing every pair of cell types
+
+The only choices are the column of the condition, the column of the patient (`subject`) and the radius.
+Coordinates here are in micrometres, and 25 µm is about two to three cell diameters.
+
+```{r spicy}
+t0 <- Sys.time()
+res <- spicy(cells, condition = "ER", subject = "metabricId", r = 25)
+Sys.time() - t0
+res
+```
+
+All `r nrow(res$cellResults)` ordered pairs of `r length(unique(cells$cellType))` cell types, from
+`r format(nrow(cells), big.mark = ",")` cells, take a few seconds. `topPairs()` lists the most significant pairs. `coefficient` is the change in the
+excess between ER-negative (the reference level) and ER-positive patients, in extra *to* cells per *from*
+cell, and `intercept` is the excess in the reference group.
+
+```{r top-pairs}
+topPairs(res, n = 10)
+```
+
+The full table, `res$cellResults`, has one row per pair:
+
+- `excess_ref`, `excess_comp`: the excess in each condition;
+- `excess_difference`, `se`, `df`: their difference, its standard error and degrees of freedom;
+- `p_value`, `p_adj`: the p-value, and the Benjamini–Hochberg adjusted p-value over all pairs;
+- `tau2`: the variance of the patient frailty;
+- `adjusted_*`: the same quantities at equal availability (next section).
+
+```{r results-table}
+head(res$cellResults[order(res$cellResults$p_value), c("from", "to", "excess_ref", "excess_comp",
+  "excess_difference", "se", "df", "p_value", "p_adj")])
+```
+
+`signifPlot()` shows every pair at once.
+
+```{r signif-plot, fig.width = 9, fig.height = 8}
+signifPlot(res, breaks = c(-3, 3, 0.5))
+```
+
+# Looking at one pair
+
+`spicyBoxPlot()` shows the excess in each image, so you can see what drives a result.
+
+```{r box-plot}
+top <- topPairs(res, n = 1)
+spicyBoxPlot(res, from = top$from, to = top$to)
+```
+
+`plotImage()` shows the two cell types of a pair in one image, over the density of all cells.
+
+```{r plot-pair, fig.height = 5}
+SummarizedExperiment::colData(spe)$imageID <- spe$file_id
+SummarizedExperiment::colData(spe)$cellType <- spe$description
+plotImage(spe, imageToPlot = cells$imageID[cells$ER == "pos"][1], from = top$from, to = top$to)
+```
+
+`bind()` returns the same per-image values as a table, ready for any other analysis.
+
+```{r bind}
+head(bind(res)[, 1:5])
+```
+
+# Abundance or attraction?
+
+The top pairs above involve hormone-receptor-positive tumour cells (`HR+ CK7-`), which are much more common in
+ER-positive tumours. When a type becomes more common, more of its cells are found around any other cell, even
+if the arrangement is unchanged. The `adjusted_*` columns answer a sharper question: does the excess differ
+between the groups **at equal availability of the counted type**? The adjustment adds the log share of the
+counted type in each image to the model, with a slope shared by the two groups.
+
+```{r availability}
+both <- res$cellResults[, c("from", "to", "excess_difference", "p_adj", "adjusted_difference", "adjusted_p_adj")]
+both <- both[order(both$p_adj), ]
+head(both, 10)
+c(raw = sum(both$p_adj < 0.05), adjusted = sum(both$adjusted_p_adj < 0.05, na.rm = TRUE))
+```
+
+```{r availability-plot}
+ggplot(both, aes(-log10(p_adj), -log10(adjusted_p_adj))) +
+  geom_abline(linetype = 2, colour = "grey50") +
+  geom_point(alpha = 0.6) +
+  labs(x = "-log10 BH p (raw excess)", y = "-log10 BH p (at equal availability)") +
+  theme_classic()
+```
+
+Pairs close to the diagonal are robust to the abundance of the counted type. Pairs that fall away from it
+changed mainly because the counted type became more or less common. Both are reported because both can be of
+interest: in a disease where composition change is the biology, the raw excess may be the question.
+
+# Several images per patient
+
+When a patient contributes several images, the images are not independent replicates: they share the patient's
+biology. Give the patient column as `subject` and the patients become the units. To see why this matters, take
+the colorectal cancer CODEX data of @schurch2020coordinated, with about four tissue microarray spots from each of
+35 patients in two groups, and compare the analysis with patients as units against one that treats every spot
+as a patient. A `SpatialExperiment` can be passed directly.
+
+```{r schurch}
+schurch <- spe_Schurch_2020()
+# the study's two patient groups: Crohn's-like reaction (CLR, group 1) and diffuse inflammatory infiltration (DII, group 2)
+schurch$group <- factor(c("CLR", "DII")[as.integer(as.character(schurch$group))], levels = c("CLR", "DII"))
+table(table(unique(as.data.frame(SummarizedExperiment::colData(schurch))[, c("imageID", "patient")])$patient))
+byPatient <- spicy(schurch, condition = "group", subject = "patient", r = 50)
+bySpot <- spicy(schurch, condition = "group", r = 50)       # every spot treated as a patient (wrong)
+byPatient
+bySpot
+```
+
+```{r schurch-df}
+d <- merge(byPatient$cellResults[, c("from", "to", "df", "p_value")],
+           bySpot$cellResults[, c("from", "to", "df", "p_value")], by = c("from", "to"), suffixes = c("_patients", "_spots"))
+summary(d[, c("df_patients", "df_spots")])
+```
+
+With spots as units the test has roughly four times the degrees of freedom it is entitled to, and its p-values
+are too small. With patients as units the degrees of freedom are bounded by the number of patients, as they
+should be.
+
+# Covariates
+
+Covariates measured per image or per patient are added to the model with `covariates`. Here the difference
+between ER groups is adjusted for age at diagnosis and tumour grade.
+
+```{r covariates}
+cells$Grade <- factor(cells$Grade)
+resCov <- spicy(cells, condition = "ER", subject = "metabricId", r = 25, covariates = c("Age.At.Diagnosis", "Grade"),
+                from = c("T cells", "Macrophages Vim+ Slug-"), to = c("HR+ CK7-", "HR- CK7+", "T cells"))
+resCov$cellResults[, c("from", "to", "excess_difference", "p_value", "covariate_difference", "covariate_p_value")]
+```
+
+# Several radii
+
+The scale of an interaction is rarely known in advance. Give several radii and `spicy()` combines them with a
+max-T test that accounts for the strong correlation between nested radii (`combine = "cauchy"` is an
+alternative). The reported effect is the one at the radius with the strongest evidence.
+
+```{r radii}
+resR <- spicy(cells, condition = "ER", subject = "metabricId", r = c(10, 25, 50),
+              from = c("T cells", "B cells"), to = c("T cells", "B cells", "HR+ CK7-"))
+resR$cellResults[, c("from", "to", "r", "excess_difference", "p_value", "p_value_best_radius")]
+```
+
+```{r radii-plot}
+ggplot(resR$radiusResults, aes(r, excess_difference, colour = paste(from, "->", to))) +
+  geom_hline(yintercept = 0, linetype = 2, colour = "grey50") +
+  geom_line() + geom_point() +
+  labs(x = "radius (µm)", y = "difference in excess (ER+ minus ER-)", colour = "pair") +
+  theme_classic()
+```
+
+# Survival
+
+A `Surv` column as the condition tests whether co-localisation is associated with outcome. The test regresses
+each patient's excess on the martingale residual of a Cox model without spatial terms (a score test that does
+not need the Cox model to hold). It also reports the hazard ratio per standard deviation of the
+patient-level excess, estimated after shrinkage of each patient's excess towards the mean.
+
+```{r survival}
+cells$RFS <- Surv(cells$timeRFS, cells$eventRFS)
+resS <- spicy(cells, condition = "RFS", subject = "metabricId", r = 25, covariates = "Age.At.Diagnosis")
+head(resS$cellResults[order(resS$cellResults$p_value),
+  c("from", "to", "score_coefficient", "p_value", "p_adj", "hazard_ratio_sd", "hr_p_value")])
+```
+
+# Options
+
+- `k = 10` counts the 10 nearest neighbours instead of a radius.
+- `variance = "hartung_knapp"` is for studies with very few patients per group. It uses the model-based variance,
+  floored at CR2, on *m* − 2 degrees of freedom.
+- `labelClustering = FALSE` turns off the inflation of the within-image variance for target cells that cluster
+  among themselves (on by default).
+- `ref` chooses the reference condition.
+- `cores` sets the number of threads.
+
+```{r knn}
+resK <- spicy(cells, condition = "ER", subject = "metabricId", k = 10, from = "T cells", to = c("HR+ CK7-", "B cells"))
+resK$cellResults[, c("from", "to", "excess_difference", "p_value")]
+```
+
+# The original image-level test
+
+`method = "image"` runs the original spicyR test: a per-image summary of the L function of each pair, compared
+between conditions with a weighted linear mixed model with a random intercept for each patient
+[@canete2022spicyr]. It remains useful with alternative per-image statistics (`alternateResult`), for example
+from Kontextual. See the vignette "The original image-level test in spicyR".
+
+```{r image-method}
+resImg <- spicy(cells, condition = "ER", subject = "metabricId", method = "image",
+                from = "T cells", to = c("HR+ CK7-", "B cells"))
+topPairs(resImg)
+```
+
+# Python
+
+The Python package [`spicyr`](https://github.com/SydneyBioX/spicyr-py) runs the same analysis from SpatialData,
+AnnData or pandas objects, on the same C++ core. The two packages give the same results to numerical precision.
+
+```{python, eval = FALSE}
+import spicyr
+res = spicyr.spicy(adata, condition="ER", subject="metabricId", r=25)
+res.top_pairs(10)
+```
+
+# Session information
+
+```{r session}
+sessionInfo()
+```
+
+# References

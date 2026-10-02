@@ -1,5 +1,5 @@
 ---
-title: "Spatial Linear and Mixed-Effects Modelling with spicyR"
+title: "The original image-level test in spicyR"
 date: "`r BiocStyle::doc_date()`"
 params:
   test: FALSE
@@ -21,11 +21,12 @@ author:
     - &WIMR Westmead Institute for Medical Research, University of Sydney, Australia
     - School of Mathematics and Statistics, University of Sydney, Australia
 package: "`r BiocStyle::pkg_ver('spicyR')`"
-abstract: > 
-  Perform linear and mixed-effects models to assess and visualise changes 
-  in cell localisation across disease conditions.
+abstract: >
+  The original spicyR test, available as spicy(method = "image"): per-image L-function summaries
+  compared between conditions with weighted linear and mixed-effects models. Since spicyR 2.0 the
+  default is spicyR Cell; see the main vignette.
 vignette: >
-  %\VignetteIndexEntry{"Spatial Linear and Mixed-Effects Modelling with spicy"}
+  %\VignetteIndexEntry{The original image-level test (method = "image")}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 output: 
@@ -127,7 +128,7 @@ Firstly, we can test whether one cell type tends to be more localised with anoth
 In this example, we want to see whether or not neutrophils (`to`) tend to be found around CD8 T cells (`from`) in compartmentalised tumours compared to cold tumours. Given that there are 3 conditions, we can specify the desired conditions by setting the order of our `condition` factor. `spicy` will choose the first level of the factor as the base condition and the second level as the comparison condition. `spicy` will also naturally coerce the `condition` column into a factor if it is not already a factor. The column containing cell type annotations can be specified using the `cellType` argument. By default, `spicy` uses the column named `cellType` in the `SpatialExperiment` object.
 
 ```{r}
-spicyTestPair <- spicy(
+spicyTestPair <- spicy(method = "image", 
   kerenSPE,
   condition = "tumour_type",
   from = "CD8_T_cell",
@@ -149,7 +150,7 @@ types by excluding the `from` and `to` parameters in `spicy()`.
 
 
 ```{r}
-spicyTest <- spicy(
+spicyTest <- spicy(method = "image", 
   kerenSPE,
   condition = "tumour_type"
 )
@@ -212,7 +213,7 @@ head(pairAbundances["B_cell__B_cell"])
 The custom distance or abundance metrics can then be included in the analysis with the `alternateResult` parameter. The `Statial` package contains other custom distance metrics which can be used with `spicy`.
 
 ```{r}
-spicyTestColPairs <- spicy(
+spicyTestColPairs <- spicy(method = "image", 
   kerenSPE,
   condition = "tumour_type",
   alternateResult = pairAbundances,
@@ -245,7 +246,7 @@ We can then perform survival analysis using the `spicy` function by specifying `
 
 ```{r}
 # Running survival analysis
-spicySurvival = spicy(kerenSPE,
+spicySurvival = spicy(method = "image", kerenSPE,
                       condition = "survival")
 
 # top 10 significant pairs
@@ -296,7 +297,7 @@ Plotting image 24 shows that the supposed co-localisation occurs due to the dens
 `spicyR` supports mixed effects modelling when multiple images are obtained for each subject. In this case, `subject` is treated as a random effect and `condition` is treated as a fixed effect. To perform mixed effects modelling, we can specify the `subject` parameter in the `spicy` function.
 
 ```{r eval=FALSE}
-spicyMixedTest <- spicy(
+spicyMixedTest <- spicy(method = "image", 
   diabetesData,
   condition = "stage",
   subject = "case"

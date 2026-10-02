@@ -1,3 +1,36 @@
+CHANGES IN VERSION 1.99.0 (spicyR 2.0)
+--------------------------------------
+
+MAJOR CHANGES
+
+    o spicy() now runs spicyR Cell by default (method = "cell"): for each pair from -> to,
+      the excess number of `to` cells within r of each `from` cell beyond random labelling of
+      the observed cells, combined over images and patients by a frailty GEE and tested with a
+      CR2 variance on Satterthwaite degrees of freedom, with patients (`subject`) as the units.
+      The original test is available with method = "image" (and is chosen automatically when
+      `alternateResult` or `sigma` is given).
+
+    o The direction of a pair follows the spatial-statistics convention for cross-type
+      statistics: `from` is the type whose neighbourhoods are examined, `to` the type counted.
+      spicy_glm(effect = "excess") in 1.99.0 development versions counted the other way.
+
+NEW FEATURES
+
+    o Every result also reports the difference at equal availability of the counted type
+      (adjusted for its share of all cells): columns adjusted_*.
+
+    o Two or more conditions (each level against the reference), image- or patient-level
+      covariates, k nearest neighbours (k), several radii combined by max-T with the sandwich
+      correlation or by the Cauchy combination (r = c(...), combine), Hartung-Knapp variance for
+      very few patients, and survival outcomes (a Surv condition: score test and hazard ratio).
+
+    o The statistics run in a C++17 core shared verbatim with the Python twin, spicyr
+      (https://github.com/SydneyBioX/spicyr-py), which reproduces spicyR's results.
+
+    o Much faster: every ordered pair of 22 cell types from 400,000 cells (METABRIC) in seconds.
+
+    o Far fewer dependencies.
+
 CHANGES IN VERSION 1.18.0
 -------------------------
 
