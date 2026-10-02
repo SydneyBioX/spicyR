@@ -42,64 +42,48 @@
 #' )
 #'
 #' @export
-#' @importFrom SingleCellExperiment colPair colData
-#' @importFrom tibble rownames_to_column column_to_rownames
 convPairs <- function(cells,
                       colPair,
                       imageID = "imageID",
                       cellType = "cellType") {
-  all_pairs <- SingleCellExperiment::colPair(cells, colPair) |>
-    dplyr::as_tibble() |>
-    # join the `from` cellType
-    dplyr::left_join(
-      SummarizedExperiment::colData(cells) |>
-        dplyr::as_tibble() |>
-        dplyr::select(imageID, cellType) |>
-        tibble::rownames_to_column() |>
-        dplyr::mutate(rowname = as.integer(rowname)),
-      by = c("from" = "rowname")
-    ) |>
-    dplyr::rename(cellType_from = cellType) |>
-    # join the `to` cellType
-    dplyr::left_join(
-      SummarizedExperiment::colData(cells) |>
-        dplyr::as_tibble() |>
-        dplyr::select(cellType) |>
-        tibble::rownames_to_column() |>
-        dplyr::mutate(rowname = as.integer(rowname)),
-      by = c("to" = "rowname")
-    ) |>
-    dplyr::rename(cellType_to = cellType) |>
-    # count the the number of `to` cellType associated with `from` cellTypes
-    dplyr::mutate(one = 1L) |>
-    dplyr::group_by(imageID, cellType_from, cellType_to) |>
-    dplyr::summarise(n_close = sum(one), .groups = "drop") |>
-    # join the total number of each cellType (within sample) into the dataframe
-    dplyr::left_join(
-      SummarizedExperiment::colData(cells) |>
-        dplyr::as_tibble() |>
-        dplyr::select(imageID, cellType) |>
-        dplyr::group_by(imageID, cellType) |>
-        dplyr::count(),
-      by = c("cellType_from" = cellType, "imageID" = imageID)
-    ) |>
-    # calculate the association
-    dplyr::mutate(association = n_close / n) |>
-    dplyr::select(-n_close, -n) |>
-    # wrangle the data into the correct format for spicy
-    dplyr::mutate(
-      test = paste(cellType_from, cellType_to, sep = "__")
-    ) |>
-    dplyr::select(imageID, test, association) |>
-    tidyr::pivot_wider(
-      names_from = test, values_from = association, values_fill = 0
-    ) |>
-    tibble::column_to_rownames(imageID)
+  .need("SingleCellExperiment", "for convPairs()")
+  hits <- SingleCellExperiment::colPair(cells, colPair)
+  from <- S4Vectors::from(hits)
+  to <- S4Vectors::to(hits)
+  cd <- as.data.frame(SummarizedExperiment::colData(cells))
+  img <- cd[[imageID]]
+  type <- cd[[cellType]]
 
+  # order of groups as dplyr::group_by() sorts them: factor levels, else C-locale order
+  sortKey <- function(v) {
+    if (is.factor(v)) as.integer(v) else match(v, sort(unique(v), method = "radix"))
+  }
+
+  # number of `to` cells of each type next to `from` cells of each type, per image
+  edges <- data.frame(imageID = img[from], cellType_from = type[from], cellType_to = type[to])
+  key <- paste(sortKey(edges$imageID), sortKey(edges$cellType_from), sortKey(edges$cellType_to), sep = "\r")
+  first <- !duplicated(key)
+  groups <- edges[first, , drop = FALSE]
+  groups$n_close <- as.vector(table(factor(key, levels = key[first])))
+  groups <- groups[order(sortKey(groups$imageID), sortKey(groups$cellType_from), sortKey(groups$cellType_to),
+                         method = "radix"), , drop = FALSE]
+
+  # divided by the number of `from` cells in the image
+  nType <- table(paste(img, type, sep = "\r"))
+  groups$association <- groups$n_close /
+    as.vector(nType[paste(groups$imageID, groups$cellType_from, sep = "\r")])
+  groups$test <- paste(groups$cellType_from, groups$cellType_to, sep = "__")
+
+  # wide: one row per image, one column per pair, absent pairs 0
+  rows <- unique(as.character(groups$imageID))
+  tests <- unique(groups$test)
+  m <- matrix(0, length(rows), length(tests), dimnames = list(rows, tests))
+  m[cbind(match(as.character(groups$imageID), rows), match(groups$test, tests))] <- groups$association
+  all_pairs <- as.data.frame(m, check.names = FALSE)
 
   # Hot fix for spicy input when no cell type interactions exist for a pairwise
   # relation.
-  vector <- cells$cellType |> unique()
+  vector <- unique(type)
 
   pairwise_vector <- c()
 
@@ -109,7 +93,7 @@ convPairs <- function(cells,
     }
   }
 
-  tmp <- dplyr::setdiff(pairwise_vector, colnames(all_pairs))
+  tmp <- setdiff(pairwise_vector, colnames(all_pairs))
   df <- data.frame(matrix(0, nrow = nrow(all_pairs), ncol = length(tmp)))
   colnames(df) <- tmp
 

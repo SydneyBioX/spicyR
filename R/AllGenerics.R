@@ -80,9 +80,8 @@ setMethod("topPairs", "SpicyResults", function(x,
         }
     }
     if (!is.null(figures) && is.numeric(figures)) {
-        results <- results |> dplyr::mutate(
-            dplyr::across(is.numeric, signif, digits = figures)
-        )
+        isNum <- vapply(results, is.numeric, logical(1))
+        results[isNum] <- lapply(results[isNum], signif, digits = figures)
     }
     results
 })

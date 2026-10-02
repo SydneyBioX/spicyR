@@ -46,8 +46,8 @@
 #' @param k Number of nearest neighbours to search per reference cell.
 #' @param from The reference cell types. Defaults to all cell types.
 #' @param to The target cell types. Defaults to all cell types.
-#' @param cores Number of cores or a BiocParallelParam object for parallel
-#'     processing over images.
+#' @param cores Number of threads for processing images in parallel (a
+#'     BiocParallelParam object is also accepted, for backward compatibility).
 #' @param includeZeroCells
 #'     If FALSE (default), image-pairs where the reference or target cell type is
 #'     absent are returned as NA. If TRUE, image-pairs whose reference type is
@@ -55,7 +55,8 @@
 #'     at \eqn{\hat\pi_j = 0}, i.e. \eqn{v_j = 0}. Pairs whose target type is
 #'     entirely absent (\eqn{p_{0,j} = 0}) stay NA regardless, since the ratio is
 #'     undefined.
-#' @param BPPARAM A BiocParallelParam object. Overrides \code{cores}.
+#' @param BPPARAM A BiocParallelParam object; its number of workers overrides
+#'     \code{cores}. Kept for backward compatibility.
 #'
 #' @return A matrix with one row per image and one column per \code{from__to}
 #'     cell-type pair, containing the observed/expected proportion ratio.
@@ -73,7 +74,6 @@
 #' }
 #'
 #' @export
-#' @importFrom BiocParallel bpnworkers
 getPairwiseProp <- function(
     cells,
     imageID = "imageID",
@@ -90,17 +90,11 @@ getPairwiseProp <- function(
   }
   k <- as.integer(k)
 
-  if (is(cells, "SummarizedExperiment") || is.data.frame(cells)) {
+  if (.is_class(cells, "SummarizedExperiment") || is.data.frame(cells)) {
     cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE)
   }
 
-  nThreads <- if (!is.null(BPPARAM)) {
-    BiocParallel::bpnworkers(BPPARAM)
-  } else if (is.numeric(cores)) {
-    cores
-  } else {
-    BiocParallel::bpnworkers(cores)
-  }
+  nThreads <- .n_workers(cores, BPPARAM)
 
   # Labels in order of first appearance, as spicy() builds them, so the
   # returned matrix drops into spicy(..., alternateResult=) without reordering.

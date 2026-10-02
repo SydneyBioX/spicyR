@@ -1,4 +1,5 @@
 test_that("Data formatting works of different formats.", {
+  skip_if_not_installed("SpatialExperiment")
   diabetesData_SPE <- SpatialExperiment::SpatialExperiment(
     diabetesData,
     colData = SummarizedExperiment::colData(diabetesData)
@@ -21,9 +22,8 @@ test_that("Data formatting works of different formats.", {
   )
   expect_no_error(
     .format_data(
-      SummarizedExperiment::colData(diabetesData) %>%
-        as.data.frame() %>%
-        select(-cellID, -imageCellID),
+      subset(as.data.frame(SummarizedExperiment::colData(diabetesData)),
+             select = -c(cellID, imageCellID)),
       "imageID", "cellType", c("x", "y"), FALSE
     )
   )

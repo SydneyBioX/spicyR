@@ -1,9 +1,5 @@
 ## The original spicyR test (method = "image"): a per-image L-function summary per pair, compared between
 ## conditions by a weighted linear or mixed model (Canete et al. 2022). Called by spicy(); not exported.
-#' @importFrom scam scam
-#' @importFrom rlang .data
-#' @importFrom tibble column_to_rownames
-#' @importFrom lifecycle deprecate_soft
 #' @noRd
 .spicyImage <- function(cells,
                   condition,
@@ -38,23 +34,24 @@
   
   user_args = as.list(match.call())[-1]
   user_vals = lapply(user_args, eval, envir = parent.frame())
-  argumentChecks("spicy", user_vals)
-  
-  if (is.null(BPPARAM)) {
-    # Built on first use: making a MulticoreParam takes ~0.2 s, and only
-    # per-pair weights and survival models use it.
-    delayedAssign("BPPARAM", {
-      if (cores > 1 && .Platform$OS.type != "windows") {
-        BiocParallel::MulticoreParam(workers = cores)
-      } else if (cores > 1) {
-        BiocParallel::SnowParam(workers = cores)
-      } else {
-        BiocParallel::SerialParam()
-      }
-    })
+  # spicy() always passes imageID, cellType, spatialCoords, r and cores on; a deprecated argument given
+  # with its replacement at the default takes over.
+  defaults <- list(imageID = "imageID", cellType = "cellType", spatialCoords = c("x", "y"), r = NULL, cores = 1)
+  deprecated <- list(imageID = "imageIDCol", cellType = "cellTypeCol", spatialCoords = "spatialCoordCols",
+                     r = "Rs", cores = c("nCores", "BPPARAM"))
+  for (arg in names(deprecated)) {
+    if (any(deprecated[[arg]] %in% names(user_vals)) && arg %in% names(user_vals) &&
+        identical(user_vals[[arg]], defaults[[arg]])) {
+      user_vals[arg] <- NULL
+    }
   }
-  
-  if (is(cells, "SummarizedExperiment") || is(cells, "data.frame")) {
+  argumentChecks("spicy", user_vals)
+
+  # Workers for the per-pair weights and survival models (BiocParallel params are accepted for
+  # backward compatibility and converted to a worker count).
+  cores <- .n_workers(cores, BPPARAM)
+
+  if (.is_class(cells, "SummarizedExperiment") || is.data.frame(cells)) {
     cells <- .format_data(
       cells, imageID, cellType, spatialCoords, verbose
     )
@@ -100,7 +97,7 @@
       conditionVector <- relevel(conditionVector, ref = levels(conditionVector)[1])
       
       if (!wasFactor || TRUE) {  
-        cli::cli_inform(
+        message(
           paste0(
             if (!wasFactor) "Coercing condition into factor. " else "",
             "Dropping unused levels. Using ",
@@ -168,13 +165,8 @@
       
       labels <- names(pairwiseAssoc)
       
-      comparisons <- data.frame(labels) |>
-        tidyr::separate(
-          col = labels,
-          into = c("from", "to", "parent"),
-          sep = "__"
-        ) |>
-        dplyr::mutate(labels = paste(.data$from, .data$to, .data$parent, sep = "__"))
+      comparisons <- .split_labels(labels, c("from", "to", "parent"))
+      comparisons$labels <- paste(comparisons$from, comparisons$to, comparisons$parent, sep = "__")
       
       m1 <- comparisons$from
       m2 <- comparisons$to
@@ -186,7 +178,7 @@
   
   
   weightFunction <- getWeightFunction(
-    pairwiseAssoc, nCells, m1, m2, BPPARAM, weights, weightsByPair, weightFactor,
+    pairwiseAssoc, nCells, m1, m2, cores, weights, weightsByPair, weightFactor,
     weightZThreshold
   )
   
@@ -208,7 +200,7 @@
       covariates = covariates,
       subject = subject,
       weights = weightFunction,
-      BPPARAM = BPPARAM
+      BPPARAM = cores
     )
     
     spicyResult$survivalOutcome = conditionVector
@@ -220,7 +212,7 @@
   ## Linear model
   if (!inherits(conditionVector, "Surv") && is.null(subject) && !is.null(condition)) {
     if (verbose) {
-      cli::cli_inform("Testing for spatial differences across conditions")
+      message("Testing for spatial differences across conditions")
     }
 
     MoreArgs2 <-
@@ -243,7 +235,7 @@
       SIMPLIFY = FALSE
     )
 
-    lmResult <- cleanLM(linearModels, BPPARAM = BPPARAM)
+    lmResult <- cleanLM(linearModels)
     spicyResult = append(spicyResult, lmResult)
   }
 
@@ -251,7 +243,7 @@
   ## Mixed effects model
   if (!inherits(conditionVector, "Surv") && (!is.null(subject)) && !is.null(condition)) {
     if (verbose) {
-      cli::cli_inform(
+      message(
         "Testing for spatial differences across conditions accounting for multiple images per subject" # nolint
       )
     }
@@ -278,7 +270,7 @@
     )
 
 
-    melmResult <- cleanMEM(mixed.lmer, BPPARAM = BPPARAM)
+    melmResult <- cleanMEM(mixed.lmer)
     spicyResult = append(spicyResult, melmResult)
   }
 
@@ -307,8 +299,7 @@
 
 
 
-#' @importFrom dplyr bind_rows
-cleanLM <- function(linearModels, BPPARAM) {
+cleanLM <- function(linearModels, BPPARAM = NULL) {
   tLm <- lapply(linearModels, function(LM) {
     if (is(LM, "lm")) {
       coef <- as.data.frame(t(summary(LM)$coef))
@@ -326,7 +317,7 @@ cleanLM <- function(linearModels, BPPARAM) {
   df <- do.call("rbind", tLm)
 
   df <- suppressWarnings(apply(df, 2, function(x) {
-    dplyr::bind_rows(x)
+    .bind_rows(x)
   }))
 
   df <- lapply(df, function(x) {
@@ -337,8 +328,7 @@ cleanLM <- function(linearModels, BPPARAM) {
 }
 
 
-#' @importFrom dplyr bind_rows
-cleanMEM <- function(mixed.lmer, BPPARAM) {
+cleanMEM <- function(mixed.lmer, BPPARAM = NULL) {
   tLmer <- lapply(mixed.lmer, function(lmer) {
     if (is.matrix(lmer)) {
       coef <- as.data.frame(t(lmer))
@@ -360,7 +350,7 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
   df <- do.call("rbind", tLmer)
 
   df <- suppressWarnings(apply(df, 2, function(x) {
-    dplyr::bind_rows(x)
+    .bind_rows(x)
   }))
 
   df <- lapply(df, function(x) {
@@ -405,8 +395,6 @@ cleanMEM <- function(mixed.lmer, BPPARAM) {
 #' ]
 #' pairAssoc <- getPairwise(selected_cells)
 #' @export
-#' @importFrom BiocParallel bplapply
-#' @importFrom BiocParallel MulticoreParam
 getPairwise <- function(
     cells,
     imageID = "imageID",
@@ -445,38 +433,28 @@ getPairwise <- function(
   })
 
   
-  if (is(cells, "SummarizedExperiment")) {
+  if (.is_class(cells, "SummarizedExperiment")) {
     cells <- .format_data(
       cells, imageID, cellType, spatialCoords, FALSE
     )
   }
-    
+
+  nThreads <- .n_workers(cores, BPPARAM)
+
   # Square and convex windows without density weighting: one threaded C++
   # call for all images, with `cores` threads.
   lev <- levels(cells$cellType)
   if (is.null(sigma) && window %in% c("square", "convex") && !is.null(lev) &&
       all(c(from, to) %in% lev)) {
-    nThreads <- if (!is.null(BPPARAM)) {
-      BiocParallel::bpnworkers(BPPARAM)
-    } else if (is.numeric(cores)) {
-      cores
-    } else {
-      BiocParallel::bpnworkers(cores)
-    }
     return(getPairwiseThreaded(
       cells, Rs, from, to, window, edgeCorrect, includeZeroCells, nThreads
     ))
   }
 
-  if (is.null(BPPARAM)) {
-    if (cores > 1 && .Platform$OS.type != "windows") {
-      BPPARAM = BiocParallel::MulticoreParam(workers = cores)
-    } else if (cores > 1) {
-      BPPARAM = BiocParallel::SnowParam(workers = cores)
-    } else {
-      BPPARAM = BiocParallel::SerialParam()
-    } 
-  }  
+  # Inhomogeneous (sigma) or concave windows: per image in R, with spatstat.
+  .need("spatstat.geom", "for `sigma` (inhomogeneous L) or concave windows")
+  if (!is.null(sigma)) .need("spatstat.explore", "for `sigma` (inhomogeneous L)")
+  if (window == "concave") .need("concaveman", "for concave windows")
 
   cells2 <- getCellSummary(cells, bind = FALSE)
 
@@ -484,7 +462,7 @@ getPairwise <- function(
   if (is.null(from)) from <- levels(cells2$cellType)
   if (is.null(to)) to <- levels(cells2$cellType)
 
-  pairwiseVals <- BiocParallel::bplapply(cells2,
+  pairwiseVals <- .par_lapply(cells2,
     inhomLPair,
     Rs = Rs,
     sigma = sigma,
@@ -495,7 +473,7 @@ getPairwise <- function(
     to = to,
     edgeCorrect = edgeCorrect,
     includeZeroCells = includeZeroCells,
-    BPPARAM = BPPARAM
+    cores = nThreads
   )
   return(do.call("rbind", pairwiseVals))
 
@@ -542,13 +520,13 @@ getPairwiseThreaded <- function(cells, Rs, from, to, window, edgeCorrect,
 #' data("diabetesData")
 #' prop <- getProp(diabetesData)
 #' @export
-#' @importFrom SummarizedExperiment colData
 getProp <- function(cells, feature = "cellType", imageID = "imageID") {
   if (is.data.frame(cells)) {
     df <- cells[, c(imageID, feature)]
   }
 
-  if (is(cells, "SingleCellExperiment") || is(cells, "SpatialExperiment")) {
+  if (.is_class(cells, "SummarizedExperiment")) {
+    .need("SummarizedExperiment", "to use SummarizedExperiment-based inputs")
     df <- as.data.frame(
       SummarizedExperiment::colData(cells)
     )[, c(imageID, feature)]
@@ -581,7 +559,6 @@ setMethod(
   }
 )
 
-#' @importFrom lmerTest lmer
 #' @importFrom stats predict weights
 #' @importFrom methods is
 spatialMEM <-
@@ -635,6 +612,8 @@ spatialMEM <-
     }, error = function(e) NULL)
     if (!is.null(tab)) return(tab)
 
+    # Fallback for the cases the C++ fit does not cover.
+    .need("lmerTest", "for this mixed model (the built-in fit could not be used)")
     mixed.lmer <- suppressWarnings(suppressMessages(tryCatch(
       {
         lmerTest::lmer(stats::formula(formula),
@@ -736,9 +715,6 @@ spatialLM <-
   }
 
 #' @importFrom survival coxph
-#' @importFrom dplyr bind_rows mutate rename select arrange across where 
-#' @importFrom coxme coxme
-#' @importFrom BiocParallel bplapply SerialParam
 spatialSurv <- function(measurementMat,
                         condition,
                         pheno,
@@ -748,7 +724,8 @@ spatialSurv <- function(measurementMat,
                         remove = NULL,
                         BPPARAM = NULL) {
   
-  result <- bplapply(colnames(measurementMat), function(test) {
+  if (!is.null(subject)) .need("coxme", "for survival models with a `subject`")
+  result <- .par_lapply(colnames(measurementMat), function(test) {
     measurementCol <- measurementMat[, test]
     ind <- !(measurementCol %in% remove)
     
@@ -783,8 +760,8 @@ spatialSurv <- function(measurementMat,
     result <- summary(fit)$coefficients["measurementCol", c("coef", "se(coef)", "Pr(>|z|)")]
   } else{
     # Drop factors for any factor columns in spatialData
-    spatialData = spatialData %>%
-      mutate(across(where(is.factor), ~ droplevels(.)))
+    isFactor <- vapply(spatialData, is.factor, logical(1))
+    spatialData[isFactor] <- lapply(spatialData[isFactor], droplevels)
     
     # Mixed effects survival
     fit <- coxme::coxme(formula, data = spatialData, weights = spatialData$weights, subset = ind)
@@ -802,14 +779,17 @@ spatialSurv <- function(measurementMat,
   }
   
   return(result)
-  }, BPPARAM = BPPARAM)
+  }, cores = .n_workers(BPPARAM))
 
-result <- result |>
-  dplyr::bind_rows() |>
-  dplyr::mutate(test = colnames(measurementMat)) |>
-  dplyr::rename("se.coef" = "se(coef)", "p.value" = "Pr(>|z|)") |>
-  dplyr::select(test, coef, se.coef, p.value) |>
-  dplyr::arrange(p.value)
+result <- .bind_rows(result)
+result <- data.frame(
+  test = colnames(measurementMat),
+  coef = result[["coef"]],
+  se.coef = result[["se(coef)"]],
+  p.value = result[["Pr(>|z|)"]]
+)
+result <- result[order(result$p.value), , drop = FALSE]
+rownames(result) <- NULL
 
 return(result)
 }
@@ -822,8 +802,6 @@ return(result)
 ###########################
 
 
-#' @importFrom spatstat.geom owin convexhull ppp
-#' @importFrom concaveman concaveman
 makeWindow <-
   function(data,
            window = "square",
@@ -837,7 +815,7 @@ makeWindow <-
       ow <- spatstat.geom::convexhull(p)
     }
     if (window == "concave") {
-      cli::cli_inform("Concave windows are temperamental. Try choosing values of window.length > and < 1 if you have problems.") # nolint
+      message("Concave windows are temperamental. Try choosing values of window.length > and < 1 if you have problems.") # nolint
       if (is.null(window.length)) {
         window.length <- (max(data$x) - min(data$x)) / 20
       } else {
@@ -874,8 +852,6 @@ makeWindow <-
 
 
 
-#' @importFrom spatstat.explore density.ppp
-#' @importFrom spatstat.geom nearest.valid.pixel area ppp
 inhomLPair <- function(data,
                        Rs = c(20, 50, 100),
                        sigma = NULL,
@@ -967,7 +943,6 @@ inhomLPair <- function(data,
 
 
 
-#' @importFrom spatstat.geom union.owin border inside.owin
 #' @useDynLib spicyR, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 borderEdge <- function(X, maxD) {
@@ -993,7 +968,6 @@ borderEdge <- function(X, maxD) {
   e
 }
 
-#' @importFrom scam scam
 #' @importFrom stats quantile
 calcWeights <- function(rS, M1, M2, nCells, weightFactor, weightZThreshold = 0.1) {
   count1 <- as.vector(nCells[, M1])
@@ -1013,6 +987,8 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor, weightZThreshold = 0.1
     log10(as.numeric(count1) + 1), log10(as.numeric(count2) + 1)
   )
   if (is.null(z1)) {
+    # Fallback when the C++ fit fails.
+    .need("scam", "for the weight model (the built-in fit failed)")
     weightFunction <- scam::scam(
       log10(resSqToWeight + 1) ~ s(log10(count1ToWeight + 1), bs = "mpd") + s(log10(count2ToWeight + 1), bs = "mpd") # nolint
     ) # , optimizer = "nlm.fd")
@@ -1129,7 +1105,6 @@ mpdWeightFit <- function(y, x1, x2, x1new, x2new) {
 }
 
 
-#' @importFrom BiocParallel bpmapply
 getWeightFunction <- function(
     pairwiseAssoc,
     nCells,
@@ -1161,10 +1136,11 @@ getWeightFunction <- function(
   })
 
   if (weightsByPair) {
-    weightFunction <- BiocParallel::bpmapply(
+    weightFunction <- .par_mapply(
       calcWeights,
-      rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2, BPPARAM = BPPARAM,
-      MoreArgs = list(nCells = nCells, weightFactor, weightZThreshold), SIMPLIFY = FALSE
+      rS = as.list(as.data.frame(resSq)), M1 = m1, M2 = m2,
+      MoreArgs = list(nCells = nCells, weightFactor = weightFactor, weightZThreshold = weightZThreshold),
+      SIMPLIFY = FALSE, cores = .n_workers(BPPARAM)
     )
   } else {
     weightFunction <- calcWeights(m1, m2, rS = resSq, nCells, weightFactor, weightZThreshold)
@@ -1178,8 +1154,6 @@ getWeightFunction <- function(
 
 
 
-#' @importFrom SummarizedExperiment colData
-#' @importFrom SpatialExperiment spatialCoords
 #' @importFrom methods is
 prepCellSummary <- function(
     cells, spatialCoords, cellType, imageID, bind = FALSE) {
@@ -1216,18 +1190,15 @@ prepCellSummary <- function(
 #' condition <- condition[condition %in% c("Long-duration", "Onset")]
 #' test <- colTest(props[names(condition), ], condition)
 #' @export
-#' @importFrom SummarizedExperiment colData
-#' @importFrom SingleCellExperiment SingleCellExperiment
 #' @importFrom stats wilcox.test t.test
 #' @importFrom S4Vectors as.data.frame
-#' @importFrom ClassifyR colCoxTests
 colTest <- function(
     df, 
     condition, 
     type = NULL, 
     feature = NULL, 
     imageID = "imageID") {
-  if (is(df, "SingleCellExperiment") || is(df, "SpatialExperiment")) {
+  if (.is_class(df, "SingleCellExperiment") || .is_class(df, "SpatialExperiment")) {
     if (is.null(feature)) stop("'feature' is still null")
 
     if (is.null(type) && length(condition) == 1) {
@@ -1238,7 +1209,7 @@ colTest <- function(
       stop("Invalid nuber of columns in condition. Must 1 or 2 (survival).")
     }
 
-    x <- df@colData
+    x <- .col_data(df)
     x <- x[, c(imageID, condition)]
     x <- unique(x)
     condition <- x[[condition]]
@@ -1263,7 +1234,7 @@ colTest <- function(
   }
 
   if (type == "survival") {
-    test <- ClassifyR::colCoxTests(df, condition)
+    test <- colCoxTests(df, condition)
     test <- signif(test, 2)
     names(test)[names(test) == "p.value"] <- "pval"
   } else {
@@ -1281,6 +1252,32 @@ colTest <- function(
   test$cluster <- rownames(test)
   test <- test[order(test$pval), ]
   test
+}
+
+# A Cox model (Efron ties, Wald test) of `outcome` (Surv or a time/event matrix) on each column of
+# `measurements`, as ClassifyR::colCoxTests() gave it: a data.frame of coef, se.coef and p.value with
+# one row per column. Uses the package's C++ Cox fit, with survival::coxph() if that fails.
+colCoxTests <- function(measurements, outcome) {
+  measurements <- as.matrix(measurements)
+  outcome <- as.matrix(outcome)
+  time <- as.numeric(outcome[, 1])
+  event <- as.integer(outcome[, 2])
+  out <- t(vapply(seq_len(ncol(measurements)), function(j) {
+    x <- as.numeric(measurements[, j])
+    ok <- stats::complete.cases(time, event, x)
+    fit <- tryCatch(stats_cox_fit(time[ok], event[ok], matrix(x[ok], ncol = 1)), error = function(e) NULL)
+    if (!is.null(fit) && isTRUE(fit$ok) && is.finite(fit$se[1])) {
+      return(c(fit$beta[1], fit$se[1], fit$p[1]))
+    }
+    cf <- tryCatch(
+      summary(survival::coxph(survival::Surv(time[ok], event[ok]) ~ x[ok]))$coefficients[1, c(1, 3, 5)],
+      error = function(e) rep(NA_real_, 3)
+    )
+    as.numeric(cf)
+  }, numeric(3)))
+  output <- data.frame(coef = out[, 1], se.coef = out[, 2], p.value = out[, 3])
+  rownames(output) <- colnames(measurements)
+  output
 }
 
 #' Produces a dataframe showing L-function metric for each imageID entry.

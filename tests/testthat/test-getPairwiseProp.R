@@ -24,6 +24,7 @@ propReference <- function(df, k, from, to, includeZeroCells) {
 }
 
 test_that("getPairwiseProp() matches the per-image R computation", {
+  skip_if_not_installed("spatstat.geom")
   cd <- as.data.frame(SummarizedExperiment::colData(diabetesData))
   cd <- cd[cd$imageID %in% unique(cd$imageID)[1:6], ]
   df <- data.frame(imageID = cd$imageID, cellType = cd$cellType, x = cd$x, y = cd$y)
