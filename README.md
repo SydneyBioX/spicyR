@@ -1,5 +1,9 @@
 # spicyR <img src="inst/spicyR.png" align="right" width="140" alt="spicyR hex sticker" />
 
+![R](https://img.shields.io/badge/R-%E2%89%A54.5-blue)
+![Bioconductor](https://img.shields.io/badge/Bioconductor-2.0%20in%20development-orange)
+![licence](https://img.shields.io/badge/licence-GPL%20(%E2%89%A52)-lightgrey)
+
 **Test whether cell types co-localise differently between groups of patients.**
 
 Do T cells gather around tumour cells more in one group of patients than in another? spicyR tests this for every
@@ -7,7 +11,8 @@ pair of cell types in imaging and spatial transcriptomics data, comparing groups
 co-localisation to survival. For each image it counts the cells of one type within a radius of each cell of another,
 and compares that count with what you would expect if the cells had been labelled at random, using the cells
 actually present. Holes, air spaces and uneven cell density therefore do not by themselves create a signal.
-Patients, not images or cells, are the units of the test.
+Patients, not images or cells, are the units of the test. It needs the type and position of every cell (for
+example imaging mass cytometry, CODEX, MIBI, Xenium or CosMx), not spot-based data.
 
 ![Left, a tumour cell with a 25 µm circle and the T cells inside it. Right, box plots of the extra T cells per tumour cell, one point per patient, higher in ER-positive than ER-negative tumours.](man/figures/spicyR_overview.png)
 
@@ -18,7 +23,7 @@ library(spicyR)
 
 spe <- SpatialDatasets::spe_Ali_2020()                          # breast cancer imaging mass cytometry
 spe <- spe[, spe$ER.Status %in% c("neg", "pos")]
-res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25,
+res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25,   # reference group: "neg"
              imageID = "file_id", cellType = "description")
 topPairs(res)                                       # the most significant pairs
 signifPlot(res)                                     # every pair at a glance

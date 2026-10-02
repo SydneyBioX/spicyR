@@ -13,5 +13,4 @@ bibentry(bibtype = "Article",
          pages = "3099--3105",
          journal = "Bioinformatics",
          doi = "10.1093/bioinformatics/btac268",
-         url = "https://doi.org/10.1093/bioinformatics/btac268",
          header = "To cite spicyR in publications please use:")
