@@ -19,10 +19,15 @@ Every pair of cell types, between conditions or with survival.
 
 - [`signifPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/signifPlot.md)
   : Plots result of signifPlot.
+
 - [`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md)
   : Box plot of one pair, with a point per image
+
 - [`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md)
-  : Plot one image, showing the \`from\` and \`to\` cells of a pair
+  :
+
+  Plot one image, showing the `from` and `to` cells of a pair
+
 - [`imageCrossPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/imageCrossPlot.md)
   : Pairwise cross-plot of spatial associations
 

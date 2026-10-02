@@ -32,7 +32,7 @@ topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL, figures = NULL)
 
 - figures:
 
-  Round to \`figures\` significant figures.
+  Round to `figures` significant figures.
 
 ## Value
 

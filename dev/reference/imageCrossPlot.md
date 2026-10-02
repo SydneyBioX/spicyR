@@ -1,7 +1,8 @@
 # Pairwise cross-plot of spatial associations
 
 Builds a pairwise scatterplot of marker-marker associations for a single
-image using the output of \`getPairwise()\`.
+image using the output of
+[`getPairwise()`](https://sydneybiox.github.io/spicyR/dev/reference/getPairwise.md).
 
 ## Usage
 
@@ -19,33 +20,34 @@ imageCrossPlot(
 
 - result:
 
-  A matrix or data frame produced by \`getPairwise()\` where rownames
-  are image IDs and colnames are concatenated marker pairs in the form
-  \`"from\_\_to"\`. Must contain at least one row with name matching
-  \`image\`.
+  A matrix or data frame produced by
+  [`getPairwise()`](https://sydneybiox.github.io/spicyR/dev/reference/getPairwise.md)
+  where rownames are image IDs and colnames are concatenated marker
+  pairs in the form `"from__to"`. Must contain at least one row with
+  name matching `image`.
 
 - image:
 
-  Character scalar. Which image (row in \`result\`) to plot. If
-  \`NULL\`, defaults to the first rowname of \`result\`.
+  Character scalar. Which image (row in `result`) to plot. If `NULL`,
+  defaults to the first rowname of `result`.
 
 - colourGradient:
 
   Character vector of length 3 giving the low, mid, and high colours for
-  a diverging palette used by \`scale_colour_gradient2()\`. Default is
-  \`c("#4575B4", "white", "#D73027")\`.
+  a diverging palette used by `scale_colour_gradient2()`. Default is
+  `c("#4575B4", "white", "#D73027")`.
 
 - marksToPlot:
 
   Optional character vector of marker names. If supplied, the plot is
-  restricted to rows and columns where both \`from\` and \`to\` are in
-  this set.
+  restricted to rows and columns where both `from` and `to` are in this
+  set.
 
 - limits:
 
   Numeric length-2 vector giving the lower and upper caps applied to
-  association values for colour mapping. Use \`NULL\` to avoid clamping.
-  Point sizes are clamped to \`c(0, max(abs(limits)))\`.
+  association values for colour mapping. Use `NULL` to avoid clamping.
+  Point sizes are clamped to `c(0, max(abs(limits)))`.
 
 ## Value
 
@@ -53,9 +55,9 @@ A ggplot2 object.
 
 ## Details
 
-The function expects \`colnames(result)\` to contain \`"\_\_"\`
-separating marker names; otherwise an error is thrown. Values are
-transformed into two aesthetics:
+The function expects `colnames(result)` to contain `"__"` separating
+marker names; otherwise an error is thrown. Values are transformed into
+two aesthetics:
 
 - `value`: the (possibly clamped) signed association used for colour.
 

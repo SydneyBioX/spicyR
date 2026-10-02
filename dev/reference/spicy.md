@@ -1,10 +1,10 @@
 # Test for changes in the co-localisation of cell types between conditions
 
-\`spicy()\` tests, for every ordered pair of cell types \*from\* →
-\*to\*, whether the co-localisation of the two types differs between
-conditions, or is associated with survival. The direction follows the
-spatial-statistics convention for cross-type statistics: \*from\* is the
-type whose neighbourhoods are examined, \*to\* the type counted in them.
+`spicy()` tests, for every ordered pair of cell types `from` → `to`,
+whether the co-localisation of the two types differs between conditions,
+or is associated with survival. The direction follows the
+spatial-statistics convention for cross-type statistics: `from` is the
+type whose neighbourhoods are examined, `to` the type counted in them.
 
 ## Usage
 
@@ -37,13 +37,14 @@ spicy(
 
 - cells:
 
-  A \`data.frame\`, \`SingleCellExperiment\` or \`SpatialExperiment\`
-  with one row (column) per cell.
+  A `data.frame`, `SingleCellExperiment` or `SpatialExperiment` with one
+  row (column) per cell.
 
 - condition:
 
   The column of the image-level condition: two groups, or a
-  \`survival::Surv\` column for a survival outcome.
+  [`survival::Surv`](https://rdrr.io/pkg/survival/man/Surv.html) column
+  for a survival outcome.
 
 - subject:
 
@@ -54,8 +55,8 @@ spicy(
 
   Image- or patient-level columns to adjust for (cell method: added to
   the design of the excess, and the effect of each is reported as
-  \`\<column\>\_effect\` and \`\<column\>\_p_value\`; survival: added to
-  the null Cox model).
+  `<column>_effect` and `<column>_p_value`; survival: added to the null
+  Cox model).
 
 - imageID, cellType, spatialCoords:
 
@@ -65,7 +66,7 @@ spicy(
 
   Radius (or radii) of the neighbourhood, in the units of the
   coordinates. Cell method: one radius (default 50), or several to be
-  combined by \`combine\`. Image method: the radii of the L function
+  combined by `combine`. Image method: the radii of the L function
   (default 20, 50 and 100).
 
 - from, to:
@@ -74,28 +75,28 @@ spicy(
 
 - method:
 
-  \`"cell"\` (spicyR Cell, the default) or \`"image"\` (the original
-  spicyR test).
+  `"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR
+  test).
 
 - k:
 
-  Cell method: use the \`k\` nearest neighbours instead of a radius.
+  Cell method: use the `k` nearest neighbours instead of a radius.
 
 - combine:
 
-  Cell method with several radii: \`"maxT"\` (max-T with the sandwich
-  correlation across radii) or \`"cauchy"\` (Cauchy combination).
+  Cell method with several radii: `"maxT"` (max-T with the sandwich
+  correlation across radii) or `"cauchy"` (Cauchy combination).
 
 - adjustAbundance:
 
-  Cell method: adjust the test for the log share of the \`to\` type in
-  each image (default \`TRUE\`). Its effect is reported as
-  \`abundance_effect\`. \`FALSE\` gives the test without it.
+  Cell method: adjust the test for the log share of the `to` type in
+  each image (default `TRUE`). Its effect is reported as
+  `abundance_effect`. `FALSE` gives the test without it.
 
 - variance:
 
-  Cell method: \`"cr2"\` (CR2 on Satterthwaite df, the default) or
-  \`"hartung_knapp"\` (for very few patients: the model-based variance
+  Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or
+  `"hartung_knapp"` (for very few patients: the model-based variance
   floored at CR2, on m - 2 df).
 
 - frailty, labelClustering:
@@ -105,7 +106,7 @@ spicy(
 
 - ref:
 
-  Cell method: the reference level of \`condition\`.
+  Cell method: the reference level of `condition`.
 
 - cores:
 
@@ -113,45 +114,48 @@ spicy(
 
 - ...:
 
-  Arguments of the image method: \`sigma\`, \`alternateResult\`,
-  \`minLambda\`, \`weights\`, \`weightsByPair\`, \`weightFactor\`,
-  \`weightZThreshold\`, \`window\`, \`window.length\`, \`edgeCorrect\`,
-  \`includeZeroCells\`, \`verbose\`, \`BPPARAM\`. Supplying
-  \`alternateResult\` selects the image method.
+  Arguments of the image method: `sigma`, `alternateResult`,
+  `minLambda`, `weights`, `weightsByPair`, `weightFactor`,
+  `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
+  `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult`
+  selects the image method.
 
 ## Value
 
-A \`SpicyResults\` object. \`topPairs()\`, \`signifPlot()\`,
-\`spicyBoxPlot()\` and \`bind()\` work for both methods. For the cell
-method, \`\$cellResults\` holds the full table: the excess in each
-condition (at the average abundance and covariates), the difference, its
-standard error, df, p-value and BH-adjusted p-value, the frailty
-variance, what the test was adjusted for (\`adjusted_for\`), the effect
-and p-value of each adjustment, and the unadjusted test
-(\`unadjusted_difference\`, \`unadjusted_p_value\`,
-\`unadjusted_p_adj\`).
+A `SpicyResults` object.
+[`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md),
+[`signifPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/signifPlot.md),
+[`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md)
+and
+[`bind()`](https://sydneybiox.github.io/spicyR/dev/reference/bind.md)
+work for both methods. For the cell method, `$cellResults` holds the
+full table: the excess in each condition (at the average abundance and
+covariates), the difference, its standard error, df, p-value and
+BH-adjusted p-value, the frailty variance, what the test was adjusted
+for (`adjusted_for`), the effect and p-value of each adjustment, and the
+unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
+`unadjusted_p_adj`).
 
 ## Details
 
-\*\*\`method = "cell"\` (the default).\*\* For each \`from\` cell, the
-number of \`to\` cells within radius \`r\` is compared with its exact
-expectation if the \`from\` cells were a random choice among the cells
-that are not \`to\` cells in the same image. The effect is the
-\*\*excess\*\*: the number of extra \`to\` cells within \`r\` of each
-\`from\` cell. Images are combined within patients and patients within
-conditions by a frailty GEE, and the difference between conditions is
-tested with a CR2 cluster-robust variance on Satterthwaite degrees of
-freedom, with \*\*patients (\`subject\`) as the units\*\*. By default
-the difference is adjusted for how common the \`to\` type is in each
-image (the log of its share of all cells) and for any \`covariates\`, so
-that a change in abundance alone does not appear as a change in
-co-localisation. The unadjusted test is reported alongside
-(\`unadjusted\_\*\` columns).
+**`method = "cell"` (the default).** For each `from` cell, the number of
+`to` cells within radius `r` is compared with its exact expectation if
+the `from` cells were a random choice among the cells that are not `to`
+cells in the same image. The effect is the **excess**: the number of
+extra `to` cells within `r` of each `from` cell. Images are combined
+within patients and patients within conditions by a frailty GEE, and the
+difference between conditions is tested with a CR2 cluster-robust
+variance on Satterthwaite degrees of freedom, with **patients
+(`subject`) as the units**. By default the difference is adjusted for
+how common the `to` type is in each image (the log of its share of all
+cells) and for any `covariates`, so that a change in abundance alone
+does not appear as a change in co-localisation. The unadjusted test is
+reported alongside (`unadjusted_*` columns).
 
-\*\*\`method = "image"\` (the original spicyR test).\*\* A per-image
+**`method = "image"` (the original spicyR test).** A per-image
 L-function summary of each pair is compared between conditions with a
-weighted linear model, or a mixed model when \`subject\` is given
-(Canete et al. 2022).
+weighted linear model, or a mixed model when `subject` is given (Canete
+et al. 2022).
 
 ## References
 

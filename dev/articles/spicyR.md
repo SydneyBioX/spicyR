@@ -12,11 +12,11 @@ the test behaves when there is nothing to find.
 
 ## Introduction
 
-A pair is written *from* → *to*. For each *from* cell, spicyR counts the
-*to* cells within a radius, and compares that count with what we would
-expect if the *from* cells were a random choice among the cells of the
-same image that are not *to* cells. The difference is the **excess**:
-the number of extra *to* cells around each *from* cell, beyond chance.
+A pair is written `from` → `to`. For each `from` cell, spicyR counts the
+`to` cells within a radius, and compares that count with what we would
+expect if the `from` cells were a random choice among the cells of the
+same image that are not `to` cells. The difference is the **excess**:
+the number of extra `to` cells around each `from` cell, beyond chance.
 Because the comparison uses only the cells that are actually there,
 empty regions such as holes or air spaces, and uneven cell density, do
 not by themselves create a signal (artefacts that affect one cell type
@@ -171,12 +171,12 @@ res
 All 484 ordered pairs of cell types are tested, in about ten seconds on
 one core; run time and memory grow roughly in proportion to the number
 of cells and to the radius. By default each comparison is adjusted for
-how common the *to* type is in each image, for reasons we come to in
+how common the `to` type is in each image, for reasons we come to in
 [Why adjust for abundance?](#why-adjust-for-abundance).
 [`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md)
 lists the most significant. `intercept` is the average excess in ER−
 patients, and `coefficient` is the difference in average excess between
-ER+ and ER− patients (ER+ minus ER−), in extra *to* cells per *from*
+ER+ and ER− patients (ER+ minus ER−), in extra `to` cells per `from`
 cell. P-values are adjusted across all pairs by the Benjamini–Hochberg
 method.
 
@@ -220,9 +220,9 @@ compared with the reference group, in a column `level`.
 ## Seeing every pair at once
 
 [`signifPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/signifPlot.md)
-shows the whole study. Read rows as *from* and columns as *to*. Each
+shows the whole study. Read rows as `from` and columns as `to`. Each
 circle is a pair: the left half is coloured by the excess in ER− tumours
-and the right half by the excess in ER+ tumours (red: more *to* cells
+and the right half by the excess in ER+ tumours (red: more `to` cells
 than chance, blue: fewer), the size reflects the p-value, and a black
 ring marks a BH-adjusted p-value below 0.05.
 
@@ -298,9 +298,9 @@ head(bind(res, pairName = "HR- Ki67+__T cells"))
 ## Looking at the images
 
 [`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md)
-shows one image: the density of all cells in blue, the *from* cells in
-gold and the *to* cells in dark red. With `r`, it draws the circle
-around each *from* cell inside which *to* cells are counted. We look at
+shows one image: the density of all cells in blue, the `from` cells in
+gold and the `to` cells in dark red. With `r`, it draws the circle
+around each `from` cell inside which `to` cells are counted. We look at
 three images found with the interactive box plot.
 
 ``` r
@@ -336,7 +336,7 @@ in a cluster of T cells.
 **Point size matters.** The right-hand image is the highest point in the
 box plot, but its weight is close to zero: an excess estimated from two
 cells says little. Weights also level off. Once an image has a few dozen
-*from* cells, more cells add little, because patients differ from one
+`from` cells, more cells add little, because patients differ from one
 another more than repeated counts within a patient do. The weights are
 in `res$imageWeights`.
 
@@ -345,10 +345,10 @@ in `res$imageWeights`.
 A cell type that is simply more common will be found more often around
 any other cell, even if cells are arranged no differently. Here the
 `HR+ CK7-` tumour cells are much more common in ER+ tumours. Without
-adjustment, almost every pair with `HR+ CK7-` as the *to* type looks
+adjustment, almost every pair with `HR+ CK7-` as the `to` type looks
 strongly different between ER+ and ER− patients.
 
-By default, spicyR adjusts each comparison for the log of the *to*
+By default, spicyR adjusts each comparison for the log of the `to`
 type’s share of all cells in each image. The excess is then compared
 between groups at the same abundance, and a difference in arrangement is
 not confused with a difference in composition. The unadjusted test is
@@ -378,7 +378,7 @@ head(tab[, c("from", "to", "unadjusted_difference", "unadjusted_p_adj", "excess_
 #> HR+ CK7- Slug+__HR+ CK7-        1.859721e-08        0.05437067 0.93489013
 ```
 
-Most pairs with `HR+ CK7-` as the *to* type are no longer significant
+Most pairs with `HR+ CK7-` as the `to` type are no longer significant
 after the adjustment, so their unadjusted signal largely reflects
 abundance. Because abundance differs so much with ER status, the
 adjusted test also has less power for these pairs, so a non-significant
@@ -606,7 +606,7 @@ excess barely varies between patients.
 
 No pair is significant after adjusting for multiple testing. Without the
 abundance adjustment, three pairs are, all with tumour cell types as the
-*to* type. Tumour composition is itself prognostic, so those three may
+`to` type. Tumour composition is itself prognostic, so those three may
 reflect composition as much as the arrangement of cells.
 
 ## A check you can run
@@ -656,9 +656,9 @@ design.
 
 ## How it works
 
-For a pair *from* → *to* and an image, let *O* be the number of *to*
-cells within *r* of the *from* cells. If the *from* cells were a random
-choice among the cells of the image that are not *to* cells, keeping
+For a pair `from` → `to` and an image, let *O* be the number of `to`
+cells within *r* of the `from` cells. If the `from` cells were a random
+choice among the cells of the image that are not `to` cells, keeping
 every cell where it is, *O* would have an exact mean and variance, which
 spicyR computes without permutations. The excess of an image is
 
@@ -667,19 +667,19 @@ spicyR computes without permutations. The excess of an image is
 ```
 
 where $`\mathrm{E}_{\mathrm{RL}}(O)`$ is that expectation under random
-labelling and *n* is the number of *from* cells.
+labelling and *n* is the number of `from` cells.
 
 Images from the same patient are combined, giving more weight to more
-informative images (usually those with more *from* cells). Each patient
+informative images (usually those with more `from` cells). Each patient
 has its own true excess, which varies around its group’s mean by an
 amount estimated from the data (a frailty, or random-effects, model,
 with the between-patient variance estimated as by Paule and Mandel
 (1982)). The difference between groups, adjusted for the log share of
-the *to* type in each image and any covariates, is tested with a
+the `to` type in each image and any covariates, is tested with a
 small-sample cluster-robust (CR2) variance on Satterthwaite degrees of
 freedom (Bell and McCaffrey 2002; Pustejovsky and Tipton 2018), with
 patients as the clusters. This is designed to keep false positives near
-the nominal rate even with modest numbers of patients. When the *from*
+the nominal rate even with modest numbers of patients. When the `from`
 cells cluster among themselves, the within-image variance is inflated to
 match. A paper describing the method is in preparation.
 
@@ -698,11 +698,11 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.0) to test,
-for every ordered pair of cell types, whether the number of *to* cells
-within 25 µm of each *from* cell, relative to random labelling of the
+A methods sentence might read: “We used spicyR (version 1.99.1) to test,
+for every ordered pair of cell types, whether the number of `to` cells
+within 25 µm of each `from` cell, relative to random labelling of the
 cells in each image, differed between ER+ and ER− patients, adjusting
-for the abundance of the *to* type in each image, with patients as the
+for the abundance of the `to` type in each image, with patients as the
 units of analysis. P-values were adjusted across pairs by the
 Benjamini–Hochberg method.” Show a per-patient plot
 ([`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md))
@@ -819,7 +819,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.2.2        
 #> [15] AnnotationHub_4.2.2         BiocFileCache_3.2.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.58.1        
-#> [19] generics_0.1.4              spicyR_1.99.0              
+#> [19] generics_0.1.4              spicyR_1.99.1              
 #> [21] BiocStyle_2.40.0           
 #> 
 #> loaded via a namespace (and not attached):

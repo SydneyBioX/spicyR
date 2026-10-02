@@ -1,0 +1,51 @@
+/* The navbar of the SydneyBioX Spatial Playbook. */
+.navbar {
+  border-bottom: 3px solid rgba(230, 71, 39, 0.95);
+}
+
+/* More room in the articles and reference pages. */
+main {
+  line-height: 1.7;
+}
+main p,
+main li {
+  margin-bottom: 0.9rem;
+}
+main li > p {
+  margin-bottom: 0.4rem;
+}
+main h1 {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+main h2 {
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+main h3 {
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+main pre,
+main div.sourceCode {
+  margin-top: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+main pre {
+  padding: 0.9rem 1rem;
+  line-height: 1.5;
+}
+main img,
+main .figure,
+main .html-widget {
+  margin-top: 1rem;
+  margin-bottom: 1.75rem;
+}
+main table {
+  margin-bottom: 1.75rem;
+}
+main .callout {
+  margin: 1.75rem 0;
+}
