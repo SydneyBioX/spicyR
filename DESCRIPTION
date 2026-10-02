@@ -24,11 +24,11 @@ Description: spicyR tests whether the spatial co-localisation of pairs of cell t
     supported, and the original image-level test is kept as an option. The
     computations run in a C++ core shared with the Python package spicyr.
 License: GPL (>=2)
-LazyData: true
+LazyData: false
 biocViews: 
-    SingleCell, CellBasedAssays, Spatial
+    SingleCell, CellBasedAssays, Spatial, Survival
 Encoding: UTF-8
-Depends: R (>= 4.5)
+Depends: R (>= 4.6.0)
 VignetteBuilder: knitr
 BugReports: https://github.com/SydneyBioX/spicyR/issues
 URL: https://sydneybiox.github.io/spicyR/, https://github.com/SydneyBioX/spicyR

@@ -31,7 +31,6 @@
 #' @return A \pkg{ggplot2} object.
 #'
 #' @examples
-#' \dontrun{
 #' # Minimal example (toy data)
 #' set.seed(1)
 #' mks <- c("A","B","C")
@@ -44,7 +43,6 @@
 #'                        marksToPlot = c("A","B","C"),
 #'                        limits = c(-3, 3))
 #' print(p)
-#' }
 #'
 #' @importFrom ggplot2 ggplot aes geom_point scale_colour_gradient2 labs theme_classic guide_axis guides .data
 #' @seealso \code{\link{getPairwise}}

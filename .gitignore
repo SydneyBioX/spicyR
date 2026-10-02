@@ -24,3 +24,7 @@ src/*.dll
 src/*.o
 src/*.so
 src/core/src/*.o
+*.gcda
+*.gcno
+vignettes/.build.timestamp
+vignettes/*.R

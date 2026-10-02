@@ -31,7 +31,7 @@ bibliography: REFERENCES.bib
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE, message = FALSE,
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE, message = FALSE, fig.retina = 1,
                       fig.width = 7, fig.height = 4.5, fig.align = "center")
 ```
 

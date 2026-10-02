@@ -66,7 +66,7 @@
 #' propAssoc <- getPairwiseProp(diabetesData, k = 15)
 #'
 #' # Use as the spicyR response, reusing the standard model:
-#' \dontrun{
+#' \donttest{
 #' spicy(diabetesData,
 #'   condition = "stage", subject = "case",
 #'   alternateResult = propAssoc

@@ -50,7 +50,6 @@ The colourbar shows three ticks at \code{lower}, \code{0}, and \code{upper}
 with labels \code{"<lower"}, \code{"0"}, and \code{">upper"}.
 }
 \examples{
-\dontrun{
 # Minimal example (toy data)
 set.seed(1)
 mks <- c("A","B","C")
@@ -63,7 +62,6 @@ p <- imageCrossPlot(res, image = "img1",
                        marksToPlot = c("A","B","C"),
                        limits = c(-3, 3))
 print(p)
-}
 
 }
 \seealso{
