@@ -1323,7 +1323,7 @@ bind <- function(results,
   if (is.null(pairName)) {
     df <- cbind(df, do.call(cbind, results$pairwiseAssoc))
   } else {
-    df <- cbind(df, results$pairwiseAssoc[[pairName]])
+    df[[pairName]] <- results$pairwiseAssoc[[pairName]]
   }
 
   return(df)

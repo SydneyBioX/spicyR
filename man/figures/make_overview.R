@@ -4,7 +4,7 @@ cells <- as.data.frame(SummarizedExperiment::colData(spe))
 cells <- cells[cells$ER.Status %in% c("neg", "pos"), ]
 cells$ER <- factor(ifelse(cells$ER.Status == "pos", "ER+", "ER-"), levels = c("ER-", "ER+"))
 res <- spicy(cells, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id", cellType = "description",
-             spatialCoords = c("Location_Center_X", "Location_Center_Y"), from = "HR- Ki67+", to = "T cells")
+             spatialCoords = c("Location_Center_X", "Location_Center_Y"))      # every pair, as in the vignette
 ## left: a 160 x 160 µm window of an ER+ core with several proliferating tumour cells and T cells near them
 f <- "HR- Ki67+"; t <- "T cells"
 cand <- aggregate(cbind(nf = description == f, nt = description == t) ~ file_id, data = cells[cells$ER == "ER+", ], FUN = sum)
@@ -27,7 +27,8 @@ p1 <- ggplot(z, aes(x, y)) +
   theme(legend.position = "bottom", legend.direction = "vertical", plot.title = element_text(face = "bold", size = 11)) +
   labs(title = "Count the T cells near each tumour cell,\nand compare with chance")
 ## right: the excess of every patient, by ER status
-b <- bind(res); names(b)[ncol(b)] <- "excess"
+b <- bind(res, pairName = "HR- Ki67+__T cells"); names(b)[ncol(b)] <- "excess"
+n_cut <- sum(b$excess > 4, na.rm = TRUE)
 b$ER <- factor(b$condition, levels = c("ER-", "ER+"))
 p2 <- ggplot(b[is.finite(b$excess), ], aes(ER, excess)) +
   geom_hline(yintercept = 0, colour = "grey55", linetype = 2) +
@@ -36,8 +37,8 @@ p2 <- ggplot(b[is.finite(b$excess), ], aes(ER, excess)) +
   coord_cartesian(ylim = c(-1.7, 4)) +
   theme_classic(base_size = 11) + theme(plot.title = element_text(face = "bold", size = 11)) +
   labs(x = NULL, y = "Extra T cells per tumour cell\n(beyond chance)", title = "Compare patients between groups",
-       subtitle = sprintf("one point per patient (axis cut at 4); p = %.1e", res$cellResults$p_value))
+       subtitle = sprintf("one point per patient; %d patients above 4 not shown", n_cut))
 png(file.path(Sys.getenv("OUT"), "spicyR_overview.png"), width = 2000, height = 1000, res = 220)
 grid.newpage(); pushViewport(viewport(layout = grid.layout(1, 2, widths = unit(c(1.05, 1), "null"))))
 print(p1, vp = viewport(layout.pos.row = 1, layout.pos.col = 1)); print(p2, vp = viewport(layout.pos.row = 1, layout.pos.col = 2))
-invisible(dev.off()); cat(img, bestn, nrow(b), res$cellResults$p_value, "\n")
+invisible(dev.off()); cat(img, bestn, nrow(b), n_cut, "\n")

@@ -47,7 +47,8 @@ the excess; survival: added to the null Cox model).}
 \item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates.}
 
 \item{r}{Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
-radius, or several to be combined by `combine`. Image method: the radii of the L function.}
+radius (default 50), or several to be combined by `combine`. Image method: the radii of the L
+function (default 20, 50 and 100).}
 
 \item{from, to}{Cell types to test (all ordered pairs by default).}
 
@@ -88,14 +89,14 @@ spatial-statistics convention for cross-type statistics: *from* is the type whos
 examined, *to* the type counted in them.
 }
 \details{
-**`method = "cell"` (the default, spicyR Cell).** For each `to` cell, the number of `from` cells
-within radius `r` is compared with its exact expectation under random labelling of the observed
-cells. The effect is the **excess**: the number of extra `to` cells within `r` of each `from` cell. Images are
-combined within patients and patients within conditions by a frailty GEE, and the difference
-between conditions is tested with a CR2 cluster-robust variance on Satterthwaite degrees of
-freedom, with **patients (`subject`) as the units**. Results for each pair also include the
-difference at equal availability of the `from` type (adjusted for its share of all cells), which
-guards against changes in abundance being read as changes in attraction.
+**`method = "cell"` (the default).** For each `from` cell, the number of `to` cells within radius `r`
+is compared with its exact expectation if the `from` cells were a random choice among the cells that
+are not `to` cells in the same image. The effect is the **excess**: the number of extra `to` cells
+within `r` of each `from` cell. Images are combined within patients and patients within conditions by
+a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
+Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. Results for each pair
+also include the difference after adjusting for how common the `to` type is in each image (its share
+of all cells), a check that a change is not just a change in abundance.
 
 **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when `subject` is given

@@ -11,3 +11,4 @@
 ^src/core/src/.*\.o$
 ^src/.*\.so$
 ^src/.*\.dll$
+^CONTRIBUTING\.md$

@@ -31,7 +31,7 @@ Encoding: UTF-8
 Depends: R (>= 4.5)
 VignetteBuilder: knitr
 BugReports: https://github.com/SydneyBioX/spicyR/issues
-URL: https://ellispatrick.github.io/spicyR/ https://github.com/SydneyBioX/spicyR, https://sydneybiox.github.io/spicyR/
+URL: https://sydneybiox.github.io/spicyR/, https://github.com/SydneyBioX/spicyR
 Imports:
     Rcpp,
     methods,

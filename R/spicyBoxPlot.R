@@ -50,8 +50,8 @@ spicyBoxPlot <- function(results,
                    condition = results$condition)
   
   if (identical(results$method, "cell")) {
-    ylabel <- paste0("Excess (extra ", to, " cells per ", from, " cell)")
-    title <- paste0(to, " cells around ", from, " cells")
+    ylabel <- paste0("Extra ", to, " per ", from, "\n(beyond chance)")
+    title <- paste0(to, " around ", from)
   } else {
     ylabel <- if (isTRUE(results$alternateResult)) "Alternate Result" else "L Function"
     title <- paste0("L-function values between ", from, " cells and ", to, " cells")

@@ -126,8 +126,11 @@ isKontextual <- function(kontextualResult) {
     } else if (.is_class(cells, "SpatialExperiment")) {
         .need("SpatialExperiment", "to use a SpatialExperiment")
         cd <- .col_data(cells)
-        cd <- cd[, setdiff(colnames(cd), c("x", "y")), drop = FALSE]
-        cells <- cbind(cd, data.frame(SpatialExperiment::spatialCoords(cells)))
+        sc <- data.frame(SpatialExperiment::spatialCoords(cells))
+        # a SpatialExperiment's own coordinates are used unless spatialCoords names colData columns
+        if (!all(spatialCoordCols %in% c(colnames(cd), colnames(sc)))) spatialCoordCols <- colnames(sc)[1:2]
+        cd <- cd[, setdiff(colnames(cd), c("x", "y", colnames(sc))), drop = FALSE]
+        cells <- cbind(cd, sc)
     } else if (.is_class(cells, "SummarizedExperiment")) {
         cells <- .col_data(cells)
     } else {

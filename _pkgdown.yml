@@ -20,13 +20,13 @@ navbar:
   components:
     python:
       text: Python (spicyr)
-      href: https://github.com/SydneyBioX/spicyr-py
+      href: https://sydneybiox.github.io/spicyr-py
 
 home:
-  title: "spicyR: calibrated tests for changes in cell-type co-localisation"
+  title: "spicyR: test whether cell types co-localise differently between groups of patients"
   description: >
-    Test whether two cell types co-localise more or less between groups of patients, or with outcome:
-    random-labelling null, patients as units, small-sample CR2 inference, a C++ core shared with Python.
+    Test whether two cell types sit closer together in one group of patients than another, or with outcome,
+    with patients as the units. In R and Python.
 
 reference:
 - title: "Test"
