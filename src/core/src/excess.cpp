@@ -224,6 +224,16 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
   res.coef_ref = f0.beta; res.coef_comp = f1.beta; res.difference = f1.beta - f0.beta;
   res.se = std::sqrt(v); res.df = df; res.p = pt_two_sided(res.difference / res.se, df);
   res.influence.assign(n_units, 0); res.unit_summary.assign(n_units, kNaN); res.unit_info.assign(n_units, 0);
+  res.image_weight.assign(rows.O.size(), 0.0);
+  for (int g = 0; g < 2; ++g) {
+    const GroupFit& f = g == 0 ? f0 : f1;
+    const std::vector<int>& idx = g == 0 ? g0 : g1;
+    for (int i : idx) {
+      auto it = std::find(f.units.begin(), f.units.end(), unit[i]);
+      double a = f.a[it - f.units.begin()];
+      res.image_weight[i] = a * rows.n[i] * rows.n[i] / rows.v[i] / f.B;   // a_u (n^2 / v) / S_g
+    }
+  }
   for (int g = 0; g < 2; ++g) {
     const GroupFit& f = g == 0 ? f0 : f1;
     for (std::size_t u = 0; u < f.units.size(); ++u) {

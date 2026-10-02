@@ -10,9 +10,10 @@
 #' are not `to` cells in the same image. The effect is the **excess**: the number of extra `to` cells
 #' within `r` of each `from` cell. Images are combined within patients and patients within conditions by
 #' a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
-#' Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. Results for each pair
-#' also include the difference after adjusting for how common the `to` type is in each image (its share
-#' of all cells), a check that a change is not just a change in abundance.
+#' Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. By default the
+#' difference is adjusted for how common the `to` type is in each image (the log of its share of all
+#' cells) and for any `covariates`, so that a change in abundance alone does not appear as a change in
+#' co-localisation. The unadjusted test is reported alongside (`unadjusted_*` columns).
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -25,7 +26,8 @@
 #' @param subject The column of the patient (unit) of each image. Images of one patient are combined;
 #'   if omitted, every image is its own patient.
 #' @param covariates Image- or patient-level columns to adjust for (cell method: added to the design of
-#'   the excess; survival: added to the null Cox model).
+#'   the excess, and the effect of each is reported as `<column>_effect` and `<column>_p_value`;
+#'   survival: added to the null Cox model).
 #' @param imageID,cellType,spatialCoords Column names of the image, cell type and coordinates.
 #' @param r Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
 #'   radius (default 50), or several to be combined by `combine`. Image method: the radii of the L
@@ -35,8 +37,8 @@
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
 #' @param combine Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
 #'   radii) or `"cauchy"` (Cauchy combination).
-#' @param availability Cell method: also report the difference at equal availability of the `to`
-#'   type, i.e. adjusted for its share of all cells (`adjusted_*` columns).
+#' @param adjustAbundance Cell method: adjust the test for the log share of the `to` type in each image
+#'   (default `TRUE`). Its effect is reported as `abundance_effect`. `FALSE` gives the test without it.
 #' @param variance Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
 #'   (for very few patients: the model-based variance floored at CR2, on m - 2 df).
 #' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
@@ -48,8 +50,10 @@
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
 #' @return A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work
 #'   for both methods. For the cell method, `$cellResults` holds the full table: the excess in each
-#'   condition, the difference, its standard error, df, p-value and BH-adjusted p-value, the frailty
-#'   variance, and the availability-adjusted difference and p-value.
+#'   condition (at the average abundance and covariates), the difference, its standard error, df,
+#'   p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
+#'   (`adjusted_for`), the effect and p-value of each adjustment, and the unadjusted test
+#'   (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
 #'   Bioinformatics 38(11), 3099-3105.
 #' @examples
@@ -80,7 +84,7 @@ spicy <- function(cells,
                   method = c("cell", "image"),
                   k = NULL,
                   combine = c("maxT", "cauchy"),
-                  availability = TRUE,
+                  adjustAbundance = TRUE,
                   variance = c("cr2", "hartung_knapp"),
                   frailty = TRUE,
                   labelClustering = TRUE,
@@ -134,53 +138,58 @@ spicy <- function(cells,
   if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (survival) {
-    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores)
+    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjustAbundance)
   } else {
     per_r <- lapply(radii, function(rr) {
       g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering,
                        n_threads = cores)
-      lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], frailty, variance, availability, Z_extra))
+      lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], frailty, variance, adjustAbundance, Z_extra))
     })
-    res <- .cell_combine(per_r, radii, ctx, availability, covariates, combine)
+    res <- .cell_combine(per_r, radii, ctx, adjustAbundance || !is.null(covariates), combine)
   }
   .cell_results(res, ctx, pheno, condition, subject, survival, radii, k)
 }
 
-## Several radii: per-radius tables, and one row per pair with the combined p-value.
-.cell_combine <- function(per_r, radii, ctx, availability, covariates, combine) {
-  tabs <- lapply(per_r, .cell_table, ctx = ctx, availability = availability, covariates = covariates)
+## Several radii: per-radius tables, and one row per pair with the combined p-value (the main test and,
+## when adjusted, the unadjusted test). The other columns are those of the radius chosen by max-T.
+.cell_combine <- function(per_r, radii, ctx, adjusted, combine) {
+  tabs <- lapply(per_r, .cell_table, ctx = ctx, adjusted = adjusted)
   if (length(radii) == 1L) return(list(table = tabs[[1]], fits = per_r[[1]]))
   long <- do.call(rbind, Map(function(t, rr) if (!is.null(t)) cbind(r = rr, t), tabs, radii))
   keys <- unique(long[, c("from", "to")])
-  rows <- lapply(seq_len(nrow(keys)), function(i) {
-    f <- keys$from[i]; t <- keys$to[i]
-    tests <- lapply(per_r, function(fs) { o <- fs[[which(vapply(fs, function(z) z$from == f && z$to == t, TRUE))]]
-      if (o$ok) o$test else NULL })
+  comb <- function(tests) {
     ok <- !vapply(tests, is.null, TRUE)
     if (!any(ok)) return(NULL)
     tt <- vapply(tests[ok], function(z) z$difference / z$se, 0); df <- vapply(tests[ok], `[[`, 0, "df")
     pv <- vapply(tests[ok], `[[`, 0, "p")
     if (combine == "maxT") {
-      infl <- do.call(cbind, lapply(tests[ok], `[[`, "influence"))
-      mt <- stats_max_t(infl, tt, df); best <- mt$best; p <- mt$p
-    } else { best <- which.min(pv); p <- stats_cauchy(pv) }
-    z <- tests[ok][[best]]
-    data.frame(from = f, to = t, r = radii[ok][best], excess_ref = z$coef_ref, excess_comp = z$coef_comp,
-               excess_difference = z$difference, se = z$se, df = z$df, p_value = p, tau2 = z$tau2,
-               p_value_best_radius = pv[best], stringsAsFactors = FALSE)
+      mt <- stats_max_t(do.call(cbind, lapply(tests[ok], `[[`, "influence")), tt, df)
+      list(best = which(ok)[mt$best], p = mt$p, p_best = pv[mt$best])
+    } else { b <- which.min(pv); list(best = which(ok)[b], p = stats_cauchy(pv), p_best = pv[b]) }
+  }
+  rows <- lapply(seq_len(nrow(keys)), function(i) {
+    f <- keys$from[i]; t <- keys$to[i]
+    fit_at <- lapply(per_r, function(fs) { o <- fs[[which(vapply(fs, function(z) z$from == f && z$to == t, TRUE))]]
+      if (o$ok) o else NULL })
+    m <- comb(lapply(fit_at, function(o) o$test))
+    if (is.null(m)) return(NULL)
+    row <- long[long$from == f & long$to == t & long$r == radii[m$best], , drop = FALSE]
+    row$p_value <- m$p; row$p_value_best_radius <- m$p_best
+    if (adjusted) {
+      u <- comb(lapply(fit_at, function(o) o$unadjusted))
+      row$unadjusted_p_value <- if (is.null(u)) NA_real_ else u$p
+    }
+    row
   })
   tab <- do.call(rbind, rows); tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
-  if (availability) {
-    adj <- tapply(long$adjusted_p_value, paste(long$from, long$to, sep = "__"), function(p) stats_cauchy(p[is.finite(p)]))
-    tab$adjusted_p_value <- as.numeric(adj[paste(tab$from, tab$to, sep = "__")])
-    tab$adjusted_p_adj <- stats::p.adjust(tab$adjusted_p_value, "BH")
-  }
+  if (adjusted) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
+  for (col in c("unadjusted_difference", "unadjusted_se", "unadjusted_df")) tab[[col]] <- NULL
   rownames(tab) <- paste(tab$from, tab$to, sep = "__")
-  list(table = tab, fits = per_r[[which.min(abs(radii - stats::median(radii)))]], radius_table = long)
+  list(table = .cell_order_columns(tab), fits = per_r[[which.min(abs(radii - stats::median(radii)))]], radius_table = long)
 }
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair.
-.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores) {
+.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust) {
   unit_first <- match(seq_along(ctx$unit_labels) - 1L, ctx$image_unit)
   time <- pheno$.time[unit_first]; event <- as.integer(pheno$.event[unit_first])
   if (any(tapply(pheno$.time, ctx$image_unit, function(z) length(unique(z))) > 1L))
@@ -198,14 +207,26 @@ spicy <- function(cells,
   g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores)
   fits <- lapply(pairs, function(p) {
     rows <- .cell_rows(ctx, g, p[1], p[2])
-    s <- stats_survival_test(rows, rows$unit, length(ctx$unit_labels), M, time, event)
-    list(from = p[1], to = p[2], ok = s$ok, reason = s$reason, rows = rows, surv = s) })
+    m <- length(ctx$unit_labels)
+    u <- stats_survival_test(rows, rows$unit, m, M, time, event, numeric(0))
+    x <- if (adjust) .cell_share(ctx, rows, p[1]) else numeric(0)
+    s <- if (length(x) && stats::var(x) > 0) stats_survival_test(rows, rows$unit, m, M, time, event, x) else u
+    list(from = p[1], to = p[2], ok = s$ok, reason = s$reason, rows = rows, surv = s, unadjusted_surv = u,
+         adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(covariates)) "covariates"), collapse = "+")) })
   ok <- vapply(fits, `[[`, TRUE, "ok")
   tab <- do.call(rbind, lapply(fits[ok], function(o) { s <- o$surv
     data.frame(from = o$from, to = o$to, score_coefficient = s$score_coef, score_se = s$score_se, score_df = s$score_df,
                p_value = s$score_p, hazard_ratio_sd = s$hr_sd, log_hr_sd = s$log_hr_sd, log_hr_se = s$hr_se,
-               hr_p_value = s$hr_p, log_hr_per_cell = s$log_hr_unit, tau2 = s$tau2, stringsAsFactors = FALSE) }))
-  if (!is.null(tab)) { tab$p_adj <- stats::p.adjust(tab$p_value, "BH"); rownames(tab) <- paste(tab$from, tab$to, sep = "__") }
+               hr_p_value = s$hr_p, log_hr_per_cell = s$log_hr_unit, tau2 = s$tau2,
+               adjusted_for = if (nzchar(o$adjusted_for)) o$adjusted_for else "none",
+               unadjusted_p_value = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$score_p else NA_real_,
+               unadjusted_hazard_ratio_sd = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$hr_sd else NA_real_,
+               stringsAsFactors = FALSE) }))
+  if (!is.null(tab)) {
+    tab$p_adj <- stats::p.adjust(tab$p_value, "BH"); tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
+    if (!adjust && is.null(covariates)) tab[c("adjusted_for", grep("^unadjusted_", names(tab), value = TRUE))] <- NULL
+    rownames(tab) <- paste(tab$from, tab$to, sep = "__")
+  }
   list(table = tab, fits = fits)
 }
 
@@ -256,6 +277,9 @@ spicy <- function(cells,
   pa <- .cell_image_excess(res$fits, ctx)
   names(pa) <- vapply(strsplit(names(pa), "__", fixed = TRUE), function(z) paste(z[2], z[1], sep = "__"), "")
   out$pairwiseAssoc <- pa[labels]
+  w <- .cell_image_weight(res$fits, ctx)
+  names(w) <- vapply(strsplit(names(w), "__", fixed = TRUE), function(z) paste(z[2], z[1], sep = "__"), "")
+  out$imageWeights <- w[labels]
   out$imageIDs <- ctx$image_labels
   out$imageID <- ctx$image_labels
   if (!is.null(subject)) out$subject <- as.character(pheno[[subject]])

@@ -133,6 +133,10 @@ stats_design_test <- function(rows, unit, n_units, Z, contrast, tau2) {
     .Call(`_spicyR_stats_design_test`, rows, unit, n_units, Z, contrast, tau2)
 }
 
+stats_design_tests <- function(rows, unit, n_units, Z, contrasts, tau2, hartung_knapp) {
+    .Call(`_spicyR_stats_design_tests`, rows, unit, n_units, Z, contrasts, tau2, hartung_knapp)
+}
+
 stats_availability_test <- function(rows, unit, group, n_units, x, tau2) {
     .Call(`_spicyR_stats_availability_test`, rows, unit, group, n_units, x, tau2)
 }
@@ -141,8 +145,8 @@ stats_cox_fit <- function(time, event, X) {
     .Call(`_spicyR_stats_cox_fit`, time, event, X)
 }
 
-stats_survival_test <- function(rows, unit, n_units, martingale, time, event) {
-    .Call(`_spicyR_stats_survival_test`, rows, unit, n_units, martingale, time, event)
+stats_survival_test <- function(rows, unit, n_units, martingale, time, event, x) {
+    .Call(`_spicyR_stats_survival_test`, rows, unit, n_units, martingale, time, event, x)
 }
 
 stats_cauchy <- function(p) {

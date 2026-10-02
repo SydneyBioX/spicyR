@@ -510,6 +510,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_design_tests
+List stats_design_tests(DataFrame rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts, double tau2, bool hartung_knapp);
+RcppExport SEXP _spicyR_stats_design_tests(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP ZSEXP, SEXP contrastsSEXP, SEXP tau2SEXP, SEXP hartung_knappSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
+    Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type contrasts(contrastsSEXP);
+    Rcpp::traits::input_parameter< double >::type tau2(tau2SEXP);
+    Rcpp::traits::input_parameter< bool >::type hartung_knapp(hartung_knappSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_design_tests(rows, unit, n_units, Z, contrasts, tau2, hartung_knapp));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_availability_test
 List stats_availability_test(DataFrame rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x, double tau2);
 RcppExport SEXP _spicyR_stats_availability_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP groupSEXP, SEXP n_unitsSEXP, SEXP xSEXP, SEXP tau2SEXP) {
@@ -540,8 +557,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_survival_test
-List stats_survival_test(DataFrame rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time, IntegerVector event);
-RcppExport SEXP _spicyR_stats_survival_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP martingaleSEXP, SEXP timeSEXP, SEXP eventSEXP) {
+List stats_survival_test(DataFrame rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time, IntegerVector event, NumericVector x);
+RcppExport SEXP _spicyR_stats_survival_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP martingaleSEXP, SEXP timeSEXP, SEXP eventSEXP, SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -551,7 +568,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type martingale(martingaleSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type time(timeSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type event(eventSEXP);
-    rcpp_result_gen = Rcpp::wrap(stats_survival_test(rows, unit, n_units, martingale, time, event));
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_survival_test(rows, unit, n_units, martingale, time, event, x));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -627,9 +645,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_label_clustering", (DL_FUNC) &_spicyR_stats_label_clustering, 6},
     {"_spicyR_stats_excess_test", (DL_FUNC) &_spicyR_stats_excess_test, 6},
     {"_spicyR_stats_design_test", (DL_FUNC) &_spicyR_stats_design_test, 6},
+    {"_spicyR_stats_design_tests", (DL_FUNC) &_spicyR_stats_design_tests, 7},
     {"_spicyR_stats_availability_test", (DL_FUNC) &_spicyR_stats_availability_test, 6},
     {"_spicyR_stats_cox_fit", (DL_FUNC) &_spicyR_stats_cox_fit, 3},
-    {"_spicyR_stats_survival_test", (DL_FUNC) &_spicyR_stats_survival_test, 6},
+    {"_spicyR_stats_survival_test", (DL_FUNC) &_spicyR_stats_survival_test, 7},
     {"_spicyR_stats_cauchy", (DL_FUNC) &_spicyR_stats_cauchy, 1},
     {"_spicyR_stats_max_t", (DL_FUNC) &_spicyR_stats_max_t, 3},
     {"_spicyR_stats_mvn_outside", (DL_FUNC) &_spicyR_stats_mvn_outside, 3},

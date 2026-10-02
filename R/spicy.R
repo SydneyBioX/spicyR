@@ -552,8 +552,11 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     cat("spicyR (cell-level test): ", length(unique(paste(tab$from, tab$to))), " pairs, ", what, ", ", scale, "\n", sep = "")
     if (is.null(df$subject)) cat("Units: ", length(df$imageID), " images (no subject given: each image is a patient)\n", sep = "")
     else cat("Units: ", length(unique(df$subject)), " patients with ", length(df$imageID), " images\n", sep = "")
+    adj <- if (is.null(tab$adjusted_for)) character(0) else setdiff(unique(tab$adjusted_for), "none")
+    if (length(adj)) cat("Adjusted for: ", paste(unique(unlist(strsplit(adj, "+", fixed = TRUE))), collapse = ", "),
+                         " (unadjusted test in the unadjusted_* columns)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
-    if (!is.null(tab$adjusted_p_adj)) cat(" (", sum(tab$adjusted_p_adj < 0.05, na.rm = TRUE), " after adjusting for abundance)", sep = "")
+    if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
     cat("\nSee topPairs() and $cellResults.\n")
     return(invisible(df))
   }

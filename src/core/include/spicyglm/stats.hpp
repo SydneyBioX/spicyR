@@ -56,6 +56,7 @@ struct ExcessResult {
   std::vector<double> influence;    // CR2-adjusted influence on the difference (sum of squares = se^2)
   std::vector<double> unit_summary; // the patient summary delta~_i
   std::vector<double> unit_info;    // I_i
+  std::vector<double> image_weight; // per image row: its share of its group's information (sums to 1 in each group)
 };
 
 // unit: unit code of every image (0 .. n_units - 1); group: 0 or 1 per image.
@@ -76,10 +77,15 @@ struct DesignResult {
   std::string reason;
   std::vector<double> theta;
   double estimate = 0, se = 0, df = 0, p = 1, tau2 = 0;
+  std::vector<double> influence;  // per unit (unit-code order): CR2 contribution to the contrast; sum of squares = se^2
 };
 
 DesignResult design_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                          const std::vector<double>& Z, int q, const std::vector<double>& contrast, double tau2);
+// Several contrasts of one fit: `contrasts` is row-major k x q. All results share theta and tau2.
+std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
+                                       const std::vector<double>& Z, int q, const std::vector<double>& contrasts,
+                                       int k, double tau2, bool hartung_knapp = false);
 
 // Option 2 (new_methods.pdf, Section 2): the two-group test with a slope on the centred covariate x
 // (the log share of the REF type), tau2 held at the unadjusted value.
@@ -111,9 +117,11 @@ struct SurvivalResult {
   double tau2 = 0;
 };
 
+// x: optional per-row covariate (the log share of the `to` type); when given, the score test and the hazard
+// ratio are adjusted for it (empty: unadjusted).
 SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                              const std::vector<double>& martingale, const std::vector<double>& time,
-                             const std::vector<int>& event);
+                             const std::vector<int>& event, const std::vector<double>& x = {});
 
 // ------------------------------------------------------ several radii ---
 

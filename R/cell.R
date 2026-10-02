@@ -117,117 +117,163 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   rows
 }
 
-## ---- the test, with the availability adjustment and covariates ---------------------------------
+## ---- the test: adjusted for abundance and covariates by default ---------------------------
 
-.cell_pair_test <- function(ctx, g, f, t, frailty, variance, availability, Z_extra = NULL) {
+## The log share of the counted type in each image row (the abundance covariate).
+.cell_share <- function(ctx, rows, f) {
+  i <- rows$img + 1L
+  log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / rowSums(ctx$counts)[i])
+}
+
+## The design of the main test: one indicator per condition, then the centred log share of the counted
+## type (adjust) and the centred covariates. Images with a missing covariate are left out. NULL when there
+## is nothing to adjust for (no covariates, and the share is constant or not asked for).
+.cell_design <- function(ctx, rows, f, adjust, Z_extra) {
+  X <- NULL
+  if (adjust) { s <- .cell_share(ctx, rows, f); if (stats::var(s) > 0) X <- cbind(abundance = s) }
+  keep <- rep(TRUE, nrow(rows))
+  if (!is.null(Z_extra)) { ze <- Z_extra[rows$img + 1L, , drop = FALSE]; keep <- stats::complete.cases(ze); X <- cbind(X, ze) }
+  if (is.null(X)) return(NULL)
+  rows <- rows[keep, , drop = FALSE]; X <- sweep(X[keep, , drop = FALSE], 2, colMeans(X[keep, , drop = FALSE]))
+  G <- length(ctx$levels)
+  list(rows = rows, Z = cbind(outer(rows$group, seq_len(G) - 1L, `==`) * 1, X), extra = colnames(X),
+       adjusted_for = paste(c(if (adjust && "abundance" %in% colnames(X)) "abundance", if (!is.null(Z_extra)) "covariates"),
+                            collapse = "+"))
+}
+
+## tau2 of the adjusted design: re-estimated (exact Paule-Mandel) when every added column is constant within
+## patients, else held at the unadjusted value (new_methods.pdf, Remark 3).
+.cell_design_tau2 <- function(d, G, frailty, tau2) {
+  if (!frailty) return(0)
+  X <- d$Z[, -seq_len(G), drop = FALSE]
+  patient_level <- all(apply(X, 2, function(z) all(tapply(z, d$rows$unit, function(w) length(unique(w)) == 1L))))
+  if (patient_level) -1 else tau2
+}
+
+## Contrasts of the adjusted design: the level differences, then one row per added column (its effect).
+.cell_contrasts <- function(G, q) {
+  C <- matrix(0, G - 1L + q - G, q)
+  for (l in 2:G) { C[l - 1L, 1] <- -1; C[l - 1L, l] <- 1 }
+  if (q > G) for (j in seq_len(q - G)) C[G - 1L + j, G + j] <- 1
+  C
+}
+
+.cell_pair_test <- function(ctx, g, f, t, frailty, variance, adjust, Z_extra = NULL) {
   rows <- .cell_rows(ctx, g, f, t)
-  if (length(ctx$levels) > 2L) return(.cell_pair_test_levels(ctx, rows, f, t, frailty, availability, Z_extra))
-  r <- stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), frailty, variance)
-  out <- list(from = f, to = t, ok = r$ok, reason = r$reason, rows = rows, test = r)
+  if (length(ctx$levels) > 2L) return(.cell_pair_test_levels(ctx, rows, f, t, frailty, variance, adjust, Z_extra))
+  m <- length(ctx$unit_labels)
+  r <- stats_excess_test(rows, rows$unit, rows$group, m, frailty, variance)
+  out <- list(from = f, to = t, ok = r$ok, reason = r$reason, rows = rows, test = r, unadjusted = r, adjusted_for = "none")
   if (!r$ok) return(out)
-  if (!is.null(Z_extra)) {
-    # covariates: the group difference adjusted for image-level covariates; tau2 re-estimated when
-    # every covariate is constant within patients (exact Paule-Mandel), else held (new_methods.pdf, Remark 3).
-    # Images with a missing covariate are left out of this model.
-    ze <- Z_extra[rows$img + 1L, , drop = FALSE]; cc <- stats::complete.cases(ze)
-    rc <- rows[cc, , drop = FALSE]; ze <- ze[cc, , drop = FALSE]
-    Z <- cbind(rc$group == 0, rc$group == 1, ze)
-    patient_level <- all(apply(ze, 2, function(z) all(tapply(z, rc$unit, function(w) length(unique(w)) == 1L))))
-    out$covariate <- stats_design_test(rc, rc$unit, length(ctx$unit_labels), Z, c(-1, 1, rep(0, ncol(Z_extra))),
-                                       if (patient_level) -1 else r$tau2)
-  }
-  if (availability) {
-    i <- rows$img + 1L
-    share <- log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / rowSums(ctx$counts)[i])
-    out$availability <- if (stats::var(share) > 0)
-      stats_availability_test(rows, rows$unit, rows$group, length(ctx$unit_labels), share, r$tau2)
-    else list(ok = FALSE, reason = "share_constant")
-  }
+  d <- .cell_design(ctx, rows, f, adjust, Z_extra)
+  if (is.null(d)) return(out)
+  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(2L, ncol(d$Z)), .cell_design_tau2(d, 2L, frailty, r$tau2),
+                          variance == "hartung_knapp")
+  # a design that is not of full rank (e.g. a covariate confounded with the condition): the unadjusted test
+  if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
+  x <- a[[1]]
+  out$test <- list(coef_ref = x$theta[1], coef_comp = x$theta[2], difference = x$estimate, se = x$se, df = x$df,
+                   p = x$p, tau2 = x$tau2, influence = x$influence)
+  out$effects <- stats::setNames(a[-1], d$extra)
+  out$adjusted_for <- d$adjusted_for
   out
 }
 
 ## More than two conditions: one design with an indicator per level, each level tested against the
-## reference (the first level). The design is patient-level, so Paule-Mandel is exact; tau2 is
-## estimated once and shared by the level contrasts (CR2 on Satterthwaite df for each).
-.cell_pair_test_levels <- function(ctx, rows, f, t, frailty, availability, Z_extra) {
-  G <- length(ctx$levels); m <- length(ctx$unit_labels)
+## reference (the first level), with the same adjustments as for two conditions.
+.cell_pair_test_levels <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra) {
+  G <- length(ctx$levels); m <- length(ctx$unit_labels); hk <- variance == "hartung_knapp"
   per_level <- tapply(rows$unit, factor(rows$group, levels = seq_len(G) - 1L), function(u) length(unique(u)))
-  out <- list(from = f, to = t, ok = FALSE, rows = rows, levels = ctx$levels)
+  out <- list(from = f, to = t, ok = FALSE, rows = rows, levels = ctx$levels, adjusted_for = "none")
   if (any(is.na(per_level) | per_level < 2L)) { out$reason <- "one_patient_per_group"; return(out) }
   Zg <- outer(rows$group, seq_len(G) - 1L, `==`) * 1
-  fit <- function(Z, tau2) {
-    q <- ncol(Z); tau <- tau2; res <- list()
-    for (l in 2:G) { cvec <- numeric(q); cvec[1] <- -1; cvec[l] <- 1
-      d <- stats_design_test(rows, rows$unit, m, Z, cvec, tau)
-      if (!d$ok) return(NULL)
-      tau <- d$tau2; res[[ctx$levels[l]]] <- d }
-    res }
-  d <- fit(Zg, if (frailty) -1 else 0)
-  if (is.null(d)) { out$reason <- "design_not_full_rank"; return(out) }
-  out$ok <- TRUE; out$levels_test <- d
-  out$test <- list(coef_ref = d[[1]]$theta[1], tau2 = d[[1]]$tau2)
-  if (!is.null(Z_extra)) {
-    cc <- stats::complete.cases(Z_extra[rows$img + 1L, , drop = FALSE])
-    rows_all <- rows; rows <- rows[cc, , drop = FALSE]
-    out$covariate_levels <- fit(cbind(Zg[cc, , drop = FALSE], Z_extra[rows$img + 1L, , drop = FALSE]), d[[1]]$tau2)
-    rows <- rows_all
-  }
-  if (availability) {
-    i <- rows$img + 1L
-    share <- log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / rowSums(ctx$counts)[i])
-    if (stats::var(share) > 0) out$availability_levels <- fit(cbind(Zg, share - mean(share)), d[[1]]$tau2)
-  }
+  u <- stats_design_tests(rows, rows$unit, m, Zg, .cell_contrasts(G, G), if (frailty) -1 else 0, hk)
+  if (!u[[1]]$ok) { out$reason <- "design_not_full_rank"; return(out) }
+  names(u) <- ctx$levels[-1]
+  out$ok <- TRUE; out$levels_test <- out$unadjusted_levels <- u
+  out$test <- list(coef_ref = u[[1]]$theta[1], tau2 = u[[1]]$tau2)
+  d <- .cell_design(ctx, rows, f, adjust, Z_extra)
+  if (is.null(d)) return(out)
+  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(G, ncol(d$Z)),
+                          .cell_design_tau2(d, G, frailty, u[[1]]$tau2), hk)
+  if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
+  out$levels_test <- stats::setNames(a[seq_len(G - 1L)], ctx$levels[-1])
+  out$effects <- stats::setNames(a[-seq_len(G - 1L)], d$extra)
+  out$test <- list(coef_ref = a[[1]]$theta[1], tau2 = a[[1]]$tau2)
+  out$adjusted_for <- d$adjusted_for
   out
 }
 
 ## ---- assembling the results -----------------------------------------------------------------
 
-.cell_table <- function(fits, ctx, availability, covariates) {
-  if (length(ctx$levels) > 2L) return(.cell_table_levels(fits, ctx, availability, covariates))
+## The effect of each added column (abundance first, then the covariates), and the unadjusted test.
+.cell_effect_names <- function(fits) unique(unlist(lapply(fits, function(o) names(o$effects))))
+
+.cell_add_effects <- function(row, o, enames) {
+  for (nm in enames) {
+    e <- o$effects[[nm]]; ok <- !is.null(e) && isTRUE(e$ok)
+    row[[paste0(nm, "_effect")]] <- if (ok) e$estimate else NA_real_
+    row[[paste0(nm, "_p_value")]] <- if (ok) e$p else NA_real_
+  }
+  row
+}
+
+.cell_table <- function(fits, ctx, adjusted) {
+  if (length(ctx$levels) > 2L) return(.cell_table_levels(fits, ctx, adjusted))
   ok <- vapply(fits, `[[`, logical(1), "ok")
-  num <- function(z, nm) if (is.null(z) || !isTRUE(z$ok)) NA_real_ else z[[nm]]
+  enames <- .cell_effect_names(fits[ok])
   tab <- do.call(rbind, lapply(fits[ok], function(o) {
     x <- o$test
     row <- data.frame(from = o$from, to = o$to, excess_ref = x$coef_ref, excess_comp = x$coef_comp,
                       excess_difference = x$difference, se = x$se, df = x$df, p_value = x$p, tau2 = x$tau2,
                       stringsAsFactors = FALSE)
-    if (availability) {
-      row$adjusted_difference <- num(o$availability, "estimate"); row$adjusted_se <- num(o$availability, "se")
-      row$adjusted_df <- num(o$availability, "df"); row$adjusted_p_value <- num(o$availability, "p")
-    }
-    if (!is.null(covariates)) {
-      row$covariate_difference <- num(o$covariate, "estimate"); row$covariate_se <- num(o$covariate, "se")
-      row$covariate_df <- num(o$covariate, "df"); row$covariate_p_value <- num(o$covariate, "p")
+    if (adjusted) {
+      row$adjusted_for <- o$adjusted_for
+      row <- .cell_add_effects(row, o, enames)
+      u <- o$unadjusted
+      row$unadjusted_difference <- u$difference; row$unadjusted_se <- u$se; row$unadjusted_df <- u$df
+      row$unadjusted_p_value <- u$p
     }
     row
   }))
   if (is.null(tab)) return(NULL)
   tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
-  if (availability) tab$adjusted_p_adj <- stats::p.adjust(tab$adjusted_p_value, "BH")
-  if (!is.null(covariates)) tab$covariate_p_adj <- stats::p.adjust(tab$covariate_p_value, "BH")
+  if (adjusted) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
   rownames(tab) <- paste(tab$from, tab$to, sep = "__")
-  tab
+  .cell_order_columns(tab)
 }
 
 ## More than two conditions: one row per pair and level (contrast with the reference level).
-.cell_table_levels <- function(fits, ctx, availability, covariates) {
-  num <- function(z, l, nm) if (is.null(z) || is.null(z[[l]])) NA_real_ else z[[l]][[nm]]
-  tab <- do.call(rbind, lapply(fits[vapply(fits, `[[`, TRUE, "ok")], function(o) {
+.cell_table_levels <- function(fits, ctx, adjusted) {
+  ok <- vapply(fits, `[[`, TRUE, "ok")
+  enames <- .cell_effect_names(fits[ok])
+  tab <- do.call(rbind, lapply(fits[ok], function(o) {
     do.call(rbind, lapply(names(o$levels_test), function(l) { d <- o$levels_test[[l]]
       row <- data.frame(from = o$from, to = o$to, level = l, excess_ref = d$theta[1],
                         excess_difference = d$estimate, se = d$se, df = d$df, p_value = d$p, tau2 = d$tau2,
                         stringsAsFactors = FALSE)
-      if (availability) { row$adjusted_difference <- num(o$availability_levels, l, "estimate")
-        row$adjusted_p_value <- num(o$availability_levels, l, "p") }
-      if (!is.null(covariates)) { row$covariate_difference <- num(o$covariate_levels, l, "estimate")
-        row$covariate_p_value <- num(o$covariate_levels, l, "p") }
+      if (adjusted) {
+        row$adjusted_for <- o$adjusted_for
+        row <- .cell_add_effects(row, o, enames)
+        u <- o$unadjusted_levels[[l]]
+        row$unadjusted_difference <- u$estimate; row$unadjusted_se <- u$se; row$unadjusted_df <- u$df
+        row$unadjusted_p_value <- u$p
+      }
       row })) }))
   if (is.null(tab)) return(NULL)
   for (l in unique(tab$level)) { k <- tab$level == l
     tab$p_adj[k] <- stats::p.adjust(tab$p_value[k], "BH")
-    if (availability) tab$adjusted_p_adj[k] <- stats::p.adjust(tab$adjusted_p_value[k], "BH") }
+    if (adjusted) tab$unadjusted_p_adj[k] <- stats::p.adjust(tab$unadjusted_p_value[k], "BH") }
   rownames(tab) <- paste(tab$from, tab$to, tab$level, sep = "__")
-  tab
+  .cell_order_columns(tab)
+}
+
+## The main test first, then what it was adjusted for and the effects, then the unadjusted test.
+.cell_order_columns <- function(tab) {
+  first <- intersect(c("from", "to", "level", "r", "excess_ref", "excess_comp", "excess_difference", "se", "df",
+                       "p_value", "p_adj", "p_value_best_radius", "tau2", "adjusted_for"), names(tab))
+  un <- grep("^unadjusted_", names(tab), value = TRUE)
+  tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]
 }
 
 ## Per-image excess (O - E) / n of every pair, for plots and bind(): images x pairs.
@@ -235,6 +281,18 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out <- lapply(fits, function(o) {
     v <- rep(NA_real_, ctx$n_images)
     if (!is.null(o$rows) && nrow(o$rows)) v[o$rows$img + 1L] <- (o$rows$O - o$rows$E) / o$rows$n
+    v })
+  names(out) <- vapply(fits, function(o) paste(o$from, o$to, sep = "__"), "")
+  out
+}
+
+## Per-image weight of every pair: the image's share of its condition's information in the frailty model
+## (sums to 1 within each condition); NA where the pair was not tested.
+.cell_image_weight <- function(fits, ctx) {
+  out <- lapply(fits, function(o) {
+    v <- rep(NA_real_, ctx$n_images)
+    w <- o$unadjusted$image_weight
+    if (!is.null(w) && length(w)) v[o$rows$img + 1L] <- w
     v })
   names(out) <- vapply(fits, function(o) paste(o$from, o$to, sep = "__"), "")
   out

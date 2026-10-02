@@ -31,7 +31,8 @@ DataFrame rows_to(const ImageRows& r) {
 
 List design_list(const DesignResult& d) {
   return List::create(_["ok"] = d.ok, _["reason"] = d.reason, _["theta"] = nv(d.theta), _["estimate"] = d.estimate,
-                      _["se"] = d.se, _["df"] = d.df, _["p"] = d.p, _["tau2"] = d.tau2);
+                      _["se"] = d.se, _["df"] = d.df, _["p"] = d.p, _["tau2"] = d.tau2,
+                      _["influence"] = nv(d.influence));
 }
 
 }  // namespace
@@ -86,7 +87,7 @@ List stats_excess_test(DataFrame rows, IntegerVector unit, IntegerVector group, 
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["coef_ref"] = r.coef_ref, _["coef_comp"] = r.coef_comp,
                       _["difference"] = r.difference, _["se"] = r.se, _["df"] = r.df, _["p"] = r.p, _["tau2"] = r.tau2,
                       _["influence"] = nv(r.influence), _["unit_summary"] = nv(r.unit_summary),
-                      _["unit_info"] = nv(r.unit_info));
+                      _["unit_info"] = nv(r.unit_info), _["image_weight"] = nv(r.image_weight));
 }
 
 // [[Rcpp::export]]
@@ -96,6 +97,20 @@ List stats_design_test(DataFrame rows, IntegerVector unit, int n_units, NumericM
   std::vector<double> z(static_cast<std::size_t>(N) * q);
   for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) z[static_cast<std::size_t>(i) * q + j] = Z(i, j);
   return design_list(design_test(rows_from(rows), ivec(unit), n_units, z, q, dvec(contrast), tau2));
+}
+
+// [[Rcpp::export]]
+List stats_design_tests(DataFrame rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts,
+                        double tau2, bool hartung_knapp) {
+  // contrasts: one row per contrast, q columns
+  const int N = Z.nrow(), q = Z.ncol(), k = contrasts.nrow();
+  std::vector<double> z(static_cast<std::size_t>(N) * q), c(static_cast<std::size_t>(k) * q);
+  for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) z[static_cast<std::size_t>(i) * q + j] = Z(i, j);
+  for (int i = 0; i < k; ++i) for (int j = 0; j < q; ++j) c[static_cast<std::size_t>(i) * q + j] = contrasts(i, j);
+  std::vector<DesignResult> r = design_tests(rows_from(rows), ivec(unit), n_units, z, q, c, k, tau2, hartung_knapp);
+  List out(k);
+  for (int i = 0; i < k; ++i) out[i] = design_list(r[i]);
+  return out;
 }
 
 // [[Rcpp::export]]
@@ -116,8 +131,8 @@ List stats_cox_fit(NumericVector time, IntegerVector event, NumericMatrix X) {
 
 // [[Rcpp::export]]
 List stats_survival_test(DataFrame rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time,
-                         IntegerVector event) {
-  SurvivalResult r = survival_test(rows_from(rows), ivec(unit), n_units, dvec(martingale), dvec(time), ivec(event));
+                         IntegerVector event, NumericVector x) {
+  SurvivalResult r = survival_test(rows_from(rows), ivec(unit), n_units, dvec(martingale), dvec(time), ivec(event), dvec(x));
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["score_coef"] = r.score_coef, _["score_se"] = r.score_se,
                       _["score_df"] = r.score_df, _["score_p"] = r.score_p, _["log_hr_sd"] = r.log_hr_sd,
                       _["hr_sd"] = r.hr_sd, _["hr_se"] = r.hr_se, _["hr_p"] = r.hr_p, _["log_hr_unit"] = r.log_hr_unit,

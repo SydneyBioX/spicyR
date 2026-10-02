@@ -116,44 +116,67 @@ double design_tau2(const ImageRows& d, const Units& U, const MatrixXd& D) {
 
 }  // namespace
 
-DesignResult design_test(const ImageRows& rows, const std::vector<int>& unit, int,
-                         const std::vector<double>& Z, int q, const std::vector<double>& contrast, double tau2) {
-  DesignResult res;
+std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
+                                       const std::vector<double>& Z, int q, const std::vector<double>& contrasts,
+                                       int k, double tau2, bool hartung_knapp) {
+  std::vector<DesignResult> out(k);
   const int N = static_cast<int>(rows.O.size());
   MatrixXd D(N, q);
   for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) D(i, j) = rows.n[i] * Z[static_cast<std::size_t>(i) * q + j];
   Units U = group_units(unit);
-  if (static_cast<int>(U.rows.size()) <= q) { res.reason = "too_few_units"; return res; }
+  if (static_cast<int>(U.rows.size()) <= q) { for (auto& r : out) r.reason = "too_few_units"; return out; }
   if (tau2 < 0) tau2 = design_tau2(rows, U, D);
   Fit f = gls(rows, U, D, tau2);
-  if (!f.ok) { res.reason = "design_not_full_rank"; return res; }
-  VectorXd c = Eigen::Map<const VectorXd>(contrast.data(), q);
-  VectorXd b = f.B * c;
-  double V = 0, sum_a2 = 0, sum_a4 = 0, sum_a2_tBt = 0, sum_tBt = 0;
-  MatrixXd S = MatrixXd::Zero(q, q);
-  for (std::size_t k = 0; k < U.rows.size(); ++k) {
-    const MatrixXd& Xk = f.X[k];
+  if (!f.ok) { for (auto& r : out) r.reason = "design_not_full_rank"; return out; }
+  // per-unit pieces shared by the contrasts: the adjustment A_k and the whitened residuals
+  std::vector<MatrixXd> A(U.rows.size());
+  std::vector<VectorXd> E(U.rows.size());
+  for (std::size_t u = 0; u < U.rows.size(); ++u) {
+    const MatrixXd& Xk = f.X[u];
     const int J = static_cast<int>(Xk.rows());
-    MatrixXd I_H = MatrixXd::Identity(J, J) - Xk * f.B * Xk.transpose();
-    Eigen::SelfAdjointEigenSolver<MatrixXd> es(I_H);
+    Eigen::SelfAdjointEigenSolver<MatrixXd> es(MatrixXd::Identity(J, J) - Xk * f.B * Xk.transpose());
     VectorXd ev = es.eigenvalues().cwiseMax(1e-12).cwiseSqrt().cwiseInverse();
-    MatrixXd A = es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
-    VectorXd e = f.y[k] - Xk * f.theta;
-    VectorXd a = A * (Xk * b);
-    double s = a.dot(e);
-    V += s * s;
-    VectorXd t = Xk.transpose() * a;
-    double a2 = a.squaredNorm(), tBt = t.dot(f.B * t);
-    sum_a2 += a2; sum_a4 += a2 * a2; sum_a2_tBt += a2 * tBt; sum_tBt += tBt;
-    S += t * t.transpose();
+    A[u] = es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
+    E[u] = f.y[u] - Xk * f.theta;
   }
-  MatrixXd BS = f.B * S;
-  double trO = sum_a2 - sum_tBt, trO2 = sum_a4 - 2 * sum_a2_tBt + (BS * BS).trace();
-  res.ok = true; res.tau2 = tau2;
-  res.theta.assign(f.theta.data(), f.theta.data() + q);
-  res.estimate = c.dot(f.theta); res.se = std::sqrt(V); res.df = trO * trO / trO2;
-  res.p = pt_two_sided(res.estimate / res.se, res.df);
-  return res;
+  double X_hk = 0;
+  for (int c = 0; c < k; ++c) {
+    DesignResult& res = out[c];
+    VectorXd cv = Eigen::Map<const VectorXd>(contrasts.data() + static_cast<std::size_t>(c) * q, q);
+    VectorXd b = f.B * cv;
+    double V = 0, sum_a2 = 0, sum_a4 = 0, sum_a2_tBt = 0, sum_tBt = 0;
+    MatrixXd S = MatrixXd::Zero(q, q);
+    res.influence.assign(n_units, 0.0);
+    for (std::size_t u = 0; u < U.rows.size(); ++u) {
+      VectorXd a = A[u] * (f.X[u] * b);
+      double s = a.dot(E[u]);
+      V += s * s;
+      res.influence[unit[U.rows[u][0]]] = s;
+      VectorXd t = f.X[u].transpose() * a;
+      double a2 = a.squaredNorm(), tBt = t.dot(f.B * t);
+      sum_a2 += a2; sum_a4 += a2 * a2; sum_a2_tBt += a2 * tBt; sum_tBt += tBt;
+      S += t * t.transpose();
+    }
+    MatrixXd BS = f.B * S;
+    double trO = sum_a2 - sum_tBt, trO2 = sum_a4 - 2 * sum_a2_tBt + (BS * BS).trace();
+    res.ok = true; res.tau2 = tau2;
+    res.theta.assign(f.theta.data(), f.theta.data() + q);
+    res.estimate = cv.dot(f.theta); res.df = trO * trO / trO2;
+    const double nu = static_cast<double>(U.rows.size()) - q;
+    if (hartung_knapp && nu >= 1) {
+      // the model-based variance, scaled by the Pearson statistic and floored at CR2, on m - q df
+      if (c == 0) X_hk = pearson(rows, U, D, tau2);
+      V = std::max(V, cv.dot(f.B * cv) * std::max(1.0, X_hk / nu)); res.df = nu;
+    }
+    res.se = std::sqrt(V);
+    res.p = pt_two_sided(res.estimate / res.se, res.df);
+  }
+  return out;
+}
+
+DesignResult design_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
+                         const std::vector<double>& Z, int q, const std::vector<double>& contrast, double tau2) {
+  return design_tests(rows, unit, n_units, Z, q, contrast, 1, tau2)[0];
 }
 
 DesignResult availability_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
