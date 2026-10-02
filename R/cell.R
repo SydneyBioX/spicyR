@@ -32,9 +32,8 @@
               unit_labels = unit_labels, image_unit = image_unit, first = first)
   if (!is.null(condition) && !survival) {
     lev <- condition_levels(cells[[condition]])
-    if (length(lev) != 2L)
-      stop("spicyR Cell compares two conditions; found ", length(lev), ": ", paste(lev, collapse = ", "),
-           ". Use `covariates` for more groups, or a `Surv` column for survival.", call. = FALSE)
+    if (length(lev) < 2L)
+      stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
     if (!is.null(ref)) {
       if (!as.character(ref) %in% lev) stop("`ref` is not a level of `condition`.", call. = FALSE)
       lev <- c(as.character(ref), setdiff(lev, as.character(ref)))
@@ -87,10 +86,11 @@
   rows
 }
 
-## ---- the two-group test, with the availability adjustment and covariates ------------------------
+## ---- the test, with the availability adjustment and covariates ---------------------------------
 
 .cell_pair_test <- function(ctx, g, f, t, frailty, variance, availability, Z_extra = NULL) {
   rows <- .cell_rows(ctx, g, f, t)
+  if (length(ctx$levels) > 2L) return(.cell_pair_test_levels(ctx, rows, f, t, frailty, availability, Z_extra))
   r <- stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), frailty, variance)
   out <- list(from = f, to = t, ok = r$ok, reason = r$reason, rows = rows, test = r)
   if (!r$ok) return(out)
@@ -114,9 +114,39 @@
   out
 }
 
+## More than two conditions: one design with an indicator per level, each level tested against the
+## reference (the first level). The design is patient-level, so Paule-Mandel is exact; tau2 is
+## estimated once and shared by the level contrasts (CR2 on Satterthwaite df for each).
+.cell_pair_test_levels <- function(ctx, rows, f, t, frailty, availability, Z_extra) {
+  G <- length(ctx$levels); m <- length(ctx$unit_labels)
+  per_level <- tapply(rows$unit, factor(rows$group, levels = seq_len(G) - 1L), function(u) length(unique(u)))
+  out <- list(from = f, to = t, ok = FALSE, rows = rows, levels = ctx$levels)
+  if (any(is.na(per_level) | per_level < 2L)) { out$reason <- "one_patient_per_group"; return(out) }
+  Zg <- outer(rows$group, seq_len(G) - 1L, `==`) * 1
+  fit <- function(Z, tau2) {
+    q <- ncol(Z); tau <- tau2; res <- list()
+    for (l in 2:G) { cvec <- numeric(q); cvec[1] <- -1; cvec[l] <- 1
+      d <- stats_design_test(rows, rows$unit, m, Z, cvec, tau)
+      if (!d$ok) return(NULL)
+      tau <- d$tau2; res[[ctx$levels[l]]] <- d }
+    res }
+  d <- fit(Zg, if (frailty) -1 else 0)
+  if (is.null(d)) { out$reason <- "design_not_full_rank"; return(out) }
+  out$ok <- TRUE; out$levels_test <- d
+  out$test <- list(coef_ref = d[[1]]$theta[1], tau2 = d[[1]]$tau2)
+  if (!is.null(Z_extra)) out$covariate_levels <- fit(cbind(Zg, Z_extra[rows$img + 1L, , drop = FALSE]), d[[1]]$tau2)
+  if (availability) {
+    i <- rows$img + 1L
+    share <- log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / rowSums(ctx$counts)[i])
+    if (stats::var(share) > 0) out$availability_levels <- fit(cbind(Zg, share - mean(share)), d[[1]]$tau2)
+  }
+  out
+}
+
 ## ---- assembling the results -----------------------------------------------------------------
 
 .cell_table <- function(fits, ctx, availability, covariates) {
+  if (length(ctx$levels) > 2L) return(.cell_table_levels(fits, ctx, availability, covariates))
   ok <- vapply(fits, `[[`, logical(1), "ok")
   num <- function(z, nm) if (is.null(z) || !isTRUE(z$ok)) NA_real_ else z[[nm]]
   tab <- do.call(rbind, lapply(fits[ok], function(o) {
@@ -139,6 +169,27 @@
   if (availability) tab$adjusted_p_adj <- stats::p.adjust(tab$adjusted_p_value, "BH")
   if (!is.null(covariates)) tab$covariate_p_adj <- stats::p.adjust(tab$covariate_p_value, "BH")
   rownames(tab) <- paste(tab$from, tab$to, sep = "__")
+  tab
+}
+
+## More than two conditions: one row per pair and level (contrast with the reference level).
+.cell_table_levels <- function(fits, ctx, availability, covariates) {
+  num <- function(z, l, nm) if (is.null(z) || is.null(z[[l]])) NA_real_ else z[[l]][[nm]]
+  tab <- do.call(rbind, lapply(fits[vapply(fits, `[[`, TRUE, "ok")], function(o) {
+    do.call(rbind, lapply(names(o$levels_test), function(l) { d <- o$levels_test[[l]]
+      row <- data.frame(from = o$from, to = o$to, level = l, excess_ref = d$theta[1],
+                        excess_difference = d$estimate, se = d$se, df = d$df, p_value = d$p, tau2 = d$tau2,
+                        stringsAsFactors = FALSE)
+      if (availability) { row$adjusted_difference <- num(o$availability_levels, l, "estimate")
+        row$adjusted_p_value <- num(o$availability_levels, l, "p") }
+      if (!is.null(covariates)) { row$covariate_difference <- num(o$covariate_levels, l, "estimate")
+        row$covariate_p_value <- num(o$covariate_levels, l, "p") }
+      row })) }))
+  if (is.null(tab)) return(NULL)
+  for (l in unique(tab$level)) { k <- tab$level == l
+    tab$p_adj[k] <- stats::p.adjust(tab$p_value[k], "BH")
+    if (availability) tab$adjusted_p_adj[k] <- stats::p.adjust(tab$adjusted_p_value[k], "BH") }
+  rownames(tab) <- paste(tab$from, tab$to, tab$level, sep = "__")
   tab
 }
 

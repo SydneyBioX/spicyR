@@ -1,76 +1,11 @@
-#' Performs spatial tests on spatial cytometry data.
-#'
-#' @param cells A SummarizedExperiment or data frame that contains at least the  variables
-#'   x and y, giving the location coordinates of each cell, and cellType.
-#' @param condition A character specifying which column which contains the condition or `Surv` objects.
-#' @param subject Vector of subject IDs corresponding to each image if cells is
-#'   a data frame.
-#' @param covariates Vector of covariate names that should be included in the
-#'   mixed effects model as fixed effects.
-#' @param imageID The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
-#' @param cellType The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
-#' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
-#' @param r A vector of the radii that the measures of association should be calculated over.
-#' @param sigma A numeric variable used for scaling when fitting inhomogenous L-curves.
-#' @param from vector of cell types which you would like to compare to the to vector.
-#' @param to vector of cell types which you would like to compare to the from vector.
-#' @param alternateResult A pairwise association statistic between each combination of celltypes in
-#'   each image.
-#' @param cores Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
-#' @param minLambda Minimum value density for scaling when fitting inhomogeneous L-curves.
-#' @param weights logical indicating whether to include weights based on cell counts.
-#' @param weightsByPair logical indicating whether weights should be calculated for each cell type
-#'   pair.
-#' @param weightFactor numeric that controls the convexity of the weight function.
-#' @param weightZThreshold numeric; the minimum weight-model prediction
-#'   (\code{log10(resSq + 1)}) counted when choosing the \code{1/z} weight-cap
-#'   floor. The default (\code{0.1}) suits the L-function's numeric scale. Pass
-#'   \code{0} for a statistic whose residual variance is small in absolute terms
-#'   (e.g. the observed/expected ratio from \code{\link{getPairwiseProp}}), where
-#'   every prediction can otherwise sit below the default and collapse the
-#'   weights to \code{NA}.
-#' @param window 	Should the window around the regions be 'square', 'convex' or 'concave'.
-#' @param window.length A tuning parameter for controlling the level of concavity when estimating concave windows.
-#' @param edgeCorrect A logical indicating whether to perform edge correction.
-#' @param includeZeroCells 	A logical indicating whether to include cells with zero counts in the pairwise association calculation.
-#' @param verbose logical indicating whether to output messages.
-#' @param BPPARAM \{DEPRECATED\} A BiocParallel MulticoreParam or SerialParam object. 
-#' @param imageIDCol \{DEPRECATED\} The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
-#' @param cellTypeCol \{DEPRECATED\} The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
-#' @param spatialCoordCols \{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.
-#' @param nCores \{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
-#' @param Rs \{DEPRECATED\} A vector of the radii that the measures of association should be calculated over.
-#' @param ... Other options
-#' @return Data frame of p-values.
-#' @export
-#'
-#' @examples
-#' data("diabetesData")
-#'
-#' # Test with random effect for patient on a pairwise combination of cell
-#' # types.
-#' spicy(diabetesData,
-#'   condition = "stage", subject = "case",
-#'   from = "Tc", to = "Th"
-#' )
-#'
-#' # Test all pairwise combinations of cell types without random effect of
-#' # patient.
-#' \dontrun{
-#' spicyTest <- spicy(diabetesData, condition = "stage", subject = "case")
-#' }
-#'
-#' # Test all pairwise combination of cell types with random effect of patient.
-#' \dontrun{
-#' spicy(diabetesData, condition = "condition", subject = "subject")
-#' }
-#'
-#' @aliases spicy spicy,spicy-method
+## The original spicyR test (method = "image"): a per-image L-function summary per pair, compared between
+## conditions by a weighted linear or mixed model (Canete et al. 2022). Called by spicy(); not exported.
 #' @importFrom scam scam
 #' @importFrom rlang .data
 #' @importFrom tibble column_to_rownames
 #' @importFrom lifecycle deprecate_soft
-spicy <- function(cells,
+#' @noRd
+.spicyImage <- function(cells,
                   condition,
                   subject = NULL,
                   covariates = NULL,
