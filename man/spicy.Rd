@@ -22,7 +22,7 @@ spicy(
   method = c("cell", "image"),
   k = NULL,
   combine = c("maxT", "cauchy"),
-  availability = TRUE,
+  adjustAbundance = TRUE,
   variance = c("cr2", "hartung_knapp"),
   frailty = TRUE,
   labelClustering = TRUE,
@@ -42,7 +42,8 @@ for a survival outcome.}
 if omitted, every image is its own patient.}
 
 \item{covariates}{Image- or patient-level columns to adjust for (cell method: added to the design of
-the excess; survival: added to the null Cox model).}
+the excess, and the effect of each is reported as `<column>_effect` and `<column>_p_value`;
+survival: added to the null Cox model).}
 
 \item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates.}
 
@@ -59,8 +60,8 @@ function (default 20, 50 and 100).}
 \item{combine}{Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
 radii) or `"cauchy"` (Cauchy combination).}
 
-\item{availability}{Cell method: also report the difference at equal availability of the `to`
-type, i.e. adjusted for its share of all cells (`adjusted_*` columns).}
+\item{adjustAbundance}{Cell method: adjust the test for the log share of the `to` type in each image
+(default `TRUE`). Its effect is reported as `abundance_effect`. `FALSE` gives the test without it.}
 
 \item{variance}{Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
 (for very few patients: the model-based variance floored at CR2, on m - 2 df).}
@@ -79,8 +80,10 @@ of the within-image variance (both on by default).}
 \value{
 A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work
   for both methods. For the cell method, `$cellResults` holds the full table: the excess in each
-  condition, the difference, its standard error, df, p-value and BH-adjusted p-value, the frailty
-  variance, and the availability-adjusted difference and p-value.
+  condition (at the average abundance and covariates), the difference, its standard error, df,
+  p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
+  (`adjusted_for`), the effect and p-value of each adjustment, and the unadjusted test
+  (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
 }
 \description{
 `spicy()` tests, for every ordered pair of cell types *from* → *to*, whether the co-localisation of
@@ -94,9 +97,10 @@ is compared with its exact expectation if the `from` cells were a random choice 
 are not `to` cells in the same image. The effect is the **excess**: the number of extra `to` cells
 within `r` of each `from` cell. Images are combined within patients and patients within conditions by
 a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
-Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. Results for each pair
-also include the difference after adjusting for how common the `to` type is in each image (its share
-of all cells), a check that a change is not just a change in abundance.
+Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. By default the
+difference is adjusted for how common the `to` type is in each image (the log of its share of all
+cells) and for any `covariates`, so that a change in abundance alone does not appear as a change in
+co-localisation. The unadjusted test is reported alongside (`unadjusted_*` columns).
 
 **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when `subject` is given

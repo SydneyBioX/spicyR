@@ -1,5 +1,8 @@
-#' Plots an image with specified from and to cell types.
-#' 
+#' Plot one image, showing the `from` and `to` cells of a pair
+#'
+#' The density of all cells is shown in blue, with the `from` and `to` cells on top. With `r`, a circle of
+#' radius `r` is drawn around each `from` cell: the `to` cells inside the circles are those that spicyR counts.
+#'
 #' @param cells A SummarizedExperiment object.
 #' @param imageToPlot The ID of the image to be plotted.
 #' @param from The "from" cell type.
@@ -7,12 +10,14 @@
 #' @param imageID The name of the imageID column in the SummarizedExperiment object.
 #' @param cellType The name of the cellType column in the SummarizedExperiment object. 
 #' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
+#' @param r Optional radius: draw a circle of this radius around each `from` cell.
 #' 
 #' @return A ggplot object.
 #' 
 #' @examples
 #' data("diabetesData")
 #' plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
+#' plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
 #' 
 #' @export
 #' @import ggplot2
@@ -23,7 +28,8 @@ plotImage = function(cells,
                      to,
                      imageID = "imageID", 
                      cellType = "cellType",
-                     spatialCoords = c("x", "y")) {
+                     spatialCoords = c("x", "y"),
+                     r = NULL) {
   
   if (!.is_class(cells, "SummarizedExperiment")) {
     stop(paste("Please provide a SummarizedExperiment object as input."))
@@ -72,7 +78,14 @@ plotImage = function(cells,
   
   pal = setNames(c("#d6b11c", "#850f07"), c(from, to))
   
-  ggplot() +
+  circles <- NULL
+  if (!is.null(r)) {
+    f <- cData[cData$cellType == from, , drop = FALSE]
+    a <- seq(0, 2 * pi, length.out = 41)
+    circles <- data.frame(x = rep(f$x, each = 41) + r * cos(a), y = rep(f$y, each = 41) + r * sin(a),
+                          id = rep(seq_len(nrow(f)), each = 41))
+  }
+  p <- ggplot() +
     stat_density_2d(data = cData, aes(x = .data$x, y = .data$y, fill = after_stat(density)), 
                     geom = "raster", 
                     contour = FALSE) +
@@ -80,7 +93,12 @@ plotImage = function(cells,
                aes(x = .data$x, y = .data$y, colour = .data$cellTypeNew), size = 1) +
     scale_color_manual(values = pal) +
     scale_fill_distiller(palette = "Blues", direction = 1) +
+    coord_equal() +
     theme_classic() +
     labs(title = paste0(imageID, ": ", imageToPlot),
          color = cellType)
+  if (!is.null(circles))
+    p <- p + geom_path(data = circles, aes(x = .data$x, y = .data$y, group = .data$id), colour = "#d6b11c",
+                       linewidth = 0.3, alpha = 0.7)
+  p
 }

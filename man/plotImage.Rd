@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotImage.R
 \name{plotImage}
 \alias{plotImage}
-\title{Plots an image with specified from and to cell types.}
+\title{Plot one image, showing the `from` and `to` cells of a pair}
 \usage{
 plotImage(
   cells,
@@ -11,7 +11,8 @@ plotImage(
   to,
   imageID = "imageID",
   cellType = "cellType",
-  spatialCoords = c("x", "y")
+  spatialCoords = c("x", "y"),
+  r = NULL
 )
 }
 \arguments{
@@ -28,15 +29,19 @@ plotImage(
 \item{cellType}{The name of the cellType column in the SummarizedExperiment object.}
 
 \item{spatialCoords}{The names of the spatialCoords column if using a SingleCellExperiment.}
+
+\item{r}{Optional radius: draw a circle of this radius around each `from` cell.}
 }
 \value{
 A ggplot object.
 }
 \description{
-Plots an image with specified from and to cell types.
+The density of all cells is shown in blue, with the `from` and `to` cells on top. With `r`, a circle of
+radius `r` is drawn around each `from` cell: the `to` cells inside the circles are those that spicyR counts.
 }
 \examples{
 data("diabetesData")
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
+plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
 
 }

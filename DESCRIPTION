@@ -48,6 +48,7 @@ LinkingTo: Rcpp, RcppEigen
 SystemRequirements: C++17
 Suggests:
     SummarizedExperiment,
+    plotly,
     dplyr,
     SingleCellExperiment,
     SpatialExperiment,

@@ -2,32 +2,39 @@
 % Please edit documentation in R/spicyBoxPlot.R
 \name{spicyBoxPlot}
 \alias{spicyBoxPlot}
-\title{Plots boxplot for a specified cell-cell relationship}
+\title{Box plot of one pair, with a point per image}
 \usage{
-spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL)
+spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
 }
 \arguments{
 \item{results}{The SpicyResults object returned by spicy() (either method).}
 
-\item{from}{Cell type which you would like to compare to the to cell type.}
+\item{from}{The `from` cell type (the centre).}
 
-\item{to}{Cell type which you would like to compare to the from cell type.}
+\item{to}{The `to` cell type (counted around each `from` cell).}
 
-\item{rank}{Ranking of cell type in terms of p-value, the smaller the p-value
-the higher the rank.}
+\item{rank}{Alternatively, the rank of the pair by p-value (1 is the most significant).}
+
+\item{interactive}{Return an interactive plotly widget instead of a ggplot (needs the plotly package).}
 }
 \value{
-a ggplot2 boxplot. For \code{method = "cell"} results the y axis is the
-  per-image excess (extra \code{to} cells per \code{from} cell); for
-  \code{method = "image"} results it is the L function.
+A ggplot, or with `interactive = TRUE` a plotly htmlwidget. Images in which the pair was not
+  tested (no `from` cells, for example) are not shown.
 }
 \description{
-Plots boxplot for a specified cell-cell relationship
+Shows the per-image value of one pair in each condition: a box plot with the images as points behind it.
+For the cell method the value is the excess (extra `to` cells per `from` cell beyond chance), and each point
+is sized by how much the image contributes to the test (its weight in the frailty model, relative to the
+average image of its condition). With `interactive = TRUE` the plot is a plotly widget: hover over a point to
+see its image, patient, excess and weight, which helps to find images worth looking at with [plotImage()].
 }
 \examples{
 data(spicyTest)
+spicyBoxPlot(spicyTest, rank = 1)
 
-spicyBoxPlot(spicyTest,
-             rank = 1)
+data("diabetesData")
+res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
+             from = "Tc", to = c("Th", "beta"))
+spicyBoxPlot(res, from = "Tc", to = "Th")
 
 }
