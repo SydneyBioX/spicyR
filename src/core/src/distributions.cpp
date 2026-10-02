@@ -1,4 +1,7 @@
-// Distribution functions for the statistics module (no dependency beyond <cmath>).
+// Distribution functions for the statistics module (no dependency beyond the standard library). Written from the
+// formulas of the NIST Digital Library of Mathematical Functions (DLMF, https://dlmf.nist.gov) and, for the normal
+// quantile, Wichura (1988), Applied Statistics 37, 477-484 (Algorithm AS 241).
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -11,59 +14,42 @@ namespace {
 
 const double kInf = std::numeric_limits<double>::infinity();
 
-// Continued fraction for the regularised incomplete beta (modified Lentz), valid for
-// x < (a + 1) / (a + b + 2); see Numerical Recipes, section 6.4.
-double beta_cf(double a, double b, double x) {
-  const double tiny = 1e-300, eps = 1e-16;
-  double qab = a + b, qap = a + 1, qam = a - 1;
-  double c = 1, d = 1 - qab * x / qap;
-  if (std::fabs(d) < tiny) d = tiny;
-  d = 1 / d;
-  double h = d;
-  for (int m = 1; m <= 10000; ++m) {
-    double m2 = 2.0 * m;
-    double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
-    d = 1 + aa * d; if (std::fabs(d) < tiny) d = tiny;
-    c = 1 + aa / c; if (std::fabs(c) < tiny) c = tiny;
-    d = 1 / d; h *= d * c;
-    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
-    d = 1 + aa * d; if (std::fabs(d) < tiny) d = tiny;
-    c = 1 + aa / c; if (std::fabs(c) < tiny) c = tiny;
-    d = 1 / d;
-    double del = d * c; h *= del;
-    if (std::fabs(del - 1) < eps) break;
+// The continued fraction of the regularised incomplete beta function (DLMF 8.17.22),
+//   I_x(a, b) = x^a (1 - x)^b / (a B(a, b)) / (1 + d_1 / (1 + d_2 / (1 + ...))),
+//   d_{2m+1} = -(a + m)(a + b + m) x / ((a + 2m)(a + 2m + 1)),   d_{2m} = m (b - m) x / ((a + 2m - 1)(a + 2m)),
+// which converges fast for x < (a + 1) / (a + b + 2). Returns the value of the fraction 1 + d_1 / (1 + ...),
+// computed from its convergents A_n / B_n by the fundamental recurrences A_n = A_{n-1} + d_n A_{n-2} (and the
+// same for B_n; DLMF 1.12.5), rescaled to stay within floating-point range.
+double incomplete_beta_fraction(double a, double b, double x) {
+  double A_before = 1, B_before = 0;   // A_{-1}, B_{-1}
+  double A_now = 1, B_now = 1;         // A_0, B_0
+  double convergent = 1;
+  for (int n = 1; n <= 20000; ++n) {
+    const double m = static_cast<double>(n / 2);
+    const double d = (n % 2 == 1) ? -(a + m) * (a + b + m) * x / ((a + 2 * m) * (a + 2 * m + 1))
+                                  : m * (b - m) * x / ((a + 2 * m - 1) * (a + 2 * m));
+    const double A_next = A_now + d * A_before, B_next = B_now + d * B_before;
+    A_before = A_now; B_before = B_now; A_now = A_next; B_now = B_next;
+    const double scale = std::max(std::fabs(A_now), std::fabs(B_now));
+    if (scale > 1e150 || (scale > 0 && scale < 1e-150)) {
+      A_now /= scale; B_now /= scale; A_before /= scale; B_before /= scale;
+    }
+    const double next = A_now / B_now;
+    if (n > 1 && std::fabs(next - convergent) <= 1e-15 * std::fabs(next)) return next;
+    convergent = next;
   }
-  return h;
+  return convergent;
 }
 
-// I_x(a, b), the regularised incomplete beta function.
-double ibeta(double a, double b, double x) {
+// I_x(a, b), the regularised incomplete beta function, given x and y = 1 - x (passed separately so that a y too
+// small to be represented as 1 - x keeps its precision); for x beyond (a + 1) / (a + b + 2) through the symmetry
+// I_x(a, b) = 1 - I_y(b, a) (DLMF 8.17.4).
+double ibeta(double a, double b, double x, double y) {
   if (x <= 0) return 0;
-  if (x >= 1) return 1;
-  double lbt = std::lgamma(a + b) - std::lgamma(a) - std::lgamma(b) + a * std::log(x) + b * std::log1p(-x);
-  if (x < (a + 1) / (a + b + 2)) return std::exp(lbt) * beta_cf(a, b, x) / a;
-  return 1 - std::exp(lbt) * beta_cf(b, a, 1 - x) / b;
-}
-
-// Regularised upper incomplete gamma Q(a, x).
-double gamma_q(double a, double x) {
-  if (x <= 0) return 1;
-  double gln = std::lgamma(a);
-  if (x < a + 1) {  // series for P
-    double ap = a, sum = 1 / a, del = sum;
-    for (int n = 0; n < 100000; ++n) { ap += 1; del *= x / ap; sum += del; if (std::fabs(del) < std::fabs(sum) * 1e-16) break; }
-    return 1 - sum * std::exp(-x + a * std::log(x) - gln);
-  }
-  const double tiny = 1e-300;  // continued fraction for Q
-  double b = x + 1 - a, c = 1 / tiny, d = 1 / b, h = d;
-  for (int i = 1; i < 100000; ++i) {
-    double an = -i * (i - a); b += 2;
-    d = an * d + b; if (std::fabs(d) < tiny) d = tiny;
-    c = b + an / c; if (std::fabs(c) < tiny) c = tiny;
-    d = 1 / d; double del = d * c; h *= del;
-    if (std::fabs(del - 1) < 1e-16) break;
-  }
-  return std::exp(-x + a * std::log(x) - gln) * h;
+  if (y <= 0) return 1;
+  const double log_front = std::lgamma(a + b) - std::lgamma(a) - std::lgamma(b) + a * std::log(x) + b * std::log(y);
+  if (x < (a + 1) / (a + b + 2)) return std::exp(log_front) / (a * incomplete_beta_fraction(a, b, x));
+  return 1 - std::exp(log_front) / (b * incomplete_beta_fraction(b, a, y));
 }
 
 }  // namespace
@@ -110,17 +96,16 @@ double norm_quantile(double p) {
 double pt_upper(double t, double df) {
   if (std::isnan(t) || std::isnan(df) || df <= 0) return std::numeric_limits<double>::quiet_NaN();
   if (std::isinf(df) || df > 1e10) return pnorm_upper(t);
-  double x = df / (df + t * t);
-  double tail = 0.5 * ibeta(df / 2, 0.5, x);   // P(T > |t|)
+  const double x = df / (df + t * t), y = t * t / (df + t * t);
+  double tail = 0.5 * ibeta(df / 2, 0.5, x, y);   // P(T > |t|)
   return t >= 0 ? tail : 1 - tail;
 }
 
 double pt_two_sided(double t, double df) {
   if (std::isnan(t) || std::isnan(df) || df <= 0) return std::numeric_limits<double>::quiet_NaN();
   if (std::isinf(df) || df > 1e10) return std::erfc(std::fabs(t) / std::sqrt(2.0));
-  return ibeta(df / 2, 0.5, df / (df + t * t));
+  return ibeta(df / 2, 0.5, df / (df + t * t), t * t / (df + t * t));
 }
 
-double pchisq_upper(double x, double df) { return gamma_q(df / 2, x / 2); }
 
 }  // namespace spicyglm

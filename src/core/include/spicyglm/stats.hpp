@@ -2,8 +2,9 @@
 // (covariates, availability adjustment, survival score test), Cox models, and the combination of
 // several radii. Plain C++17 with Eigen, shared by the R and Python packages.
 //
-// Every routine has a plain-R reference written from the equations (R/reference/ in the project
-// repository ProjectSpicyRCell); the package tests check the two agree.
+// Every routine has a plain-R reference written from the equations (tests/testthat/helper-reference.R in
+// spicyR); the package tests check the two agree.
+// Written with AI assistance (Claude, Anthropic), directed by the authors; see NEWS.
 #pragma once
 
 #include <string>
@@ -19,7 +20,6 @@ double pnorm_upper(double z);                 // P(Z > z), accurate in the far t
 double norm_quantile(double p);                       // Wichura AS241
 double pt_upper(double t, double df);         // P(T > t), Student t (df = inf: normal)
 double pt_two_sided(double t, double df);     // P(|T| > |t|)
-double pchisq_upper(double x, double df);     // P(X > x)
 
 // ------------------------------------------------------------ image rows ---
 
@@ -69,7 +69,7 @@ double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const st
 
 // ------------------------------------------------------- the general design ---
 
-// delta_ij = z_ij' theta + b_i (new_methods.pdf, Section 1). Z is row-major, one row per image row,
+// delta_ij = z_ij' theta + b_i (Supplementary Methods, Section 1). Z is row-major, one row per image row,
 // q columns. tau2 < 0: estimate it by Paule-Mandel under the design (exact for patient-level
 // designs); tau2 >= 0: hold it fixed. Tests the contrast c' theta with CR2 on Satterthwaite df.
 struct DesignResult {
@@ -87,7 +87,7 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
                                        const std::vector<double>& Z, int q, const std::vector<double>& contrasts,
                                        int k, double tau2, bool hartung_knapp = false);
 
-// Option 2 (new_methods.pdf, Section 2): the two-group test with a slope on the centred covariate x
+// Option 2 (Supplementary Methods, Section 2): the two-group test with a slope on the centred covariate x
 // (the log share of the REF type), tau2 held at the unadjusted value.
 DesignResult availability_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                                int n_units, const std::vector<double>& x, double tau2);
@@ -106,7 +106,7 @@ struct CoxResult {
 CoxResult cox_fit(const std::vector<double>& time, const std::vector<int>& event, const std::vector<double>& X,
                   int p);
 
-// Survival (new_methods.pdf, Section 3) for one pair. time and event per unit (unit-code order);
+// Survival (Supplementary Methods, Section 3) for one pair. time and event per unit (unit-code order);
 // covariates (row-major, per unit) enter the null Cox model.
 struct SurvivalResult {
   bool ok = false;
