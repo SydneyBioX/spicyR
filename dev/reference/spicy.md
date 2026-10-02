@@ -1,0 +1,220 @@
+# Test for changes in the co-localisation of cell types between conditions
+
+\`spicy()\` tests, for every ordered pair of cell types \*from\* →
+\*to\*, whether the co-localisation of the two types differs between
+conditions, or is associated with survival. The direction follows the
+spatial-statistics convention for cross-type statistics: \*from\* is the
+type whose neighbourhoods are examined, \*to\* the type counted in them.
+
+## Usage
+
+``` r
+spicy(
+  cells,
+  condition,
+  subject = NULL,
+  covariates = NULL,
+  imageID = "imageID",
+  cellType = "cellType",
+  spatialCoords = c("x", "y"),
+  r = NULL,
+  from = NULL,
+  to = NULL,
+  method = c("cell", "image"),
+  k = NULL,
+  combine = c("maxT", "cauchy"),
+  adjustAbundance = TRUE,
+  variance = c("cr2", "hartung_knapp"),
+  frailty = TRUE,
+  labelClustering = TRUE,
+  ref = NULL,
+  cores = 1,
+  ...
+)
+```
+
+## Arguments
+
+- cells:
+
+  A \`data.frame\`, \`SingleCellExperiment\` or \`SpatialExperiment\`
+  with one row (column) per cell.
+
+- condition:
+
+  The column of the image-level condition: two groups, or a
+  \`survival::Surv\` column for a survival outcome.
+
+- subject:
+
+  The column of the patient (unit) of each image. Images of one patient
+  are combined; if omitted, every image is its own patient.
+
+- covariates:
+
+  Image- or patient-level columns to adjust for (cell method: added to
+  the design of the excess, and the effect of each is reported as
+  \`\<column\>\_effect\` and \`\<column\>\_p_value\`; survival: added to
+  the null Cox model).
+
+- imageID, cellType, spatialCoords:
+
+  Column names of the image, cell type and coordinates.
+
+- r:
+
+  Radius (or radii) of the neighbourhood, in the units of the
+  coordinates. Cell method: one radius (default 50), or several to be
+  combined by \`combine\`. Image method: the radii of the L function
+  (default 20, 50 and 100).
+
+- from, to:
+
+  Cell types to test (all ordered pairs by default).
+
+- method:
+
+  \`"cell"\` (spicyR Cell, the default) or \`"image"\` (the original
+  spicyR test).
+
+- k:
+
+  Cell method: use the \`k\` nearest neighbours instead of a radius.
+
+- combine:
+
+  Cell method with several radii: \`"maxT"\` (max-T with the sandwich
+  correlation across radii) or \`"cauchy"\` (Cauchy combination).
+
+- adjustAbundance:
+
+  Cell method: adjust the test for the log share of the \`to\` type in
+  each image (default \`TRUE\`). Its effect is reported as
+  \`abundance_effect\`. \`FALSE\` gives the test without it.
+
+- variance:
+
+  Cell method: \`"cr2"\` (CR2 on Satterthwaite df, the default) or
+  \`"hartung_knapp"\` (for very few patients: the model-based variance
+  floored at CR2, on m - 2 df).
+
+- frailty, labelClustering:
+
+  Cell method: the patient frailty and the label-clustering inflation of
+  the within-image variance (both on by default).
+
+- ref:
+
+  Cell method: the reference level of \`condition\`.
+
+- cores:
+
+  Number of threads (cell method) or cores (image method).
+
+- ...:
+
+  Arguments of the image method: \`sigma\`, \`alternateResult\`,
+  \`minLambda\`, \`weights\`, \`weightsByPair\`, \`weightFactor\`,
+  \`weightZThreshold\`, \`window\`, \`window.length\`, \`edgeCorrect\`,
+  \`includeZeroCells\`, \`verbose\`, \`BPPARAM\`. Supplying
+  \`alternateResult\` selects the image method.
+
+## Value
+
+A \`SpicyResults\` object. \`topPairs()\`, \`signifPlot()\`,
+\`spicyBoxPlot()\` and \`bind()\` work for both methods. For the cell
+method, \`\$cellResults\` holds the full table: the excess in each
+condition (at the average abundance and covariates), the difference, its
+standard error, df, p-value and BH-adjusted p-value, the frailty
+variance, what the test was adjusted for (\`adjusted_for\`), the effect
+and p-value of each adjustment, and the unadjusted test
+(\`unadjusted_difference\`, \`unadjusted_p_value\`,
+\`unadjusted_p_adj\`).
+
+## Details
+
+\*\*\`method = "cell"\` (the default).\*\* For each \`from\` cell, the
+number of \`to\` cells within radius \`r\` is compared with its exact
+expectation if the \`from\` cells were a random choice among the cells
+that are not \`to\` cells in the same image. The effect is the
+\*\*excess\*\*: the number of extra \`to\` cells within \`r\` of each
+\`from\` cell. Images are combined within patients and patients within
+conditions by a frailty GEE, and the difference between conditions is
+tested with a CR2 cluster-robust variance on Satterthwaite degrees of
+freedom, with \*\*patients (\`subject\`) as the units\*\*. By default
+the difference is adjusted for how common the \`to\` type is in each
+image (the log of its share of all cells) and for any \`covariates\`, so
+that a change in abundance alone does not appear as a change in
+co-localisation. The unadjusted test is reported alongside
+(\`unadjusted\_\*\` columns).
+
+\*\*\`method = "image"\` (the original spicyR test).\*\* A per-image
+L-function summary of each pair is compared between conditions with a
+weighted linear model, or a mixed model when \`subject\` is given
+(Canete et al. 2022).
+
+## References
+
+Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry
+data in R. Bioinformatics 38(11), 3099-3105.
+[doi:10.1093/bioinformatics/btac268](https://doi.org/10.1093/bioinformatics/btac268)
+
+Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for
+linear regression with multi-stage samples. Survey Methodology 28(2),
+169-181.
+
+Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust
+variance estimation and hypothesis testing in fixed effects models.
+Journal of Business & Economic Statistics 36(4), 672-683.
+[doi:10.1080/07350015.2016.1247004](https://doi.org/10.1080/07350015.2016.1247004)
+
+Paule RC, Mandel J (1982). Consensus values and weighting factors.
+Journal of Research of the National Bureau of Standards 87(5), 377-385.
+[doi:10.6028/jres.087.022](https://doi.org/10.6028/jres.087.022)
+
+Hartung J, Knapp G (2001). A refined method for the meta-analysis of
+controlled clinical trials with binary outcome. Statistics in Medicine
+20(24), 3875-3889.
+[doi:10.1002/sim.1009](https://doi.org/10.1002/sim.1009)
+
+Liu Y, Xie J (2020). Cauchy combination test: a powerful test with
+analytic p-value calculation under arbitrary dependency structures.
+Journal of the American Statistical Association 115(529), 393-402.
+[doi:10.1080/01621459.2018.1554485](https://doi.org/10.1080/01621459.2018.1554485)
+
+## Examples
+
+``` r
+data("diabetesData")
+# spicyR Cell: patients ("case") are the units
+# extra Th and beta cells within 50 units of each Tc cell
+res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
+             from = "Tc", to = c("Th", "beta"))
+topPairs(res)
+#>         intercept coefficient  p.value adj.pvalue from to
+#> Tc__Th 0.09474219  0.08213955 0.184875   0.184875   Tc Th
+res$cellResults
+#>                       from to         level excess_ref excess_difference
+#> Tc__Th__Onset           Tc Th         Onset 0.09474219        0.08213955
+#> Tc__Th__Long-duration   Tc Th Long-duration 0.09474219        0.09064722
+#>                               se       df    p_value      p_adj        tau2
+#> Tc__Th__Onset         0.05377313 5.206921 0.18487502 0.18487502 0.004922386
+#> Tc__Th__Long-duration 0.02687124 5.897273 0.01537956 0.01537956 0.004922386
+#>                       adjusted_for abundance_effect abundance_p_value
+#> Tc__Th__Onset            abundance       0.05767815        0.09842378
+#> Tc__Th__Long-duration    abundance       0.05767815        0.09842378
+#>                       unadjusted_difference unadjusted_se unadjusted_df
+#> Tc__Th__Onset                     0.1599107    0.07720679      5.202234
+#> Tc__Th__Long-duration             0.1219062    0.02400996      5.905235
+#>                       unadjusted_p_value unadjusted_p_adj
+#> Tc__Th__Onset                0.090916955      0.090916955
+#> Tc__Th__Long-duration        0.002380154      0.002380154
+
+# the original image-level test
+resImage <- spicy(diabetesData, condition = "stage", subject = "case",
+                  from = "Tc", to = "Th", method = "image")
+#> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
+topPairs(resImage)
+#>        intercept coefficient   p.value adj.pvalue from to
+#> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th
+```
