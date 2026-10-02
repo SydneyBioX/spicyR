@@ -1,5 +1,5 @@
 test_that(
-    "the output is equal to previous version",
+    "the image method is unchanged from spicyR 1.x",
     {
         original_result <- readRDS(
             system.file("testdata/original_result.rds", package = "spicyR")
@@ -7,7 +7,7 @@ test_that(
         expect_equal(
             suppressWarnings(spicy(diabetesData,
                 condition = "stage", subject = "case",
-                from = "Tc", to = "Th"
+                from = "Tc", to = "Th", method = "image"
             )),
             original_result,
             tolerance = 0.01

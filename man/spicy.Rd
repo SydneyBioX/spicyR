@@ -58,8 +58,8 @@ radius, or several to be combined by `combine`. Image method: the radii of the L
 \item{combine}{Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
 radii) or `"cauchy"` (Cauchy combination).}
 
-\item{availability}{Cell method: also report the difference at equal availability of the `from`
-type (`adjusted_*` columns).}
+\item{availability}{Cell method: also report the difference at equal availability of the `to`
+type, i.e. adjusted for its share of all cells (`adjusted_*` columns).}
 
 \item{variance}{Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
 (for very few patients: the model-based variance floored at CR2, on m - 2 df).}
@@ -83,17 +83,22 @@ A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bin
 }
 \description{
 `spicy()` tests, for every ordered pair of cell types *from* → *to*, whether the co-localisation of
-the two types differs between two conditions, or is associated with survival.
+the two types differs between conditions, or is associated with survival. The direction follows the
+spatial-statistics convention for cross-type statistics: *from* is the type whose neighbourhoods are
+examined, *to* the type counted in them.
 }
 \details{
 **`method = "cell"` (the default, spicyR Cell).** For each `to` cell, the number of `from` cells
 within radius `r` is compared with its exact expectation under random labelling of the observed
-cells. The effect is the **excess**: the number of extra `from` cells per `to` cell. Images are
+cells. The effect is the **excess**: the number of extra `to` cells within `r` of each `from` cell. Images are
 combined within patients and patients within conditions by a frailty GEE, and the difference
 between conditions is tested with a CR2 cluster-robust variance on Satterthwaite degrees of
 freedom, with **patients (`subject`) as the units**. Results for each pair also include the
 difference at equal availability of the `from` type (adjusted for its share of all cells), which
 guards against changes in abundance being read as changes in attraction.
+
+**Changed in version 2.0:** up to spicyR 1.99.0, `spicy_glm(effect = "excess")` counted extra `from`
+cells around each `to` cell. `spicy()` now uses the convention above.
 
 **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -102,6 +107,7 @@ compared between conditions with a weighted linear model, or a mixed model when 
 \examples{
 data("diabetesData")
 # spicyR Cell: patients ("case") are the units
+# extra Th and beta cells within 50 units of each Tc cell
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)

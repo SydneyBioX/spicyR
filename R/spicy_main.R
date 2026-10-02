@@ -1,16 +1,21 @@
 #' Test for changes in the co-localisation of cell types between conditions
 #'
 #' `spicy()` tests, for every ordered pair of cell types *from* → *to*, whether the co-localisation of
-#' the two types differs between two conditions, or is associated with survival.
+#' the two types differs between conditions, or is associated with survival. The direction follows the
+#' spatial-statistics convention for cross-type statistics: *from* is the type whose neighbourhoods are
+#' examined, *to* the type counted in them.
 #'
 #' **`method = "cell"` (the default, spicyR Cell).** For each `to` cell, the number of `from` cells
 #' within radius `r` is compared with its exact expectation under random labelling of the observed
-#' cells. The effect is the **excess**: the number of extra `from` cells per `to` cell. Images are
+#' cells. The effect is the **excess**: the number of extra `to` cells within `r` of each `from` cell. Images are
 #' combined within patients and patients within conditions by a frailty GEE, and the difference
 #' between conditions is tested with a CR2 cluster-robust variance on Satterthwaite degrees of
 #' freedom, with **patients (`subject`) as the units**. Results for each pair also include the
 #' difference at equal availability of the `from` type (adjusted for its share of all cells), which
 #' guards against changes in abundance being read as changes in attraction.
+#'
+#' **Changed in version 2.0:** up to spicyR 1.99.0, `spicy_glm(effect = "excess")` counted extra `from`
+#' cells around each `to` cell. `spicy()` now uses the convention above.
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -32,8 +37,8 @@
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
 #' @param combine Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
 #'   radii) or `"cauchy"` (Cauchy combination).
-#' @param availability Cell method: also report the difference at equal availability of the `from`
-#'   type (`adjusted_*` columns).
+#' @param availability Cell method: also report the difference at equal availability of the `to`
+#'   type, i.e. adjusted for its share of all cells (`adjusted_*` columns).
 #' @param variance Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
 #'   (for very few patients: the model-based variance floored at CR2, on m - 2 df).
 #' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
@@ -52,6 +57,7 @@
 #' @examples
 #' data("diabetesData")
 #' # spicyR Cell: patients ("case") are the units
+#' # extra Th and beta cells within 50 units of each Tc cell
 #' res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
 #'              from = "Tc", to = c("Th", "beta"))
 #' topPairs(res)
@@ -106,7 +112,9 @@ spicy <- function(cells,
   types <- unique(as.character(cells$cellType))
   bad <- setdiff(c(from, to), types)
   if (length(bad)) stop("cell type not found: ", paste(bad, collapse = ", "), call. = FALSE)
-  pairs <- enumerate_pairs(from, to, types, "binomial")
+  # the user's from -> to: extra `to` cells within r of each `from` cell (the spatial-statistics convention).
+  # The core works in (counted, centre) order, so the internal pairs are reversed; .cell_results swaps back.
+  pairs <- lapply(enumerate_pairs(from, to, types, "binomial"), rev)
   if (survival) {
     sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
   }
@@ -200,8 +208,15 @@ spicy <- function(cells,
 }
 
 ## Assemble a SpicyResults object that topPairs(), signifPlot(), spicyBoxPlot() and bind() understand.
+.cell_swap <- function(d) {
+  if (is.null(d)) return(d)
+  f <- d$from; d$from <- d$to; d$to <- f
+  rownames(d) <- if (!is.null(d$level)) paste(d$from, d$to, d$level, sep = "__") else if (anyDuplicated(paste(d$from, d$to))) NULL else paste(d$from, d$to, sep = "__")
+  d
+}
+
 .cell_results <- function(res, ctx, pheno, condition, subject, survival, radii, k) {
-  tab <- res$table
+  tab <- .cell_swap(res$table); res$radius_table <- .cell_swap(res$radius_table)
   if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types).",
                          call. = FALSE)
   out <- list(method = "cell", cellResults = tab)
@@ -235,7 +250,9 @@ spicy <- function(cells,
   labels <- paste(tab$from, tab$to, sep = "__")
   if (!is.null(res$radius_table)) out$radiusResults <- res$radius_table
   out$comparisons <- data.frame(from = tab$from, to = tab$to, labels = labels)
-  out$pairwiseAssoc <- .cell_image_excess(res$fits, ctx)[labels]
+  pa <- .cell_image_excess(res$fits, ctx)
+  names(pa) <- vapply(strsplit(names(pa), "__", fixed = TRUE), function(z) paste(z[2], z[1], sep = "__"), "")
+  out$pairwiseAssoc <- pa[labels]
   out$imageIDs <- ctx$image_labels
   out$imageID <- ctx$image_labels
   if (!is.null(subject)) out$subject <- as.character(pheno[[subject]])

@@ -15,12 +15,12 @@
 "diabetesData"
 
 
-#' Results from spicy for diabetesData
+#' Results from spicy for diabetesData (image method)
 #'
-#' Results from the call:
-#' spicyTest <- spicy(diabetesData, 
-#'                    condition = "condition", 
-#'                    subject = "subject")
+#' Results of the original image-level test, from spicyR 1.x:
+#' spicyTest <- spicy(diabetesData,
+#'                    condition = "condition",
+#'                    subject = "subject", method = "image")
 #'
 #' @format spicyTest a spicy object
 #' @usage data("spicyTest")
