@@ -126,8 +126,10 @@ spicy <- function(cells,
   if (!is.null(covariates)) {
     miss <- setdiff(covariates, names(pheno))
     if (length(miss)) stop("covariates not found: ", paste(miss, collapse = ", "), call. = FALSE)
-    Z_extra <- stats::model.matrix(stats::reformulate(covariates), pheno)[, -1, drop = FALSE]
-    Z_extra <- sweep(Z_extra, 2, colMeans(Z_extra))
+    # one row per image, NA where a covariate is missing (those images are left out of the covariate model)
+    Z_extra <- stats::model.matrix(stats::reformulate(covariates), stats::model.frame(stats::reformulate(covariates), pheno,
+                                   na.action = stats::na.pass))[, -1, drop = FALSE]
+    Z_extra <- sweep(Z_extra, 2, colMeans(Z_extra, na.rm = TRUE))
   }
 
   radii <- if (is.null(k)) sort(unique(r)) else NA
@@ -185,9 +187,11 @@ spicy <- function(cells,
   time <- pheno$.time[unit_first]; event <- as.integer(pheno$.event[unit_first])
   if (any(tapply(pheno$.time, ctx$image_unit, function(z) length(unique(z))) > 1L))
     stop("the survival outcome must be constant within each subject.", call. = FALSE)
-  W <- if (is.null(covariates)) matrix(0, length(time), 0) else
-    stats::model.matrix(stats::reformulate(covariates), pheno[unit_first, , drop = FALSE])[, -1, drop = FALSE]
-  ok_u <- is.finite(time) & !is.na(event)
+  W <- if (is.null(covariates)) matrix(0, length(time), 0) else {
+    pu <- pheno[unit_first, , drop = FALSE]
+    stats::model.matrix(stats::reformulate(covariates), stats::model.frame(stats::reformulate(covariates), pu,
+                        na.action = stats::na.pass))[, -1, drop = FALSE] }
+  ok_u <- is.finite(time) & !is.na(event) & stats::complete.cases(W)
   null <- stats_cox_fit(time[ok_u], event[ok_u], W[ok_u, , drop = FALSE])
   if (!null$ok) stop("the null Cox model did not converge.", call. = FALSE)
   M <- rep(NA_real_, length(time)); M[ok_u] <- null$martingale
@@ -217,6 +221,7 @@ spicy <- function(cells,
 
 .cell_results <- function(res, ctx, pheno, condition, subject, survival, radii, k) {
   tab <- .cell_swap(res$table); res$radius_table <- .cell_swap(res$radius_table)
+  num <- vapply(tab, is.double, TRUE); tab[num] <- lapply(tab[num], function(z) { z[is.nan(z)] <- NA_real_; z })
   if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types).",
                          call. = FALSE)
   out <- list(method = "cell", cellResults = tab)

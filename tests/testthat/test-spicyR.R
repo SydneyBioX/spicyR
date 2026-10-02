@@ -14,3 +14,9 @@ test_that(
         )
     }
 )
+
+test_that("the image method recycles a single from over several to", {
+  res <- suppressWarnings(suppressMessages(spicy(diabetesData, condition = "stage", subject = "case",
+                                                 from = "Tc", to = c("Th", "beta"), method = "image")))
+  expect_equal(sort(rownames(res$p.value)), c("Tc__Th", "Tc__beta"))
+})

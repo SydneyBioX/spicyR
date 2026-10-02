@@ -12,13 +12,23 @@ Authors@R: c(
     person("Farhan", "Ameen", ,"farhan.ameen@sydney.edu.au", role = "ctb"),
     person("Shreya", "Rao", ,"shreya.rajeshrao@sydney.edu.au", role = "ctb")
   )
-Description: The spicyR package provides a framework for performing inference on changes in spatial relationships between pairs of cell types for cell-resolution spatial omics technologies. spicyR consists of three primary steps: (i) summarizing the degree of spatial localization between pairs of cell types for each image; (ii) modelling the variability in localization summary statistics as a function of cell counts and (iii) testing for changes in spatial localizations associated with a response variable.  
+Description: spicyR tests whether the spatial co-localisation of pairs of cell types
+    differs between groups of patients, or is associated with patient outcome, in
+    cell-resolution spatial omics data (imaging mass cytometry, CODEX, MIBI, Xenium,
+    CosMx and others). Its default method, spicyR Cell, counts the cells of one type
+    within a radius of each cell of another and compares the count with its exact
+    expectation under random labelling of the observed cells. Images are combined
+    within patients by a frailty generalised estimating equation, and differences are
+    tested with a small-sample cluster-robust (CR2) variance with patients as the
+    units. Covariates, several conditions, several radii and survival outcomes are
+    supported, and the original image-level test is kept as an option. The
+    computations run in a C++ core shared with the Python package spicyr.
 License: GPL (>=2)
 LazyData: true
 biocViews: 
     SingleCell, CellBasedAssays, Spatial
 Encoding: UTF-8
-Depends: R (>= 4.1)
+Depends: R (>= 4.5)
 VignetteBuilder: knitr
 BugReports: https://github.com/SydneyBioX/spicyR/issues
 URL: https://ellispatrick.github.io/spicyR/ https://github.com/SydneyBioX/spicyR, https://sydneybiox.github.io/spicyR/
@@ -38,6 +48,7 @@ LinkingTo: Rcpp, RcppEigen
 SystemRequirements: C++17
 Suggests:
     SummarizedExperiment,
+    dplyr,
     SingleCellExperiment,
     SpatialExperiment,
     lmerTest,

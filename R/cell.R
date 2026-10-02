@@ -66,7 +66,7 @@
 ## Neighbour sums and the label-clustering factor at one radius (or k).
 .cell_graph <- function(ctx, pairs, r = NULL, k = NULL, label_clustering = TRUE, window = "convex", n_threads = 1L) {
   knn <- !is.null(k)
-  T <- length(ctx$type_labels)
+  n_types <- length(ctx$type_labels)
   if (knn) {
     dataset_build_knn(ctx$data, as.integer(k), as.integer(n_threads))
     scale <- stats::median(sqrt(k / (pi * rowSums(ctx$counts) / dataset_image_areas(ctx$data, window))))
@@ -76,8 +76,8 @@
     dataset_build_radius_index(ctx$data, r)
     h <- 2 * r
   }
-  g <- list(knn = knn, totals = dataset_pair_neighbour_totals(ctx$data, knn, T),
-            sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, T))
+  g <- list(knn = knn, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
+            sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, n_types))
   codes <- vapply(pairs, function(p) match(p, ctx$type_labels) - 1L, integer(2))
   g$psi <- if (label_clustering) stats_label_clustering(ctx$data, codes[1, ], codes[2, ], ctx$counts, knn, h)
            else matrix(numeric(0), 0, 0)
@@ -103,13 +103,14 @@
   if (!r$ok) return(out)
   if (!is.null(Z_extra)) {
     # covariates: the group difference adjusted for image-level covariates; tau2 re-estimated when
-    # every covariate is constant within patients (exact Paule-Mandel), else held (new_methods.pdf, Remark 3)
-    Z <- cbind(rows$group == 0, rows$group == 1, Z_extra[rows$img + 1L, , drop = FALSE])
-    patient_level <- all(apply(Z_extra[rows$img + 1L, , drop = FALSE], 2, function(z)
-      all(tapply(z, rows$unit, function(w) length(unique(w)) == 1L))))
-    d <- stats_design_test(rows, rows$unit, length(ctx$unit_labels), Z, c(-1, 1, rep(0, ncol(Z_extra))),
-                           if (patient_level) -1 else r$tau2)
-    out$covariate <- d
+    # every covariate is constant within patients (exact Paule-Mandel), else held (new_methods.pdf, Remark 3).
+    # Images with a missing covariate are left out of this model.
+    ze <- Z_extra[rows$img + 1L, , drop = FALSE]; cc <- stats::complete.cases(ze)
+    rc <- rows[cc, , drop = FALSE]; ze <- ze[cc, , drop = FALSE]
+    Z <- cbind(rc$group == 0, rc$group == 1, ze)
+    patient_level <- all(apply(ze, 2, function(z) all(tapply(z, rc$unit, function(w) length(unique(w)) == 1L))))
+    out$covariate <- stats_design_test(rc, rc$unit, length(ctx$unit_labels), Z, c(-1, 1, rep(0, ncol(Z_extra))),
+                                       if (patient_level) -1 else r$tau2)
   }
   if (availability) {
     i <- rows$img + 1L
@@ -141,7 +142,12 @@
   if (is.null(d)) { out$reason <- "design_not_full_rank"; return(out) }
   out$ok <- TRUE; out$levels_test <- d
   out$test <- list(coef_ref = d[[1]]$theta[1], tau2 = d[[1]]$tau2)
-  if (!is.null(Z_extra)) out$covariate_levels <- fit(cbind(Zg, Z_extra[rows$img + 1L, , drop = FALSE]), d[[1]]$tau2)
+  if (!is.null(Z_extra)) {
+    cc <- stats::complete.cases(Z_extra[rows$img + 1L, , drop = FALSE])
+    rows_all <- rows; rows <- rows[cc, , drop = FALSE]
+    out$covariate_levels <- fit(cbind(Zg[cc, , drop = FALSE], Z_extra[rows$img + 1L, , drop = FALSE]), d[[1]]$tau2)
+    rows <- rows_all
+  }
   if (availability) {
     i <- rows$img + 1L
     share <- log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / rowSums(ctx$counts)[i])

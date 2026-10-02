@@ -1,13 +1,17 @@
-# The numeric core (src/core) is plain C++17 with Eigen, shared verbatim with the Python twin (SydneyBioX/spicyr-py).
-# The Rcpp files in src/ are the R bindings only.
+# The numeric core (src/core) is plain C++17 with Eigen, shared verbatim with the Python twin
+# (SydneyBioX/spicyr-py). The Rcpp files in src/ are the R bindings only.
 CXX_STD = CXX17
 PKG_CPPFLAGS = -Icore/include
 PKG_CXXFLAGS = $(SHLIB_PTHREAD_FLAGS)
 PKG_LIBS = $(SHLIB_PTHREAD_FLAGS)
 
-CORE_SRC = $(wildcard core/src/*.cpp)
-OBJECTS = $(patsubst %.cpp,%.o,$(wildcard *.cpp)) $(CORE_SRC:.cpp=.o)
+CORE_OBJECTS = core/src/binomial.o core/src/design.o core/src/diagnostics.o core/src/distributions.o \
+  core/src/excess.o core/src/model.o core/src/multiradius.o core/src/spatial.o core/src/survival.o
+OBJECTS = RcppExports.o borderEdge.o glm_bindings.o inhomL.o lmerRI.o pairwise.o pairwiseProp.o \
+  scamMono.o stats_bindings.o $(CORE_OBJECTS)
 
+# `all` must stay the first target
 all: $(SHLIB)
-CORE_H = $(wildcard core/include/spicyglm/*.hpp)
+
+CORE_H = core/include/spicyglm/core.hpp core/include/spicyglm/stats.hpp
 $(OBJECTS): $(CORE_H)

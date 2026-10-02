@@ -69,8 +69,11 @@
     m2 <- rep(to, each = length(from))
     labels <- paste(m1, m2, sep = "__")
   } else {
-    m1 <- from
-    m2 <- to
+    # from and to are paired element by element; a length-one side is recycled (spicyR 1.x failed in the
+    # weight fit when, e.g., one `from` met several `to`)
+    n_pair <- max(length(from), length(to))
+    m1 <- rep_len(from, n_pair)
+    m2 <- rep_len(to, n_pair)
     labels <- paste(m1, m2, sep = "__")
     if (any(duplicated(labels))) stop("There are duplicated from-to pairs")
   }
@@ -541,17 +544,26 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
 
 #' @importFrom stats p.adjust
 .show_SpicyResults <- function(df) {
+  if (identical(df$method, "cell")) {
+    tab <- df$cellResults
+    what <- if (!is.null(df$survivalOutcome)) "association with survival" else
+      paste0(levels(df$condition)[-1], " vs ", levels(df$condition)[1], collapse = "; ")
+    scale <- if (!is.null(df$k)) paste0("k = ", df$k, " nearest neighbours") else paste0("r = ", paste(df$r, collapse = ", "))
+    cat("spicyR Cell: ", length(unique(paste(tab$from, tab$to))), " pairs (", what, "), ", scale, "\n", sep = "")
+    if (is.null(df$subject)) cat("Units: ", length(df$imageID), " images (no subject given: each image is a patient)\n", sep = "")
+    else cat("Units: ", length(unique(df$subject)), " patients with ", length(df$imageID), " images\n", sep = "")
+    cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), sep = "")
+    if (!is.null(tab$adjusted_p_adj)) cat(" (", sum(tab$adjusted_p_adj < 0.05, na.rm = TRUE), " at equal availability)", sep = "")
+    cat("\nSee topPairs() and $cellResults.\n")
+    return(invisible(df))
+  }
   pval <- as.data.frame(df$p.value)
   cond <- colnames(pval)[grep("condition", colnames(pval))]
-  message(df$test)
-  message("Number of cell type pairs: ", nrow(pval), "\n")
-  message("Number of differentially localised cell type pairs: \n")
-  if (nrow(pval) == 1) {
-    print(sum(pval[cond] < 0.05, na.rm = TRUE))
-  }
-  if (nrow(pval) > 1) {
-    print(colSums(apply(pval[cond], 2, p.adjust, "fdr") < 0.05, na.rm = TRUE))
-  }
+  cat("spicyR (image method): ", nrow(pval), " cell type pairs\n", sep = "")
+  cat("Pairs with BH-adjusted p < 0.05:\n")
+  if (nrow(pval) == 1) print(sum(pval[cond] < 0.05, na.rm = TRUE))
+  if (nrow(pval) > 1) print(colSums(apply(pval[cond], 2, p.adjust, "fdr") < 0.05, na.rm = TRUE))
+  invisible(df)
 }
 setMethod(
   "show", methods::signature(object = "SpicyResults"), function(object) {

@@ -1,5 +1,3 @@
-note <- sprintf("R package version %s", meta$Version)
-
 bibentry(bibtype = "Article",
          title = "{spicyR: spatial analysis of in situ cytometry data in R}",
          author = c(person("Nicolas", "Canete"),
@@ -12,7 +10,7 @@ bibentry(bibtype = "Article",
          year = "2022",
          volume = "38",
          number = "11",
-         pages = "3099–3105",
+         pages = "3099--3105",
          journal = "Bioinformatics",
          doi = "10.1093/bioinformatics/btac268",
          url = "https://doi.org/10.1093/bioinformatics/btac268",
