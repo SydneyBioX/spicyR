@@ -109,3 +109,51 @@ scamMonoFit <- function(XtX, Xty, yty, n, S, iv, start, blockStart, blockLen) {
     .Call(`_spicyR_scamMonoFit`, XtX, Xty, yty, n, S, iv, start, blockStart, blockLen)
 }
 
+stats_pt_two_sided <- function(t, df) {
+    .Call(`_spicyR_stats_pt_two_sided`, t, df)
+}
+
+stats_norm_quantile <- function(p) {
+    .Call(`_spicyR_stats_norm_quantile`, p)
+}
+
+stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn, psi) {
+    .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi)
+}
+
+stats_label_clustering <- function(ptr, from, to, counts, knn, h) {
+    .Call(`_spicyR_stats_label_clustering`, ptr, from, to, counts, knn, h)
+}
+
+stats_excess_test <- function(rows, unit, group, n_units, frailty, variance) {
+    .Call(`_spicyR_stats_excess_test`, rows, unit, group, n_units, frailty, variance)
+}
+
+stats_design_test <- function(rows, unit, n_units, Z, contrast, tau2) {
+    .Call(`_spicyR_stats_design_test`, rows, unit, n_units, Z, contrast, tau2)
+}
+
+stats_availability_test <- function(rows, unit, group, n_units, x, tau2) {
+    .Call(`_spicyR_stats_availability_test`, rows, unit, group, n_units, x, tau2)
+}
+
+stats_cox_fit <- function(time, event, X) {
+    .Call(`_spicyR_stats_cox_fit`, time, event, X)
+}
+
+stats_survival_test <- function(rows, unit, n_units, martingale, time, event) {
+    .Call(`_spicyR_stats_survival_test`, rows, unit, n_units, martingale, time, event)
+}
+
+stats_cauchy <- function(p) {
+    .Call(`_spicyR_stats_cauchy`, p)
+}
+
+stats_max_t <- function(influence, t, df) {
+    .Call(`_spicyR_stats_max_t`, influence, t, df)
+}
+
+stats_mvn_outside <- function(lower, upper, R) {
+    .Call(`_spicyR_stats_mvn_outside`, lower, upper, R)
+}
+
