@@ -13,38 +13,38 @@ imageCrossPlot(
 )
 }
 \arguments{
-\item{result}{A matrix or data frame produced by `getPairwise()` where
+\item{result}{A matrix or data frame produced by \code{getPairwise()} where
 rownames are image IDs and colnames are concatenated marker pairs in the
-form `"from__to"`. Must contain at least one row with name matching `image`.}
+form \code{"from__to"}. Must contain at least one row with name matching \code{image}.}
 
-\item{image}{Character scalar. Which image (row in `result`) to plot. If
-`NULL`, defaults to the first rowname of `result`.}
+\item{image}{Character scalar. Which image (row in \code{result}) to plot. If
+\code{NULL}, defaults to the first rowname of \code{result}.}
 
 \item{colourGradient}{Character vector of length 3 giving the low, mid, and
-high colours for a diverging palette used by `scale_colour_gradient2()`.
-Default is `c("#4575B4", "white", "#D73027")`.}
+high colours for a diverging palette used by \code{scale_colour_gradient2()}.
+Default is \code{c("#4575B4", "white", "#D73027")}.}
 
 \item{marksToPlot}{Optional character vector of marker names. If supplied, the
-plot is restricted to rows and columns where both `from` and `to` are in
+plot is restricted to rows and columns where both \code{from} and \code{to} are in
 this set.}
 
 \item{limits}{Numeric length-2 vector giving the lower and upper caps applied
-to association values for colour mapping. Use `NULL` to avoid
-clamping. Point sizes are clamped to `c(0, max(abs(limits)))`.}
+to association values for colour mapping. Use \code{NULL} to avoid
+clamping. Point sizes are clamped to \code{c(0, max(abs(limits)))}.}
 }
 \value{
 A \pkg{ggplot2} object.
 }
 \description{
 Builds a pairwise scatterplot of marker-marker associations for a single image
-using the output of `getPairwise()`.
+using the output of \code{getPairwise()}.
 }
 \details{
-The function expects `colnames(result)` to contain `"__"` separating marker
+The function expects \code{colnames(result)} to contain \code{"__"} separating marker
 names; otherwise an error is thrown. Values are transformed into two aesthetics:
 \itemize{
-  \item \code{value}: the (possibly clamped) signed association used for colour.
-  \item \code{size}: the (possibly clamped) absolute association used for point size.
+\item \code{value}: the (possibly clamped) signed association used for colour.
+\item \code{size}: the (possibly clamped) absolute association used for point size.
 }
 The colourbar shows three ticks at \code{lower}, \code{0}, and \code{upper}
 with labels \code{"<lower"}, \code{"0"}, and \code{">upper"}.

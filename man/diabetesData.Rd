@@ -7,19 +7,19 @@
 \format{
 A \code{SingleCellExperiment} with one column per cell and these \code{colData} columns:
 \describe{
-  \item{imageID}{the image (character)}
-  \item{cellID, imageCellID}{cell identifiers, in the whole data set and within its image}
-  \item{x, y}{the cell's coordinates in the image, in micrometres}
-  \item{cellType}{the cell type assigned by the authors (factor)}
-  \item{case}{the donor (integer)}
-  \item{slide, part}{the slide, and the part of the pancreas (head, body or tail)}
-  \item{group, stage}{the stage of type 1 diabetes, as a code and as a factor with levels
-    \code{"Non-diabetic"}, \code{"Onset"} and \code{"Long-duration"}}
+\item{imageID}{the image (character)}
+\item{cellID, imageCellID}{cell identifiers, in the whole data set and within its image}
+\item{x, y}{the cell's coordinates in the image, in micrometres}
+\item{cellType}{the cell type assigned by the authors (factor)}
+\item{case}{the donor (integer)}
+\item{slide, part}{the slide, and the part of the pancreas (head, body or tail)}
+\item{group, stage}{the stage of type 1 diabetes, as a code and as a factor with levels
+\code{"Non-diabetic"}, \code{"Onset"} and \code{"Long-duration"}}
 }
 }
 \source{
 Damond N et al. (2019). Mendeley Data, \doi{10.17632/cydmwsfztj.1}, under the CC BY 4.0 licence. How the
-  subset was made is described in \code{inst/scripts/make-diabetesData.R}.
+subset was made is described in \code{inst/scripts/make-diabetesData.R}.
 }
 \usage{
 data("diabetesData")
@@ -35,6 +35,6 @@ table(unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("cas
 }
 \references{
 Damond N, Engler S, Zanotelli VRT, et al. (2019). A map of human type 1 diabetes progression by
-  imaging mass cytometry. \emph{Cell Metabolism} 29(3), 755-768. \doi{10.1016/j.cmet.2018.11.014}
+imaging mass cytometry. \emph{Cell Metabolism} 29(3), 755-768. \doi{10.1016/j.cmet.2018.11.014}
 }
 \keyword{datasets}

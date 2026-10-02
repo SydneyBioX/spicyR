@@ -28,78 +28,78 @@ spicy(
 )
 }
 \arguments{
-\item{cells}{A `data.frame`, `SingleCellExperiment` or `SpatialExperiment` with one row (column) per
+\item{cells}{A \code{data.frame}, \code{SingleCellExperiment} or \code{SpatialExperiment} with one row (column) per
 cell.}
 
-\item{condition}{The column of the image-level condition: two groups, or a `survival::Surv` column
+\item{condition}{The column of the image-level condition: two groups, or a \code{survival::Surv} column
 for a survival outcome.}
 
 \item{subject}{The column of the patient (unit) of each image. Images of one patient are combined;
 if omitted, every image is its own patient.}
 
 \item{covariates}{Image- or patient-level columns to adjust for (cell method: added to the design of
-the excess, and the effect of each is reported as `<column>_effect` and `<column>_p_value`;
+the excess, and the effect of each is reported as \verb{<column>_effect} and \verb{<column>_p_value};
 survival: added to the null Cox model).}
 
 \item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates.}
 
 \item{r}{Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
-radius (default 50), or several to be combined by `combine`. Image method: the radii of the L
+radius (default 50), or several to be combined by \code{combine}. Image method: the radii of the L
 function (default 20, 50 and 100).}
 
 \item{from, to}{Cell types to test (all ordered pairs by default).}
 
-\item{method}{`"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR test).}
+\item{method}{\code{"cell"} (spicyR Cell, the default) or \code{"image"} (the original spicyR test).}
 
-\item{k}{Cell method: use the `k` nearest neighbours instead of a radius.}
+\item{k}{Cell method: use the \code{k} nearest neighbours instead of a radius.}
 
-\item{combine}{Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
-radii) or `"cauchy"` (Cauchy combination).}
+\item{combine}{Cell method with several radii: \code{"maxT"} (max-T with the sandwich correlation across
+radii) or \code{"cauchy"} (Cauchy combination).}
 
-\item{adjustAbundance}{Cell method: adjust the test for the log share of the `to` type in each image
-(default `TRUE`). Its effect is reported as `abundance_effect`. `FALSE` gives the test without it.}
+\item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{to} type in each image
+(default \code{TRUE}). Its effect is reported as \code{abundance_effect}. \code{FALSE} gives the test without it.}
 
-\item{variance}{Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
+\item{variance}{Cell method: \code{"cr2"} (CR2 on Satterthwaite df, the default) or \code{"hartung_knapp"}
 (for very few patients: the model-based variance floored at CR2, on m - 2 df).}
 
 \item{frailty, labelClustering}{Cell method: the patient frailty and the label-clustering inflation
 of the within-image variance (both on by default).}
 
-\item{ref}{Cell method: the reference level of `condition`.}
+\item{ref}{Cell method: the reference level of \code{condition}.}
 
 \item{cores}{Number of threads (cell method) or cores (image method).}
 
-\item{...}{Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
-`weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
-`includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.}
+\item{...}{Arguments of the image method: \code{sigma}, \code{alternateResult}, \code{minLambda}, \code{weights},
+\code{weightsByPair}, \code{weightFactor}, \code{weightZThreshold}, \code{window}, \code{window.length}, \code{edgeCorrect},
+\code{includeZeroCells}, \code{verbose}, \code{BPPARAM}. Supplying \code{alternateResult} selects the image method.}
 }
 \value{
-A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work
-  for both methods. For the cell method, `$cellResults` holds the full table: the excess in each
-  condition (at the average abundance and covariates), the difference, its standard error, df,
-  p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
-  (`adjusted_for`), the effect and p-value of each adjustment, and the unadjusted test
-  (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
+A \code{SpicyResults} object. \code{topPairs()}, \code{signifPlot()}, \code{spicyBoxPlot()} and \code{bind()} work
+for both methods. For the cell method, \verb{$cellResults} holds the full table: the excess in each
+condition (at the average abundance and covariates), the difference, its standard error, df,
+p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
+(\code{adjusted_for}), the effect and p-value of each adjustment, and the unadjusted test
+(\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}).
 }
 \description{
-`spicy()` tests, for every ordered pair of cell types *from* → *to*, whether the co-localisation of
+\code{spicy()} tests, for every ordered pair of cell types \code{from} → \code{to}, whether the co-localisation of
 the two types differs between conditions, or is associated with survival. The direction follows the
-spatial-statistics convention for cross-type statistics: *from* is the type whose neighbourhoods are
-examined, *to* the type counted in them.
+spatial-statistics convention for cross-type statistics: \code{from} is the type whose neighbourhoods are
+examined, \code{to} the type counted in them.
 }
 \details{
-**`method = "cell"` (the default).** For each `from` cell, the number of `to` cells within radius `r`
-is compared with its exact expectation if the `from` cells were a random choice among the cells that
-are not `to` cells in the same image. The effect is the **excess**: the number of extra `to` cells
-within `r` of each `from` cell. Images are combined within patients and patients within conditions by
+\strong{\code{method = "cell"} (the default).} For each \code{from} cell, the number of \code{to} cells within radius \code{r}
+is compared with its exact expectation if the \code{from} cells were a random choice among the cells that
+are not \code{to} cells in the same image. The effect is the \strong{excess}: the number of extra \code{to} cells
+within \code{r} of each \code{from} cell. Images are combined within patients and patients within conditions by
 a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
-Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. By default the
-difference is adjusted for how common the `to` type is in each image (the log of its share of all
-cells) and for any `covariates`, so that a change in abundance alone does not appear as a change in
-co-localisation. The unadjusted test is reported alongside (`unadjusted_*` columns).
+Satterthwaite degrees of freedom, with \strong{patients (\code{subject}) as the units}. By default the
+difference is adjusted for how common the \code{to} type is in each image (the log of its share of all
+cells) and for any \code{covariates}, so that a change in abundance alone does not appear as a change in
+co-localisation. The unadjusted test is reported alongside (\verb{unadjusted_*} columns).
 
-**`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
-compared between conditions with a weighted linear model, or a mixed model when `subject` is given
+\strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
+compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given
 (Canete et al. 2022).
 }
 \examples{
@@ -118,22 +118,22 @@ topPairs(resImage)
 }
 \references{
 Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
-  Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
+Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 
-  Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
-  samples. Survey Methodology 28(2), 169-181.
+Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
+samples. Survey Methodology 28(2), 169-181.
 
-  Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
-  testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
-  \doi{10.1080/07350015.2016.1247004}
+Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
+testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
+\doi{10.1080/07350015.2016.1247004}
 
-  Paule RC, Mandel J (1982). Consensus values and weighting factors. Journal of Research of the National
-  Bureau of Standards 87(5), 377-385. \doi{10.6028/jres.087.022}
+Paule RC, Mandel J (1982). Consensus values and weighting factors. Journal of Research of the National
+Bureau of Standards 87(5), 377-385. \doi{10.6028/jres.087.022}
 
-  Hartung J, Knapp G (2001). A refined method for the meta-analysis of controlled clinical trials with binary
-  outcome. Statistics in Medicine 20(24), 3875-3889. \doi{10.1002/sim.1009}
+Hartung J, Knapp G (2001). A refined method for the meta-analysis of controlled clinical trials with binary
+outcome. Statistics in Medicine 20(24), 3875-3889. \doi{10.1002/sim.1009}
 
-  Liu Y, Xie J (2020). Cauchy combination test: a powerful test with analytic p-value calculation under
-  arbitrary dependency structures. Journal of the American Statistical Association 115(529), 393-402.
-  \doi{10.1080/01621459.2018.1554485}
+Liu Y, Xie J (2020). Cauchy combination test: a powerful test with analytic p-value calculation under
+arbitrary dependency structures. Journal of the American Statistical Association 115(529), 393-402.
+\doi{10.1080/01621459.2018.1554485}
 }

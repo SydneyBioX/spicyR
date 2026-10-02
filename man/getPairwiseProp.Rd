@@ -47,7 +47,7 @@ undefined.}
 }
 \value{
 A matrix with one row per image and one column per \code{from__to}
-    cell-type pair, containing the observed/expected proportion ratio.
+cell-type pair, containing the observed/expected proportion ratio.
 }
 \description{
 Computes a per-image, per-cell-type-pair spatial localisation statistic as a

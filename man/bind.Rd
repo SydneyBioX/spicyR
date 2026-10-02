@@ -13,7 +13,7 @@ bind(results, pairName = NULL)
 }
 \value{
 A data.frame with one row per image: \code{imageID}, \code{condition}, \code{subject} (if given) and
-  one column per pair, named \code{"from__to"}. \code{NA} where the pair could not be measured in an image.
+one column per pair, named \code{"from__to"}. \code{NA} where the pair could not be measured in an image.
 }
 \description{
 Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: the excess

@@ -20,8 +20,8 @@ colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
 }
 \value{
 A data.frame with one row per column of \code{df} (for example per cell type), ordered by p-value:
-  the mean in each condition, the test statistic, the p-value (\code{pval}), the Benjamini-Hochberg adjusted
-  p-value (\code{adjPval}) and the column name (\code{cluster}).
+the mean in each condition, the test statistic, the p-value (\code{pval}), the Benjamini-Hochberg adjusted
+p-value (\code{adjPval}) and the column name (\code{cluster}).
 }
 \description{
 Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data

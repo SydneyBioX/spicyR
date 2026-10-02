@@ -1,9 +1,9 @@
 #' Test for changes in the co-localisation of cell types between conditions
 #'
-#' `spicy()` tests, for every ordered pair of cell types *from* → *to*, whether the co-localisation of
+#' `spicy()` tests, for every ordered pair of cell types `from` → `to`, whether the co-localisation of
 #' the two types differs between conditions, or is associated with survival. The direction follows the
-#' spatial-statistics convention for cross-type statistics: *from* is the type whose neighbourhoods are
-#' examined, *to* the type counted in them.
+#' spatial-statistics convention for cross-type statistics: `from` is the type whose neighbourhoods are
+#' examined, `to` the type counted in them.
 #'
 #' **`method = "cell"` (the default).** For each `from` cell, the number of `to` cells within radius `r`
 #' is compared with its exact expectation if the `from` cells were a random choice among the cells that

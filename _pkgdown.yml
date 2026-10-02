@@ -4,18 +4,16 @@ url: https://sydneybiox.github.io/spicyR/
 development:
   mode: devel
 
+# The look of the SydneyBioX Spatial Playbook (Quarto's cosmo theme, a light navbar with an orange-red rule;
+# pkgdown/extra.css) and of spicyR 1.x (cosmo).
 template:
   bootstrap: 5
-  bootswatch: flatly
-  bslib:
-    primary: "#b3261e"
-    base_font: {google: "Inter"}
-    heading_font: {google: "Inter"}
-    code_font: {google: "JetBrains Mono"}
+  bootswatch: cosmo
 
 navbar:
+  bg: light
   structure:
-    left: [intro, reference, articles, news]
+    left: [intro, reference, news]
     right: [search, python, github]
   components:
     python:

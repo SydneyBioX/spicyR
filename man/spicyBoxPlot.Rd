@@ -9,24 +9,24 @@ spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
 \arguments{
 \item{results}{The SpicyResults object returned by spicy() (either method).}
 
-\item{from}{The `from` cell type (the centre).}
+\item{from}{The \code{from} cell type (the centre).}
 
-\item{to}{The `to` cell type (counted around each `from` cell).}
+\item{to}{The \code{to} cell type (counted around each \code{from} cell).}
 
 \item{rank}{Alternatively, the rank of the pair by p-value (1 is the most significant).}
 
 \item{interactive}{Return an interactive plotly widget instead of a ggplot (needs the plotly package).}
 }
 \value{
-A ggplot, or with `interactive = TRUE` a plotly htmlwidget. Images in which the pair was not
-  tested (no `from` cells, for example) are not shown.
+A ggplot, or with \code{interactive = TRUE} a plotly htmlwidget. Images in which the pair was not
+tested (no \code{from} cells, for example) are not shown.
 }
 \description{
 Shows the per-image value of one pair in each condition: a box plot with the images as points behind it.
-For the cell method the value is the excess (extra `to` cells per `from` cell beyond chance), and each point
+For the cell method the value is the excess (extra \code{to} cells per \code{from} cell beyond chance), and each point
 is sized by how much the image contributes to the test (its weight in the frailty model, relative to the
-average image of its condition). With `interactive = TRUE` the plot is a plotly widget: hover over a point to
-see its image, patient, excess and weight, which helps to find images worth looking at with [plotImage()].
+average image of its condition). With \code{interactive = TRUE} the plot is a plotly widget: hover over a point to
+see its image, patient, excess and weight, which helps to find images worth looking at with \code{\link[=plotImage]{plotImage()}}.
 }
 \examples{
 data(spicyTest)

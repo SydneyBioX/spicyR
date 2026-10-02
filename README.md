@@ -32,8 +32,8 @@ spicyBoxPlot(res, from = "HR- Ki67+", to = "T cells")   # T cells around prolife
 
 For your own data, `spicy()` accepts a `SpatialExperiment`, a `SingleCellExperiment` or a `data.frame`. It looks
 for the columns `imageID` and `cellType` (name yours with `imageID =` and `cellType =`) and takes coordinates from
-`spatialCoords()`, or from columns `x` and `y`. A pair *from* → *to* asks how many extra *to* cells sit around each
-*from* cell.
+`spatialCoords()`, or from columns `x` and `y`. A pair `from` → `to` asks how many extra `to` cells sit around each
+`from` cell.
 
 ## What you get
 
