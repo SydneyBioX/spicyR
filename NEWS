@@ -12,7 +12,6 @@ MAJOR CHANGES
 
     o The direction of a pair follows the spatial-statistics convention for cross-type
       statistics: `from` is the type whose neighbourhoods are examined, `to` the type counted.
-      spicy_glm(effect = "excess") in 1.99.0 development versions counted the other way.
 
 NEW FEATURES
 

@@ -9,6 +9,30 @@
   sort(unique(as.character(col[!is.na(col)])), method = "radix")
 }
 
+## Every ordered (from, to) pair, from-major (both directions are fitted: the excess is directional).
+enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
+  if (is.character(from) && length(from) == 1L && is.character(to) && length(to) == 1L)
+    return(list(c(from, to)))
+  # Kontextual is directional too, and needs `to` in the context
+  if (!is.null(parent)) {
+    from_types <- if (is.null(from)) all_types else unique(from)
+    to_types <- if (is.null(to)) parent else unique(to)
+    return(unlist(lapply(from_types, function(f) lapply(to_types, function(t) c(f, t))),
+                  recursive = FALSE))
+  }
+  # the kNN effect is directional (A->B != B->A), so fit every ordered pair
+  if (family == "binomial") {
+    from_types <- if (is.null(from)) all_types else unique(from)
+    to_types <- if (is.null(to)) all_types else unique(to)
+    return(unlist(lapply(from_types, function(f) lapply(to_types, function(t) c(f, t))),
+                  recursive = FALSE))
+  }
+  types <- if (!is.null(from) || !is.null(to)) unique(c(from, to)) else all_types
+  cross <- if (length(types) >= 2L)
+    utils::combn(types, 2L, simplify = FALSE) else list()
+  c(cross, lapply(types, function(t) c(t, t)))
+}
+
 ## ---- inputs -----------------------------------------------------------------------------------
 
 ## Image-level layout shared by every analysis of a data set: cells sorted by image, integer codes

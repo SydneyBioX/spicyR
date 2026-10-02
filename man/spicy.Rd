@@ -97,9 +97,6 @@ freedom, with **patients (`subject`) as the units**. Results for each pair also 
 difference at equal availability of the `from` type (adjusted for its share of all cells), which
 guards against changes in abundance being read as changes in attraction.
 
-**Changed in version 2.0:** up to spicyR 1.99.0, `spicy_glm(effect = "excess")` counted extra `from`
-cells around each `to` cell. `spicy()` now uses the convention above.
-
 **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when `subject` is given
 (Canete et al. 2022).

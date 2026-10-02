@@ -49,9 +49,6 @@ reference:
   - getProp
   - convPairs
   - colTest
-- title: "Lower-level interface"
-  contents:
-  - spicy_glm
 - title: "Data"
   contents:
   - diabetesData
