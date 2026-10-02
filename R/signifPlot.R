@@ -246,7 +246,7 @@ bubblePlot <- function(test,
   if (fdr) {
     pvalue = p.adjust(test$p.value[, coef], "fdr")
     sig <- pvalue < cutoff
-    sigLab <- paste0("fdr < ", cutoff)
+    sigLab <- paste0("BH-adjusted p-value < ", cutoff)
   }
 
   size <- -log10(pvalue)
@@ -355,7 +355,7 @@ bubblePlot <- function(test,
                               guide = ggplot2::guide_axis(angle = 45)) +
     ggplot2::theme_classic() +
     ggplot2::labs(
-      x = "Cell type j", y = "Cell type i", size = "-log10 p-value",
+      x = "Cell type j", y = "Cell type i", size = if (fdr) "-log10 adjusted p-value" else "-log10 p-value",
       colour = NULL, fill = "Localisation", shape = "Condition"
     ) +
     ggplot2::guides(
@@ -454,7 +454,7 @@ survBubble = function(result,
 
   if(fdr){
     plotData$p.value = p.adjust(plotData$p.value, "fdr")
-    sigLab <- paste0("fdr < ", cutoff)
+    sigLab <- paste0("BH-adjusted p-value < ", cutoff)
   }
 
   plotData$sig <- plotData$p.value < cutoff
@@ -476,6 +476,7 @@ survBubble = function(result,
     ggplot2::scale_size(range = c(2, 6)) +
     ggplot2::scale_x_discrete(guide = ggplot2::guide_axis(angle = 45)) +
     ggplot2::labs(colour = "CoxPH \ncoefficient",
+                  size = if (fdr) "-log10 adjusted p-value" else "-log10 p-value",
                   shape = NULL,
                   x = NULL,
                   y = NULL) +
