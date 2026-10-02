@@ -1,8 +1,6 @@
 ---
 title: "The original image-level test in spicyR"
 date: "`r BiocStyle::doc_date()`"
-params:
-  test: FALSE
 author:
 - name: Nicolas Canete
   affiliation:  
@@ -53,19 +51,15 @@ library(BiocStyle)
 if (!require("BiocManager")) {
   install.packages("BiocManager")
 }
-BiocManager::install("spicyR")
+BiocManager::install("spicyR", version = "devel")   # spicyR 2.0, until the next Bioconductor release
 ```
 
-**Note:** There is a bug with the S4 method dispatch system, and `SingleCellExperiment` and `SpatialExperiment` objects are not correctly inheriting from `SummarizedExperiment.` One quick fix is to run the code below:
 
 
 ```{r chunk-03, warning=FALSE, message=FALSE}
 # load required packages
 library(SummarizedExperiment)
 
-# code to work around the bug
-methods::setClassUnion("ExpData", c("matrix", "dgCMatrix", "ExpressionSet",
-                                    "SummarizedExperiment"))
 
 library(spicyR)
 library(ggplot2)
@@ -87,7 +81,6 @@ We use the @keren2018 breast cancer dataset to compare the spatial distribution 
 
 The data is stored as a `SpatialExperiment` object and contains single-cell spatial data from 41 images.
 
-**Note:** There is a bug with the S4 method dispatch system, and `SingleCellExperiment` and `SpatialExperiment` objects are not correctly inheriting from `SummarizedExperiment.` One quick fix is to run the code below:
 
 
 ```{r chunk-04, warning=FALSE, message=FALSE}
@@ -183,13 +176,10 @@ signifPlot(
 
 Here, we can observe that the most significant relationships occur between macrophages and double negative CD3 T cells, suggesting that the two cell types are far more dispersed in compartmentalised tumours compared to cold tumours.
 
-To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxplot()` and specify either `from = "Macrophages"` and `to = "dn_T_CD3"` or `rank = 1`.
+To examine a specific cell type-cell type relationship in more detail, we can use `spicyBoxPlot()` and specify either `from = "Macrophages"` and `to = "dn_T_CD3"` or `rank = 1`.
 
 ```{r chunk-09}
-spicyBoxPlot(results = spicyTest, 
-             # from = "Macrophages",
-             # to = "dn_T_CD3"
-             rank = 1)
+spicyBoxPlot(results = spicyTest, rank = 1)
 ```
 
 # Linear modelling for custom metrics
@@ -297,17 +287,20 @@ Plotting image 24 shows that the supposed co-localisation occurs due to the dens
 
 `spicyR` supports mixed effects modelling when multiple images are obtained for each subject. In this case, `subject` is treated as a random effect and `condition` is treated as a fixed effect. To perform mixed effects modelling, we can specify the `subject` parameter in the `spicy` function.
 
-```{r chunk-18, eval=FALSE}
-spicyMixedTest <- spicy(method = "image", 
+```{r chunk-18}
+data("diabetesData")
+spicyMixedTest <- spicy(method = "image",
   diabetesData,
   condition = "stage",
   subject = "case"
 )
+topPairs(spicyMixedTest)
 ```
 
-# References
-
+# Session information
 
 ```{r chunk-19}
 sessionInfo()
 ```
+
+# References

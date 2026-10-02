@@ -1,8 +1,3 @@
-# check if alternativeResults is kontextual
-isKontextual <- function(kontextualResult) {
-
-    return("kontexutal"%in% names(kontextualResult))
-}
 
 ## ---- optional dependencies ---------------------------------------------------------------------
 

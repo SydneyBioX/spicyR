@@ -33,6 +33,11 @@ NEW FEATURES
 
     o Much faster: every ordered pair of 22 cell types from 400,000 cells (METABRIC) in seconds.
 
+    o spicyR 2.0 was written with AI assistance (Claude, Anthropic, through Claude Code), directed by the
+      authors: the C++ core, its R bindings, R/cell.R and R/spicy_main.R, the C++ ports
+      of the image method's model fits, the tests (including a plain-R reference written from the
+      method's equations) and the vignettes. The commits concerned carry a Co-Authored-By line.
+
     o Far fewer dependencies.
 
 CHANGES IN VERSION 1.18.0

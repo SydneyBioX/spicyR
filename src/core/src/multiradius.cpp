@@ -1,5 +1,5 @@
 // Several radii: the Cauchy combination and the max-T test with the sandwich correlation of the
-// per-unit CR2 influences (docs/PLAN_multiradius_maxT.md; new_methods.pdf, Section 4).
+// per-unit CR2 influences (Supplementary Methods, Section 4).
 #include <algorithm>
 #include <cmath>
 #include <limits>

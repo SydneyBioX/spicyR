@@ -1,6 +1,6 @@
 Package: spicyR
 Type: Package
-Title: Spatial analysis of in situ cytometry data
+Title: Test Changes in the Co-Localisation of Cell Types Between Groups of Patients
 Version: 1.99.0
 Authors@R: c(
     person("Nicolas", "Canete", , "nicolas.canete@sydney.edu.au", role = "aut"),

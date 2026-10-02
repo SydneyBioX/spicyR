@@ -1,5 +1,6 @@
 // spicyGLM numeric core. Equation and proposition numbers refer to
-// spicyClub_Supplementary_Math.pdf (spicyR, gee branch).
+// the Supplementary Methods of the paper describing spicyR Cell (in preparation).
+// Written with AI assistance (Claude, Anthropic), directed by the authors; see NEWS.
 #pragma once
 
 #include <array>

@@ -1,4 +1,4 @@
-// The excess with a general design (new_methods.pdf, Section 1), the availability adjustment
+// The excess with a general design (Supplementary Methods, Section 1), the availability adjustment
 // (Section 2) and their CR2 tests. Ported from the R prototypes excess_design.R / adjust_cov.R.
 //
 // Per unit k (patient) with whitened design X_k = L_k^{-1} D_k (V_k = L_k L_k'), bread B = (sum X'X)^-1
@@ -72,7 +72,7 @@ Fit gls(const ImageRows& d, const Units& U, const MatrixXd& D, double tau2) {
   return f;
 }
 
-// Pearson statistic of the rank-one frailty under the design (new_methods.pdf, eq. 2).
+// Pearson statistic of the rank-one frailty under the design (Supplementary Methods, eq. 2).
 double pearson(const ImageRows& d, const Units& U, const MatrixXd& D, double tau2) {
   Fit f = gls(d, U, D, tau2);
   if (!f.ok) return std::numeric_limits<double>::quiet_NaN();

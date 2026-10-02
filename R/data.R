@@ -1,29 +1,43 @@
-#' Diabetes IMC data in SCE format.
+#' Imaging mass cytometry of human pancreas in type 1 diabetes (Damond et al. 2019)
 #'
-#' This is a subset of the Damond et al 2019 imaging mass cytometry dataset. The data 
-#' contains cells in the pancreatic islets of individuals with early onset 
-#' diabetes and healthy controls. 
-#' The object contains single-cell data of 160 images from 8 subjects, 
-#' with 20 images per subject.
+#' Cell types and positions from imaging mass cytometry of pancreas sections from 12 donors at three stages of type
+#' 1 diabetes (Damond et al. 2019): 4 non-diabetic donors, 4 at onset and 4 with long-duration disease. The object
+#' holds 253,777 cells from 120 images, 10 images per donor. It has no assays: only the cell data used by spicyR.
 #'
-#' Converted into a SingleCellExperiment format.
-#'
-#' @format diabetesData_SCE a SingleCellExperiment object
+#' @format A \code{SingleCellExperiment} with one column per cell and these \code{colData} columns:
+#' \describe{
+#'   \item{imageID}{the image (character)}
+#'   \item{cellID, imageCellID}{cell identifiers, in the whole data set and within its image}
+#'   \item{x, y}{the cell's coordinates in the image, in micrometres}
+#'   \item{cellType}{the cell type assigned by the authors (factor)}
+#'   \item{case}{the donor (integer)}
+#'   \item{slide, part}{the slide, and the part of the pancreas (head, body or tail)}
+#'   \item{group, stage}{the stage of type 1 diabetes, as a code and as a factor with levels
+#'     \code{"Non-diabetic"}, \code{"Onset"} and \code{"Long-duration"}}
+#' }
+#' @source Damond N et al. (2019). Mendeley Data, \doi{10.17632/cydmwsfztj.1}, under the CC BY 4.0 licence. How the
+#'   subset was made is described in \code{inst/scripts/make-diabetesData.R}.
+#' @references Damond N, Engler S, Zanotelli VRT, et al. (2019). A map of human type 1 diabetes progression by
+#'   imaging mass cytometry. \emph{Cell Metabolism} 29(3), 755-768. \doi{10.1016/j.cmet.2018.11.014}
 #' @usage data("diabetesData")
-#' @aliases 
-#' diabetesData
+#' @examples
+#' data("diabetesData")
+#' table(unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("case", "stage")])$stage)
+#' @aliases diabetesData
 "diabetesData"
 
 
-#' Results from spicy for diabetesData (image method)
+#' Results of the image-level test on diabetesData
 #'
-#' Results of the original image-level test, from spicyR 1.x:
-#' spicyTest <- spicy(diabetesData,
-#'                    condition = "condition",
-#'                    subject = "subject", method = "image")
+#' The result of \code{spicy(diabetesData, condition = "stage", subject = "case", method = "image")}: the original
+#' image-level test of spicyR, for all pairs of cell types, comparing the onset and long-duration stages with
+#' non-diabetic donors. It is used in examples, so that they run quickly.
 #'
-#' @format spicyTest a spicy object
+#' @format A \code{SpicyResults} object (see \code{\link{spicy}}).
+#' @source Made by \code{inst/scripts/make-spicyTest.R} from \code{\link{diabetesData}}.
 #' @usage data("spicyTest")
-#' @aliases 
-#' spicyTest
+#' @examples
+#' data("spicyTest")
+#' topPairs(spicyTest, n = 5)
+#' @aliases spicyTest
 "spicyTest"

@@ -1,4 +1,4 @@
-// Cox proportional hazards (Efron ties) and the spicyR Cell survival tests (new_methods.pdf,
+// Cox proportional hazards (Efron ties) and the spicyR Cell survival tests (Supplementary Methods,
 // Section 3): the score test (the excess regressed on the null-model martingale residuals) and the
 // Cox model on the shrunken per-patient excess. Ported from the R prototype survival.R.
 #include <Eigen/Dense>
@@ -173,7 +173,7 @@ SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit
     double xi = adj ? x[i] : 0.0;
     s[u[i]] += r.n[i] * (r.O[i] - r.E[i] - beta * r.n[i] * xi) / r.v[i]; J[u[i]] += r.n[i] * r.n[i] / r.v[i]; }
   // With tau2 near 0 every patient is shrunk to the mean and the shrunken excess carries no information:
-  // report no hazard ratio (new_methods.pdf, Section 3, check 4).
+  // report no hazard ratio (Supplementary Methods, Section 3, check 4).
   double wmax = 0;
   for (int k : present) wmax = std::max(wmax, mu.ok ? mu.tau2 / (mu.tau2 + 1 / J[k]) : 1.0);
   if (wmax < 0.01) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = std::numeric_limits<double>::quiet_NaN();

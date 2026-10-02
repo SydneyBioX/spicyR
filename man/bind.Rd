@@ -2,21 +2,23 @@
 % Please edit documentation in R/spicy.R
 \name{bind}
 \alias{bind}
-\title{Produces a dataframe showing L-function metric for each imageID entry.}
+\title{The per-image values of every pair, as a data frame}
 \usage{
 bind(results, pairName = NULL)
 }
 \arguments{
-\item{results}{Spicy test result obtained from spicy.}
+\item{results}{The \code{SpicyResults} object returned by \code{spicy()}.}
 
-\item{pairName}{A string specifying the pairwise interaction of interest. If NULL, all
-pairwise interactions are shown.}
+\item{pairName}{A pair, as \code{"from__to"}. If NULL, all pairs are returned.}
 }
 \value{
-A data.frame containing the colData related to the results.
+A data.frame with one row per image: \code{imageID}, \code{condition}, \code{subject} (if given) and
+  one column per pair, named \code{"from__to"}. \code{NA} where the pair could not be measured in an image.
 }
 \description{
-Produces a dataframe showing L-function metric for each imageID entry.
+Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: the excess
+(extra \code{to} cells per \code{from} cell beyond chance) for the cell method, or the L-function summary
+for the image method. Use it for your own plots or models.
 }
 \examples{
 

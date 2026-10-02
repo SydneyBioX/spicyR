@@ -55,7 +55,24 @@
 #'   (`adjusted_for`), the effect and p-value of each adjustment, and the unadjusted test
 #'   (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
-#'   Bioinformatics 38(11), 3099-3105.
+#'   Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
+#'
+#'   Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
+#'   samples. Survey Methodology 28(2), 169-181.
+#'
+#'   Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
+#'   testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
+#'   \doi{10.1080/07350015.2016.1247004}
+#'
+#'   Paule RC, Mandel J (1982). Consensus values and weighting factors. Journal of Research of the National
+#'   Bureau of Standards 87(5), 377-385. \doi{10.6028/jres.087.022}
+#'
+#'   Hartung J, Knapp G (2001). A refined method for the meta-analysis of controlled clinical trials with binary
+#'   outcome. Statistics in Medicine 20(24), 3875-3889. \doi{10.1002/sim.1009}
+#'
+#'   Liu Y, Xie J (2020). Cauchy combination test: a powerful test with analytic p-value calculation under
+#'   arbitrary dependency structures. Journal of the American Statistical Association 115(529), 393-402.
+#'   \doi{10.1080/01621459.2018.1554485}
 #' @examples
 #' data("diabetesData")
 #' # spicyR Cell: patients ("case") are the units
@@ -69,7 +86,7 @@
 #' resImage <- spicy(diabetesData, condition = "stage", subject = "case",
 #'                   from = "Tc", to = "Th", method = "image")
 #' topPairs(resImage)
-#' @aliases spicy spicy,spicy-method
+#' @aliases spicy
 #' @export
 spicy <- function(cells,
                   condition,

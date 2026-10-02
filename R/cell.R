@@ -1,6 +1,7 @@
 ## spicyR Cell: the R side of the cell-level analysis. Everything numeric happens in the C++ core
 ## (src/core); these functions only prepare inputs, call it and assemble tables. The Python twin
-## (spicyr) mirrors them line for line.
+## (spicyr) mirrors them line for line. Written with AI assistance (Claude, Anthropic), directed by the
+## authors; see NEWS.
 
 ## Levels present in a condition column: in level order for a factor, else sorted in C-locale order (as the
 ## Python twin; R's default sort depends on the locale).
@@ -142,7 +143,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 }
 
 ## tau2 of the adjusted design: re-estimated (exact Paule-Mandel) when every added column is constant within
-## patients, else held at the unadjusted value (new_methods.pdf, Remark 3).
+## patients, else held at the unadjusted value (Supplementary Methods, Remark 3).
 .cell_design_tau2 <- function(d, G, frailty, tau2) {
   if (!frailty) return(0)
   X <- d$Z[, -seq_len(G), drop = FALSE]

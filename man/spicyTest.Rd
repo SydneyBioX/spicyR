@@ -3,17 +3,23 @@
 \docType{data}
 \name{spicyTest}
 \alias{spicyTest}
-\title{Results from spicy for diabetesData (image method)}
+\title{Results of the image-level test on diabetesData}
 \format{
-spicyTest a spicy object
+A \code{SpicyResults} object (see \code{\link{spicy}}).
+}
+\source{
+Made by \code{inst/scripts/make-spicyTest.R} from \code{\link{diabetesData}}.
 }
 \usage{
 data("spicyTest")
 }
 \description{
-Results of the original image-level test, from spicyR 1.x:
-spicyTest <- spicy(diabetesData,
-                   condition = "condition",
-                   subject = "subject", method = "image")
+The result of \code{spicy(diabetesData, condition = "stage", subject = "case", method = "image")}: the original
+image-level test of spicyR, for all pairs of cell types, comparing the onset and long-duration stages with
+non-diabetic donors. It is used in examples, so that they run quickly.
+}
+\examples{
+data("spicyTest")
+topPairs(spicyTest, n = 5)
 }
 \keyword{datasets}

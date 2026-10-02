@@ -1,6 +1,6 @@
 # spicyR <img src="inst/spicyR.png" align="right" width="140" alt="spicyR hex sticker" />
 
-![R](https://img.shields.io/badge/R-%E2%89%A54.5-blue)
+![R](https://img.shields.io/badge/R-%E2%89%A54.6-blue)
 ![Bioconductor](https://img.shields.io/badge/Bioconductor-2.0%20in%20development-orange)
 ![licence](https://img.shields.io/badge/licence-GPL%20(%E2%89%A52)-lightgrey)
 

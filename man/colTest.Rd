@@ -19,23 +19,22 @@ colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
 \item{imageID}{The imageID's if presenting a SingleCellExperiment}
 }
 \value{
-Proportions
+A data.frame with one row per column of \code{df} (for example per cell type), ordered by p-value:
+  the mean in each condition, the test statistic, the p-value (\code{pval}), the Benjamini-Hochberg adjusted
+  p-value (\code{adjPval}) and the column name (\code{cluster}).
 }
 \description{
 Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data
 frame
 }
 \examples{
-
-# Test for an association with long-duration diabetes
-# This is clearly ignoring the repeated measures...
+# Test for a difference in cell-type proportions between onset and long-duration diabetes
+# (images are treated as independent here, which ignores that each donor has several)
 data("diabetesData")
-diabetesData <- spicyR:::.format_data(
-  diabetesData, "imageID", "cellType", c("x", "y"), FALSE
-)
 props <- getProp(diabetesData)
-condition <- spicyR:::getImagePheno(diabetesData)$stage
-names(condition) <- spicyR:::getImagePheno(diabetesData)$imageID
+images <- unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("imageID", "stage")])
+condition <- setNames(as.character(images$stage), images$imageID)
 condition <- condition[condition \%in\% c("Long-duration", "Onset")]
 test <- colTest(props[names(condition), ], condition)
+head(test)
 }
