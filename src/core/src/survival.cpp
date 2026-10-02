@@ -153,6 +153,12 @@ SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit
   res.tau2 = mu.tau2;
   std::vector<double> s(n_units, 0), J(n_units, 0);
   for (std::size_t i = 0; i < r.O.size(); ++i) { s[u[i]] += r.n[i] * (r.O[i] - r.E[i]) / r.v[i]; J[u[i]] += r.n[i] * r.n[i] / r.v[i]; }
+  // With tau2 near 0 every patient is shrunk to the mean and the shrunken excess carries no information:
+  // report no hazard ratio (new_methods.pdf, Section 3, check 4).
+  double wmax = 0;
+  for (int k : present) wmax = std::max(wmax, mu.ok ? mu.tau2 / (mu.tau2 + 1 / J[k]) : 1.0);
+  if (wmax < 0.01) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = std::numeric_limits<double>::quiet_NaN();
+                     res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
   std::vector<double> x, tt; std::vector<int> ee;
   for (int k : present) {
     double raw = s[k] / J[k];
@@ -162,10 +168,10 @@ SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit
   double mean = std::accumulate(x.begin(), x.end(), 0.0) / x.size(), ss = 0;
   for (double v : x) ss += (v - mean) * (v - mean);
   double sd = std::sqrt(ss / (x.size() - 1));
-  if (!(sd > 1e-12 * (std::fabs(mean) + 1))) { res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
+  if (!(sd > 1e-12 * (std::fabs(mean) + 1))) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
   for (double& v : x) v = (v - mean) / sd;
   CoxResult cx = cox_fit(tt, ee, x, 1);
-  if (!cx.ok) { res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
+  if (!cx.ok) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
   res.log_hr_sd = cx.beta[0]; res.hr_sd = std::exp(cx.beta[0]); res.hr_se = cx.se[0]; res.hr_p = cx.p[0];
   res.log_hr_unit = cx.beta[0] / sd;
   return res;

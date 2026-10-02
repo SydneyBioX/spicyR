@@ -2,6 +2,13 @@
 ## (src/core); these functions only prepare inputs, call it and assemble tables. The Python twin
 ## (spicyr) mirrors them line for line.
 
+## Levels present in a condition column: in level order for a factor, else sorted in C-locale order (as the
+## Python twin; R's default sort depends on the locale).
+.cell_levels <- function(col) {
+  if (is.factor(col)) { present <- unique(as.character(col[!is.na(col)])); return(levels(col)[levels(col) %in% present]) }
+  sort(unique(as.character(col[!is.na(col)])), method = "radix")
+}
+
 ## ---- inputs -----------------------------------------------------------------------------------
 
 ## Image-level layout shared by every analysis of a data set: cells sorted by image, integer codes
@@ -13,7 +20,7 @@
   missing_cols <- setdiff(needed, names(cells))
   if (length(missing_cols)) stop("columns not found in `cells`: ", paste(missing_cols, collapse = ", "), call. = FALSE)
   image_chr <- as.character(cells[[image_id]])
-  image_labels <- sort(unique(image_chr))
+  image_labels <- sort(unique(image_chr), method = "radix")   # C-locale order, as the Python twin
   image_codes <- match(image_chr, image_labels) - 1L
   ord <- order(image_codes, method = "radix")
   df <- cells[ord, , drop = FALSE]; image_codes <- image_codes[ord]
@@ -31,7 +38,7 @@
   ctx <- list(df = df, image_labels = image_labels, image_codes = image_codes, n_images = n_images,
               unit_labels = unit_labels, image_unit = image_unit, first = first)
   if (!is.null(condition) && !survival) {
-    lev <- condition_levels(cells[[condition]])
+    lev <- .cell_levels(cells[[condition]])
     if (length(lev) < 2L)
       stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
     if (!is.null(ref)) {

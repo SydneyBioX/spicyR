@@ -131,7 +131,7 @@ spicy <- function(cells,
   }
 
   radii <- if (is.null(k)) sort(unique(r)) else NA
-  if (length(radii) > 1L && !survival && length(condition_levels(cells[[condition]])) > 2L)
+  if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (survival) {
     res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores)
