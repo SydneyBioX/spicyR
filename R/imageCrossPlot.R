@@ -46,10 +46,7 @@
 #' print(p)
 #' }
 #'
-#' @importFrom ggplot2 ggplot aes geom_point scale_colour_gradient2 labs theme_classic guide_axis guides
-#' @importFrom tidyr separate
-#' @importFrom dplyr arrange filter
-#' @importFrom scales squish
+#' @importFrom ggplot2 ggplot aes geom_point scale_colour_gradient2 labs theme_classic guide_axis guides .data
 #' @seealso \code{\link{getPairwise}}
 #' @export
 imageCrossPlot = function(result,
@@ -71,17 +68,12 @@ imageCrossPlot = function(result,
                      value = as.numeric(result[image,]), 
                      size = abs(as.numeric(result[image,])))
   
-  plotData = data |>
-    tidyr::separate(test,
-                    into = c("from", "to"),
-                    sep = "__") |>
-    dplyr::arrange(to, from)
+  plotData <- cbind(.split_labels(data$test, c("from", "to")), data[c("value", "size")])
+  plotData <- plotData[order(plotData$to, plotData$from, method = "radix"), , drop = FALSE]
   
   
   if(!is.null(marksToPlot)) {
-    plotData = plotData |> 
-      filter(to %in% marksToPlot) |> 
-      filter(from %in% marksToPlot)
+    plotData <- plotData[plotData$to %in% marksToPlot & plotData$from %in% marksToPlot, , drop = FALSE]
   }
   
   if(is.null(limits)) limits <- signif(range(data$value),2)
@@ -106,13 +98,15 @@ imageCrossPlot = function(result,
   
   plotData$size_clamped <- pmin(pmax(plotData$size, size_limits[1]), size_limits[2])
   
-  plot <- ggplot(plotData, aes(x = to, y = from)) +
-    geom_point(aes(size = size_clamped, colour = value)) +
+  squish <- function(x, range = c(0, 1), only.finite = TRUE) pmin(pmax(x, range[1]), range[2])
+
+  plot <- ggplot(plotData, aes(x = .data$to, y = .data$from)) +
+    geom_point(aes(size = .data$size_clamped, colour = .data$value)) +
     scale_colour_gradient2(
       low = colourGradient[[1]], mid = colourGradient[[2]], high = colourGradient[[3]],
       midpoint = 0,
       limits = val_limits,
-      oob = scales::squish,
+      oob = squish,
       breaks = val_breaks,
       labels = val_labels,
       name = "Spatial association"

@@ -1,12 +1,14 @@
 #' Plots boxplot for a specified cell-cell relationship
 #'
-#' @param results Data frame obtained from spicy.
+#' @param results The SpicyResults object returned by spicy() (either method).
 #' @param from Cell type which you would like to compare to the to cell type.
 #' @param to Cell type which you would like to compare to the from cell type.
 #' @param rank Ranking of cell type in terms of p-value, the smaller the p-value
 #'   the higher the rank.
 #'
-#' @return a ggplot2 boxplot
+#' @return a ggplot2 boxplot. For \code{method = "cell"} results the y axis is the
+#'   per-image excess (extra \code{to} cells per \code{from} cell); for
+#'   \code{method = "image"} results it is the L function.
 #'
 #' @examples
 #' data(spicyTest)
@@ -15,7 +17,7 @@
 #'              rank = 1)
 #'
 #' @export
-#' @importFrom ggplot2 ggplot scale_colour_gradient2 geom_point scale_shape_manual guides labs scale_color_manual theme_classic theme element_text aes guide_legend element_blank guide_colourbar
+#' @importFrom ggplot2 ggplot aes .data
 
 spicyBoxPlot <- function(results,
                          from = NULL,
@@ -47,16 +49,17 @@ spicyBoxPlot <- function(results,
                    pairwiseAssoc = results$pairwiseAssoc[[pairName]],
                    condition = results$condition)
   
-  if(results$alternateResult) {
-    ylabel <- "Alternate Result"
+  if (identical(results$method, "cell")) {
+    ylabel <- "Excess (extra `to` cells per `from` cell)"
+    title <- paste0(to, " cells around ", from, " cells")
   } else {
-    ylabel <- "L Function"
+    ylabel <- if (isTRUE(results$alternateResult)) "Alternate Result" else "L Function"
+    title <- paste0("L-function values between ", from, " cells and ", to, " cells")
   }
   
-  ggplot2::ggplot(df, ggplot2::aes(x = condition, y = pairwiseAssoc, fill = condition)) +
+  ggplot2::ggplot(df, ggplot2::aes(x = .data$condition, y = .data$pairwiseAssoc, fill = .data$condition)) +
     ggplot2::geom_boxplot() +
-    # ggplot2::geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.5) +
-    ggplot2::ggtitle(paste0("L-function values between ", from, " cells and ", to, " cells")) +
+    ggplot2::ggtitle(title) +
     ggplot2::xlab("Condition") + 
     ggplot2::ylab(ylabel) +
     ggplot2::theme_classic()
