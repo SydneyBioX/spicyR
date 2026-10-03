@@ -6,11 +6,11 @@ types <- sort(unique(cells$cellType))
 grid <- expand.grid(from = types, to = types, stringsAsFactors = FALSE)
 
 test_that("the cell method matches the plain-R reference for every pair", {
-  for (lc in c(FALSE, TRUE)) for (vr in c("cr2", "hartung_knapp")) {
-    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, adjustAbundance = FALSE,
+  for (ef in c("allocation", "count")) for (lc in c(FALSE, TRUE)) for (vr in c("cr2", "hartung_knapp")) {
+    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef,
                                   labelClustering = lc, variance = vr))$cellResults
     # the reference is in (counted, centre) order, which is the user's from -> to
-    ref <- ref_spicy_cell(transform(cells, subject = patient), grid, 30, lc, vr)
+    ref <- ref_spicy_cell(transform(cells, subject = patient), grid, 30, lc, vr, effect = ef)
     ref <- data.frame(from = ref$from, to = ref$to, p_ref = ref$p_value, d_ref = ref$excess_difference)
     m <- merge(res, ref, by = c("from", "to"))
     expect_equal(nrow(m), nrow(grid))
@@ -20,11 +20,57 @@ test_that("the cell method matches the plain-R reference for every pair", {
 })
 
 test_that("to is the centre (relabelled) type and from the counted type", {
-  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))$cellResults
-  # T cells were moved next to tumour cells in group B: T cells are placed near tumour cells, so more tumour cells
-  # around each T cell
-  expect_gt(res["tumour__T", "excess_difference"], 0)
-  expect_lt(res["tumour__T", "p_value"], 0.01)
+  for (ef in c("allocation", "count")) {
+    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
+                                  effect = ef))$cellResults
+    # T cells were moved next to tumour cells in group B: more T cells have a tumour cell nearby, and there are more
+    # tumour cells around each T cell
+    expect_gt(res["tumour__T", "excess_difference"], 0)
+    expect_lt(res["tumour__T", "p_value"], 0.01)
+  }
+})
+
+test_that("allocation: the effect is the fraction of T cells moved next to tumour", {
+  # 40% of group B's T cells were moved within 6 units of a tumour cell; at r = 15 nearly all of them have a tumour cell
+  # within r, so the extra fraction is a little under 0.4 (the moved cells that already had a tumour cell nearby are
+  # not extra)
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))
+  expect_identical(res$effect, "allocation")
+  x <- res$cellResults["tumour__T", ]
+  expect_lt(abs(x$excess_ref), 0.05)
+  expect_gt(x$excess_comp, 0.25); expect_lt(x$excess_comp, 0.45)
+})
+
+test_that("allocation moments are exact: cross-pairs by enumeration, self-pairs by enumeration of every labelling", {
+  set.seed(3)
+  z <- data.frame(x = runif(14, 0, 60), y = runif(14, 0, 60), cellType = sample(c("A", "B", "C"), 14, TRUE))
+  nb <- ref_neighbours(z$x, z$y, 25)
+  ic <- ref_image_counts_alloc(z$cellType, nb, "A", "B")
+  en <- ref_rl_enumerate(ic$ck, ic$n_to)
+  expect_equal(unname(en[["mean"]]), ic$E, tolerance = 1e-12)
+  expect_equal(unname(en[["var"]]), ic$v, tolerance = 1e-12)
+  # self-pair: every placement of the A labels among the 14 cells
+  ia <- ref_image_counts_alloc(z$cellType, nb, "A", "A"); nA <- sum(z$cellType == "A")
+  S <- utils::combn(14, nA)
+  O <- apply(S, 2, function(s) sum(rowSums(nb$adj[s, s, drop = FALSE]) > 0))
+  expect_equal(mean(O), ia$E, tolerance = 1e-12)
+  # and the core's expectation
+  ctx1 <- spicyR:::.cell_context(transform(z, imageID = "i", condition = "a"), NULL, NULL, "imageID", "cellType",
+                                 c("x", "y"))
+  spicyR:::dataset_build_radius_index(ctx1$data, 25)
+  se <- spicyR:::dataset_self_any_expected(ctx1$data, FALSE, length(ctx1$type_labels))
+  expect_equal(se[match("A", ctx1$type_labels), 1], ia$E, tolerance = 1e-10)
+})
+
+test_that("k nearest neighbours: both effects run, and images with at most k cells are skipped", {
+  ck <- rbind(cells, data.frame(x = c(1, 2, 3), y = c(1, 2, 3), cellType = c("tumour", "T", "B"),
+                                imageID = "tiny", patient = "A01", condition = factor("A", levels = c("A", "B"))))
+  for (ef in c("allocation", "count")) {
+    res <- suppressMessages(spicy(ck, "condition", subject = "patient", k = 5, from = "tumour", to = "T",
+                                  effect = ef))$cellResults
+    expect_gt(res["tumour__T", "excess_difference"], 0)
+    expect_lt(res["tumour__T", "p_value"], 0.05)
+  }
 })
 
 test_that("random labelling moments are exact (enumeration)", {
@@ -122,18 +168,19 @@ test_that("more than two conditions give one contrast per level", {
   expect_equal(colnames(res$p.value), c("(Intercept)", "conditionB", "conditionC"))
 })
 
-test_that("the default test is adjusted for abundance (the dense definition), with the unadjusted test alongside", {
+test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), with the unadjusted test alongside", {
   # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T
   share <- spicyR:::.cell_share(ctx, rows, "T")
   Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share))
   a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2")
   b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2)
-  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour"))$cellResults
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
+                                adjustAbundance = TRUE))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
   expect_equal(res$adjusted_for, "abundance")
   expect_equal(res$unadjusted_p_value, a$p, tolerance = 1e-10)
-  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
-                                 adjustAbundance = FALSE))$cellResults
+  # the default is unadjusted
+  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour"))$cellResults
   expect_equal(res0$p_value, res$unadjusted_p_value, tolerance = 1e-12)
   expect_null(res0$unadjusted_p_value)
 })
@@ -152,7 +199,11 @@ test_that("several contrasts of one design: influences give the variance, and ea
   cz$batch <- c("a", "b", "c")[(match(cz$imageID, unique(cz$imageID)) %% 3) + 1]
   res <- suppressMessages(spicy(cz, "condition", subject = "patient", r = 30, from = "tumour", to = "T",
                                 covariates = c("age", "batch")))$cellResults
-  expect_true(all(c("abundance_effect", "age_effect", "age_p_value", "batchb_effect", "batchc_p_value") %in% names(res)))
+  expect_true(all(c("age_effect", "age_p_value", "batchb_effect", "batchc_p_value") %in% names(res)))
+  expect_equal(res$adjusted_for, "covariates")
+  res <- suppressMessages(spicy(cz, "condition", subject = "patient", r = 30, from = "tumour", to = "T",
+                                covariates = c("age", "batch"), adjustAbundance = TRUE))$cellResults
+  expect_true("abundance_effect" %in% names(res))
   expect_equal(res$adjusted_for, "abundance+covariates")
 })
 
@@ -163,8 +214,12 @@ test_that("image weights sum to one within each condition", {
 })
 
 test_that("a pair's result does not depend on the other pairs requested (psi over every counted type)", {
-  full <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30))$cellResults
-  one <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
-  for (col in c("p_value", "excess_difference", "unadjusted_p_value"))
-    expect_equal(one["tumour__T", col], full["tumour__T", col], tolerance = 1e-12)
+  for (ef in c("allocation", "count")) {
+    full <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef,
+                                   adjustAbundance = TRUE))$cellResults
+    one <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "tumour", to = "T", effect = ef,
+                                  adjustAbundance = TRUE))$cellResults
+    for (col in c("p_value", "excess_difference", "unadjusted_p_value"))
+      expect_equal(one["tumour__T", col], full["tumour__T", col], tolerance = 1e-12)
+  }
 })

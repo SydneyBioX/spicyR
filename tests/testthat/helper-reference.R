@@ -18,6 +18,22 @@ ref_image_counts <- function(type, nb, A, B) {
        sigma2 = sigma2, v = sigma2 * (L2 - L^2 / M))
 }
 
+## The allocation design: every candidate's score is g_k = 1{c_k >= 1} (any A cell among its neighbours), and
+## n = n_B - E, so (O - E) / n is the extra fraction of B cells next to A. A self-pair's E is the exact
+## random-labelling expectation (n_A / N) sum_b [1 - C(N - 1 - d_b, n_A - 1) / C(N - 1, n_A - 1)].
+ref_image_counts_alloc <- function(type, nb, A, B) {
+  ic <- ref_image_counts(type, nb, A, B)
+  ic$ck <- as.numeric(ic$ck >= 1)
+  ic$O <- sum(ic$ck * ic$yk); ic$L <- ic$L2 <- sum(ic$ck)
+  ic$E <- if (ic$self) {
+    N <- length(type); nA <- sum(type == A); d <- rowSums(nb$adj)
+    if (nA < 2) 0 else nA / N * sum(1 - exp(lchoose(N - 1 - d, nA - 1) - lchoose(N - 1, nA - 1)))
+  } else ic$p * ic$L
+  ic$v <- ic$sigma2 * (ic$L2 - ic$L^2 / ic$M)
+  ic$n_to <- ic$n; ic$n <- ic$n - ic$E
+  ic
+}
+
 ## Exact random-labelling mean and variance of O by enumerating every labelling (tiny images only): checks
 ## Proposition 1 itself.
 ref_rl_enumerate <- function(ck, n) {
@@ -49,11 +65,12 @@ ref_psi_tilde <- function(ic, nb, omega, self_count = c("spec", "package")) {
 
 ## cells: imageID, cellType, x, y; pairs: data.frame(from, to). Returns, per pair, the image rows (O, E, n, v with
 ## v already multiplied by psi when label_clustering = TRUE), as the package's excess_image_data().
-ref_image_data <- function(cells, pairs, r, label_clustering = TRUE, self_count = "spec") {
+ref_image_data <- function(cells, pairs, r, label_clustering = TRUE, self_count = "spec", effect = "count") {
   imgs <- sort(unique(as.character(cells$imageID)))
+  counts_fun <- if (effect == "allocation") ref_image_counts_alloc else ref_image_counts
   per_img <- lapply(imgs, function(im) {
     z <- cells[cells$imageID == im, ]; nb <- ref_neighbours(z$x, z$y, r)
-    ic <- lapply(seq_len(nrow(pairs)), function(j) ref_image_counts(as.character(z$cellType), nb, pairs$from[j], pairs$to[j]))
+    ic <- lapply(seq_len(nrow(pairs)), function(j) counts_fun(as.character(z$cellType), nb, pairs$from[j], pairs$to[j]))
     psi_t <- if (label_clustering) vapply(ic, ref_psi_tilde, 0, nb = nb, omega = 2 * r, self_count = self_count) else rep(NA_real_, nrow(pairs))
     # pooling: per target type, the median over the reference types of every requested pair with that target, floor 1
     psi <- vapply(seq_len(nrow(pairs)), function(j) { k <- pairs$to == pairs$to[j]; z <- psi_t[k]
@@ -131,8 +148,9 @@ ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")
 }
 
 ## Whole dataset: cells with imageID, cellType, x, y, condition (two levels) and optionally subject.
-ref_spicy_cell <- function(cells, pairs, r, label_clustering = TRUE, variance = "cr2", self_count = "spec") {
-  ims <- ref_image_data(cells, pairs, r, label_clustering, self_count)
+ref_spicy_cell <- function(cells, pairs, r, label_clustering = TRUE, variance = "cr2", self_count = "spec",
+                           effect = "count") {
+  ims <- ref_image_data(cells, pairs, r, label_clustering, self_count, effect)
   info <- unique(cells[, intersect(c("imageID", "subject", "condition"), names(cells))])
   lev <- levels(factor(cells$condition))
   do.call(rbind, lapply(names(ims), function(k) { d <- ims[[k]]; i <- match(d$imageID, info$imageID)

@@ -16,9 +16,10 @@ spicy(
   from = NULL,
   to = NULL,
   method = c("cell", "image"),
+  effect = c("allocation", "count"),
   k = NULL,
   combine = c("maxT", "cauchy"),
-  adjustAbundance = TRUE,
+  adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   frailty = TRUE,
   labelClustering = TRUE,
@@ -51,13 +52,18 @@ function (default 20, 50 and 100).}
 
 \item{method}{\code{"cell"} (spicyR Cell, the default) or \code{"image"} (the original spicyR test).}
 
+\item{effect}{Cell method: \code{"allocation"} (the default), the extra fraction of \code{to} cells with at least
+one \code{from} cell within \code{r}; or \code{"count"}, the number of extra \code{from} cells within \code{r} of each \code{to} cell.
+With \code{k}, "within \code{r}" means among the cell's \code{k} nearest neighbours.}
+
 \item{k}{Cell method: use the \code{k} nearest neighbours instead of a radius.}
 
 \item{combine}{Cell method with several radii: \code{"maxT"} (max-T with the sandwich correlation across
 radii) or \code{"cauchy"} (Cauchy combination).}
 
 \item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
-(default \code{TRUE}). Its effect is reported as \code{abundance_effect}. \code{FALSE} gives the test without it.}
+(default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}
+cells from more densely packed ones, and it removes real effects when the share tracks the condition.}
 
 \item{variance}{Cell method: \code{"cr2"} (CR2 on Satterthwaite df, the default) or \code{"hartung_knapp"}
 (for very few patients: the model-based variance floored at CR2, on m - 2 df).}
@@ -76,11 +82,12 @@ counted type, so a pair's result does not depend on which other pairs are reques
 }
 \value{
 A \code{SpicyResults} object. \code{topPairs()}, \code{signifPlot()}, \code{spicyBoxPlot()} and \code{bind()} work
-for both methods. For the cell method, \verb{$cellResults} holds the full table: the excess in each
-condition (at the average abundance and covariates), the difference, its standard error, df,
-p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
-(\code{adjusted_for}), the effect and p-value of each adjustment, and the unadjusted test
-(\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}).
+for both methods. For the cell method, \verb{$cellResults} holds the full table: the effect in each
+condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), the difference
+(\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
+and, when the test was adjusted, what for (\code{adjusted_for}), the effect and p-value of each adjustment,
+and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}). \verb{$effect}
+records which effect was estimated.
 }
 \description{
 \code{spicy()} tests, for every ordered pair of cell types \code{from} → \code{to}, whether the co-localisation of
@@ -88,15 +95,23 @@ the two types differs between conditions, or is associated with survival. A pair
 cells are placed near \code{from} cells more than other cells are.
 }
 \details{
-\strong{\code{method = "cell"} (the default).} For each \code{to} cell, the number of \code{from} cells within radius \code{r}
-is compared with its exact expectation if the \code{to} cells were a random choice among the cells that
-are not \code{from} cells in the same image. The effect is the \strong{excess}: the number of extra \code{from} cells
-within \code{r} of each \code{to} cell. Images are combined within patients and patients within conditions by
-a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
-Satterthwaite degrees of freedom, with \strong{patients (\code{subject}) as the units}. By default the
-difference is adjusted for how common the \code{from} type is in each image (the log of its share of all
-cells) and for any \code{covariates}, so that a change in abundance alone does not appear as a change in
-co-localisation. The unadjusted test is reported alongside (\verb{unadjusted_*} columns).
+\strong{\code{method = "cell"} (the default).} In each image, the share of \code{to} cells with at least one \code{from}
+cell within radius \code{r} is compared with its exact expectation q if the \code{to} cells were a random choice
+among the cells that are not \code{from} cells. The effect (\code{effect = "allocation"}, the default) is the
+\strong{extra fraction of \code{to} cells placed next to \code{from} cells}, (observed share - q) / (1 - q): if a
+fraction f of the \code{to} cells were moved next to \code{from} cells, the effect is f, however many \code{from} cells
+there are and however densely they are packed. \code{effect = "count"} gives the number of extra \code{from}
+cells within \code{r} of each \code{to} cell instead; it also reflects how many \code{from} cells surround a \code{to} cell
+(depth of infiltration), but it grows with how densely the \code{from} cells are packed, so a change in
+packing alone can appear as a change in co-localisation. Images are combined within patients and
+patients within conditions by a frailty GEE, and the difference between conditions is tested with a
+CR2 cluster-robust variance on Satterthwaite degrees of freedom, with \strong{patients (\code{subject}) as the
+units}. The difference is adjusted for any \code{covariates}, and, with \code{adjustAbundance = TRUE}, for the
+log share of the \code{from} type in each image; the unadjusted test is then reported alongside
+(\verb{unadjusted_*} columns).
+
+When nearly every cell has a \code{from} cell within \code{r} (q close to 1), an image carries little information
+on the allocation scale, and a smaller \code{r} is more informative.
 
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given
@@ -105,11 +120,15 @@ compared between conditions with a weighted linear model, or a mixed model when 
 \examples{
 data("diabetesData")
 # spicyR Cell: patients ("case") are the units
-# extra Tc cells within 50 units of each Th cell and of each beta cell
+# the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
 res$cellResults
+
+# the extra number of Tc cells within 50 units of each Th cell
+resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
+                  from = "Tc", to = "Th", effect = "count")
 
 # the original image-level test
 resImage <- spicy(diabetesData, condition = "stage", subject = "case",

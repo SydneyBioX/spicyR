@@ -88,8 +88,10 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   ctx
 }
 
-## Neighbour sums and the label-clustering factor at one radius (or k).
-.cell_graph <- function(ctx, pairs, r = NULL, k = NULL, label_clustering = TRUE, window = "convex", n_threads = 1L) {
+## Neighbour sums and the label-clustering factor at one radius (or k). effect "allocation": for every cell, whether
+## it has any cell of each type among its neighbours; "count": how many.
+.cell_graph <- function(ctx, pairs, r = NULL, k = NULL, label_clustering = TRUE, window = "convex", n_threads = 1L,
+                        effect = "allocation") {
   knn <- !is.null(k)
   n_types <- length(ctx$type_labels)
   if (knn) {
@@ -101,22 +103,26 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     dataset_build_radius_index(ctx$data, r)
     h <- 2 * r
   }
-  g <- list(knn = knn, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
-            sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, n_types))
+  allocation <- effect == "allocation"
+  g <- if (allocation) list(knn = knn, effect = effect, any = dataset_pair_neighbour_any_totals(ctx$data, knn, n_types),
+                            self_expected = dataset_self_any_expected(ctx$data, knn, n_types))
+       else list(knn = knn, effect = effect, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
+                 sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, n_types))
   # psi of a `to` type is the median over every counted type (not only the requested pairs), so a pair's result does
   # not depend on which other pairs were asked for
   tos <- unique(vapply(pairs, `[`, "", 2L))
   all_pairs <- expand.grid(from = ctx$type_labels, to = tos, stringsAsFactors = FALSE)
   codes <- rbind(match(all_pairs$from, ctx$type_labels), match(all_pairs$to, ctx$type_labels)) - 1L
-  g$psi <- if (label_clustering) stats_label_clustering(ctx$data, codes[1, ], codes[2, ], ctx$counts, knn, h)
+  g$psi <- if (label_clustering) stats_label_clustering(ctx$data, codes[1, ], codes[2, ], ctx$counts, knn, h, allocation)
            else matrix(numeric(0), 0, 0)
   g
 }
 
 ## One pair's image rows, with the unit and group of each row.
 .cell_rows <- function(ctx, g, f, t) {
-  rows <- stats_excess_image_rows(g$totals, g$sq, ctx$counts, match(f, ctx$type_labels) - 1L,
-                                  match(t, ctx$type_labels) - 1L, g$knn, g$psi)
+  fc <- match(f, ctx$type_labels) - 1L; tc <- match(t, ctx$type_labels) - 1L
+  rows <- if (g$effect == "allocation") stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi)
+          else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi)
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
   rows
@@ -289,7 +295,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## Pair labels: from__to, or from__to__parent for Kontextual triples (a table or a fit).
 .cell_labels <- function(x) if (!is.null(x$parent)) paste(x$from, x$to, x$parent, sep = "__") else paste(x$from, x$to, sep = "__")
 
-## Per-image excess (O - E) / n of every pair, for plots and bind(): images x pairs.
+## Per-image excess (O - E) / n of every pair (allocation: the extra fraction of `to` cells next to `from`; count: the
+## extra `from` cells per `to` cell), for plots and bind(): images x pairs.
 .cell_image_excess <- function(fits, ctx) {
   out <- lapply(fits, function(o) {
     v <- rep(NA_real_, ctx$n_images)

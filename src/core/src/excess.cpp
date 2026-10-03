@@ -146,14 +146,41 @@ ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector
   return out;
 }
 
+ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
+                                const std::vector<double>& counts, int n_types, int n_images, int from, int to,
+                                const std::vector<double>& psi) {
+  // any_totals[(img * T + a) * T + b] = the number of the image's b cells with an a cell among their neighbours
+  const int T = n_types;
+  const bool self = from == to;
+  auto any = [&](int a, int b, int img) { return any_totals[(static_cast<std::size_t>(img) * T + a) * T + b]; };
+  ImageRows out;
+  for (int img = 0; img < n_images; ++img) {
+    const double* cnt = counts.data() + static_cast<std::size_t>(img) * T;
+    double nA = cnt[from], nB = cnt[to], N = 0;
+    for (int t = 0; t < T; ++t) N += cnt[t];
+    double O = any(from, to, img), L = 0;
+    for (int c = 0; c < T; ++c) if (self || c != from) L += any(from, c, img);
+    double M = self ? N : N - nA;
+    double p = self ? std::max(nA - 1, 0.0) / std::max(M - 1, 1.0) : nB / std::max(M, 1.0);
+    double E = self ? self_expected[static_cast<std::size_t>(img) * T + from] : p * L;
+    double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(L - L * L / std::max(M, 1.0), 0.0);
+    if (!psi.empty()) v *= psi[static_cast<std::size_t>(to) * n_images + img];
+    double n = nB - E;
+    if (nB > 0 && v > 0 && n > 0) {
+      out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(n); out.v.push_back(v);
+    }
+  }
+  return out;
+}
+
 std::vector<double> label_clustering_factor(const Dataset& data, const std::vector<int>& from,
                                             const std::vector<int>& to, const std::vector<double>& counts,
-                                            int n_types, int n_images, bool knn, double h) {
-  const int T = n_types, design = knn ? 4 : 3;
+                                            int n_types, int n_images, bool knn, double h, bool allocation) {
+  const int T = n_types, design = allocation ? (knn ? 7 : 6) : (knn ? 4 : 3);
   // O of each pair from the REF's side, for the five-pair sparsity rule. For a self-pair on the
   // radius graph the totals count each cell as its own neighbour; subtract it (Supplementary rule;
-  // spicyR <= 1.99.0 did not, LOG 2 Oct 2026).
-  std::vector<double> totals = data.pair_neighbour_totals(knn);
+  // spicyR <= 1.99.0 did not, LOG 2 Oct 2026). Allocation: the TARGET cells next to REF (self excluded).
+  std::vector<double> totals = allocation ? data.pair_neighbour_any_totals(knn) : data.pair_neighbour_totals(knn);
   std::vector<std::vector<double>> by_ref(T);
   std::vector<std::vector<double>> ratio(from.size(), std::vector<double>(n_images, kNaN));
   for (std::size_t k = 0; k < from.size(); ++k) {
@@ -175,7 +202,7 @@ std::vector<double> label_clustering_factor(const Dataset& data, const std::vect
       double pr = f == t ? (nB - 1) / std::max(Np[i] - 1, 1.0) : nB / Np[i];
       double r = V[i] / (pr * (1 - pr) * G[i]);
       double O = totals[(static_cast<std::size_t>(i) * T + f) * T + t];
-      if (f == t && !knn) O -= counts[static_cast<std::size_t>(i) * T + f];
+      if (f == t && !knn && !allocation) O -= counts[static_cast<std::size_t>(i) * T + f];
       if (O < 5 || !std::isfinite(r) || r <= 0) r = kNaN;
       ratio[k][i] = r;
     }

@@ -22,8 +22,10 @@ and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_se}, \co
 hazard ratio. With several radii: \code{r}, the radius with the strongest evidence, and
 \code{p_value_best_radius}.}
 \item{\code{radiusResults}}{with several radii, the table at every radius.}
-\item{\code{pairwiseAssoc}}{a list with, for every pair, the excess in every image (\code{NA} where the pair
+\item{\code{pairwiseAssoc}}{a list with, for every pair, the effect in every image (\code{NA} where the pair
 could not be measured).}
+\item{\code{effect}}{\code{"allocation"} (the extra fraction of \code{to} cells with a \code{from} cell
+within \code{r}) or \code{"count"} (the extra \code{from} cells within \code{r} of each \code{to} cell).}
 \item{\code{imageWeights}}{a list with, for every pair, each image's weight in the test: its share of its
 condition's information (sums to 1 within each condition).}
 \item{\code{coefficient}, \code{p.value}, \code{se}, \code{statistic}, \code{df}}{matrices with one row per

@@ -37,12 +37,27 @@ ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector
                             const std::vector<double>& counts, int n_types, int n_images, int from, int to,
                             bool knn, const std::vector<double>& psi);
 
+// The allocation effect: the extra fraction of TARGET cells with at least one REF cell among their
+// neighbours. `any_totals` is Dataset::pair_neighbour_any_totals, `self_expected` Dataset::self_any_expected.
+// Every candidate (a non-REF cell; for a self-pair every cell) has the binary score g_b = 1{b has a REF cell
+// among its neighbours}; O = sum of g over the TARGET cells, E = p L with L = sum of g over the candidates
+// (self-pair: the exact expectation `self_expected`), n = n_to - E = n_to (1 - q), q = E / n_to the null
+// share of TARGET cells next to REF, and v = p (1 - p) M / (M - 1) (L - L^2 / M) psi (g^2 = g). Then
+// (O - E) / n = (share of TARGET cells next to REF - q) / (1 - q): a fraction f of TARGET cells moved next to
+// REF cells gives f, however many REF cells there are and however densely they are packed.
+ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
+                                const std::vector<double>& counts, int n_types, int n_images, int from, int to,
+                                const std::vector<double>& psi);
+
 // Label-clustering factor (Supplementary, "Label Clustering"): per (TARGET type, image) the median
 // over the requested REF types of HAC / (sigma^2 R), floored at 1. Returns type-major n_types x
 // n_images. Needs the radius index built at the HAC bandwidth's scale (radius graph: r).
+// allocation: the HAC of the binary scores of allocation_image_rows (designs 6, 7), with the sparsity
+// rule on the number of TARGET cells next to REF.
 std::vector<double> label_clustering_factor(const Dataset& data, const std::vector<int>& from,
                                             const std::vector<int>& to, const std::vector<double>& counts,
-                                            int n_types, int n_images, bool knn, double h);
+                                            int n_types, int n_images, bool knn, double h,
+                                            bool allocation = false);
 
 // The Kontextual excess (Dataset::kontextual_sums, 7 values per image), on Statial's scale (O, L times
 // n_context / n_to, Q times its square): image rows O, E = p L,

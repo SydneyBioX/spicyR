@@ -114,6 +114,17 @@ class Dataset {
   // graph this equals pair_neighbour_sq_totals; for k-NN it is the out-degree
   // version the TARGET-centred excess design (effect = "excess") needs.
   std::vector<double> pair_neighbour_out_sq_totals(bool knn) const;
+  // The allocation design (binary exposure): entry (img, from, to), in the layout of
+  // pair_neighbour_sq_totals, is the number of the image's `to` cells with at least one
+  // `from` cell among their own neighbours (within r, or among their k nearest), the cell
+  // itself excluded.
+  std::vector<double> pair_neighbour_any_totals(bool knn) const;
+  // For self-pairs of the allocation design, per image and type (img * n_types + a): the exact
+  // expectation, under random labelling of type a among all the image's cells, of the number of
+  // a cells with at least one other a cell among their neighbours,
+  //   (n_a / N) sum_b [1 - C(N - 1 - d_b, n_a - 1) / C(N - 1, n_a - 1)],
+  // d_b the number of neighbours of cell b (other than b). 0 when n_a < 2.
+  std::vector<double> self_any_expected(bool knn) const;
   // Poisson design under the random-labelling null (Section 17): each REF cell's
   // offset is its number of candidate neighbours within r times the TARGET share
   // of the candidates. Candidates are the non-REF cells, or for a self-pair all
@@ -135,8 +146,9 @@ class Dataset {
   // counted as variance). design 0/1: Kontextual Poisson / binomial (as in
   // weighted_phi_sums); 3: radius design without context; 4: k-NN design without
   // context; 5: radius design with the candidates restricted to the context (the Kontextual
-  // excess: call build_context with the parent types first). Output: image-major, 3 per image
-  // (HAC variance, sum_b c_b, candidates).
+  // excess: call build_context with the parent types first); 6/7: the allocation design on the radius
+  // / k-NN graph, with c_b replaced by 1{b has a REF cell among its own neighbours}. Output: image-major,
+  // 4 per image (HAC variance, sum_b c_b, candidates, G).
   std::vector<double> hac_phi_sums(int from, int to, int design, double h) const;
   // hac_phi_sums for one REF and every non-self TARGET in one pass: per image, the T HAC sums,
   // then sum c, n and G (layout T + 3 per image).
@@ -190,6 +202,9 @@ class Dataset {
   void build_grid(double radius, std::vector<Grid>& grids, std::vector<int>& bin_start,
                   std::vector<double>& gx, std::vector<double>& gy, std::vector<int>& gtype,
                   std::vector<int>& grow) const;
+  // For every cell b of image img, the number of cells of each type among b's own neighbours
+  // (within r, or among its k nearest), b excluded: c[(row - start) * n_types + type].
+  void own_neighbour_counts(int img, bool knn, std::vector<double>& c) const;
 
   std::vector<double> x_, y_;
   std::vector<int> type_, image_offsets_;

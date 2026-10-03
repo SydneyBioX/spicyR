@@ -4,15 +4,23 @@
 #' the two types differs between conditions, or is associated with survival. A pair asks whether `to`
 #' cells are placed near `from` cells more than other cells are.
 #'
-#' **`method = "cell"` (the default).** For each `to` cell, the number of `from` cells within radius `r`
-#' is compared with its exact expectation if the `to` cells were a random choice among the cells that
-#' are not `from` cells in the same image. The effect is the **excess**: the number of extra `from` cells
-#' within `r` of each `to` cell. Images are combined within patients and patients within conditions by
-#' a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
-#' Satterthwaite degrees of freedom, with **patients (`subject`) as the units**. By default the
-#' difference is adjusted for how common the `from` type is in each image (the log of its share of all
-#' cells) and for any `covariates`, so that a change in abundance alone does not appear as a change in
-#' co-localisation. The unadjusted test is reported alongside (`unadjusted_*` columns).
+#' **`method = "cell"` (the default).** In each image, the share of `to` cells with at least one `from`
+#' cell within radius `r` is compared with its exact expectation q if the `to` cells were a random choice
+#' among the cells that are not `from` cells. The effect (`effect = "allocation"`, the default) is the
+#' **extra fraction of `to` cells placed next to `from` cells**, (observed share - q) / (1 - q): if a
+#' fraction f of the `to` cells were moved next to `from` cells, the effect is f, however many `from` cells
+#' there are and however densely they are packed. `effect = "count"` gives the number of extra `from`
+#' cells within `r` of each `to` cell instead; it also reflects how many `from` cells surround a `to` cell
+#' (depth of infiltration), but it grows with how densely the `from` cells are packed, so a change in
+#' packing alone can appear as a change in co-localisation. Images are combined within patients and
+#' patients within conditions by a frailty GEE, and the difference between conditions is tested with a
+#' CR2 cluster-robust variance on Satterthwaite degrees of freedom, with **patients (`subject`) as the
+#' units**. The difference is adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for the
+#' log share of the `from` type in each image; the unadjusted test is then reported alongside
+#' (`unadjusted_*` columns).
+#'
+#' When nearly every cell has a `from` cell within `r` (q close to 1), an image carries little information
+#' on the allocation scale, and a smaller `r` is more informative.
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -33,11 +41,15 @@
 #'   function (default 20, 50 and 100).
 #' @param from,to Cell types to test (all ordered pairs by default).
 #' @param method `"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR test).
+#' @param effect Cell method: `"allocation"` (the default), the extra fraction of `to` cells with at least
+#'   one `from` cell within `r`; or `"count"`, the number of extra `from` cells within `r` of each `to` cell.
+#'   With `k`, "within `r`" means among the cell's `k` nearest neighbours.
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
 #' @param combine Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
 #'   radii) or `"cauchy"` (Cauchy combination).
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
-#'   (default `TRUE`). Its effect is reported as `abundance_effect`. `FALSE` gives the test without it.
+#'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
+#'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
 #' @param variance Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
 #'   (for very few patients: the model-based variance floored at CR2, on m - 2 df).
 #' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
@@ -49,11 +61,12 @@
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
 #' @return A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work
-#'   for both methods. For the cell method, `$cellResults` holds the full table: the excess in each
-#'   condition (at the average abundance and covariates), the difference, its standard error, df,
-#'   p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
-#'   (`adjusted_for`), the effect and p-value of each adjustment, and the unadjusted test
-#'   (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
+#'   for both methods. For the cell method, `$cellResults` holds the full table: the effect in each
+#'   condition (`excess_ref`, `excess_comp`, at the average covariates), the difference
+#'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
+#'   and, when the test was adjusted, what for (`adjusted_for`), the effect and p-value of each adjustment,
+#'   and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`). `$effect`
+#'   records which effect was estimated.
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
 #'   Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 #'
@@ -76,11 +89,15 @@
 #' @examples
 #' data("diabetesData")
 #' # spicyR Cell: patients ("case") are the units
-#' # extra Tc cells within 50 units of each Th cell and of each beta cell
+#' # the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 #' res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
 #'              from = "Tc", to = c("Th", "beta"))
 #' topPairs(res)
 #' res$cellResults
+#'
+#' # the extra number of Tc cells within 50 units of each Th cell
+#' resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
+#'                   from = "Tc", to = "Th", effect = "count")
 #'
 #' # the original image-level test
 #' resImage <- spicy(diabetesData, condition = "stage", subject = "case",
@@ -99,9 +116,10 @@ spicy <- function(cells,
                   from = NULL,
                   to = NULL,
                   method = c("cell", "image"),
+                  effect = c("allocation", "count"),
                   k = NULL,
                   combine = c("maxT", "cauchy"),
-                  adjustAbundance = TRUE,
+                  adjustAbundance = FALSE,
                   variance = c("cr2", "hartung_knapp"),
                   frailty = TRUE,
                   labelClustering = TRUE,
@@ -114,6 +132,7 @@ spicy <- function(cells,
     message("`alternateResult` / `sigma` given: using method = \"image\" (the original spicyR test).")
   }
   method <- match.arg(method)
+  if (method == "image" && !missing(effect)) message("`effect` is used by method = \"cell\" only; ignored.")
   if (method == "image") {
     return(do.call(.spicyImage, c(list(cells = cells, condition = condition, subject = subject, covariates = covariates,
                                        imageID = imageID, cellType = cellType, spatialCoords = spatialCoords,
@@ -121,7 +140,7 @@ spicy <- function(cells,
   }
   if (length(dots)) stop("arguments not used by method = \"cell\": ", paste(names(dots), collapse = ", "),
                          ". They belong to method = \"image\".", call. = FALSE)
-  combine <- match.arg(combine); variance <- match.arg(variance)
+  combine <- match.arg(combine); variance <- match.arg(variance); effect <- match.arg(effect)
   if (is.null(r) && is.null(k)) r <- 50
   if (!is.null(k) && length(r)) { message("`k` given: using the k nearest neighbours; `r` is ignored."); r <- NULL }
 
@@ -131,8 +150,9 @@ spicy <- function(cells,
   types <- unique(as.character(cells$cellType))
   bad <- setdiff(c(from, to), types)
   if (length(bad)) stop("cell type not found: ", paste(bad, collapse = ", "), call. = FALSE)
-  # from -> to: extra `from` cells within r of each `to` cell, beyond the `to` cells being a random subset of the
-  # cells that are not `from` cells. This is the core's own (counted, centre) order, so pairs pass through as given.
+  # from -> to: are `to` cells placed next to `from` cells (allocation: the extra fraction of `to` cells with a `from`
+  # cell within r; count: extra `from` cells within r of each `to` cell), beyond the `to` cells being a random subset
+  # of the cells that are not `from` cells. This is the core's own (counted, centre) order, so pairs pass through.
   pairs <- enumerate_pairs(from, to, types, "binomial")
   if (survival) {
     sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
@@ -155,16 +175,16 @@ spicy <- function(cells,
   if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (survival) {
-    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjustAbundance)
+    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjustAbundance, effect)
   } else {
     per_r <- lapply(radii, function(rr) {
       g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering,
-                       n_threads = cores)
+                       n_threads = cores, effect = effect)
       lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], frailty, variance, adjustAbundance, Z_extra))
     })
     res <- .cell_combine(per_r, radii, ctx, adjustAbundance || !is.null(covariates), combine)
   }
-  .cell_results(res, ctx, pheno, condition, subject, survival, radii, k)
+  .cell_results(res, ctx, pheno, condition, subject, survival, radii, k, effect)
 }
 
 ## Several radii: per-radius tables, and one row per pair with the combined p-value (the main test and,
@@ -206,11 +226,12 @@ spicy <- function(cells,
 }
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair.
-.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust) {
+.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust, effect = "allocation") {
   sv <- .cell_survival_setup(ctx, pheno, covariates)
   rr <- radii[1]
   if (length(radii) > 1L) message("survival uses one radius; using r = ", rr, ".")
-  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores)
+  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores,
+                   effect = effect)
   fits <- lapply(pairs, function(p) .cell_survival_test(ctx, .cell_rows(ctx, g, p[1], p[2]), p[1], p[2], sv, adjust, covariates))
   list(table = .cell_survival_table(fits, adjust, covariates), fits = fits)
 }
@@ -263,7 +284,7 @@ spicy <- function(cells,
 }
 
 ## Assemble a SpicyResults object that topPairs(), signifPlot(), spicyBoxPlot() and bind() understand.
-.cell_results <- function(res, ctx, pheno, condition, subject, survival, radii, k) {
+.cell_results <- function(res, ctx, pheno, condition, subject, survival, radii, k, effect = "count") {
   tab <- res$table
   num <- vapply(tab, is.double, TRUE); tab[num] <- lapply(tab[num], function(z) { z[is.nan(z)] <- NA_real_; z })
   if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types).",
@@ -309,5 +330,6 @@ spicy <- function(cells,
   out$alternateResult <- FALSE
   out$r <- if (is.null(k)) radii else NULL
   out$k <- k
+  out$effect <- effect
   methods::new("SpicyResults", out)
 }

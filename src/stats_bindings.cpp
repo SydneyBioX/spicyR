@@ -67,6 +67,22 @@ DataFrame stats_excess_image_rows(NumericVector totals, NumericVector out_sq_tot
 }
 
 // [[Rcpp::export]]
+DataFrame stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts,
+                                      int from, int to, NumericMatrix psi) {
+  // self_expected: types x images (dataset_self_any_expected); counts: images x types; psi: types x images, or 0 x 0
+  const int n_images = counts.nrow(), T = counts.ncol();
+  std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
+  for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
+  std::vector<double> ps;
+  if (psi.nrow() > 0) {
+    ps.resize(static_cast<std::size_t>(T) * n_images);
+    for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) ps[static_cast<std::size_t>(t) * n_images + i] = psi(t, i);
+  }
+  return rows_to(allocation_image_rows(dvec(any_totals), std::vector<double>(self_expected.begin(), self_expected.end()),
+                                       cnt, T, n_images, from, to, ps));
+}
+
+// [[Rcpp::export]]
 DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi) {
   // sums: 7 x images (dataset_kontextual_sums); counts: images x types; psi: types x images, or 0 x 0
   const int n_images = counts.nrow(), T = counts.ncol();
@@ -97,12 +113,12 @@ NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerV
 
 // [[Rcpp::export]]
 NumericMatrix stats_label_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix counts,
-                                     bool knn, double h) {
+                                     bool knn, double h, bool allocation = false) {
   XPtr<Dataset> d(ptr);
   const int n_images = counts.nrow(), T = counts.ncol();
   std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
   for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
-  std::vector<double> f = label_clustering_factor(*d, ivec(from), ivec(to), cnt, T, n_images, knn, h);
+  std::vector<double> f = label_clustering_factor(*d, ivec(from), ivec(to), cnt, T, n_images, knn, h, allocation);
   NumericMatrix out(T, n_images);
   for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) out(t, i) = f[static_cast<std::size_t>(t) * n_images + i];
   return out;

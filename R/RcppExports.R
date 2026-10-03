@@ -73,6 +73,14 @@ dataset_pair_neighbour_out_sq_totals <- function(ptr, knn, n_types) {
     .Call(`_spicyR_dataset_pair_neighbour_out_sq_totals`, ptr, knn, n_types)
 }
 
+dataset_pair_neighbour_any_totals <- function(ptr, knn, n_types) {
+    .Call(`_spicyR_dataset_pair_neighbour_any_totals`, ptr, knn, n_types)
+}
+
+dataset_self_any_expected <- function(ptr, knn, n_types) {
+    .Call(`_spicyR_dataset_self_any_expected`, ptr, knn, n_types)
+}
+
 dataset_rl_model_data <- function(ptr, from, to) {
     .Call(`_spicyR_dataset_rl_model_data`, ptr, from, to)
 }
@@ -125,6 +133,10 @@ stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn
     .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi)
 }
 
+stats_allocation_image_rows <- function(any_totals, self_expected, counts, from, to, psi) {
+    .Call(`_spicyR_stats_allocation_image_rows`, any_totals, self_expected, counts, from, to, psi)
+}
+
 stats_kontextual_image_rows <- function(sums, counts, from, to, psi) {
     .Call(`_spicyR_stats_kontextual_image_rows`, sums, counts, from, to, psi)
 }
@@ -133,8 +145,8 @@ stats_kontextual_clustering <- function(ptr, from, to, raw, counts, h) {
     .Call(`_spicyR_stats_kontextual_clustering`, ptr, from, to, raw, counts, h)
 }
 
-stats_label_clustering <- function(ptr, from, to, counts, knn, h) {
-    .Call(`_spicyR_stats_label_clustering`, ptr, from, to, counts, knn, h)
+stats_label_clustering <- function(ptr, from, to, counts, knn, h, allocation = FALSE) {
+    .Call(`_spicyR_stats_label_clustering`, ptr, from, to, counts, knn, h, allocation)
 }
 
 stats_excess_test <- function(rows, unit, group, n_units, frailty, variance) {

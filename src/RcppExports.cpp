@@ -263,6 +263,32 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_pair_neighbour_any_totals
+NumericVector dataset_pair_neighbour_any_totals(SEXP ptr, bool knn, int n_types);
+RcppExport SEXP _spicyR_dataset_pair_neighbour_any_totals(SEXP ptrSEXP, SEXP knnSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_pair_neighbour_any_totals(ptr, knn, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_self_any_expected
+NumericMatrix dataset_self_any_expected(SEXP ptr, bool knn, int n_types);
+RcppExport SEXP _spicyR_dataset_self_any_expected(SEXP ptrSEXP, SEXP knnSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_self_any_expected(ptr, knn, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_rl_model_data
 List dataset_rl_model_data(SEXP ptr, int from, int to);
 RcppExport SEXP _spicyR_dataset_rl_model_data(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP) {
@@ -475,6 +501,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_allocation_image_rows
+DataFrame stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts, int from, int to, NumericMatrix psi);
+RcppExport SEXP _spicyR_stats_allocation_image_rows(SEXP any_totalsSEXP, SEXP self_expectedSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type any_totals(any_totalsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type self_expected(self_expectedSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_allocation_image_rows(any_totals, self_expected, counts, from, to, psi));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_kontextual_image_rows
 DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi);
 RcppExport SEXP _spicyR_stats_kontextual_image_rows(SEXP sumsSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP) {
@@ -507,8 +549,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_label_clustering
-NumericMatrix stats_label_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix counts, bool knn, double h);
-RcppExport SEXP _spicyR_stats_label_clustering(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP countsSEXP, SEXP knnSEXP, SEXP hSEXP) {
+NumericMatrix stats_label_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix counts, bool knn, double h, bool allocation);
+RcppExport SEXP _spicyR_stats_label_clustering(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP countsSEXP, SEXP knnSEXP, SEXP hSEXP, SEXP allocationSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -518,7 +560,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type counts(countsSEXP);
     Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
     Rcpp::traits::input_parameter< double >::type h(hSEXP);
-    rcpp_result_gen = Rcpp::wrap(stats_label_clustering(ptr, from, to, counts, knn, h));
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_label_clustering(ptr, from, to, counts, knn, h, allocation));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -674,6 +717,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_pair_neighbour_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_totals, 3},
     {"_spicyR_dataset_pair_neighbour_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_sq_totals, 3},
     {"_spicyR_dataset_pair_neighbour_out_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_out_sq_totals, 3},
+    {"_spicyR_dataset_pair_neighbour_any_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_any_totals, 3},
+    {"_spicyR_dataset_self_any_expected", (DL_FUNC) &_spicyR_dataset_self_any_expected, 3},
     {"_spicyR_dataset_rl_model_data", (DL_FUNC) &_spicyR_dataset_rl_model_data, 3},
     {"_spicyR_dataset_weighted_phi_sums", (DL_FUNC) &_spicyR_dataset_weighted_phi_sums, 5},
     {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
@@ -687,9 +732,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_pt_two_sided", (DL_FUNC) &_spicyR_stats_pt_two_sided, 2},
     {"_spicyR_stats_norm_quantile", (DL_FUNC) &_spicyR_stats_norm_quantile, 1},
     {"_spicyR_stats_excess_image_rows", (DL_FUNC) &_spicyR_stats_excess_image_rows, 7},
+    {"_spicyR_stats_allocation_image_rows", (DL_FUNC) &_spicyR_stats_allocation_image_rows, 6},
     {"_spicyR_stats_kontextual_image_rows", (DL_FUNC) &_spicyR_stats_kontextual_image_rows, 5},
     {"_spicyR_stats_kontextual_clustering", (DL_FUNC) &_spicyR_stats_kontextual_clustering, 6},
-    {"_spicyR_stats_label_clustering", (DL_FUNC) &_spicyR_stats_label_clustering, 6},
+    {"_spicyR_stats_label_clustering", (DL_FUNC) &_spicyR_stats_label_clustering, 7},
     {"_spicyR_stats_excess_test", (DL_FUNC) &_spicyR_stats_excess_test, 6},
     {"_spicyR_stats_design_test", (DL_FUNC) &_spicyR_stats_design_test, 6},
     {"_spicyR_stats_design_tests", (DL_FUNC) &_spicyR_stats_design_tests, 7},

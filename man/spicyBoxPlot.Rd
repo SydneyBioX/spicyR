@@ -16,7 +16,7 @@ spicyBoxPlot(
 \arguments{
 \item{results}{The SpicyResults object returned by spicy() (either method).}
 
-\item{from}{The \code{from} cell type (counted around each \code{to} cell).}
+\item{from}{The \code{from} cell type (the neighbours looked for around each \code{to} cell).}
 
 \item{to}{The \code{to} cell type (the centre).}
 
@@ -32,7 +32,8 @@ tested (no \code{to} cells, for example) are not shown.
 }
 \description{
 Shows the per-image value of one pair in each condition: a box plot with the images as points behind it.
-For the cell method the value is the excess (extra \code{from} cells per \code{to} cell beyond chance), and each point
+For the cell method the value is the effect of \code{\link[=spicy]{spicy()}} in each image (by default the extra fraction of \code{to}
+cells with a \code{from} cell within \code{r}; with \code{effect = "count"}, the extra \code{from} cells per \code{to} cell), and each point
 is sized by how much the image contributes to the test (its weight in the frailty model, relative to the
 average image of its condition). With \code{interactive = TRUE} the plot is a plotly widget: hover over a point to
 see its image, patient, excess and weight, which helps to find images worth looking at with \code{\link[=plotImage]{plotImage()}}.

@@ -348,7 +348,7 @@ std::vector<double> Dataset::pair_neighbour_totals(bool knn) const {
       for (int row = image_offsets_[img]; row < image_offsets_[img + 1]; ++row) {
         double* m = M + static_cast<std::size_t>(type_[row]) * T;
         const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
-        for (int slot = 0; slot < k_; ++slot) m[type_[nb[slot]]] += 1.0;
+        for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0) m[type_[nb[slot]]] += 1.0;
       }
     }
     return out;
@@ -445,7 +445,7 @@ std::vector<double> Dataset::weighted_phi_sums(int from, int to, int design, boo
       const int row = type_rows_[i];
       if (design == 1) {
         const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
-        for (int slot = 0; slot < k_; ++slot) if (candidate(nb[slot], row)) c[nb[slot] - start] += 1.0;
+        for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && candidate(nb[slot], row)) c[nb[slot] - start] += 1.0;
         continue;
       }
       double wa = 1.0, la = 0.0, ea = 1.0;
@@ -555,7 +555,8 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
   const bool self = from == to;
   const double pi = 3.141592653589793238462643383279502884;
   const double r2 = r_ * r_, disc = pi * r_ * r_;
-  const bool knn = design == 1 || design == 4, context = design <= 1 || design == 5;
+  const bool knn = design == 1 || design == 4 || design == 7, context = design <= 1 || design == 5;
+  const bool any = design == 6 || design == 7;  // allocation: binary scores
   if (knn && k_ == 0) throw std::logic_error("call build_knn first");
   if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first (the HAC bandwidth uses it)");
   if (context && is_context_.empty()) throw std::logic_error("call build_context first");
@@ -576,7 +577,7 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
       const int row = type_rows_[i];
       if (knn) {
         const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
-        for (int slot = 0; slot < k_; ++slot) if (nb[slot] != row && cand[nb[slot] - start]) c[nb[slot] - start] += 1.0;
+        for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && nb[slot] != row && cand[nb[slot] - start]) c[nb[slot] - start] += 1.0;
         continue;
       }
       double la = 0.0, ea = 1.0;
@@ -597,6 +598,19 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
             c[j - start] += w;
           }
         }
+    }
+    // allocation: c_b = 1{b has a REF cell among its own neighbours} (k-NN: b's k nearest, not the REF cells')
+    if (any) {
+      if (knn) {
+        std::fill(c.begin(), c.end(), 0.0);
+        for (int row = start; row < end; ++row) {
+          if (!cand[row - start]) continue;
+          const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
+          for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && nb[slot] != row && type_[nb[slot]] == from) { c[row - start] = 1.0; break; }
+        }
+      } else {
+        for (double& v : c) v = v > 0 ? 1.0 : 0.0;
+      }
     }
     // residual of the TARGET indicator on (1, c_b) over the candidates
     double n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
@@ -658,7 +672,8 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
 std::vector<double> Dataset::hac_phi_sums_ref(int from, int design, double h) const {
   const double pi = 3.141592653589793238462643383279502884;
   const double r2 = r_ * r_, disc = pi * r_ * r_;
-  const bool knn = design == 1 || design == 4, context = design <= 1 || design == 5;
+  const bool knn = design == 1 || design == 4 || design == 7, context = design <= 1 || design == 5;
+  const bool any = design == 6 || design == 7;  // allocation: binary scores
   if (knn && k_ == 0) throw std::logic_error("call build_knn first");
   if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first (the HAC bandwidth uses it)");
   if (context && is_context_.empty()) throw std::logic_error("call build_context first");
@@ -683,7 +698,7 @@ std::vector<double> Dataset::hac_phi_sums_ref(int from, int design, double h) co
       const int row = type_rows_[i];
       if (knn) {
         const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
-        for (int slot = 0; slot < k_; ++slot) if (nb[slot] != row && cand[nb[slot] - start]) c[nb[slot] - start] += 1.0;
+        for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && nb[slot] != row && cand[nb[slot] - start]) c[nb[slot] - start] += 1.0;
         continue;
       }
       double la = 0.0, ea = 1.0;
@@ -704,6 +719,19 @@ std::vector<double> Dataset::hac_phi_sums_ref(int from, int design, double h) co
             c[j - start] += w;
           }
         }
+    }
+    // allocation: c_b = 1{b has a REF cell among its own neighbours} (k-NN: b's k nearest, not the REF cells')
+    if (any) {
+      if (knn) {
+        std::fill(c.begin(), c.end(), 0.0);
+        for (int row = start; row < end; ++row) {
+          if (!cand[row - start]) continue;
+          const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
+          for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && nb[slot] != row && type_[nb[slot]] == from) { c[row - start] = 1.0; break; }
+        }
+      } else {
+        for (double& v : c) v = v > 0 ? 1.0 : 0.0;
+      }
     }
     double n = 0, sx = 0, sxx = 0;
     std::fill(sy.begin(), sy.end(), 0.0); std::fill(sxy.begin(), sxy.end(), 0.0);
@@ -767,7 +795,7 @@ std::vector<double> Dataset::pair_neighbour_sq_totals(bool knn) const {
       // c_b[from] = number of `from` cells with b among their k nearest
       for (int row = start; row < end; ++row) {
         const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
-        for (int slot = 0; slot < k_; ++slot)
+        for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0)
           c[static_cast<std::size_t>(nb[slot] - start) * T + type_[row]] += 1.0;
       }
     } else {
@@ -809,9 +837,91 @@ std::vector<double> Dataset::pair_neighbour_out_sq_totals(bool knn) const {
     for (int row = image_offsets_[img]; row < image_offsets_[img + 1]; ++row) {
       std::fill(cnt.begin(), cnt.end(), 0.0);
       const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
-      for (int slot = 0; slot < k_; ++slot) if (nb[slot] != row) cnt[type_[nb[slot]]] += 1.0;
+      for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && nb[slot] != row) cnt[type_[nb[slot]]] += 1.0;
       const std::size_t to = static_cast<std::size_t>(type_[row]);
       for (std::size_t from = 0; from < T; ++from) M[from * T + to] += cnt[from] * cnt[from];
+    }
+  }
+  return out;
+}
+
+void Dataset::own_neighbour_counts(int img, bool knn, std::vector<double>& c) const {
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  const int start = image_offsets_[img], end = image_offsets_[img + 1];
+  c.assign(static_cast<std::size_t>(end - start) * T, 0.0);
+  if (knn) {
+    for (int row = start; row < end; ++row) {
+      double* cb = c.data() + static_cast<std::size_t>(row - start) * T;
+      const int* nb = knn_.data() + static_cast<std::size_t>(row) * k_;
+      for (int slot = 0; slot < k_; ++slot) if (nb[slot] >= 0 && nb[slot] != row) cb[type_[nb[slot]]] += 1.0;
+    }
+    return;
+  }
+  const Grid& g = grids_[img];
+  const double r2 = r_ * r_;
+  for (int row = start; row < end; ++row) {
+    double* cb = c.data() + static_cast<std::size_t>(row - start) * T;
+    const double px = x_[row], py = y_[row];
+    long long bx = static_cast<long long>((px - g.xmin) / g.side);
+    long long by = static_cast<long long>((py - g.ymin) / g.side);
+    for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+      for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+        std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+        for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+          if (grow_[p] == row) continue;
+          double dx = gx_[p] - px, dy = gy_[p] - py;
+          if (dx * dx + dy * dy <= r2) cb[gtype_[p]] += 1.0;
+        }
+      }
+  }
+}
+
+std::vector<double> Dataset::pair_neighbour_any_totals(bool knn) const {
+  if (knn && k_ == 0) throw std::logic_error("call build_knn first");
+  if (!knn && grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * T * T, 0.0), c;
+  for (int img = 0; img < n_images(); ++img) {
+    own_neighbour_counts(img, knn, c);
+    double* M = out.data() + static_cast<std::size_t>(img) * T * T;
+    for (int row = image_offsets_[img]; row < image_offsets_[img + 1]; ++row) {
+      const double* cb = c.data() + static_cast<std::size_t>(row - image_offsets_[img]) * T;
+      const std::size_t to = static_cast<std::size_t>(type_[row]);
+      for (std::size_t from = 0; from < T; ++from) if (cb[from] > 0) M[from * T + to] += 1.0;
+    }
+  }
+  return out;
+}
+
+std::vector<double> Dataset::self_any_expected(bool knn) const {
+  if (knn && k_ == 0) throw std::logic_error("call build_knn first");
+  if (!knn && grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * T, 0.0), c;
+  std::vector<double> deg_count;  // number of cells with each neighbour count
+  auto lchoose = [](double n, double k) { return std::lgamma(n + 1) - std::lgamma(k + 1) - std::lgamma(n - k + 1); };
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
+    if (N < 2) continue;
+    own_neighbour_counts(img, knn, c);
+    deg_count.assign(static_cast<std::size_t>(N), 0.0);
+    for (int b = 0; b < N; ++b) {
+      double d = 0;
+      for (std::size_t t = 0; t < T; ++t) d += c[static_cast<std::size_t>(b) * T + t];
+      deg_count[static_cast<std::size_t>(d)] += 1.0;
+    }
+    for (std::size_t a = 0; a < T; ++a) {
+      const int na = type_count(img, static_cast<int>(a));
+      if (na < 2) continue;
+      // P(none of the other na - 1 a-labels among d of the N - 1 other cells) = C(N-1-d, na-1) / C(N-1, na-1)
+      const double m = na - 1, K = N - 1, lden = lchoose(K, m);
+      double S = 0;
+      for (int d = 1; d < N; ++d) {
+        if (deg_count[d] == 0) continue;
+        const double none = K - d >= m ? std::exp(lchoose(K - d, m) - lden) : 0.0;
+        S += deg_count[d] * (1.0 - none);
+      }
+      out[static_cast<std::size_t>(img) * T + a] = static_cast<double>(na) / N * S;
     }
   }
   return out;

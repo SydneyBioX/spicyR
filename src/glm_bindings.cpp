@@ -216,6 +216,27 @@ NumericVector dataset_pair_neighbour_out_sq_totals(SEXP ptr, bool knn, int n_typ
   return out;
 }
 
+// The allocation design: the number of each image's `to` cells with at least one `from` cell among their
+// neighbours, [to, from, image] like dataset_pair_neighbour_totals (see Dataset::pair_neighbour_any_totals).
+// [[Rcpp::export]]
+NumericVector dataset_pair_neighbour_any_totals(SEXP ptr, bool knn, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->pair_neighbour_any_totals(knn);
+  NumericVector out(v.begin(), v.end());
+  out.attr("dim") = IntegerVector::create(n_types, n_types, static_cast<int>(v.size() / (n_types * n_types)));
+  return out;
+}
+
+// Exact null expectation of a self-pair's allocation count, types x images (Dataset::self_any_expected).
+// [[Rcpp::export]]
+NumericMatrix dataset_self_any_expected(SEXP ptr, bool knn, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->self_any_expected(knn);
+  NumericMatrix out(n_types, static_cast<int>(v.size() / n_types));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;
+}
+
 // [[Rcpp::export]]
 List dataset_rl_model_data(SEXP ptr, int from, int to) {
   XPtr<Dataset> d(ptr);
