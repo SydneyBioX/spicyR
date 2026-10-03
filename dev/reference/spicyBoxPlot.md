@@ -13,7 +13,14 @@ worth looking at with
 ## Usage
 
 ``` r
-spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
+spicyBoxPlot(
+  results,
+  from = NULL,
+  to = NULL,
+  rank = NULL,
+  interactive = FALSE,
+  parent = NULL
+)
 ```
 
 ## Arguments
@@ -39,6 +46,11 @@ spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
 
   Return an interactive plotly widget instead of a ggplot (needs the
   plotly package).
+
+- parent:
+
+  For a Kontextual result (`Statial::kontextualTest()`), the parent
+  population of the triple.
 
 ## Value
 
