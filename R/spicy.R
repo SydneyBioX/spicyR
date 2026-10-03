@@ -557,7 +557,7 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     fallback <- sum(startsWith(tab$adjusted_for %||% character(0), "none ("))
     adj <- adj[!startsWith(adj, "none")]
     if (length(adj)) cat("Adjusted for: ", paste(unique(unlist(strsplit(adj, "+", fixed = TRUE))), collapse = ", "),
-                         " (unadjusted test in the unadjusted_* columns)\n", sep = "")
+                         if (!is.null(tab$unadjusted_p_adj)) " (unadjusted test in the unadjusted_* columns)", "\n", sep = "")
     if (fallback) cat(fallback, " pairs could not be adjusted and are reported unadjusted (see adjusted_for)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")

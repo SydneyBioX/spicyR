@@ -277,7 +277,9 @@ spicy <- function(cells,
     row }))
   if (!is.null(tab)) {
     tab$p_adj <- stats::p.adjust(tab$p_value, "BH"); tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
-    if (!adjust && is.null(covariates)) tab[c("adjusted_for", grep("^unadjusted_", names(tab), value = TRUE))] <- NULL
+    # the unadjusted columns are the test without the abundance adjustment (covariates enter the null Cox model of both)
+    if (!adjust) tab[grep("^unadjusted_", names(tab), value = TRUE)] <- NULL
+    if (!adjust && is.null(covariates)) tab$adjusted_for <- NULL
     rownames(tab) <- .cell_labels(tab)
   }
   tab

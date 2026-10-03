@@ -14,12 +14,12 @@ Elements for the cell method (\code{method = "cell"}, the default):
 \describe{
 \item{\code{cellResults}}{the full table, one row per pair (and per level with more than two conditions):
 \code{excess_ref}, \code{excess_comp}, \code{excess_difference}, \code{se}, \code{df}, \code{p_value},
-\code{p_adj}, \code{tau2}; what the test was adjusted for (\code{adjusted_for}) and the effect and
-p-value of each adjustment (\code{abundance_effect}, \code{<covariate>_effect}, \code{<covariate>_p_value});
-and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_se}, \code{unadjusted_df},
-\code{unadjusted_p_value}, \code{unadjusted_p_adj}). For survival: \code{score_coefficient},
-\code{p_value}, \code{p_adj}, \code{hazard_ratio_sd}, \code{hr_p_value} and the unadjusted p-value and
-hazard ratio. With several radii: \code{r}, the radius with the strongest evidence, and
+\code{p_adj}, \code{tau2}; with covariates or \code{adjustAbundance = TRUE}, what the test was adjusted
+for (\code{adjusted_for}), the effect and p-value of each adjustment (\code{<covariate>_effect},
+\code{<covariate>_p_value}, \code{abundance_effect}) and the unadjusted test (\code{unadjusted_difference},
+\code{unadjusted_se}, \code{unadjusted_df}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}). For
+survival: \code{score_coefficient}, \code{p_value}, \code{p_adj}, \code{hazard_ratio_sd},
+\code{hr_p_value} and, with \code{adjustAbundance = TRUE}, the p-value and hazard ratio without it. With several radii: \code{r}, the radius with the strongest evidence, and
 \code{p_value_best_radius}.}
 \item{\code{radiusResults}}{with several radii, the table at every radius.}
 \item{\code{pairwiseAssoc}}{a list with, for every pair, the effect in every image (\code{NA} where the pair
