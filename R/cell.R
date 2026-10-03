@@ -125,7 +125,16 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
           else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi)
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
+  # allocation: the pair's side, chosen in the core from all images (attraction scales by 1 - q, avoidance by q)
+  if (g$effect == "allocation") attr(rows, "side") <- if (sum(rows$O - rows$E) < 0) "avoid" else "attract"
   rows
+}
+
+## Add the allocation side of a fit to its table row(s).
+.cell_add_side <- function(row, o) {
+  s <- attr(o$rows, "side")
+  if (!is.null(s)) row$side <- s
+  row
 }
 
 ## ---- the test: adjusted for abundance and covariates by default ---------------------------
@@ -242,6 +251,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                       excess_difference = x$difference, se = x$se, df = x$df, p_value = x$p, tau2 = x$tau2,
                       stringsAsFactors = FALSE)
     if (!is.null(o$parent)) row$parent <- o$parent
+    row <- .cell_add_side(row, o)
     if (adjusted) {
       row$adjusted_for <- o$adjusted_for
       row <- .cell_add_effects(row, o, enames)
@@ -268,6 +278,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                         excess_difference = d$estimate, se = d$se, df = d$df, p_value = d$p, tau2 = d$tau2,
                         stringsAsFactors = FALSE)
       if (!is.null(o$parent)) row$parent <- o$parent
+      row <- .cell_add_side(row, o)
       if (adjusted) {
         row$adjusted_for <- o$adjusted_for
         row <- .cell_add_effects(row, o, enames)
@@ -286,8 +297,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 
 ## The main test first, then what it was adjusted for and the effects, then the unadjusted test.
 .cell_order_columns <- function(tab) {
-  first <- intersect(c("from", "to", "parent", "level", "r", "excess_ref", "excess_comp", "excess_difference", "se", "df",
-                       "p_value", "p_adj", "p_value_best_radius", "tau2", "adjusted_for"), names(tab))
+  first <- intersect(c("from", "to", "parent", "level", "r", "side", "excess_ref", "excess_comp", "excess_difference",
+                       "se", "df", "p_value", "p_adj", "p_value_best_radius", "tau2", "adjusted_for"), names(tab))
   un <- grep("^unadjusted_", names(tab), value = TRUE)
   tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]
 }

@@ -165,12 +165,24 @@ ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std
     double E = self ? self_expected[static_cast<std::size_t>(img) * T + from] : p * L;
     double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(L - L * L / std::max(M, 1.0), 0.0);
     if (!psi.empty()) v *= psi[static_cast<std::size_t>(to) * n_images + img];
-    double n = nB - E;
-    if (nB > 0 && v > 0 && n > 0) {
-      out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(n); out.v.push_back(v);
+    if (nB > 0 && v > 0) {
+      out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(nB); out.v.push_back(v);
     }
   }
-  return out;
+  // The side, once per pair from the pooled images (no group labels): attraction (sum O - E >= 0) scales by the
+  // TARGET cells without a REF neighbour under the null, n = n_to - E; avoidance by those with one, n = E.
+  double pooled = 0;
+  for (std::size_t i = 0; i < out.O.size(); ++i) pooled += out.O[i] - out.E[i];
+  const bool avoid = pooled < 0;
+  ImageRows kept;
+  for (std::size_t i = 0; i < out.O.size(); ++i) {
+    double n = avoid ? out.E[i] : out.n[i] - out.E[i];
+    if (n > 0) {
+      kept.image.push_back(out.image[i]); kept.O.push_back(out.O[i]); kept.E.push_back(out.E[i]);
+      kept.n.push_back(n); kept.v.push_back(out.v[i]);
+    }
+  }
+  return kept;
 }
 
 std::vector<double> label_clustering_factor(const Dataset& data, const std::vector<int>& from,

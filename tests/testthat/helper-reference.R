@@ -19,7 +19,8 @@ ref_image_counts <- function(type, nb, A, B) {
 }
 
 ## The allocation design: every candidate's score is g_k = 1{c_k >= 1} (any A cell among its neighbours), and
-## n = n_B - E, so (O - E) / n is the extra fraction of B cells next to A. A self-pair's E is the exact
+## n = n_B - E, so (O - E) / n is the extra fraction of B cells next to A (attraction; for an avoiding pair
+## ref_image_data sets n = E). A self-pair's E is the exact
 ## random-labelling expectation (n_A / N) sum_b [1 - C(N - 1 - d_b, n_A - 1) / C(N - 1, n_A - 1)].
 ref_image_counts_alloc <- function(type, nb, A, B) {
   ic <- ref_image_counts(type, nb, A, B)
@@ -78,7 +79,14 @@ ref_image_data <- function(cells, pairs, r, label_clustering = TRUE, self_count 
     list(ic = ic, psi = psi) })
   stats::setNames(lapply(seq_len(nrow(pairs)), function(j) {
     d <- do.call(rbind, lapply(seq_along(imgs), function(i) { ic <- per_img[[i]]$ic[[j]]
-      data.frame(imageID = imgs[i], O = ic$O, E = ic$E, n = ic$n, v = max(ic$v, 0) * per_img[[i]]$psi[j]) }))
+      data.frame(imageID = imgs[i], O = ic$O, E = ic$E, n = ic$n, v = max(ic$v, 0) * per_img[[i]]$psi[j],
+                 n_to = if (is.null(ic$n_to)) NA_real_ else ic$n_to) }))
+    if (effect == "allocation") {
+      # the side, once per pair from the pooled images: attraction n = n_B - E, avoidance n = E
+      d <- d[d$n_to > 0 & d$v > 0, , drop = FALSE]
+      if (sum(d$O - d$E) < 0) d$n <- d$E
+    }
+    d$n_to <- NULL
     d[d$n > 0 & d$v > 0, , drop = FALSE] }), paste0(pairs$from, "__", pairs$to))
 }
 

@@ -223,3 +223,30 @@ test_that("a pair's result does not depend on the other pairs requested (psi ove
       expect_equal(one["tumour__T", col], full["tumour__T", col], tolerance = 1e-12)
   }
 })
+
+test_that("allocation, avoidance: the effect is minus the fraction moved away, however many from cells there are", {
+  # Group A has few `from` cells, group B many. In both, 30% of the `to` cells that random labelling would put next to
+  # a `from` cell are placed away from them instead, so the effect is -0.3 in both groups and the difference is ~0.
+  set.seed(11)
+  one_image <- function(id, patient, cond, n_from, f = 0.3, N = 900, n_to = 150, r = 4) {
+    xy <- cbind(runif(N, 0, 100), runif(N, 0, 100))
+    type <- rep("other", N); type[sample(N, n_from)] <- "A"
+    cand <- which(type != "A")
+    D <- as.matrix(stats::dist(xy))
+    near <- cand[vapply(cand, function(i) any(D[i, type == "A"] <= r), TRUE)]
+    far <- setdiff(cand, near)
+    q <- length(near) / length(cand)
+    k_near <- round(n_to * q * (1 - f))
+    type[c(sample(near, k_near), sample(far, n_to - k_near))] <- "T"
+    data.frame(x = xy[, 1], y = xy[, 2], cellType = type, imageID = id, patient = patient,
+               condition = factor(cond, levels = c("A", "B")))
+  }
+  ck <- do.call(rbind, c(lapply(1:4, function(i) one_image(paste0("a", i), paste0("pa", i), "A", 25)),
+                         lapply(1:4, function(i) one_image(paste0("b", i), paste0("pb", i), "B", 120))))
+  x <- suppressMessages(spicy(ck, "condition", subject = "patient", r = 4, from = "A", to = "T",
+                              labelClustering = FALSE))$cellResults["A__T", ]
+  expect_identical(x$side, "avoid")
+  expect_lt(abs(x$excess_ref + 0.3), 0.03)
+  expect_lt(abs(x$excess_comp + 0.3), 0.03)
+  expect_gt(x$p_value, 0.05)
+})

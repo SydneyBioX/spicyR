@@ -7,9 +7,13 @@
 #' **`method = "cell"` (the default).** In each image, the share of `to` cells with at least one `from`
 #' cell within radius `r` is compared with its exact expectation q if the `to` cells were a random choice
 #' among the cells that are not `from` cells. The effect (`effect = "allocation"`, the default) is the
-#' **extra fraction of `to` cells placed next to `from` cells**, (observed share - q) / (1 - q): if a
-#' fraction f of the `to` cells were moved next to `from` cells, the effect is f, however many `from` cells
-#' there are and however densely they are packed. `effect = "count"` gives the number of extra `from`
+#' **fraction of `to` cells placed next to (or kept away from) `from` cells**. For a pair that attracts
+#' (more `to` cells next to `from` cells than q over all images together) it is (observed share - q) / (1 - q):
+#' if a fraction f of the `to` cells were moved next to `from` cells, the effect is f. For a pair that avoids
+#' it is (observed share - q) / q: if a fraction f of the `to` cells that would have a `from` cell nearby were
+#' moved away, the effect is -f. Either way it does not depend on how many `from` cells there are or how
+#' densely they are packed. The side is chosen once per pair from all images, without the conditions, and is
+#' reported in the `side` column. `effect = "count"` gives the number of extra `from`
 #' cells within `r` of each `to` cell instead; it also reflects how many `from` cells surround a `to` cell
 #' (depth of infiltration), but it grows with how densely the `from` cells are packed, so a change in
 #' packing alone can appear as a change in co-localisation. Images are combined within patients and
@@ -19,8 +23,8 @@
 #' log share of the `from` type in each image; the unadjusted test is then reported alongside
 #' (`unadjusted_*` columns).
 #'
-#' When nearly every cell has a `from` cell within `r` (q close to 1), an image carries little information
-#' on the allocation scale, and a smaller `r` is more informative.
+#' When nearly every cell has a `from` cell within `r` (q close to 1), there is little room for attraction and
+#' an attracting pair's images carry little information; a smaller `r` is more informative.
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -61,7 +65,8 @@
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
 #' @return A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work
-#'   for both methods. For the cell method, `$cellResults` holds the full table: the effect in each
+#'   for both methods. For the cell method, `$cellResults` holds the full table: for the allocation effect,
+#'   the pair's `side` (`"attract"` or `"avoid"`, which sets the scale of the effect), the effect in each
 #'   condition (`excess_ref`, `excess_comp`, at the average covariates), the difference
 #'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
 #'   and, when the test was adjusted, what for (`adjusted_for`), the effect and p-value of each adjustment,
@@ -274,7 +279,7 @@ spicy <- function(cells,
                unadjusted_hazard_ratio_sd = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$hr_sd else NA_real_,
                stringsAsFactors = FALSE)
     if (!is.null(o$parent)) row <- cbind(row[1:2], parent = o$parent, row[-(1:2)])
-    row }))
+    .cell_add_side(row, o) }))
   if (!is.null(tab)) {
     tab$p_adj <- stats::p.adjust(tab$p_value, "BH"); tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
     # the unadjusted columns are the test without the abundance adjustment (covariates enter the null Cox model of both)

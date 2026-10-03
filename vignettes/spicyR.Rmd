@@ -46,9 +46,11 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", warning = FALSE, message 
 A pair is written `from` → `to` and asks whether `to` cells are placed near `from` cells more than other cells
 are. For each `to` cell, spicyR checks whether there is a `from` cell within a radius, and compares the share of `to`
 cells that have one with what we would expect if the `to` cells were a random choice among the cells of the same
-image that are not `from` cells. The effect is the **extra fraction of `to` cells placed next to `from` cells**,
+image that are not `from` cells. The effect is the **fraction of `to` cells placed next to `from` cells**,
 beyond chance: 0.2 means as if a fifth of the `to` cells had been moved next to `from` cells and the rest left where
-chance would put them. Each `to` cell counts once, however many `from` cells are beside it, so more numerous or
+chance would put them. For a pair whose `to` cells avoid the `from` cells (fewer have one nearby than chance, over
+all images), the effect is measured the other way: -0.2 means as if a fifth of the `to` cells that chance would put
+next to a `from` cell had been moved away. The `side` column says which scale a pair uses. Each `to` cell counts once, however many `from` cells are beside it, so more numerous or
 more tightly packed `from` cells do not inflate the effect. Because the comparison uses only the cells that are actually there, empty regions such as holes or air
 spaces, and uneven cell density, do not by themselves create a signal (artefacts that affect one cell type more
 than others are not removed). spicyR then compares the effect between

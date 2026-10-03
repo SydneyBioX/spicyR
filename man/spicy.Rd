@@ -82,7 +82,8 @@ counted type, so a pair's result does not depend on which other pairs are reques
 }
 \value{
 A \code{SpicyResults} object. \code{topPairs()}, \code{signifPlot()}, \code{spicyBoxPlot()} and \code{bind()} work
-for both methods. For the cell method, \verb{$cellResults} holds the full table: the effect in each
+for both methods. For the cell method, \verb{$cellResults} holds the full table: for the allocation effect,
+the pair's \code{side} (\code{"attract"} or \code{"avoid"}, which sets the scale of the effect), the effect in each
 condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), the difference
 (\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
 and, when the test was adjusted, what for (\code{adjusted_for}), the effect and p-value of each adjustment,
@@ -98,9 +99,13 @@ cells are placed near \code{from} cells more than other cells are.
 \strong{\code{method = "cell"} (the default).} In each image, the share of \code{to} cells with at least one \code{from}
 cell within radius \code{r} is compared with its exact expectation q if the \code{to} cells were a random choice
 among the cells that are not \code{from} cells. The effect (\code{effect = "allocation"}, the default) is the
-\strong{extra fraction of \code{to} cells placed next to \code{from} cells}, (observed share - q) / (1 - q): if a
-fraction f of the \code{to} cells were moved next to \code{from} cells, the effect is f, however many \code{from} cells
-there are and however densely they are packed. \code{effect = "count"} gives the number of extra \code{from}
+\strong{fraction of \code{to} cells placed next to (or kept away from) \code{from} cells}. For a pair that attracts
+(more \code{to} cells next to \code{from} cells than q over all images together) it is (observed share - q) / (1 - q):
+if a fraction f of the \code{to} cells were moved next to \code{from} cells, the effect is f. For a pair that avoids
+it is (observed share - q) / q: if a fraction f of the \code{to} cells that would have a \code{from} cell nearby were
+moved away, the effect is -f. Either way it does not depend on how many \code{from} cells there are or how
+densely they are packed. The side is chosen once per pair from all images, without the conditions, and is
+reported in the \code{side} column. \code{effect = "count"} gives the number of extra \code{from}
 cells within \code{r} of each \code{to} cell instead; it also reflects how many \code{from} cells surround a \code{to} cell
 (depth of infiltration), but it grows with how densely the \code{from} cells are packed, so a change in
 packing alone can appear as a change in co-localisation. Images are combined within patients and
@@ -110,8 +115,8 @@ units}. The difference is adjusted for any \code{covariates}, and, with \code{ad
 log share of the \code{from} type in each image; the unadjusted test is then reported alongside
 (\verb{unadjusted_*} columns).
 
-When nearly every cell has a \code{from} cell within \code{r} (q close to 1), an image carries little information
-on the allocation scale, and a smaller \code{r} is more informative.
+When nearly every cell has a \code{from} cell within \code{r} (q close to 1), there is little room for attraction and
+an attracting pair's images carry little information; a smaller \code{r} is more informative.
 
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given

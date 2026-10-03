@@ -1,3 +1,14 @@
+CHANGES IN VERSION 1.99.6
+-------------------------
+
+    o The allocation effect is now scaled on two sides. A pair whose `to` cells avoid the `from` cells (fewer
+      `to` cells with a `from` cell within r than expected, summed over all images, without the conditions)
+      uses (observed share - q) / q, the fraction of the `to` cells that would have a `from` cell nearby that
+      were moved away; an attracting pair keeps (observed share - q) / (1 - q). Before, avoidance used the
+      attraction scale, on which the effect of a fixed avoidance grows with q, i.e. with how many `from`
+      cells there are and how densely they are packed, and is unbounded below as q approaches 1. The
+      results gain a `side` column ("attract" or "avoid").
+
 CHANGES IN VERSION 1.99.5
 -------------------------
 
