@@ -134,7 +134,9 @@ class Dataset {
   // the TARGET indicator on c_b within the image (so the co-localisation itself is not
   // counted as variance). design 0/1: Kontextual Poisson / binomial (as in
   // weighted_phi_sums); 3: radius design without context; 4: k-NN design without
-  // context. Output: image-major, 3 per image (HAC variance, sum_b c_b, candidates).
+  // context; 5: radius design with the candidates restricted to the context (the Kontextual
+  // excess: call build_context with the parent types first). Output: image-major, 3 per image
+  // (HAC variance, sum_b c_b, candidates).
   std::vector<double> hac_phi_sums(int from, int to, int design, double h) const;
   // hac_phi_sums for one REF and every non-self TARGET in one pass: per image, the T HAC sums,
   // then sum c, n and G (layout T + 3 per image).

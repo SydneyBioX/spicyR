@@ -500,7 +500,7 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
   const bool self = from == to;
   const double pi = 3.141592653589793238462643383279502884;
   const double r2 = r_ * r_, disc = pi * r_ * r_;
-  const bool knn = design == 1 || design == 4, context = design <= 1;
+  const bool knn = design == 1 || design == 4, context = design <= 1 || design == 5;
   if (knn && k_ == 0) throw std::logic_error("call build_knn first");
   if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first (the HAC bandwidth uses it)");
   if (context && is_context_.empty()) throw std::logic_error("call build_context first");
@@ -603,7 +603,7 @@ std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h
 std::vector<double> Dataset::hac_phi_sums_ref(int from, int design, double h) const {
   const double pi = 3.141592653589793238462643383279502884;
   const double r2 = r_ * r_, disc = pi * r_ * r_;
-  const bool knn = design == 1 || design == 4, context = design <= 1;
+  const bool knn = design == 1 || design == 4, context = design <= 1 || design == 5;
   if (knn && k_ == 0) throw std::logic_error("call build_knn first");
   if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first (the HAC bandwidth uses it)");
   if (context && is_context_.empty()) throw std::logic_error("call build_context first");
