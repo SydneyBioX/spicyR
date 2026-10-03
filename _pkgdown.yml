@@ -31,6 +31,7 @@ reference:
   desc: "Every pair of cell types, between conditions or with survival."
   contents:
   - spicy
+  - kontextualTest
   - SpicyResults-class
   - topPairs
   - bind

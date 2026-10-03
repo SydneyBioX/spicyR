@@ -11,6 +11,7 @@
 #' @param to The `to` cell type (the centre).
 #' @param rank Alternatively, the rank of the pair by p-value (1 is the most significant).
 #' @param interactive Return an interactive plotly widget instead of a ggplot (needs the plotly package).
+#' @param parent For a Kontextual result ([kontextualTest()]), the parent population of the triple.
 #'
 #' @return A ggplot, or with `interactive = TRUE` a plotly htmlwidget. Images in which the pair was not
 #'   tested (no `to` cells, for example) are not shown.
@@ -30,17 +31,23 @@ spicyBoxPlot <- function(results,
                          from = NULL,
                          to = NULL,
                          rank = NULL,
-                         interactive = FALSE) {
+                         interactive = FALSE,
+                         parent = NULL) {
   if (is.null(c(from, to, rank))) stop("Please specify either a pairwise relationship or rank")
   pVal <- results$p.value
   if (is.null(rank)) {
     if (length(c(from, to)) == 1) stop("Please specify both from and to parameters")
     pairName <- paste0(from, "__", to)
+    if (isTRUE(results$isKontextual)) {
+      if (is.null(parent)) stop("Please specify the parent of a Kontextual result")
+      pairName <- paste0(pairName, "__", parent)
+    }
   } else {
     pVal <- pVal[order(pVal[, 2]), ]
     pairName <- rownames(pVal)[rank]
     from <- unlist(strsplit(pairName, split = "__"))[1]
     to <- unlist(strsplit(pairName, split = "__"))[2]
+    if (isTRUE(results$isKontextual)) parent <- unlist(strsplit(pairName, split = "__"))[3]
   }
   if (is.null(results$pairwiseAssoc[[pairName]])) stop("pair ", from, " -> ", to, " not found in the results.")
 
@@ -55,7 +62,10 @@ spicyBoxPlot <- function(results,
   # relative weight: 1 for an image of average weight in its condition
   df$relative <- stats::ave(df$weight, df$condition, FUN = function(z) z / mean(z, na.rm = TRUE))
   sized <- any(is.finite(df$relative))
-  if (cell) {
+  if (cell && isTRUE(results$isKontextual)) {
+    ylabel <- "Kontextual excess\n(beyond chance within the parent)"
+    title <- paste0(from, " around ", to, " within ", parent)
+  } else if (cell) {
     ylabel <- paste0("Extra ", from, " per ", to, "\n(beyond chance)")
     title <- paste0(from, " around ", to)
   } else {

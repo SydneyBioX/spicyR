@@ -1,3 +1,22 @@
+CHANGES IN VERSION 1.99.3
+-------------------------
+
+NEW FEATURES
+
+    o kontextualTest(): tests Kontextual relationships (Ameen et al. 2025) between conditions. For each
+      triple from -> to within a parent population, Statial's Kontextual statistic (each from-to pair
+      within r weighted by the parent density at the from cell over that at the to cell, edge corrected)
+      is compared in each image with its exact expectation and variance when the `to` cells are a random
+      choice among the parent's cells, and images are combined by spicy()'s frailty GEE with a CR2
+      variance, a label-clustering factor over the parent's cells and the abundance adjustment. Testing
+      against each image's own expectation keeps the test calibrated when the tissue's composition
+      differs between conditions. It is the engine of Statial::kontextualTest(). Takes a parentDf from
+      Statial::parentCombinations() or a named list of parents; topPairs(), signifPlot() and
+      spicyBoxPlot(parent = ) work on its results.
+
+    o spicy(alternateResult = ) warns when given Kontextual values, which it compares between conditions
+      as they are.
+
 CHANGES IN VERSION 1.99.2
 -------------------------
 

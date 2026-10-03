@@ -159,8 +159,11 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   C
 }
 
-.cell_pair_test <- function(ctx, g, f, t, frailty, variance, adjust, Z_extra = NULL) {
-  rows <- .cell_rows(ctx, g, f, t)
+.cell_pair_test <- function(ctx, g, f, t, frailty, variance, adjust, Z_extra = NULL)
+  .cell_rows_test(ctx, .cell_rows(ctx, g, f, t), f, t, frailty, variance, adjust, Z_extra)
+
+## The test of one pair on given image rows (spicy's excess, or the Kontextual excess).
+.cell_rows_test <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra = NULL) {
   if (length(ctx$levels) > 2L) return(.cell_pair_test_levels(ctx, rows, f, t, frailty, variance, adjust, Z_extra))
   m <- length(ctx$unit_labels)
   r <- stats_excess_test(rows, rows$unit, rows$group, m, frailty, variance)
@@ -228,6 +231,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     row <- data.frame(from = o$from, to = o$to, excess_ref = x$coef_ref, excess_comp = x$coef_comp,
                       excess_difference = x$difference, se = x$se, df = x$df, p_value = x$p, tau2 = x$tau2,
                       stringsAsFactors = FALSE)
+    if (!is.null(o$parent)) row$parent <- o$parent
     if (adjusted) {
       row$adjusted_for <- o$adjusted_for
       row <- .cell_add_effects(row, o, enames)
@@ -240,7 +244,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (is.null(tab)) return(NULL)
   tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
   if (adjusted) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
-  rownames(tab) <- paste(tab$from, tab$to, sep = "__")
+  rownames(tab) <- .cell_labels(tab)
   .cell_order_columns(tab)
 }
 
@@ -253,6 +257,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
       row <- data.frame(from = o$from, to = o$to, level = l, excess_ref = d$theta[1],
                         excess_difference = d$estimate, se = d$se, df = d$df, p_value = d$p, tau2 = d$tau2,
                         stringsAsFactors = FALSE)
+      if (!is.null(o$parent)) row$parent <- o$parent
       if (adjusted) {
         row$adjusted_for <- o$adjusted_for
         row <- .cell_add_effects(row, o, enames)
@@ -265,17 +270,20 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   for (l in unique(tab$level)) { k <- tab$level == l
     tab$p_adj[k] <- stats::p.adjust(tab$p_value[k], "BH")
     if (adjusted) tab$unadjusted_p_adj[k] <- stats::p.adjust(tab$unadjusted_p_value[k], "BH") }
-  rownames(tab) <- paste(tab$from, tab$to, tab$level, sep = "__")
+  rownames(tab) <- paste(.cell_labels(tab), tab$level, sep = "__")
   .cell_order_columns(tab)
 }
 
 ## The main test first, then what it was adjusted for and the effects, then the unadjusted test.
 .cell_order_columns <- function(tab) {
-  first <- intersect(c("from", "to", "level", "r", "excess_ref", "excess_comp", "excess_difference", "se", "df",
+  first <- intersect(c("from", "to", "parent", "level", "r", "excess_ref", "excess_comp", "excess_difference", "se", "df",
                        "p_value", "p_adj", "p_value_best_radius", "tau2", "adjusted_for"), names(tab))
   un <- grep("^unadjusted_", names(tab), value = TRUE)
   tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]
 }
+
+## Pair labels: from__to, or from__to__parent for Kontextual triples (a table or a fit).
+.cell_labels <- function(x) if (!is.null(x$parent)) paste(x$from, x$to, x$parent, sep = "__") else paste(x$from, x$to, sep = "__")
 
 ## Per-image excess (O - E) / n of every pair, for plots and bind(): images x pairs.
 .cell_image_excess <- function(fits, ctx) {
@@ -283,7 +291,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     v <- rep(NA_real_, ctx$n_images)
     if (!is.null(o$rows) && nrow(o$rows)) v[o$rows$img + 1L] <- (o$rows$O - o$rows$E) / o$rows$n
     v })
-  names(out) <- vapply(fits, function(o) paste(o$from, o$to, sep = "__"), "")
+  names(out) <- vapply(fits, .cell_labels, "")
   out
 }
 
@@ -295,6 +303,6 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     w <- o$unadjusted$image_weight
     if (!is.null(w) && length(w)) v[o$rows$img + 1L] <- w
     v })
-  names(out) <- vapply(fits, function(o) paste(o$from, o$to, sep = "__"), "")
+  names(out) <- vapply(fits, .cell_labels, "")
   out
 }

@@ -194,6 +194,70 @@ std::vector<double> label_clustering_factor(const Dataset& data, const std::vect
   return out;
 }
 
+ImageRows kontextual_image_rows(const std::vector<double>& sums, const std::vector<double>& counts, int n_types,
+                                int n_images, int from, int to, const std::vector<double>& psi) {
+  const int T = n_types;
+  const bool self = from == to;
+  ImageRows out;
+  for (int img = 0; img < n_images; ++img) {
+    const double* s = sums.data() + static_cast<std::size_t>(img) * 7;
+    const double nT = counts[static_cast<std::size_t>(img) * T + to];
+    // Statial's weights divide by lambda_to = lambda_c n_to / n_context: scale O, L by n_context / n_to
+    const double f = nT > 0 ? s[6] / nT : 0.0;
+    const double O = s[0] * f, L = s[1] * f, Q = s[2] * f * f, M = s[3], D = s[4];
+    const double p = self ? std::max(nT - 1, 0.0) / std::max(M - 1, 1.0) : nT / std::max(M, 1.0);
+    double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(Q - L * L / std::max(M, 1.0), 0.0);
+    if (!psi.empty()) v *= psi[static_cast<std::size_t>(to) * n_images + img];
+    if (nT > 0 && D > 0 && v > 0) {
+      out.image.push_back(img); out.O.push_back(O); out.E.push_back(p * L); out.n.push_back(D); out.v.push_back(v);
+    }
+  }
+  return out;
+}
+
+std::vector<double> kontextual_clustering_factor(const Dataset& data, const std::vector<int>& from,
+                                                 const std::vector<int>& to, const std::vector<double>& raw,
+                                                 const std::vector<double>& counts, int n_types, int n_images,
+                                                 double h) {
+  const int T = n_types;
+  std::vector<std::vector<double>> by_ref(T);
+  std::vector<std::vector<double>> ratio(from.size(), std::vector<double>(n_images, kNaN));
+  for (std::size_t k = 0; k < from.size(); ++k) {
+    int f = from[k], t = to[k];
+    std::vector<double> V(n_images), Np(n_images), G(n_images);
+    if (f == t) {
+      std::vector<double> H = data.hac_phi_sums(f, t, 0, h);
+      for (int i = 0; i < n_images; ++i) { V[i] = H[4 * i]; Np[i] = H[4 * i + 2]; G[i] = H[4 * i + 3]; }
+    } else {
+      if (by_ref[f].empty()) by_ref[f] = data.hac_phi_sums_ref(f, 0, h);
+      const std::vector<double>& H = by_ref[f];
+      for (int i = 0; i < n_images; ++i) {
+        std::size_t o = static_cast<std::size_t>(i) * (T + 3);
+        V[i] = H[o + t]; Np[i] = H[o + T + 1]; G[i] = H[o + T + 2];
+      }
+    }
+    for (int i = 0; i < n_images; ++i) {
+      double nB = counts[static_cast<std::size_t>(i) * T + t];
+      double pr = f == t ? (nB - 1) / std::max(Np[i] - 1, 1.0) : nB / Np[i];
+      double r = V[i] / (pr * (1 - pr) * G[i]);
+      if (raw[k * static_cast<std::size_t>(n_images) + i] < 5 || !std::isfinite(r) || r <= 0) r = kNaN;
+      ratio[k][i] = r;
+    }
+  }
+  std::vector<double> out(static_cast<std::size_t>(T) * n_images, 1.0);
+  for (int t = 0; t < T; ++t) {
+    bool any = false;
+    for (std::size_t k = 0; k < to.size(); ++k) if (to[k] == t) any = true;
+    if (!any) continue;
+    for (int i = 0; i < n_images; ++i) {
+      std::vector<double> z;
+      for (std::size_t k = 0; k < to.size(); ++k) if (to[k] == t && std::isfinite(ratio[k][i])) z.push_back(ratio[k][i]);
+      out[static_cast<std::size_t>(t) * n_images + i] = z.empty() ? 1.0 : std::max(1.0, median_of(z));
+    }
+  }
+  return out;
+}
+
 double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group, int) {
   std::vector<int> g0, g1; split_groups(group, g0, g1);
   int m = distinct(g0, unit) + distinct(g1, unit);

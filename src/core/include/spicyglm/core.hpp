@@ -164,6 +164,16 @@ class Dataset {
   InhomModelData kontextual_model_data(int from, int to) const;
   // Binomial, over the k nearest neighbours (needs build_knn).
   BinomialTrialsModelData kontextual_binomial_model_data(int from, int to) const;
+  // The Kontextual excess (Statial's Kontextual statistic under random labelling of TARGET within the
+  // context). Every candidate b (a context cell that is not REF; for a self-pair every context cell) has the
+  // score s_b = sum over REF cells a within r of b (a != b) of e_a lambda_c(a) / lambda_c(b), the pair weight
+  // of kontextual_model_data. Per image, 7 values: O = sum of s over the TARGET cells (Statial's numerator
+  // is O n_context / n_to), L = sum and Q = sum of squares of s over the candidates, M = the number of
+  // candidates, D = sum over REF cells of lambda_c(a) (Statial's denominator), the number of unweighted
+  // REF-TARGET pairs within r (for the sparsity rule) and n_context, the image's context cells. O is linear in the TARGET labels, so random
+  // labelling gives E O = p L and Var O = p (1 - p) M / (M - 1) (Q - L^2 / M). Needs build_context after
+  // build_radius_index.
+  std::vector<double> kontextual_sums(int from, int to) const;
 
  private:
   struct Grid {

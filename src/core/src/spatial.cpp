@@ -496,6 +496,61 @@ std::vector<double> Dataset::weighted_phi_sums(int from, int to, int design, boo
   return out;
 }
 
+std::vector<double> Dataset::kontextual_sums(int from, int to) const {
+  const bool self = from == to;
+  const double pi = 3.141592653589793238462643383279502884;
+  const double r2 = r_ * r_, disc = pi * r_ * r_;
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  if (is_context_.empty() || (context_count_.empty() && n_images() > 0))
+    throw std::logic_error("call build_context after build_radius_index");
+  if (!is_context_[to]) throw std::invalid_argument("Kontextual: the TARGET cell type must belong to the context");
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * 7, 0.0), c;
+  auto is_cand = [&](int t) { return is_context_[t] && (self || t != from); };
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], end = image_offsets_[img + 1];
+    const int n_from = type_count(img, from);
+    double* o = out.data() + static_cast<std::size_t>(img) * 7;
+    c.assign(static_cast<std::size_t>(end - start), 0.0);
+    double D = 0.0, raw = 0.0;
+    const Grid& g = grids_[img];
+    const int base = type_start_[img * n_types_ + from];
+    for (int i = base; i < base + n_from; ++i) {
+      const int row = type_rows_[i];
+      const double la = (context_count_[row] - self) / context_area_[row];
+      if (!(la > 0)) continue;
+      D += la;
+      const double ea = disc / context_area_[row];
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+          std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+            const int j = grow_[p];
+            if (j == row || !is_cand(type_[j])) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py;
+            if (dx * dx + dy * dy > r2) continue;
+            const double lb = (context_count_[j] - self) / context_area_[j];
+            if (!(lb > 0)) continue;
+            c[j - start] += ea * la / lb;
+            if (type_[j] == to) raw += 1.0;
+          }
+        }
+    }
+    double O = 0.0, L = 0.0, Q = 0.0, M = 0.0, nP = 0.0;
+    for (int row = start; row < end; ++row) {
+      if (is_context_[type_[row]]) nP += 1.0;
+      if (!is_cand(type_[row])) continue;
+      const double s = c[row - start];
+      L += s; Q += s * s; M += 1.0;
+      if (type_[row] == to) O += s;
+    }
+    o[0] = O; o[1] = L; o[2] = Q; o[3] = M; o[4] = D; o[5] = raw; o[6] = nP;
+  }
+  return out;
+}
+
 std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h) const {
   const bool self = from == to;
   const double pi = 3.141592653589793238462643383279502884;

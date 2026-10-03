@@ -67,6 +67,35 @@ DataFrame stats_excess_image_rows(NumericVector totals, NumericVector out_sq_tot
 }
 
 // [[Rcpp::export]]
+DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi) {
+  // sums: 7 x images (dataset_kontextual_sums); counts: images x types; psi: types x images, or 0 x 0
+  const int n_images = counts.nrow(), T = counts.ncol();
+  std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
+  for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
+  std::vector<double> ps;
+  if (psi.nrow() > 0) {
+    ps.resize(static_cast<std::size_t>(T) * n_images);
+    for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) ps[static_cast<std::size_t>(t) * n_images + i] = psi(t, i);
+  }
+  return rows_to(kontextual_image_rows(std::vector<double>(sums.begin(), sums.end()), cnt, T, n_images, from, to, ps));
+}
+
+// [[Rcpp::export]]
+NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix raw,
+                                          NumericMatrix counts, double h) {
+  // raw: pairs x images (unweighted REF-TARGET pairs within r); returns types x images
+  XPtr<Dataset> d(ptr);
+  const int n_images = counts.nrow(), T = counts.ncol(), K = raw.nrow();
+  std::vector<double> cnt(static_cast<std::size_t>(n_images) * T), rw(static_cast<std::size_t>(K) * n_images);
+  for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
+  for (int k = 0; k < K; ++k) for (int i = 0; i < n_images; ++i) rw[static_cast<std::size_t>(k) * n_images + i] = raw(k, i);
+  std::vector<double> f = kontextual_clustering_factor(*d, ivec(from), ivec(to), rw, cnt, T, n_images, h);
+  NumericMatrix out(T, n_images);
+  for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) out(t, i) = f[static_cast<std::size_t>(t) * n_images + i];
+  return out;
+}
+
+// [[Rcpp::export]]
 NumericMatrix stats_label_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix counts,
                                      bool knn, double h) {
   XPtr<Dataset> d(ptr);

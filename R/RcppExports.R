@@ -81,6 +81,10 @@ dataset_weighted_phi_sums <- function(ptr, from, to, design, edge_correct) {
     .Call(`_spicyR_dataset_weighted_phi_sums`, ptr, from, to, design, edge_correct)
 }
 
+dataset_kontextual_sums <- function(ptr, from, to) {
+    .Call(`_spicyR_dataset_kontextual_sums`, ptr, from, to)
+}
+
 dataset_hac_phi_sums_ref <- function(ptr, from, design, h, n_types) {
     .Call(`_spicyR_dataset_hac_phi_sums_ref`, ptr, from, design, h, n_types)
 }
@@ -119,6 +123,14 @@ stats_norm_quantile <- function(p) {
 
 stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn, psi) {
     .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi)
+}
+
+stats_kontextual_image_rows <- function(sums, counts, from, to, psi) {
+    .Call(`_spicyR_stats_kontextual_image_rows`, sums, counts, from, to, psi)
+}
+
+stats_kontextual_clustering <- function(ptr, from, to, raw, counts, h) {
+    .Call(`_spicyR_stats_kontextual_clustering`, ptr, from, to, raw, counts, h)
 }
 
 stats_label_clustering <- function(ptr, from, to, counts, knn, h) {

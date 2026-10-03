@@ -164,6 +164,9 @@
     
     # Checking if Kontextual result.
     if (isTRUE(attr(alternateResult, "kontextualResult"))) {
+      warning("Kontextual values are compared between conditions as they are, which is not calibrated when the ",
+              "tissue's composition differs between conditions. Use kontextualTest() (or Statial::kontextualTest()), ",
+              "which tests each image against its expectation under random labelling within the parent.", call. = FALSE)
       pairwiseAssoc <- alternateResult
       
       labels <- names(pairwiseAssoc)

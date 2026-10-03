@@ -206,6 +206,16 @@ spicy <- function(cells,
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair.
 .cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust) {
+  sv <- .cell_survival_setup(ctx, pheno, covariates)
+  rr <- radii[1]
+  if (length(radii) > 1L) message("survival uses one radius; using r = ", rr, ".")
+  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores)
+  fits <- lapply(pairs, function(p) .cell_survival_test(ctx, .cell_rows(ctx, g, p[1], p[2]), p[1], p[2], sv, adjust, covariates))
+  list(table = .cell_survival_table(fits, adjust, covariates), fits = fits)
+}
+
+## The null Cox model (covariates only) and its martingale residuals, one per patient.
+.cell_survival_setup <- function(ctx, pheno, covariates) {
   unit_first <- match(seq_along(ctx$unit_labels) - 1L, ctx$image_unit)
   time <- pheno$.time[unit_first]; event <- as.integer(pheno$.event[unit_first])
   if (any(tapply(pheno$.time, ctx$image_unit, function(z) length(unique(z))) > 1L))
@@ -218,32 +228,37 @@ spicy <- function(cells,
   null <- stats_cox_fit(time[ok_u], event[ok_u], W[ok_u, , drop = FALSE])
   if (!null$ok) stop("the null Cox model did not converge.", call. = FALSE)
   M <- rep(NA_real_, length(time)); M[ok_u] <- null$martingale
-  rr <- radii[1]
-  if (length(radii) > 1L) message("survival uses one radius; using r = ", rr, ".")
-  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores)
-  fits <- lapply(pairs, function(p) {
-    rows <- .cell_rows(ctx, g, p[1], p[2])
-    m <- length(ctx$unit_labels)
-    u <- stats_survival_test(rows, rows$unit, m, M, time, event, numeric(0))
-    x <- if (adjust) .cell_share(ctx, rows, p[1]) else numeric(0)
-    s <- if (length(x) && stats::var(x) > 0) stats_survival_test(rows, rows$unit, m, M, time, event, x) else u
-    list(from = p[1], to = p[2], ok = s$ok, reason = s$reason, rows = rows, surv = s, unadjusted_surv = u,
-         adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(covariates)) "covariates"), collapse = "+")) })
+  list(M = M, time = time, event = event)
+}
+
+## The survival test of one pair on given image rows.
+.cell_survival_test <- function(ctx, rows, f, t, sv, adjust, covariates) {
+  m <- length(ctx$unit_labels)
+  u <- stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, numeric(0))
+  x <- if (adjust) .cell_share(ctx, rows, f) else numeric(0)
+  s <- if (length(x) && stats::var(x) > 0) stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, x) else u
+  list(from = f, to = t, ok = s$ok, reason = s$reason, rows = rows, surv = s, unadjusted_surv = u,
+       adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(covariates)) "covariates"), collapse = "+"))
+}
+
+.cell_survival_table <- function(fits, adjust, covariates) {
   ok <- vapply(fits, `[[`, TRUE, "ok")
   tab <- do.call(rbind, lapply(fits[ok], function(o) { s <- o$surv
-    data.frame(from = o$from, to = o$to, score_coefficient = s$score_coef, score_se = s$score_se, score_df = s$score_df,
+    row <- data.frame(from = o$from, to = o$to, score_coefficient = s$score_coef, score_se = s$score_se, score_df = s$score_df,
                p_value = s$score_p, hazard_ratio_sd = s$hr_sd, log_hr_sd = s$log_hr_sd, log_hr_se = s$hr_se,
                hr_p_value = s$hr_p, log_hr_per_cell = s$log_hr_unit, tau2 = s$tau2,
                adjusted_for = if (nzchar(o$adjusted_for)) o$adjusted_for else "none",
                unadjusted_p_value = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$score_p else NA_real_,
                unadjusted_hazard_ratio_sd = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$hr_sd else NA_real_,
-               stringsAsFactors = FALSE) }))
+               stringsAsFactors = FALSE)
+    if (!is.null(o$parent)) row <- cbind(row[1:2], parent = o$parent, row[-(1:2)])
+    row }))
   if (!is.null(tab)) {
     tab$p_adj <- stats::p.adjust(tab$p_value, "BH"); tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
     if (!adjust && is.null(covariates)) tab[c("adjusted_for", grep("^unadjusted_", names(tab), value = TRUE))] <- NULL
-    rownames(tab) <- paste(tab$from, tab$to, sep = "__")
+    rownames(tab) <- .cell_labels(tab)
   }
-  list(table = tab, fits = fits)
+  tab
 }
 
 ## Assemble a SpicyResults object that topPairs(), signifPlot(), spicyBoxPlot() and bind() understand.
@@ -255,7 +270,7 @@ spicy <- function(cells,
   out <- list(method = "cell", cellResults = tab)
   if (!survival && length(ctx$levels) > 2L) {
     # wide matrices: one column per level against the reference, as the image method's model terms
-    key <- paste(tab$from, tab$to, sep = "__"); labels <- unique(key)
+    key <- .cell_labels(tab); labels <- unique(key)
     wide <- function(col) { d <- data.frame(row.names = labels)
       d[["(Intercept)"]] <- if (col == "excess_difference") tab$excess_ref[match(labels, key)] else NA_real_
       for (l in ctx$levels[-1]) { k <- tab$level == l; d[[paste0("condition", l)]] <- tab[[col]][k][match(labels, key[k])] }
@@ -280,9 +295,10 @@ spicy <- function(cells,
     out$condition <- factor(ctx$levels[ctx$image_group + 1L], levels = ctx$levels)
   }
   }
-  labels <- paste(tab$from, tab$to, sep = "__")
+  labels <- .cell_labels(tab)
   if (!is.null(res$radius_table)) out$radiusResults <- res$radius_table
   out$comparisons <- data.frame(from = tab$from, to = tab$to, labels = labels)
+  if (!is.null(tab$parent)) { out$comparisons$parent <- tab$parent; out$isKontextual <- TRUE }
   out$pairwiseAssoc <- .cell_image_excess(res$fits, ctx)[labels]
   out$imageWeights <- .cell_image_weight(res$fits, ctx)[labels]
   out$imageIDs <- ctx$image_labels

@@ -291,6 +291,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_kontextual_sums
+NumericMatrix dataset_kontextual_sums(SEXP ptr, int from, int to);
+RcppExport SEXP _spicyR_dataset_kontextual_sums(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_kontextual_sums(ptr, from, to));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_hac_phi_sums_ref
 NumericMatrix dataset_hac_phi_sums_ref(SEXP ptr, int from, int design, double h, int n_types);
 RcppExport SEXP _spicyR_dataset_hac_phi_sums_ref(SEXP ptrSEXP, SEXP fromSEXP, SEXP designSEXP, SEXP hSEXP, SEXP n_typesSEXP) {
@@ -459,6 +472,37 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
     rcpp_result_gen = Rcpp::wrap(stats_excess_image_rows(totals, out_sq_totals, counts, from, to, knn, psi));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stats_kontextual_image_rows
+DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi);
+RcppExport SEXP _spicyR_stats_kontextual_image_rows(SEXP sumsSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type sums(sumsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< int >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_kontextual_image_rows(sums, counts, from, to, psi));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stats_kontextual_clustering
+NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix raw, NumericMatrix counts, double h);
+RcppExport SEXP _spicyR_stats_kontextual_clustering(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP rawSEXP, SEXP countsSEXP, SEXP hSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type to(toSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type raw(rawSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_kontextual_clustering(ptr, from, to, raw, counts, h));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -632,6 +676,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_pair_neighbour_out_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_out_sq_totals, 3},
     {"_spicyR_dataset_rl_model_data", (DL_FUNC) &_spicyR_dataset_rl_model_data, 3},
     {"_spicyR_dataset_weighted_phi_sums", (DL_FUNC) &_spicyR_dataset_weighted_phi_sums, 5},
+    {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
     {"_spicyR_dataset_hac_phi_sums", (DL_FUNC) &_spicyR_dataset_hac_phi_sums, 5},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},
@@ -642,6 +687,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_pt_two_sided", (DL_FUNC) &_spicyR_stats_pt_two_sided, 2},
     {"_spicyR_stats_norm_quantile", (DL_FUNC) &_spicyR_stats_norm_quantile, 1},
     {"_spicyR_stats_excess_image_rows", (DL_FUNC) &_spicyR_stats_excess_image_rows, 7},
+    {"_spicyR_stats_kontextual_image_rows", (DL_FUNC) &_spicyR_stats_kontextual_image_rows, 5},
+    {"_spicyR_stats_kontextual_clustering", (DL_FUNC) &_spicyR_stats_kontextual_clustering, 6},
     {"_spicyR_stats_label_clustering", (DL_FUNC) &_spicyR_stats_label_clustering, 6},
     {"_spicyR_stats_excess_test", (DL_FUNC) &_spicyR_stats_excess_test, 6},
     {"_spicyR_stats_design_test", (DL_FUNC) &_spicyR_stats_design_test, 6},

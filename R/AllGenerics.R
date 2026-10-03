@@ -60,6 +60,7 @@ setMethod("topPairs", "SpicyResults", function(x,
             from = comp$from,
             to = comp$to
         )
+    if (!is.null(comp$parent)) results$parent <- comp$parent
     rownames(results) <- rownames(x$coefficient)
     if (length(results$p.value) > 0) {
         results <- results[order(results$p.value), ]

@@ -44,6 +44,21 @@ std::vector<double> label_clustering_factor(const Dataset& data, const std::vect
                                             const std::vector<int>& to, const std::vector<double>& counts,
                                             int n_types, int n_images, bool knn, double h);
 
+// The Kontextual excess (Dataset::kontextual_sums, 7 values per image), on Statial's scale (O, L times
+// n_context / n_to, Q times its square): image rows O, E = p L,
+// v = p (1 - p) M / (M - 1) (Q - L^2 / M) psi, n = D (the REF cells' context exposure), p = n_to / M
+// (self-pair: (n_to - 1) / (M - 1)). Images without TARGET cells, exposure or variance give no row.
+ImageRows kontextual_image_rows(const std::vector<double>& sums, const std::vector<double>& counts, int n_types,
+                                int n_images, int from, int to, const std::vector<double>& psi);
+
+// Label-clustering factor of the Kontextual excess: as label_clustering_factor, with the HAC of the
+// Kontextual scores over the context candidates (Dataset::hac_phi_sums design 0; build_context first) and
+// the sparsity rule on the unweighted pair counts `raw` (pair-major: k * n_images + img).
+std::vector<double> kontextual_clustering_factor(const Dataset& data, const std::vector<int>& from,
+                                                 const std::vector<int>& to, const std::vector<double>& raw,
+                                                 const std::vector<double>& counts, int n_types, int n_images,
+                                                 double h);
+
 // ------------------------------------------------------ the two-group test ---
 
 enum class Variance { CR2, HartungKnapp };

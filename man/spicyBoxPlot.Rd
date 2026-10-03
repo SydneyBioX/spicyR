@@ -4,7 +4,14 @@
 \alias{spicyBoxPlot}
 \title{Box plot of one pair, with a point per image}
 \usage{
-spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
+spicyBoxPlot(
+  results,
+  from = NULL,
+  to = NULL,
+  rank = NULL,
+  interactive = FALSE,
+  parent = NULL
+)
 }
 \arguments{
 \item{results}{The SpicyResults object returned by spicy() (either method).}
@@ -16,6 +23,8 @@ spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
 \item{rank}{Alternatively, the rank of the pair by p-value (1 is the most significant).}
 
 \item{interactive}{Return an interactive plotly widget instead of a ggplot (needs the plotly package).}
+
+\item{parent}{For a Kontextual result (\code{\link[=kontextualTest]{kontextualTest()}}), the parent population of the triple.}
 }
 \value{
 A ggplot, or with \code{interactive = TRUE} a plotly htmlwidget. Images in which the pair was not

@@ -236,6 +236,15 @@ NumericMatrix dataset_weighted_phi_sums(SEXP ptr, int from, int to, int design, 
 }
 
 // [[Rcpp::export]]
+NumericMatrix dataset_kontextual_sums(SEXP ptr, int from, int to) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->kontextual_sums(from, to);
+  NumericMatrix out(7, static_cast<int>(v.size() / 7));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: O, L, Q, M, D, unweighted pairs, context cells; one column per image
+}
+
+// [[Rcpp::export]]
 NumericMatrix dataset_hac_phi_sums_ref(SEXP ptr, int from, int design, double h, int n_types) {
   XPtr<Dataset> d(ptr);
   std::vector<double> v = d->hac_phi_sums_ref(from, design, h);
