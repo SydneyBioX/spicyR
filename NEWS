@@ -1,3 +1,22 @@
+CHANGES IN VERSION 1.99.5
+-------------------------
+
+    o The cell method's default effect is the allocation effect (effect = "allocation"): the extra fraction
+      of `to` cells with at least one `from` cell within r, (observed share - q) / (1 - q), q its exact
+      expectation under random labelling. If a fraction f of the `to` cells is moved next to `from` cells,
+      the effect is f, however many `from` cells there are and however densely they are packed. The count
+      excess of earlier versions (extra `from` cells per `to` cell) is effect = "count"; it grows with how
+      densely the `from` cells are packed, so a change in packing alone can appear as a change in
+      co-localisation. Self-pairs use the exact random-labelling expectation of the allocation count.
+
+    o adjustAbundance now defaults to FALSE. The log-share adjustment does not separate more `from` cells
+      from more densely packed ones, and it removes real effects when the share tracks the condition.
+
+    o The label-clustering factor of the allocation effect is computed on its binary scores.
+
+    o k nearest neighbours: images with at most k cells were read out of bounds in the neighbour sums; they
+      are now skipped.
+
 CHANGES IN VERSION 1.99.4
 -------------------------
 
