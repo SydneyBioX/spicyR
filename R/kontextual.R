@@ -75,11 +75,10 @@ kontextualEngine <- function(cells,
     tr <- trip[trip$parent_name == pn, , drop = FALSE]
     dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
     sums <- lapply(seq_len(nrow(tr)), function(i) dataset_kontextual_sums(ctx$data, code(tr$from[i]), code(tr$to[i])))
-    # psi of a `to` type: the median over every other cell type as `from` (as a full parentCombinations() parentDf),
+    # psi of a `to` type: the median over every cell type as `from` (the `to` type itself included, as in spicy()),
     # whichever triples were requested, so a triple's result does not depend on the others asked for
     psi <- if (labelClustering) {
       pp <- expand.grid(from = ctx$type_labels, to = unique(tr$to), stringsAsFactors = FALSE)
-      pp <- pp[pp$from != pp$to, , drop = FALSE]
       raw <- do.call(rbind, lapply(seq_len(nrow(pp)), function(i) {
         j <- which(tr$from == pp$from[i] & tr$to == pp$to[i])
         (if (length(j)) sums[[j[1]]] else dataset_kontextual_sums(ctx$data, code(pp$from[i]), code(pp$to[i])))[6, ] }))
