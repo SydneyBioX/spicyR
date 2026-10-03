@@ -1,3 +1,11 @@
+CHANGES IN VERSION 1.99.4
+-------------------------
+
+    o The label-clustering factor of a `to` type is the median over every counted (`from`) type, whichever pairs
+      are requested, in spicy() and kontextualEngine(). A pair's result no longer depends on the other pairs asked
+      for: spicy(from = "A", to = "B") gives exactly the A__B row of spicy(). Before, the factor rested on the
+      requested pairs only (one ratio per image for a single pair), which in Kontextual simulations cost power.
+
 CHANGES IN VERSION 1.99.3
 -------------------------
 

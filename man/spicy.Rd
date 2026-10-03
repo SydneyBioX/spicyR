@@ -63,7 +63,8 @@ radii) or \code{"cauchy"} (Cauchy combination).}
 (for very few patients: the model-based variance floored at CR2, on m - 2 df).}
 
 \item{frailty, labelClustering}{Cell method: the patient frailty and the label-clustering inflation
-of the within-image variance (both on by default).}
+of the within-image variance (both on by default). The inflation of a \code{to} type is estimated from every
+counted type, so a pair's result does not depend on which other pairs are requested.}
 
 \item{ref}{Cell method: the reference level of \code{condition}.}
 

@@ -75,10 +75,16 @@ kontextualEngine <- function(cells,
     tr <- trip[trip$parent_name == pn, , drop = FALSE]
     dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
     sums <- lapply(seq_len(nrow(tr)), function(i) dataset_kontextual_sums(ctx$data, code(tr$from[i]), code(tr$to[i])))
-    psi <- if (labelClustering)
-      stats_kontextual_clustering(ctx$data, code(tr$from), code(tr$to), do.call(rbind, lapply(sums, function(s) s[6, ])),
-                                  ctx$counts, 2 * r)
-    else matrix(numeric(0), 0, 0)
+    # psi of a `to` type: the median over every other cell type as `from` (as a full parentCombinations() parentDf),
+    # whichever triples were requested, so a triple's result does not depend on the others asked for
+    psi <- if (labelClustering) {
+      pp <- expand.grid(from = ctx$type_labels, to = unique(tr$to), stringsAsFactors = FALSE)
+      pp <- pp[pp$from != pp$to, , drop = FALSE]
+      raw <- do.call(rbind, lapply(seq_len(nrow(pp)), function(i) {
+        j <- which(tr$from == pp$from[i] & tr$to == pp$to[i])
+        (if (length(j)) sums[[j[1]]] else dataset_kontextual_sums(ctx$data, code(pp$from[i]), code(pp$to[i])))[6, ] }))
+      stats_kontextual_clustering(ctx$data, code(pp$from), code(pp$to), raw, ctx$counts, 2 * r)
+    } else matrix(numeric(0), 0, 0)
     fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
       rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi)
       rows$unit <- ctx$image_unit[rows$img + 1L]

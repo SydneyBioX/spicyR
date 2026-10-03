@@ -103,7 +103,11 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   }
   g <- list(knn = knn, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
             sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, n_types))
-  codes <- vapply(pairs, function(p) match(p, ctx$type_labels) - 1L, integer(2))
+  # psi of a `to` type is the median over every counted type (not only the requested pairs), so a pair's result does
+  # not depend on which other pairs were asked for
+  tos <- unique(vapply(pairs, `[`, "", 2L))
+  all_pairs <- expand.grid(from = ctx$type_labels, to = tos, stringsAsFactors = FALSE)
+  codes <- rbind(match(all_pairs$from, ctx$type_labels), match(all_pairs$to, ctx$type_labels)) - 1L
   g$psi <- if (label_clustering) stats_label_clustering(ctx$data, codes[1, ], codes[2, ], ctx$counts, knn, h)
            else matrix(numeric(0), 0, 0)
   g

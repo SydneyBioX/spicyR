@@ -41,7 +41,8 @@
 #' @param variance Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
 #'   (for very few patients: the model-based variance floored at CR2, on m - 2 df).
 #' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
-#'   of the within-image variance (both on by default).
+#'   of the within-image variance (both on by default). The inflation of a `to` type is estimated from every
+#'   counted type, so a pair's result does not depend on which other pairs are requested.
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,

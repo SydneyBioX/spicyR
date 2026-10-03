@@ -161,3 +161,10 @@ test_that("image weights sum to one within each condition", {
   w <- res$imageWeights[["tumour__T"]]
   expect_equal(as.vector(tapply(w, res$condition, sum, na.rm = TRUE)), c(1, 1), tolerance = 1e-10)
 })
+
+test_that("a pair's result does not depend on the other pairs requested (psi over every counted type)", {
+  full <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30))$cellResults
+  one <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  for (col in c("p_value", "excess_difference", "unadjusted_p_value"))
+    expect_equal(one["tumour__T", col], full["tumour__T", col], tolerance = 1e-12)
+})
