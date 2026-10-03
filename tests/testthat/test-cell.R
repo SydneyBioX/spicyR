@@ -9,9 +9,9 @@ test_that("the cell method matches the plain-R reference for every pair", {
   for (lc in c(FALSE, TRUE)) for (vr in c("cr2", "hartung_knapp")) {
     res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, adjustAbundance = FALSE,
                                   labelClustering = lc, variance = vr))$cellResults
-    # the reference is in (counted, centre) order: the user's from -> to is ref (to, from)
-    ref <- ref_spicy_cell(transform(cells, subject = patient), data.frame(from = grid$to, to = grid$from), 30, lc, vr)
-    ref <- data.frame(from = ref$to, to = ref$from, p_ref = ref$p_value, d_ref = ref$excess_difference)
+    # the reference is in (counted, centre) order, which is the user's from -> to
+    ref <- ref_spicy_cell(transform(cells, subject = patient), grid, 30, lc, vr)
+    ref <- data.frame(from = ref$from, to = ref$to, p_ref = ref$p_value, d_ref = ref$excess_difference)
     m <- merge(res, ref, by = c("from", "to"))
     expect_equal(nrow(m), nrow(grid))
     expect_lt(max(abs(m$p_value - m$p_ref)), 1e-8)
@@ -19,9 +19,10 @@ test_that("the cell method matches the plain-R reference for every pair", {
   }
 })
 
-test_that("from is the centre and to the counted type", {
+test_that("to is the centre (relabelled) type and from the counted type", {
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))$cellResults
-  # T cells were moved next to tumour cells in group B: more T around each tumour cell
+  # T cells were moved next to tumour cells in group B: T cells are placed near tumour cells, so more tumour cells
+  # around each T cell
   expect_gt(res["tumour__T", "excess_difference"], 0)
   expect_lt(res["tumour__T", "p_value"], 0.01)
 })
@@ -122,15 +123,16 @@ test_that("more than two conditions give one contrast per level", {
 })
 
 test_that("the default test is adjusted for abundance (the dense definition), with the unadjusted test alongside", {
+  # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T
   share <- spicyR:::.cell_share(ctx, rows, "T")
   Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share))
   a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2")
   b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2)
-  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour"))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
   expect_equal(res$adjusted_for, "abundance")
   expect_equal(res$unadjusted_p_value, a$p, tolerance = 1e-10)
-  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "tumour", to = "T",
+  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
                                  adjustAbundance = FALSE))$cellResults
   expect_equal(res0$p_value, res$unadjusted_p_value, tolerance = 1e-12)
   expect_null(res0$unadjusted_p_value)

@@ -27,13 +27,13 @@ res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25,   # r
              imageID = "file_id", cellType = "description")
 topPairs(res)                                       # the most significant pairs
 signifPlot(res)                                     # every pair at a glance
-spicyBoxPlot(res, from = "HR- Ki67+", to = "T cells")   # T cells around proliferating tumour cells
+spicyBoxPlot(res, from = "T cells", to = "HR- Ki67+")   # T cells around proliferating tumour cells
 ```
 
 For your own data, `spicy()` accepts a `SpatialExperiment`, a `SingleCellExperiment` or a `data.frame`. It looks
 for the columns `imageID` and `cellType` (name yours with `imageID =` and `cellType =`) and takes coordinates from
-`spatialCoords()`, or from columns `x` and `y`. A pair `from` → `to` asks how many extra `to` cells sit around each
-`from` cell.
+`spatialCoords()`, or from columns `x` and `y`. A pair `from` → `to` asks whether `to` cells are placed near
+`from` cells more than other cells are: how many extra `from` cells sit around each `to` cell.
 
 ## What you get
 

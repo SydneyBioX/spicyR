@@ -5,7 +5,8 @@ cells <- cells[cells$ER.Status %in% c("neg", "pos"), ]
 cells$ER <- factor(ifelse(cells$ER.Status == "pos", "ER+", "ER-"), levels = c("ER-", "ER+"))
 res <- spicy(cells, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id", cellType = "description",
              spatialCoords = c("Location_Center_X", "Location_Center_Y"))      # every pair, as in the vignette
-## left: a 160 x 160 µm window of an ER+ core with several proliferating tumour cells and T cells near them
+## left: a 160 x 160 µm window of an ER+ core: a proliferating tumour cell (to, the centre) and the T cells (from)
+## counted within 25 µm of it. Pair T cells -> HR- Ki67+.
 f <- "HR- Ki67+"; t <- "T cells"
 cand <- aggregate(cbind(nf = description == f, nt = description == t) ~ file_id, data = cells[cells$ER == "ER+", ], FUN = sum)
 img <- cand$file_id[order(-pmin(cand$nf, cand$nt))][1]
@@ -14,10 +15,10 @@ zf <- z[z$description == f, ]; best <- NULL; bestn <- -1
 for (i in seq_len(nrow(zf))) { d <- sqrt((z$x - zf$x[i])^2 + (z$y - zf$y[i])^2); n <- sum(z$description == t & d <= 25)
   if (n > bestn) { bestn <- n; best <- zf[i, ] } }
 w <- 80; z <- z[abs(z$x - best$x) <= w & abs(z$y - best$y) <= w, ]
-z$role <- ifelse(z$description == f, "proliferating HR- tumour cell (from)", ifelse(z$description == t, "T cell (to)", "other cells"))
-z$role <- factor(z$role, levels = c("proliferating HR- tumour cell (from)", "T cell (to)", "other cells"))
+z$role <- ifelse(z$description == f, "proliferating HR- tumour cell (to)", ifelse(z$description == t, "T cell (from)", "other cells"))
+z$role <- factor(z$role, levels = c("proliferating HR- tumour cell (to)", "T cell (from)", "other cells"))
 circ <- data.frame(x = best$x + 25 * cos(seq(0, 2 * pi, length.out = 200)), y = best$y + 25 * sin(seq(0, 2 * pi, length.out = 200)))
-pal <- c("proliferating HR- tumour cell (from)" = "#b3261e", "T cell (to)" = "#1f6fb4", "other cells" = "grey82")
+pal <- c("proliferating HR- tumour cell (to)" = "#b3261e", "T cell (from)" = "#1f6fb4", "other cells" = "grey82")
 p1 <- ggplot(z, aes(x, y)) +
   geom_point(aes(colour = role, size = role)) +
   geom_path(data = circ, colour = "black", linewidth = 0.5, linetype = 2) +
@@ -27,7 +28,7 @@ p1 <- ggplot(z, aes(x, y)) +
   theme(legend.position = "bottom", legend.direction = "vertical", plot.title = element_text(face = "bold", size = 11)) +
   labs(title = "Count the T cells near each tumour cell,\nand compare with chance")
 ## right: the excess of every patient, by ER status
-b <- bind(res, pairName = "HR- Ki67+__T cells"); names(b)[ncol(b)] <- "excess"
+b <- bind(res, pairName = "T cells__HR- Ki67+"); names(b)[ncol(b)] <- "excess"
 n_cut <- sum(b$excess > 4, na.rm = TRUE)
 b$ER <- factor(b$condition, levels = c("ER-", "ER+"))
 p2 <- ggplot(b[is.finite(b$excess), ], aes(ER, excess)) +

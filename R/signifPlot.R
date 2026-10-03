@@ -355,7 +355,7 @@ bubblePlot <- function(test,
                               guide = ggplot2::guide_axis(angle = 45)) +
     ggplot2::theme_classic() +
     ggplot2::labs(
-      x = "to (counted)", y = "from (centre)", size = if (fdr) "-log10 adjusted p-value" else "-log10 p-value",
+      x = "to (centre)", y = "from (counted)", size = if (fdr) "-log10 adjusted p-value" else "-log10 p-value",
       colour = NULL, fill = "Localisation", shape = "Condition"
     ) +
     ggplot2::guides(

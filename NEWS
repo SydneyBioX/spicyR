@@ -1,27 +1,36 @@
+CHANGES IN VERSION 1.99.2
+-------------------------
+
+    o The direction of a pair is reversed relative to 1.99.0 and 1.99.1 (and restored to that of
+      earlier development versions): from -> to now asks whether `to` cells are placed near
+      `from` cells, with the excess counted as extra `from` cells around each `to` cell. A result
+      reported as A -> B by 1.99.0 or 1.99.1 is reported as B -> A now, with the same numbers.
+
 CHANGES IN VERSION 1.99.0 (spicyR 2.0)
 --------------------------------------
 
 MAJOR CHANGES
 
     o spicy() now runs spicyR Cell by default (method = "cell"): for each pair from -> to,
-      the excess number of `to` cells within r of each `from` cell beyond random labelling of
-      the observed cells, combined over images and patients by a frailty GEE and tested with a
+      the excess number of `from` cells within r of each `to` cell beyond random labelling of
+      the observed cells (are `to` cells placed near `from` cells more than other cells are?), combined over images and patients by a frailty GEE and tested with a
       CR2 variance on Satterthwaite degrees of freedom, with patients (`subject`) as the units.
       The original test is available with method = "image" (and is chosen automatically when
       `alternateResult` or `sigma` is given).
 
-    o The direction of a pair follows the spatial-statistics convention for cross-type
-      statistics: `from` is the type whose neighbourhoods are examined, `to` the type counted.
+    o The direction of a pair: `to` is the type whose placement is tested (its cells are
+      relabelled at random under the null, and the excess is per `to` cell), `from` the type
+      counted around it.
 
 NEW FEATURES
 
-    o By default the test is adjusted for the abundance of the counted type (the log of its share
+    o By default the test is adjusted for the abundance of the counted (`from`) type (the log of its share
       of all cells in each image; adjustAbundance = TRUE) and for any covariates; the unadjusted
       test is reported in the unadjusted_* columns, and each adjustment's effect and p-value in
       abundance_effect and <covariate>_effect columns.
 
     o spicyBoxPlot() shows a point per image sized by its weight in the test, and is interactive
-      with interactive = TRUE (plotly); plotImage(r = ) draws the radius around each from cell.
+      with interactive = TRUE (plotly); plotImage(r = ) draws the radius around each to cell.
 
     o Two or more conditions (each level against the reference), image- or patient-level
       covariates, k nearest neighbours (k), several radii combined by max-T with the sandwich

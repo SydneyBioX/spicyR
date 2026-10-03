@@ -30,14 +30,14 @@ plotImage(
 
 \item{spatialCoords}{The names of the spatialCoords column if using a SingleCellExperiment.}
 
-\item{r}{Optional radius: draw a circle of this radius around each \code{from} cell.}
+\item{r}{Optional radius: draw a circle of this radius around each \code{to} cell.}
 }
 \value{
 A ggplot object.
 }
 \description{
 The density of all cells is shown in blue, with the \code{from} and \code{to} cells on top. With \code{r}, a circle of
-radius \code{r} is drawn around each \code{from} cell: the \code{to} cells inside the circles are those that spicyR counts.
+radius \code{r} is drawn around each \code{to} cell: the \code{from} cells inside the circles are those that spicyR counts.
 }
 \examples{
 data("diabetesData")

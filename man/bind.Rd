@@ -17,7 +17,7 @@ one column per pair, named \code{"from__to"}. \code{NA} where the pair could not
 }
 \description{
 Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: the excess
-(extra \code{to} cells per \code{from} cell beyond chance) for the cell method, or the L-function summary
+(extra \code{from} cells per \code{to} cell beyond chance) for the cell method, or the L-function summary
 for the image method. Use it for your own plots or models.
 }
 \examples{

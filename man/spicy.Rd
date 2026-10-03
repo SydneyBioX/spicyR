@@ -56,7 +56,7 @@ function (default 20, 50 and 100).}
 \item{combine}{Cell method with several radii: \code{"maxT"} (max-T with the sandwich correlation across
 radii) or \code{"cauchy"} (Cauchy combination).}
 
-\item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{to} type in each image
+\item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
 (default \code{TRUE}). Its effect is reported as \code{abundance_effect}. \code{FALSE} gives the test without it.}
 
 \item{variance}{Cell method: \code{"cr2"} (CR2 on Satterthwaite df, the default) or \code{"hartung_knapp"}
@@ -83,18 +83,17 @@ p-value and BH-adjusted p-value, the frailty variance, what the test was adjuste
 }
 \description{
 \code{spicy()} tests, for every ordered pair of cell types \code{from} → \code{to}, whether the co-localisation of
-the two types differs between conditions, or is associated with survival. The direction follows the
-spatial-statistics convention for cross-type statistics: \code{from} is the type whose neighbourhoods are
-examined, \code{to} the type counted in them.
+the two types differs between conditions, or is associated with survival. A pair asks whether \code{to}
+cells are placed near \code{from} cells more than other cells are.
 }
 \details{
-\strong{\code{method = "cell"} (the default).} For each \code{from} cell, the number of \code{to} cells within radius \code{r}
-is compared with its exact expectation if the \code{from} cells were a random choice among the cells that
-are not \code{to} cells in the same image. The effect is the \strong{excess}: the number of extra \code{to} cells
-within \code{r} of each \code{from} cell. Images are combined within patients and patients within conditions by
+\strong{\code{method = "cell"} (the default).} For each \code{to} cell, the number of \code{from} cells within radius \code{r}
+is compared with its exact expectation if the \code{to} cells were a random choice among the cells that
+are not \code{from} cells in the same image. The effect is the \strong{excess}: the number of extra \code{from} cells
+within \code{r} of each \code{to} cell. Images are combined within patients and patients within conditions by
 a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
 Satterthwaite degrees of freedom, with \strong{patients (\code{subject}) as the units}. By default the
-difference is adjusted for how common the \code{to} type is in each image (the log of its share of all
+difference is adjusted for how common the \code{from} type is in each image (the log of its share of all
 cells) and for any \code{covariates}, so that a change in abundance alone does not appear as a change in
 co-localisation. The unadjusted test is reported alongside (\verb{unadjusted_*} columns).
 
@@ -105,7 +104,7 @@ compared between conditions with a weighted linear model, or a mixed model when 
 \examples{
 data("diabetesData")
 # spicyR Cell: patients ("case") are the units
-# extra Th and beta cells within 50 units of each Tc cell
+# extra Tc cells within 50 units of each Th cell and of each beta cell
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)

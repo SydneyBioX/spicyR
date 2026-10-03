@@ -1,7 +1,7 @@
 #' Plot one image, showing the `from` and `to` cells of a pair
 #'
 #' The density of all cells is shown in blue, with the `from` and `to` cells on top. With `r`, a circle of
-#' radius `r` is drawn around each `from` cell: the `to` cells inside the circles are those that spicyR counts.
+#' radius `r` is drawn around each `to` cell: the `from` cells inside the circles are those that spicyR counts.
 #'
 #' @param cells A SummarizedExperiment object.
 #' @param imageToPlot The ID of the image to be plotted.
@@ -10,7 +10,7 @@
 #' @param imageID The name of the imageID column in the SummarizedExperiment object.
 #' @param cellType The name of the cellType column in the SummarizedExperiment object. 
 #' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
-#' @param r Optional radius: draw a circle of this radius around each `from` cell.
+#' @param r Optional radius: draw a circle of this radius around each `to` cell.
 #' 
 #' @return A ggplot object.
 #' 
@@ -80,7 +80,7 @@ plotImage = function(cells,
   
   circles <- NULL
   if (!is.null(r)) {
-    f <- cData[cData$cellType == from, , drop = FALSE]
+    f <- cData[cData$cellType == to, , drop = FALSE]
     a <- seq(0, 2 * pi, length.out = 41)
     circles <- data.frame(x = rep(f$x, each = 41) + r * cos(a), y = rep(f$y, each = 41) + r * sin(a),
                           id = rep(seq_len(nrow(f)), each = 41))
@@ -98,7 +98,7 @@ plotImage = function(cells,
     labs(title = paste0(imageID, ": ", imageToPlot),
          color = cellType)
   if (!is.null(circles))
-    p <- p + geom_path(data = circles, aes(x = .data$x, y = .data$y, group = .data$id), colour = "#d6b11c",
+    p <- p + geom_path(data = circles, aes(x = .data$x, y = .data$y, group = .data$id), colour = "#850f07",
                        linewidth = 0.3, alpha = 0.7)
   p
 }
