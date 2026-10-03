@@ -58,7 +58,7 @@ signifPlot <- function(results,
   if (is.null(marksToPlot)) marksToPlot <- marks
 
 
-  # the cell method's survival results (spicy() or kontextualTest()): the log hazard ratio per SD of the excess
+  # the cell method's survival results (spicy() or Statial::kontextualTest()): the log hazard ratio per SD of the excess
   if (identical(results$method, "cell") && !is.null(results$survivalOutcome) && !"survivalResults" %in% names(results)) {
     tab <- results$cellResults
     results$survivalResults <- data.frame(test = rownames(tab), coef = tab$log_hr_sd, p.value = tab$p_value)

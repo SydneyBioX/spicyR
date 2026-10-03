@@ -11,7 +11,7 @@
 #' @param to The `to` cell type (the centre).
 #' @param rank Alternatively, the rank of the pair by p-value (1 is the most significant).
 #' @param interactive Return an interactive plotly widget instead of a ggplot (needs the plotly package).
-#' @param parent For a Kontextual result ([kontextualTest()]), the parent population of the triple.
+#' @param parent For a Kontextual result (`Statial::kontextualTest()`), the parent population of the triple.
 #'
 #' @return A ggplot, or with `interactive = TRUE` a plotly htmlwidget. Images in which the pair was not
 #'   tested (no `to` cells, for example) are not shown.

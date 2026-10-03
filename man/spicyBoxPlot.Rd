@@ -24,7 +24,7 @@ spicyBoxPlot(
 
 \item{interactive}{Return an interactive plotly widget instead of a ggplot (needs the plotly package).}
 
-\item{parent}{For a Kontextual result (\code{\link[=kontextualTest]{kontextualTest()}}), the parent population of the triple.}
+\item{parent}{For a Kontextual result (\code{Statial::kontextualTest()}), the parent population of the triple.}
 }
 \value{
 A ggplot, or with \code{interactive = TRUE} a plotly htmlwidget. Images in which the pair was not

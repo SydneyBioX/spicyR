@@ -1,8 +1,16 @@
-## kontextualTest(): the C++ core against a plain-R reference written from Statial's Kontextual statistic, the
+## kontextualEngine() (the engine of Statial::kontextualTest()): the C++ core against a plain-R reference written
+## from Statial's Kontextual statistic, the
 ## exactness of its random-labelling moments, and the interface.
 
 cells <- sim_cells(seed = 4)
 parent <- c("T", "B", "macro")
+
+## Statial::parentCombinations()'s format: every type as `from`, every type of the parent as `to`
+make_parent_df <- function(types, parent, name) {
+  d <- expand.grid(from = types, to = parent, stringsAsFactors = FALSE)
+  d$parent <- rep(list(parent), nrow(d)); d$parent_name <- name; d
+}
+pdf <- make_parent_df(unique(cells$cellType), parent, "lymphoid")
 
 ## Plain R, one image, no edge correction: Statial's weights (parent counts include the cell itself) and the
 ## Kontextual excess's image row on Statial's scale.
@@ -44,8 +52,8 @@ test_that("the Kontextual statistic's random-labelling moments are exact (enumer
   expect_equal(unname(en[["var"]]), ref$v, tolerance = 1e-12)
 })
 
-test_that("kontextualTest (psi and abundance off) is the frailty GEE on the reference rows", {
-  res <- kontextualTest(cells, parentList = list(lymphoid = parent), condition = "condition", subject = "patient",
+test_that("kontextualEngine (psi and abundance off) is the frailty GEE on the reference rows", {
+  res <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient",
                         r = 30, from = "tumour", to = "T", adjustAbundance = FALSE, labelClustering = FALSE,
                         edgeCorrect = FALSE)$cellResults
   ids <- sort(unique(cells$imageID), method = "radix")
@@ -61,19 +69,19 @@ test_that("kontextualTest (psi and abundance off) is the frailty GEE on the refe
   expect_gt(res$excess_difference, 0); expect_lt(res$p_value, 0.05)
 })
 
-test_that("the interface: parentList and parentDf agree, triples are labelled, plots work", {
-  pl <- kontextualTest(cells, parentList = list(lymphoid = parent), condition = "condition", subject = "patient", r = 30)
-  pdf <- expand.grid(from = unique(cells$cellType), to = parent, stringsAsFactors = FALSE)
-  pdf$parent <- rep(list(parent), nrow(pdf)); pdf$parent_name <- "lymphoid"
-  pd <- kontextualTest(cells, parentDf = pdf, condition = "condition", subject = "patient", r = 30)
-  expect_equal(pl$cellResults[rownames(pd$cellResults), "p_value"], pd$cellResults$p_value)
+test_that("the interface: triples are labelled, plots work", {
+  pl <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient", r = 30)
   expect_true(all(pl$cellResults$parent == "lymphoid"))
   expect_true("tumour__T__lymphoid" %in% rownames(pl$cellResults))
+  # no parent_name: the parent is named by its types
+  un <- pdf; un$parent_name <- NULL
+  expect_true(paste0("tumour__T__", paste(sort(parent), collapse = "+")) %in% rownames(kontextualEngine(cells, un, condition = "condition", subject = "patient",
+                                                                    r = 30, from = "tumour")$cellResults))
   tp <- topPairs(pl, n = 3)
   expect_true("parent" %in% names(tp))
   expect_s3_class(spicyBoxPlot(pl, from = "tumour", to = "T", parent = "lymphoid"), "ggplot")
   expect_s3_class(signifPlot(pl), "ggplot")
-  expect_error(kontextualTest(cells, parentList = list(p = c("B", "macro")), condition = "condition", r = 30, to = "T"),
+  expect_error(kontextualEngine(cells, make_parent_df("B", c("B", "macro"), "p"), condition = "condition", r = 30, to = "T"),
                "no triple")
 })
 
@@ -81,7 +89,7 @@ test_that("survival outcomes: the score test on the reference rows", {
   set.seed(9)
   pats <- unique(cells$patient); tm <- stats::setNames(rexp(length(pats), 0.1), pats); ev <- stats::setNames(rbinom(length(pats), 1, 0.7), pats)
   cs <- cells; cs$surv <- survival::Surv(tm[cs$patient], ev[cs$patient])
-  res <- kontextualTest(cs, parentList = list(lymphoid = parent), condition = "surv", subject = "patient", r = 30,
+  res <- kontextualEngine(cs, pdf, condition = "surv", subject = "patient", r = 30,
                         from = "tumour", to = "T", adjustAbundance = FALSE, labelClustering = FALSE, edgeCorrect = FALSE)
   tab <- res$cellResults
   expect_equal(tab$parent, "lymphoid")
@@ -100,6 +108,6 @@ test_that("signifPlot draws survival results of the cell method", {
   pats <- unique(cells$patient); cs <- cells
   cs$surv <- survival::Surv(stats::setNames(rexp(length(pats), 0.1), pats)[cs$patient], rep(1, nrow(cs)))
   expect_s3_class(signifPlot(spicy(cs, condition = "surv", subject = "patient", r = 30, from = "tumour")), "ggplot")
-  expect_s3_class(signifPlot(kontextualTest(cs, parentList = list(lymphoid = parent), condition = "surv",
+  expect_s3_class(signifPlot(kontextualEngine(cs, pdf, condition = "surv",
                                             subject = "patient", r = 30)), "ggplot")
 })
