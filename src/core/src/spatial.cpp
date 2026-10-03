@@ -918,8 +918,8 @@ std::vector<double> Dataset::self_any_expected(bool knn) const {
       double S = 0;
       for (int d = 1; d < N; ++d) {
         if (deg_count[d] == 0) continue;
-        const double none = K - d >= m ? std::exp(lchoose(K - d, m) - lden) : 0.0;
-        S += deg_count[d] * (1.0 - none);
+        // 1 - C(K - d, m) / C(K, m), with expm1 to keep accuracy when the ratio is close to 1
+        S += deg_count[d] * (K - d >= m ? -std::expm1(lchoose(K - d, m) - lden) : 1.0);
       }
       out[static_cast<std::size_t>(img) * T + a] = static_cast<double>(na) / N * S;
     }

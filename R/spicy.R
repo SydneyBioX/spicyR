@@ -1299,9 +1299,10 @@ colCoxTests <- function(measurements, outcome) {
 
 #' The per-image values of every pair, as a data frame
 #'
-#' Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: the excess
-#' (extra \code{from} cells per \code{to} cell beyond chance) for the cell method, or the L-function summary
-#' for the image method. Use it for your own plots or models.
+#' Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: for the cell
+#' method its effect (by default the extra fraction of \code{to} cells with a \code{from} cell within \code{r};
+#' with \code{effect = "count"}, the extra \code{from} cells per \code{to} cell), or the L-function summary for
+#' the image method. Use it for your own plots or models.
 #'
 #' @param results
 #'  The \code{SpicyResults} object returned by \code{spicy()}.

@@ -143,7 +143,7 @@ struct SurvivalResult {
   std::string reason;
   double score_coef = 0, score_se = 0, score_df = 0, score_p = 1;  // theta_1 of delta ~ 1 + M
   double log_hr_sd = 0, hr_sd = 1, hr_se = 0, hr_p = 1;             // Cox on the standardised BLUP
-  double log_hr_unit = 0;                                          // per extra cell per target cell
+  double log_hr_unit = 0;   // per unit of the effect (count: per extra cell per target cell; allocation: per 100% of target cells)
   double tau2 = 0;
 };
 

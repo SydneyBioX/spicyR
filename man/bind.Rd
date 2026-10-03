@@ -16,9 +16,10 @@ A data.frame with one row per image: \code{imageID}, \code{condition}, \code{sub
 one column per pair, named \code{"from__to"}. \code{NA} where the pair could not be measured in an image.
 }
 \description{
-Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: the excess
-(extra \code{from} cells per \code{to} cell beyond chance) for the cell method, or the L-function summary
-for the image method. Use it for your own plots or models.
+Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: for the cell
+method its effect (by default the extra fraction of \code{to} cells with a \code{from} cell within \code{r};
+with \code{effect = "count"}, the extra \code{from} cells per \code{to} cell), or the L-function summary for
+the image method. Use it for your own plots or models.
 }
 \examples{
 

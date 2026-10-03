@@ -9,10 +9,18 @@ CHANGES IN VERSION 1.99.5
       densely the `from` cells are packed, so a change in packing alone can appear as a change in
       co-localisation. Self-pairs use the exact random-labelling expectation of the allocation count.
 
-    o adjustAbundance now defaults to FALSE. The log-share adjustment does not separate more `from` cells
-      from more densely packed ones, and it removes real effects when the share tracks the condition.
+    o spicy(adjustAbundance = ) now defaults to FALSE (kontextualEngine() is unchanged). The log-share
+      adjustment does not separate more `from` cells from more densely packed ones, and it removes real
+      effects when the share tracks the condition.
+
+    o Survival results: the column log_hr_per_cell is renamed log_hr_per_unit, the log hazard ratio per unit
+      of the effect (per 100% of `to` cells for the allocation effect, per extra `from` cell per `to` cell
+      for the count).
 
     o The label-clustering factor of the allocation effect is computed on its binary scores.
+
+    o Survival results no longer repeat the main test in unadjusted_* columns when abundance is not
+      adjusted.
 
     o k nearest neighbours: images with at most k cells were read out of bounds in the neighbour sums; they
       are now skipped.

@@ -268,7 +268,7 @@ spicy <- function(cells,
   tab <- do.call(rbind, lapply(fits[ok], function(o) { s <- o$surv
     row <- data.frame(from = o$from, to = o$to, score_coefficient = s$score_coef, score_se = s$score_se, score_df = s$score_df,
                p_value = s$score_p, hazard_ratio_sd = s$hr_sd, log_hr_sd = s$log_hr_sd, log_hr_se = s$hr_se,
-               hr_p_value = s$hr_p, log_hr_per_cell = s$log_hr_unit, tau2 = s$tau2,
+               hr_p_value = s$hr_p, log_hr_per_unit = s$log_hr_unit, tau2 = s$tau2,
                adjusted_for = if (nzchar(o$adjusted_for)) o$adjusted_for else "none",
                unadjusted_p_value = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$score_p else NA_real_,
                unadjusted_hazard_ratio_sd = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$hr_sd else NA_real_,

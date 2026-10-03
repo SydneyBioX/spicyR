@@ -95,7 +95,7 @@ kontextualEngine <- function(cells,
   }
   tab <- if (survival) .cell_survival_table(fits, adjustAbundance, covariates)
          else .cell_table(fits, ctx, adjustAbundance || !is.null(covariates))
-  out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL)
+  out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
     trip$parent[[match(pn, trip$parent_name)]]), unique(trip$parent_name)), edgeCorrect = edgeCorrect, window = window)
   out

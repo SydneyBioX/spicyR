@@ -25,7 +25,8 @@ survival: \code{score_coefficient}, \code{p_value}, \code{p_adj}, \code{hazard_r
 \item{\code{pairwiseAssoc}}{a list with, for every pair, the effect in every image (\code{NA} where the pair
 could not be measured).}
 \item{\code{effect}}{\code{"allocation"} (the extra fraction of \code{to} cells with a \code{from} cell
-within \code{r}) or \code{"count"} (the extra \code{from} cells within \code{r} of each \code{to} cell).}
+within \code{r}), \code{"count"} (the extra \code{from} cells within \code{r} of each \code{to} cell), or
+\code{"kontextual"} (Statial's Kontextual test).}
 \item{\code{imageWeights}}{a list with, for every pair, each image's weight in the test: its share of its
 condition's information (sums to 1 within each condition).}
 \item{\code{coefficient}, \code{p.value}, \code{se}, \code{statistic}, \code{df}}{matrices with one row per
