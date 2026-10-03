@@ -2,9 +2,8 @@
 
 `spicy()` tests, for every ordered pair of cell types `from` → `to`,
 whether the co-localisation of the two types differs between conditions,
-or is associated with survival. The direction follows the
-spatial-statistics convention for cross-type statistics: `from` is the
-type whose neighbourhoods are examined, `to` the type counted in them.
+or is associated with survival. A pair asks whether `to` cells are
+placed near `from` cells more than other cells are.
 
 ## Usage
 
@@ -89,7 +88,7 @@ spicy(
 
 - adjustAbundance:
 
-  Cell method: adjust the test for the log share of the `to` type in
+  Cell method: adjust the test for the log share of the `from` type in
   each image (default `TRUE`). Its effect is reported as
   `abundance_effect`. `FALSE` gives the test without it.
 
@@ -138,16 +137,16 @@ unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
 
 ## Details
 
-**`method = "cell"` (the default).** For each `from` cell, the number of
-`to` cells within radius `r` is compared with its exact expectation if
-the `from` cells were a random choice among the cells that are not `to`
+**`method = "cell"` (the default).** For each `to` cell, the number of
+`from` cells within radius `r` is compared with its exact expectation if
+the `to` cells were a random choice among the cells that are not `from`
 cells in the same image. The effect is the **excess**: the number of
-extra `to` cells within `r` of each `from` cell. Images are combined
+extra `from` cells within `r` of each `to` cell. Images are combined
 within patients and patients within conditions by a frailty GEE, and the
 difference between conditions is tested with a CR2 cluster-robust
 variance on Satterthwaite degrees of freedom, with **patients
 (`subject`) as the units**. By default the difference is adjusted for
-how common the `to` type is in each image (the log of its share of all
+how common the `from` type is in each image (the log of its share of all
 cells) and for any `covariates`, so that a change in abundance alone
 does not appear as a change in co-localisation. The unadjusted test is
 reported alongside (`unadjusted_*` columns).
@@ -191,28 +190,28 @@ Journal of the American Statistical Association 115(529), 393-402.
 ``` r
 data("diabetesData")
 # spicyR Cell: patients ("case") are the units
-# extra Th and beta cells within 50 units of each Tc cell
+# extra Tc cells within 50 units of each Th cell and of each beta cell
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
-#>         intercept coefficient  p.value adj.pvalue from to
-#> Tc__Th 0.09474219  0.08213955 0.184875   0.184875   Tc Th
+#>        intercept coefficient   p.value adj.pvalue from to
+#> Tc__Th 0.4321645  0.02909189 0.8604525  0.8604525   Tc Th
 res$cellResults
 #>                       from to         level excess_ref excess_difference
-#> Tc__Th__Onset           Tc Th         Onset 0.09474219        0.08213955
-#> Tc__Th__Long-duration   Tc Th Long-duration 0.09474219        0.09064722
-#>                               se       df    p_value      p_adj        tau2
-#> Tc__Th__Onset         0.05377313 5.206921 0.18487502 0.18487502 0.004922386
-#> Tc__Th__Long-duration 0.02687124 5.897273 0.01537956 0.01537956 0.004922386
+#> Tc__Th__Onset           Tc Th         Onset  0.4321645        0.02909189
+#> Tc__Th__Long-duration   Tc Th Long-duration  0.4321645        0.02137810
+#>                              se       df   p_value     p_adj       tau2
+#> Tc__Th__Onset         0.1579396 5.507303 0.8604525 0.8604525 0.04664805
+#> Tc__Th__Long-duration 0.1694939 5.859572 0.9038460 0.9038460 0.04664805
 #>                       adjusted_for abundance_effect abundance_p_value
-#> Tc__Th__Onset            abundance       0.05767815        0.09842378
-#> Tc__Th__Long-duration    abundance       0.05767815        0.09842378
+#> Tc__Th__Onset            abundance        0.3084998       0.003712808
+#> Tc__Th__Long-duration    abundance        0.3084998       0.003712808
 #>                       unadjusted_difference unadjusted_se unadjusted_df
-#> Tc__Th__Onset                     0.1599107    0.07720679      5.202234
-#> Tc__Th__Long-duration             0.1219062    0.02400996      5.905235
+#> Tc__Th__Onset                     0.3168956     0.2345396      5.665072
+#> Tc__Th__Long-duration             0.1461768     0.1001521      5.831620
 #>                       unadjusted_p_value unadjusted_p_adj
-#> Tc__Th__Onset                0.090916955      0.090916955
-#> Tc__Th__Long-duration        0.002380154      0.002380154
+#> Tc__Th__Onset                  0.2281099        0.2281099
+#> Tc__Th__Long-duration          0.1960909        0.1960909
 
 # the original image-level test
 resImage <- spicy(diabetesData, condition = "stage", subject = "case",
@@ -220,5 +219,5 @@ resImage <- spicy(diabetesData, condition = "stage", subject = "case",
 #> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
 topPairs(resImage)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th
+#> Tc__Th  1.622672    5.961811 0.6122509  0.6122509   Tc Th
 ```

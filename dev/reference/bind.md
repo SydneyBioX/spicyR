@@ -2,7 +2,7 @@
 
 Returns, for each image, its condition and the value of each pair that
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-tested: the excess (extra `to` cells per `from` cell beyond chance) for
+tested: the excess (extra `from` cells per `to` cell beyond chance) for
 the cell method, or the L-function summary for the image method. Use it
 for your own plots or models.
 

@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.1</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -72,8 +72,8 @@
 <span>             imageID <span class="op">=</span> <span class="st">"file_id"</span>, cellType <span class="op">=</span> <span class="st">"description"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span>                                       <span class="co"># the most significant pairs</span></span>
 <span><span class="fu"><a href="reference/signifPlot.html">signifPlot</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span>                                     <span class="co"># every pair at a glance</span></span>
-<span><span class="fu"><a href="reference/spicyBoxPlot.html">spicyBoxPlot</a></span><span class="op">(</span><span class="va">res</span>, from <span class="op">=</span> <span class="st">"HR- Ki67+"</span>, to <span class="op">=</span> <span class="st">"T cells"</span><span class="op">)</span>   <span class="co"># T cells around proliferating tumour cells</span></span></code></pre></div>
-<p>For your own data, <code><a href="reference/spicy.html">spicy()</a></code> accepts a <code>SpatialExperiment</code>, a <code>SingleCellExperiment</code> or a <code>data.frame</code>. It looks for the columns <code>imageID</code> and <code>cellType</code> (name yours with <code>imageID =</code> and <code>cellType =</code>) and takes coordinates from <code>spatialCoords()</code>, or from columns <code>x</code> and <code>y</code>. A pair <code>from</code> → <code>to</code> asks how many extra <code>to</code> cells sit around each <code>from</code> cell.</p>
+<span><span class="fu"><a href="reference/spicyBoxPlot.html">spicyBoxPlot</a></span><span class="op">(</span><span class="va">res</span>, from <span class="op">=</span> <span class="st">"T cells"</span>, to <span class="op">=</span> <span class="st">"HR- Ki67+"</span><span class="op">)</span>   <span class="co"># T cells around proliferating tumour cells</span></span></code></pre></div>
+<p>For your own data, <code><a href="reference/spicy.html">spicy()</a></code> accepts a <code>SpatialExperiment</code>, a <code>SingleCellExperiment</code> or a <code>data.frame</code>. It looks for the columns <code>imageID</code> and <code>cellType</code> (name yours with <code>imageID =</code> and <code>cellType =</code>) and takes coordinates from <code>spatialCoords()</code>, or from columns <code>x</code> and <code>y</code>. A pair <code>from</code> → <code>to</code> asks whether <code>to</code> cells are placed near <code>from</code> cells more than other cells are: how many extra <code>from</code> cells sit around each <code>to</code> cell.</p>
 </div>
 <div class="section level2">
 <h2 id="what-you-get">What you get<a class="anchor" aria-label="anchor" href="#what-you-get"></a>

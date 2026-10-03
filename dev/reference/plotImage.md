@@ -1,9 +1,8 @@
 # Plot one image, showing the `from` and `to` cells of a pair
 
 The density of all cells is shown in blue, with the `from` and `to`
-cells on top. With `r`, a circle of radius `r` is drawn around each
-`from` cell: the `to` cells inside the circles are those that spicyR
-counts.
+cells on top. With `r`, a circle of radius `r` is drawn around each `to`
+cell: the `from` cells inside the circles are those that spicyR counts.
 
 ## Usage
 
@@ -52,7 +51,7 @@ plotImage(
 
 - r:
 
-  Optional radius: draw a circle of this radius around each `from` cell.
+  Optional radius: draw a circle of this radius around each `to` cell.
 
 ## Value
 

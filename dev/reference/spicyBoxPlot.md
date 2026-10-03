@@ -2,7 +2,7 @@
 
 Shows the per-image value of one pair in each condition: a box plot with
 the images as points behind it. For the cell method the value is the
-excess (extra `to` cells per `from` cell beyond chance), and each point
+excess (extra `from` cells per `to` cell beyond chance), and each point
 is sized by how much the image contributes to the test (its weight in
 the frailty model, relative to the average image of its condition). With
 `interactive = TRUE` the plot is a plotly widget: hover over a point to
@@ -24,11 +24,11 @@ spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
 
 - from:
 
-  The `from` cell type (the centre).
+  The `from` cell type (counted around each `to` cell).
 
 - to:
 
-  The `to` cell type (counted around each `from` cell).
+  The `to` cell type (the centre).
 
 - rank:
 
@@ -43,7 +43,7 @@ spicyBoxPlot(results, from = NULL, to = NULL, rank = NULL, interactive = FALSE)
 ## Value
 
 A ggplot, or with `interactive = TRUE` a plotly htmlwidget. Images in
-which the pair was not tested (no `from` cells, for example) are not
+which the pair was not tested (no `to` cells, for example) are not
 shown.
 
 ## Examples
