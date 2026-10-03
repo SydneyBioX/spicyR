@@ -101,7 +101,9 @@ spicy(
 - frailty, labelClustering:
 
   Cell method: the patient frailty and the label-clustering inflation of
-  the within-image variance (both on by default).
+  the within-image variance (both on by default). The inflation of a
+  `to` type is estimated from every counted type, so a pair's result
+  does not depend on which other pairs are requested.
 
 - ref:
 
@@ -194,24 +196,24 @@ data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
-#>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th 0.4321645  0.02909189 0.8604525  0.8604525   Tc Th
+#>        intercept coefficient  p.value adj.pvalue from to
+#> Tc__Th 0.6375863 -0.09109796 0.679257   0.679257   Tc Th
 res$cellResults
 #>                       from to         level excess_ref excess_difference
-#> Tc__Th__Onset           Tc Th         Onset  0.4321645        0.02909189
-#> Tc__Th__Long-duration   Tc Th Long-duration  0.4321645        0.02137810
+#> Tc__Th__Onset           Tc Th         Onset  0.6375863      -0.091097963
+#> Tc__Th__Long-duration   Tc Th Long-duration  0.6375863      -0.008162035
 #>                              se       df   p_value     p_adj       tau2
-#> Tc__Th__Onset         0.1579396 5.507303 0.8604525 0.8604525 0.04664805
-#> Tc__Th__Long-duration 0.1694939 5.859572 0.9038460 0.9038460 0.04664805
+#> Tc__Th__Onset         0.2089707 5.573440 0.6792570 0.6792570 0.06581695
+#> Tc__Th__Long-duration 0.2297366 5.839256 0.9728421 0.9728421 0.06581695
 #>                       adjusted_for abundance_effect abundance_p_value
-#> Tc__Th__Onset            abundance        0.3084998       0.003712808
-#> Tc__Th__Long-duration    abundance        0.3084998       0.003712808
+#> Tc__Th__Onset            abundance         0.476337       0.002122868
+#> Tc__Th__Long-duration    abundance         0.476337       0.002122868
 #>                       unadjusted_difference unadjusted_se unadjusted_df
-#> Tc__Th__Onset                     0.3168956     0.2345396      5.665072
-#> Tc__Th__Long-duration             0.1461768     0.1001521      5.831620
+#> Tc__Th__Onset                     0.3860306     0.2935793      5.614328
+#> Tc__Th__Long-duration             0.1746664     0.0847683      5.775973
 #>                       unadjusted_p_value unadjusted_p_adj
-#> Tc__Th__Onset                  0.2281099        0.2281099
-#> Tc__Th__Long-duration          0.1960909        0.1960909
+#> Tc__Th__Onset                 0.23969003       0.23969003
+#> Tc__Th__Long-duration         0.08681395       0.08681395
 
 # the original image-level test
 resImage <- spicy(diabetesData, condition = "stage", subject = "case",
