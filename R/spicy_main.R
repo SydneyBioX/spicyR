@@ -18,7 +18,8 @@
 #' (depth of infiltration), but it grows with how densely the `from` cells are packed, so a change in
 #' packing alone can appear as a change in co-localisation. Images are combined within patients and
 #' patients within conditions by a frailty GEE, and the difference between conditions is tested with a
-#' CR2 cluster-robust variance on Satterthwaite degrees of freedom, with **patients (`subject`) as the
+#' CR2 cluster-robust variance on Satterthwaite degrees of freedom (Hartung-Knapp on m - 2 df when a condition has
+#' at most 5 patients), with **patients (`subject`) as the
 #' units**. The difference is adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for the
 #' log share of the `from` type in each image; the unadjusted test is then reported alongside
 #' (`unadjusted_*` columns).
@@ -54,8 +55,9 @@
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
-#' @param variance Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or `"hartung_knapp"`
-#'   (for very few patients: the model-based variance floored at CR2, on m - 2 df).
+#' @param variance Cell method: `"auto"` (the default: `"hartung_knapp"` when a condition has at most 5
+#'   patients, `"cr2"` otherwise), `"cr2"` (CR2 on Satterthwaite df) or `"hartung_knapp"` (for very few
+#'   patients: the model-based variance floored at CR2, on m - 2 df). The variance used is in `$variance`.
 #' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
 #'   of the within-image variance (both on by default). The inflation of a `to` type is estimated from every
 #'   counted type, so a pair's result does not depend on which other pairs are requested.
@@ -125,7 +127,7 @@ spicy <- function(cells,
                   k = NULL,
                   combine = c("maxT", "cauchy"),
                   adjustAbundance = FALSE,
-                  variance = c("cr2", "hartung_knapp"),
+                  variance = c("auto", "cr2", "hartung_knapp"),
                   frailty = TRUE,
                   labelClustering = TRUE,
                   ref = NULL,
@@ -165,6 +167,14 @@ spicy <- function(cells,
   ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
                        ref = ref, survival = survival)
   pheno <- ctx$df[ctx$first, , drop = FALSE]
+  if (variance == "auto") {
+    # Hartung-Knapp (m - 2 df) when a condition has at most 5 patients, where CR2's Satterthwaite df are very small;
+    # CR2 otherwise (Hartung-Knapp's m - 2 df overstate the information of rare pairs in larger cohorts)
+    m_min <- if (survival) Inf else min(tapply(ctx$image_unit, ctx$image_group, function(u) length(unique(u))))
+    variance <- if (m_min <= 5) "hartung_knapp" else "cr2"
+    if (variance == "hartung_knapp") message("variance = \"auto\": a condition has ", m_min,
+                                             " patients; using the Hartung-Knapp variance on m - 2 df.")
+  }
 
   Z_extra <- NULL
   if (!is.null(covariates)) {
@@ -189,7 +199,9 @@ spicy <- function(cells,
     })
     res <- .cell_combine(per_r, radii, ctx, adjustAbundance || !is.null(covariates), combine)
   }
-  .cell_results(res, ctx, pheno, condition, subject, survival, radii, k, effect)
+  out <- .cell_results(res, ctx, pheno, condition, subject, survival, radii, k, effect)
+  if (!survival) out$variance <- variance
+  out
 }
 
 ## Several radii: per-radius tables, and one row per pair with the combined p-value (the main test and,

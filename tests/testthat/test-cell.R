@@ -250,3 +250,16 @@ test_that("allocation, avoidance: the effect is minus the fraction moved away, h
   expect_lt(abs(x$excess_comp + 0.3), 0.03)
   expect_gt(x$p_value, 0.05)
 })
+
+test_that("variance = 'auto' uses Hartung-Knapp when a condition has at most 5 patients, CR2 otherwise", {
+  pts <- unique(cells[, c("patient", "condition")])
+  m_min <- min(table(pts$condition))
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))
+  expect_identical(res$variance, if (m_min <= 5) "hartung_knapp" else "cr2")
+  small <- cells[cells$patient %in% unlist(lapply(split(pts$patient, pts$condition), head, 4)), ]
+  rs <- suppressMessages(spicy(small, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))
+  expect_identical(rs$variance, "hartung_knapp")
+  hk <- suppressMessages(spicy(small, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
+                               variance = "hartung_knapp"))
+  expect_equal(rs$cellResults$p_value, hk$cellResults$p_value)
+})

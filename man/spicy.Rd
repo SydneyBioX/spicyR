@@ -20,7 +20,7 @@ spicy(
   k = NULL,
   combine = c("maxT", "cauchy"),
   adjustAbundance = FALSE,
-  variance = c("cr2", "hartung_knapp"),
+  variance = c("auto", "cr2", "hartung_knapp"),
   frailty = TRUE,
   labelClustering = TRUE,
   ref = NULL,
@@ -65,8 +65,9 @@ radii) or \code{"cauchy"} (Cauchy combination).}
 (default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}
 cells from more densely packed ones, and it removes real effects when the share tracks the condition.}
 
-\item{variance}{Cell method: \code{"cr2"} (CR2 on Satterthwaite df, the default) or \code{"hartung_knapp"}
-(for very few patients: the model-based variance floored at CR2, on m - 2 df).}
+\item{variance}{Cell method: \code{"auto"} (the default: \code{"hartung_knapp"} when a condition has at most 5
+patients, \code{"cr2"} otherwise), \code{"cr2"} (CR2 on Satterthwaite df) or \code{"hartung_knapp"} (for very few
+patients: the model-based variance floored at CR2, on m - 2 df). The variance used is in \verb{$variance}.}
 
 \item{frailty, labelClustering}{Cell method: the patient frailty and the label-clustering inflation
 of the within-image variance (both on by default). The inflation of a \code{to} type is estimated from every
@@ -110,7 +111,8 @@ cells within \code{r} of each \code{to} cell instead; it also reflects how many 
 (depth of infiltration), but it grows with how densely the \code{from} cells are packed, so a change in
 packing alone can appear as a change in co-localisation. Images are combined within patients and
 patients within conditions by a frailty GEE, and the difference between conditions is tested with a
-CR2 cluster-robust variance on Satterthwaite degrees of freedom, with \strong{patients (\code{subject}) as the
+CR2 cluster-robust variance on Satterthwaite degrees of freedom (Hartung-Knapp on m - 2 df when a condition has
+at most 5 patients), with \strong{patients (\code{subject}) as the
 units}. The difference is adjusted for any \code{covariates}, and, with \code{adjustAbundance = TRUE}, for the
 log share of the \code{from} type in each image; the unadjusted test is then reported alongside
 (\verb{unadjusted_*} columns).

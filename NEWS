@@ -9,6 +9,10 @@ CHANGES IN VERSION 1.99.6
       cells there are and how densely they are packed, and is unbounded below as q approaches 1. The
       results gain a `side` column ("attract" or "avoid").
 
+    o spicy(variance = ) gains "auto", the new default: the Hartung-Knapp variance on m - 2 df when a
+      condition has at most 5 patients (CR2's Satterthwaite df are then very small), CR2 otherwise. The
+      variance used is returned in $variance.
+
 CHANGES IN VERSION 1.99.5
 -------------------------
 
