@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.4</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,10 +58,11 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  from <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  to <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cell"</span>, <span class="st">"image"</span><span class="op">)</span>,</span>
+<span>  effect <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allocation"</span>, <span class="st">"count"</span><span class="op">)</span>,</span>
 <span>  k <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxT"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
-<span>  adjustAbundance <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
+<span>  adjustAbundance <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
 <span>  frailty <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  labelClustering <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -113,6 +114,12 @@ function (default 20, 50 and 100).</p></dd>
 <dd><p><code>"cell"</code> (spicyR Cell, the default) or <code>"image"</code> (the original spicyR test).</p></dd>
 
 
+<dt id="arg-effect">effect<a class="anchor" aria-label="anchor" href="#arg-effect"></a></dt>
+<dd><p>Cell method: <code>"allocation"</code> (the default), the extra fraction of <code>to</code> cells with at least
+one <code>from</code> cell within <code>r</code>; or <code>"count"</code>, the number of extra <code>from</code> cells within <code>r</code> of each <code>to</code> cell.
+With <code>k</code>, "within <code>r</code>" means among the cell's <code>k</code> nearest neighbours.</p></dd>
+
+
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>Cell method: use the <code>k</code> nearest neighbours instead of a radius.</p></dd>
 
@@ -124,12 +131,14 @@ radii) or <code>"cauchy"</code> (Cauchy combination).</p></dd>
 
 <dt id="arg-adjustabundance">adjustAbundance<a class="anchor" aria-label="anchor" href="#arg-adjustabundance"></a></dt>
 <dd><p>Cell method: adjust the test for the log share of the <code>from</code> type in each image
-(default <code>TRUE</code>). Its effect is reported as <code>abundance_effect</code>. <code>FALSE</code> gives the test without it.</p></dd>
+(default <code>FALSE</code>). Its effect is reported as <code>abundance_effect</code>. It does not separate more <code>from</code>
+cells from more densely packed ones, and it removes real effects when the share tracks the condition.</p></dd>
 
 
 <dt id="arg-variance">variance<a class="anchor" aria-label="anchor" href="#arg-variance"></a></dt>
-<dd><p>Cell method: <code>"cr2"</code> (CR2 on Satterthwaite df, the default) or <code>"hartung_knapp"</code>
-(for very few patients: the model-based variance floored at CR2, on m - 2 df).</p></dd>
+<dd><p>Cell method: <code>"auto"</code> (the default: <code>"hartung_knapp"</code> when a condition has at most 5
+patients, <code>"cr2"</code> otherwise), <code>"cr2"</code> (CR2 on Satterthwaite df) or <code>"hartung_knapp"</code> (for very few
+patients: the model-based variance floored at CR2, on m - 2 df). The variance used is in <code>$variance</code>.</p></dd>
 
 
 <dt id="arg-frailty-labelclustering">frailty, labelClustering<a class="anchor" aria-label="anchor" href="#arg-frailty-labelclustering"></a></dt>
@@ -155,23 +164,37 @@ counted type, so a pair's result does not depend on which other pairs are reques
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>SpicyResults</code> object. <code><a href="topPairs.html">topPairs()</a></code>, <code><a href="signifPlot.html">signifPlot()</a></code>, <code><a href="spicyBoxPlot.html">spicyBoxPlot()</a></code> and <code><a href="bind.html">bind()</a></code> work
-for both methods. For the cell method, <code>$cellResults</code> holds the full table: the excess in each
-condition (at the average abundance and covariates), the difference, its standard error, df,
-p-value and BH-adjusted p-value, the frailty variance, what the test was adjusted for
-(<code>adjusted_for</code>), the effect and p-value of each adjustment, and the unadjusted test
-(<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>).</p>
+for both methods. For the cell method, <code>$cellResults</code> holds the full table: for the allocation effect,
+the pair's <code>side</code> (<code>"attract"</code> or <code>"avoid"</code>, which sets the scale of the effect), the effect in each
+condition (<code>excess_ref</code>, <code>excess_comp</code>, at the average covariates), the difference
+(<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
+and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect and p-value of each adjustment,
+and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>). <code>$effect</code>
+records which effect was estimated.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><strong><code>method = "cell"</code> (the default).</strong> For each <code>to</code> cell, the number of <code>from</code> cells within radius <code>r</code>
-is compared with its exact expectation if the <code>to</code> cells were a random choice among the cells that
-are not <code>from</code> cells in the same image. The effect is the <strong>excess</strong>: the number of extra <code>from</code> cells
-within <code>r</code> of each <code>to</code> cell. Images are combined within patients and patients within conditions by
-a frailty GEE, and the difference between conditions is tested with a CR2 cluster-robust variance on
-Satterthwaite degrees of freedom, with <strong>patients (<code>subject</code>) as the units</strong>. By default the
-difference is adjusted for how common the <code>from</code> type is in each image (the log of its share of all
-cells) and for any <code>covariates</code>, so that a change in abundance alone does not appear as a change in
-co-localisation. The unadjusted test is reported alongside (<code>unadjusted_*</code> columns).</p>
+    <p><strong><code>method = "cell"</code> (the default).</strong> In each image, the share of <code>to</code> cells with at least one <code>from</code>
+cell within radius <code>r</code> is compared with its exact expectation q if the <code>to</code> cells were a random choice
+among the cells that are not <code>from</code> cells. The effect (<code>effect = "allocation"</code>, the default) is the
+<strong>fraction of <code>to</code> cells placed next to (or kept away from) <code>from</code> cells</strong>. For a pair that attracts
+(more <code>to</code> cells next to <code>from</code> cells than q over all images together) it is (observed share - q) / (1 - q):
+if a fraction f of the <code>to</code> cells were moved next to <code>from</code> cells, the effect is f. For a pair that avoids
+it is (observed share - q) / q: if a fraction f of the <code>to</code> cells that would have a <code>from</code> cell nearby were
+moved away, the effect is -f. Either way it does not depend on how many <code>from</code> cells there are or how
+densely they are packed. The side is chosen once per pair from all images, without the conditions, and is
+reported in the <code>side</code> column. <code>effect = "count"</code> gives the number of extra <code>from</code>
+cells within <code>r</code> of each <code>to</code> cell instead; it also reflects how many <code>from</code> cells surround a <code>to</code> cell
+(depth of infiltration), but it grows with how densely the <code>from</code> cells are packed, so a change in
+packing alone can appear as a change in co-localisation. Images are combined within patients and
+patients within conditions by a frailty GEE, and the difference between conditions is tested with a
+CR2 cluster-robust variance on Satterthwaite degrees of freedom (Hartung-Knapp on m - 2 df when a condition has
+at most 5 patients), with <strong>patients (<code>subject</code>) as the
+units</strong>. The difference is adjusted for any <code>covariates</code>, and, with <code>adjustAbundance = TRUE</code>, for the
+log share of the <code>from</code> type in each image; the unadjusted test is then reported alongside
+(<code>unadjusted_*</code> columns).</p>
+<p>When nearly every cell has a <code>from</code> cell within <code>r</code> (q close to 1), there is little room for attraction and
+an attracting pair's images carry little information; a smaller <code>r</code> is more informative.</p>
 <p><strong><code>method = "image"</code> (the original spicyR test).</strong> A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when <code>subject</code> is given
 (Canete et al. 2022).</p>
@@ -198,28 +221,28 @@ arbitrary dependency structures. Journal of the American Statistical Association
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"diabetesData"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># spicyR Cell: patients ("case") are the units</span></span></span>
-<span class="r-in"><span><span class="co"># extra Tc cells within 50 units of each Th cell and of each beta cell</span></span></span>
+<span class="r-in"><span><span class="co"># the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.</span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        intercept coefficient  p.value adj.pvalue from to</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th 0.6375863 -0.09109796 0.679257   0.679257   Tc Th</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        intercept coefficient   p.value adj.pvalue from to</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th 0.1572171   0.1042547 0.4263462  0.4263462   Tc Th</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level excess_ref excess_difference</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset  0.6375863      -0.091097963</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration  0.6375863      -0.008162035</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              se       df   p_value     p_adj       tau2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.2089707 5.573440 0.6792570 0.6792570 0.06581695</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.2297366 5.839256 0.9728421 0.9728421 0.06581695</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       adjusted_for abundance_effect abundance_p_value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset            abundance         0.476337       0.002122868</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration    abundance         0.476337       0.002122868</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       unadjusted_difference unadjusted_se unadjusted_df</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                     0.3860306     0.2935793      5.614328</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration             0.1746664     0.0847683      5.775973</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       unadjusted_p_value unadjusted_p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.23969003       0.23969003</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.08681395       0.08681395</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level    side excess_ref</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset attract  0.1572171</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration attract  0.1572171</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference         se df   p_value     p_adj</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1042547 0.12514142  9 0.4263462 0.4263462</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.1046522 0.08951869  9 0.2724121 0.2724121</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              tau2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.004543366</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.004543366</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># the extra number of Tc cells within 50 units of each Th cell</span></span></span>
+<span class="r-in"><span><span class="va">resCount</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
+<span class="r-in"><span>                  from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="st">"Th"</span>, effect <span class="op">=</span> <span class="st">"count"</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># the original image-level test</span></span></span>
 <span class="r-in"><span><span class="va">resImage</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>,</span></span>

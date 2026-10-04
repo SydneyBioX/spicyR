@@ -2,12 +2,15 @@
 
 Shows the per-image value of one pair in each condition: a box plot with
 the images as points behind it. For the cell method the value is the
-excess (extra `from` cells per `to` cell beyond chance), and each point
-is sized by how much the image contributes to the test (its weight in
-the frailty model, relative to the average image of its condition). With
-`interactive = TRUE` the plot is a plotly widget: hover over a point to
-see its image, patient, excess and weight, which helps to find images
-worth looking at with
+effect of
+[`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
+in each image (by default the extra fraction of `to` cells with a `from`
+cell within `r`; with `effect = "count"`, the extra `from` cells per
+`to` cell), and each point is sized by how much the image contributes to
+the test (its weight in the frailty model, relative to the average image
+of its condition). With `interactive = TRUE` the plot is a plotly
+widget: hover over a point to see its image, patient, excess and weight,
+which helps to find images worth looking at with
 [`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md).
 
 ## Usage
@@ -31,7 +34,8 @@ spicyBoxPlot(
 
 - from:
 
-  The `from` cell type (counted around each `to` cell).
+  The `from` cell type (the neighbours looked for around each `to`
+  cell).
 
 - to:
 
@@ -70,6 +74,7 @@ spicyBoxPlot(spicyTest, rank = 1)
 data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
+#> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.
 spicyBoxPlot(res, from = "Tc", to = "Th")
 #> Ignoring unknown labels:
 #> • size : "Relative weight"

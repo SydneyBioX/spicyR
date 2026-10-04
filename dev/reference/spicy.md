@@ -20,10 +20,11 @@ spicy(
   from = NULL,
   to = NULL,
   method = c("cell", "image"),
+  effect = c("allocation", "count"),
   k = NULL,
   combine = c("maxT", "cauchy"),
-  adjustAbundance = TRUE,
-  variance = c("cr2", "hartung_knapp"),
+  adjustAbundance = FALSE,
+  variance = c("auto", "cr2", "hartung_knapp"),
   frailty = TRUE,
   labelClustering = TRUE,
   ref = NULL,
@@ -77,6 +78,13 @@ spicy(
   `"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR
   test).
 
+- effect:
+
+  Cell method: `"allocation"` (the default), the extra fraction of `to`
+  cells with at least one `from` cell within `r`; or `"count"`, the
+  number of extra `from` cells within `r` of each `to` cell. With `k`,
+  "within `r`" means among the cell's `k` nearest neighbours.
+
 - k:
 
   Cell method: use the `k` nearest neighbours instead of a radius.
@@ -89,14 +97,18 @@ spicy(
 - adjustAbundance:
 
   Cell method: adjust the test for the log share of the `from` type in
-  each image (default `TRUE`). Its effect is reported as
-  `abundance_effect`. `FALSE` gives the test without it.
+  each image (default `FALSE`). Its effect is reported as
+  `abundance_effect`. It does not separate more `from` cells from more
+  densely packed ones, and it removes real effects when the share tracks
+  the condition.
 
 - variance:
 
-  Cell method: `"cr2"` (CR2 on Satterthwaite df, the default) or
-  `"hartung_knapp"` (for very few patients: the model-based variance
-  floored at CR2, on m - 2 df).
+  Cell method: `"auto"` (the default: `"hartung_knapp"` when a condition
+  has at most 5 patients, `"cr2"` otherwise), `"cr2"` (CR2 on
+  Satterthwaite df) or `"hartung_knapp"` (for very few patients: the
+  model-based variance floored at CR2, on m - 2 df). The variance used
+  is in `$variance`.
 
 - frailty, labelClustering:
 
@@ -130,28 +142,48 @@ A `SpicyResults` object.
 and
 [`bind()`](https://sydneybiox.github.io/spicyR/dev/reference/bind.md)
 work for both methods. For the cell method, `$cellResults` holds the
-full table: the excess in each condition (at the average abundance and
-covariates), the difference, its standard error, df, p-value and
-BH-adjusted p-value, the frailty variance, what the test was adjusted
-for (`adjusted_for`), the effect and p-value of each adjustment, and the
-unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
-`unadjusted_p_adj`).
+full table: for the allocation effect, the pair's `side` (`"attract"` or
+`"avoid"`, which sets the scale of the effect), the effect in each
+condition (`excess_ref`, `excess_comp`, at the average covariates), the
+difference (`excess_difference`), its standard error, df, p-value and
+BH-adjusted p-value, the frailty variance and, when the test was
+adjusted, what for (`adjusted_for`), the effect and p-value of each
+adjustment, and the unadjusted test (`unadjusted_difference`,
+`unadjusted_p_value`, `unadjusted_p_adj`). `$effect` records which
+effect was estimated.
 
 ## Details
 
-**`method = "cell"` (the default).** For each `to` cell, the number of
-`from` cells within radius `r` is compared with its exact expectation if
-the `to` cells were a random choice among the cells that are not `from`
-cells in the same image. The effect is the **excess**: the number of
-extra `from` cells within `r` of each `to` cell. Images are combined
-within patients and patients within conditions by a frailty GEE, and the
-difference between conditions is tested with a CR2 cluster-robust
-variance on Satterthwaite degrees of freedom, with **patients
-(`subject`) as the units**. By default the difference is adjusted for
-how common the `from` type is in each image (the log of its share of all
-cells) and for any `covariates`, so that a change in abundance alone
-does not appear as a change in co-localisation. The unadjusted test is
-reported alongside (`unadjusted_*` columns).
+**`method = "cell"` (the default).** In each image, the share of `to`
+cells with at least one `from` cell within radius `r` is compared with
+its exact expectation q if the `to` cells were a random choice among the
+cells that are not `from` cells. The effect (`effect = "allocation"`,
+the default) is the **fraction of `to` cells placed next to (or kept
+away from) `from` cells**. For a pair that attracts (more `to` cells
+next to `from` cells than q over all images together) it is (observed
+share - q) / (1 - q): if a fraction f of the `to` cells were moved next
+to `from` cells, the effect is f. For a pair that avoids it is (observed
+share - q) / q: if a fraction f of the `to` cells that would have a
+`from` cell nearby were moved away, the effect is -f. Either way it does
+not depend on how many `from` cells there are or how densely they are
+packed. The side is chosen once per pair from all images, without the
+conditions, and is reported in the `side` column. `effect = "count"`
+gives the number of extra `from` cells within `r` of each `to` cell
+instead; it also reflects how many `from` cells surround a `to` cell
+(depth of infiltration), but it grows with how densely the `from` cells
+are packed, so a change in packing alone can appear as a change in
+co-localisation. Images are combined within patients and patients within
+conditions by a frailty GEE, and the difference between conditions is
+tested with a CR2 cluster-robust variance on Satterthwaite degrees of
+freedom (Hartung-Knapp on m - 2 df when a condition has at most 5
+patients), with **patients (`subject`) as the units**. The difference is
+adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for
+the log share of the `from` type in each image; the unadjusted test is
+then reported alongside (`unadjusted_*` columns).
+
+When nearly every cell has a `from` cell within `r` (q close to 1),
+there is little room for attraction and an attracting pair's images
+carry little information; a smaller `r` is more informative.
 
 **`method = "image"` (the original spicyR test).** A per-image
 L-function summary of each pair is compared between conditions with a
@@ -192,28 +224,28 @@ Journal of the American Statistical Association 115(529), 393-402.
 ``` r
 data("diabetesData")
 # spicyR Cell: patients ("case") are the units
-# extra Tc cells within 50 units of each Th cell and of each beta cell
+# the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
+#> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.
 topPairs(res)
-#>        intercept coefficient  p.value adj.pvalue from to
-#> Tc__Th 0.6375863 -0.09109796 0.679257   0.679257   Tc Th
+#>        intercept coefficient   p.value adj.pvalue from to
+#> Tc__Th 0.1572171   0.1042547 0.4263462  0.4263462   Tc Th
 res$cellResults
-#>                       from to         level excess_ref excess_difference
-#> Tc__Th__Onset           Tc Th         Onset  0.6375863      -0.091097963
-#> Tc__Th__Long-duration   Tc Th Long-duration  0.6375863      -0.008162035
-#>                              se       df   p_value     p_adj       tau2
-#> Tc__Th__Onset         0.2089707 5.573440 0.6792570 0.6792570 0.06581695
-#> Tc__Th__Long-duration 0.2297366 5.839256 0.9728421 0.9728421 0.06581695
-#>                       adjusted_for abundance_effect abundance_p_value
-#> Tc__Th__Onset            abundance         0.476337       0.002122868
-#> Tc__Th__Long-duration    abundance         0.476337       0.002122868
-#>                       unadjusted_difference unadjusted_se unadjusted_df
-#> Tc__Th__Onset                     0.3860306     0.2935793      5.614328
-#> Tc__Th__Long-duration             0.1746664     0.0847683      5.775973
-#>                       unadjusted_p_value unadjusted_p_adj
-#> Tc__Th__Onset                 0.23969003       0.23969003
-#> Tc__Th__Long-duration         0.08681395       0.08681395
+#>                       from to         level    side excess_ref
+#> Tc__Th__Onset           Tc Th         Onset attract  0.1572171
+#> Tc__Th__Long-duration   Tc Th Long-duration attract  0.1572171
+#>                       excess_difference         se df   p_value     p_adj
+#> Tc__Th__Onset                 0.1042547 0.12514142  9 0.4263462 0.4263462
+#> Tc__Th__Long-duration         0.1046522 0.08951869  9 0.2724121 0.2724121
+#>                              tau2
+#> Tc__Th__Onset         0.004543366
+#> Tc__Th__Long-duration 0.004543366
+
+# the extra number of Tc cells within 50 units of each Th cell
+resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
+                  from = "Tc", to = "Th", effect = "count")
+#> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.
 
 # the original image-level test
 resImage <- spicy(diabetesData, condition = "stage", subject = "case",

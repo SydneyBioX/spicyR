@@ -17,15 +17,16 @@ Elements for the cell method (`method = "cell"`, the default):
 
   the full table, one row per pair (and per level with more than two
   conditions): `excess_ref`, `excess_comp`, `excess_difference`, `se`,
-  `df`, `p_value`, `p_adj`, `tau2`; what the test was adjusted for
-  (`adjusted_for`) and the effect and p-value of each adjustment
-  (`abundance_effect`, `<covariate>_effect`, `<covariate>_p_value`); and
+  `df`, `p_value`, `p_adj`, `tau2`; with covariates or
+  `adjustAbundance = TRUE`, what the test was adjusted for
+  (`adjusted_for`), the effect and p-value of each adjustment
+  (`<covariate>_effect`, `<covariate>_p_value`, `abundance_effect`) and
   the unadjusted test (`unadjusted_difference`, `unadjusted_se`,
   `unadjusted_df`, `unadjusted_p_value`, `unadjusted_p_adj`). For
   survival: `score_coefficient`, `p_value`, `p_adj`, `hazard_ratio_sd`,
-  `hr_p_value` and the unadjusted p-value and hazard ratio. With several
-  radii: `r`, the radius with the strongest evidence, and
-  `p_value_best_radius`.
+  `hr_p_value` and, with `adjustAbundance = TRUE`, the p-value and
+  hazard ratio without it. With several radii: `r`, the radius with the
+  strongest evidence, and `p_value_best_radius`.
 
 - `radiusResults`:
 
@@ -33,8 +34,14 @@ Elements for the cell method (`method = "cell"`, the default):
 
 - `pairwiseAssoc`:
 
-  a list with, for every pair, the excess in every image (`NA` where the
+  a list with, for every pair, the effect in every image (`NA` where the
   pair could not be measured).
+
+- `effect`:
+
+  `"allocation"` (the extra fraction of `to` cells with a `from` cell
+  within `r`), `"count"` (the extra `from` cells within `r` of each `to`
+  cell), or `"kontextual"` (Statial's Kontextual test).
 
 - `imageWeights`:
 

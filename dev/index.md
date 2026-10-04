@@ -8,23 +8,25 @@ patients.**
 Do T cells gather around tumour cells more in one group of patients than
 in another? spicyR tests this for every pair of cell types in imaging
 and spatial transcriptomics data, comparing groups of patients or
-relating co-localisation to survival. For each image it counts the cells
-of one type within a radius of each cell of another, and compares that
-count with what you would expect if the cells had been labelled at
-random, using the cells actually present. Holes, air spaces and uneven
-cell density therefore do not by themselves create a signal. Patients,
-not images or cells, are the units of the test. It needs the type and
-position of every cell (for example imaging mass cytometry, CODEX, MIBI,
-Xenium or CosMx), not spot-based data.
+relating co-localisation to survival. For each image it asks what
+fraction of the cells of one type have a cell of another type within a
+radius, and compares that with what you would expect if the cells had
+been labelled at random, using the cells actually present. Holes, air
+spaces and uneven cell density therefore do not by themselves create a
+signal. Patients, not images or cells, are the units of the test. It
+needs the type and position of every cell (for example imaging mass
+cytometry, CODEX, MIBI, Xenium or CosMx), not spot-based data.
 
-![Left, a tumour cell with a 25 µm circle and the T cells inside it.
-Right, box plots of the extra T cells per tumour cell, one point per
-patient, higher in ER-positive than ER-negative
+![Left, tumour cells marked by whether a T cell lies within 25 µm, with
+the circle drawn around two of them. Right, box plots of the extra
+fraction of tumour cells next to T cells, one point per patient, higher
+in ER-positive than ER-negative
 tumours.](reference/figures/spicyR_overview.png)
 
-Left, a tumour cell with a 25 µm circle and the T cells inside it.
-Right, box plots of the extra T cells per tumour cell, one point per
-patient, higher in ER-positive than ER-negative tumours.
+Left, tumour cells marked by whether a T cell lies within 25 µm, with
+the circle drawn around two of them. Right, box plots of the extra
+fraction of tumour cells next to T cells, one point per patient, higher
+in ER-positive than ER-negative tumours.
 
 ## Quick start
 
@@ -38,7 +40,7 @@ res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25,   # r
              imageID = "file_id", cellType = "description")
 topPairs(res)                                       # the most significant pairs
 signifPlot(res)                                     # every pair at a glance
-spicyBoxPlot(res, from = "T cells", to = "HR- Ki67+")   # T cells around proliferating tumour cells
+spicyBoxPlot(res, from = "T cells", to = "HR- Ki67+")   # proliferating tumour cells next to T cells
 ```
 
 For your own data,
@@ -48,16 +50,17 @@ accepts a `SpatialExperiment`, a `SingleCellExperiment` or a
 yours with `imageID =` and `cellType =`) and takes coordinates from
 `spatialCoords()`, or from columns `x` and `y`. A pair `from` → `to`
 asks whether `to` cells are placed near `from` cells more than other
-cells are: how many extra `from` cells sit around each `to` cell.
+cells are: the extra fraction of `to` cells with a `from` cell nearby
+(`effect = "count"` gives the number of extra `from` cells around each
+`to` cell instead).
 
 ## What you get
 
-- A table with one row per pair of cell types: the number of extra
-  neighbours per cell in each group, the difference, a p-value and an
-  FDR-adjusted p-value. By default the test is adjusted for how common
-  the counted cell type is in each image, so that a change in abundance
-  alone is not reported as a change in arrangement; the unadjusted test
-  is reported too.
+- A table with one row per pair of cell types: the extra fraction of
+  `to` cells next to `from` cells in each group, the difference, a
+  p-value and an FDR-adjusted p-value. Each `to` cell counts once,
+  however many `from` cells are beside it, so more numerous or more
+  tightly packed `from` cells do not inflate the effect.
 - A plot of every pair at once, the per-image values behind any pair
   (interactive, to find the images worth looking at), and a plot of any
   image.
@@ -117,6 +120,6 @@ issues](https://github.com/SydneyBioX/spicyR/issues) or
 <ellis.patrick@sydney.edu.au>. For developers:
 [CONTRIBUTING](https://sydneybiox.github.io/spicyR/dev/CONTRIBUTING.md).
 
-spicyR 2.0 (version 1.99.0) is a development version. Authors: Nicolas
+spicyR 2.0 (version 1.99.6) is a development version. Authors: Nicolas
 Canete, Ellis Patrick, Sadiq Dohadwalla, Elijah Willie, Nicholas
 Robertson, Alex Qin, Farhan Ameen and Shreya Rao. Licence: GPL (\>= 2).

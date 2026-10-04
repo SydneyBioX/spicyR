@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.4</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,9 +56,9 @@
 </h1></div>
 <p><img src="https://img.shields.io/badge/R-%E2%89%A54.6-blue" alt="R"><img src="https://img.shields.io/badge/Bioconductor-2.0%20in%20development-orange" alt="Bioconductor"><img src="https://img.shields.io/badge/licence-GPL%20(%E2%89%A52)-lightgrey" alt="licence"></p>
 <p><strong>Test whether cell types co-localise differently between groups of patients.</strong></p>
-<p>Do T cells gather around tumour cells more in one group of patients than in another? spicyR tests this for every pair of cell types in imaging and spatial transcriptomics data, comparing groups of patients or relating co-localisation to survival. For each image it counts the cells of one type within a radius of each cell of another, and compares that count with what you would expect if the cells had been labelled at random, using the cells actually present. Holes, air spaces and uneven cell density therefore do not by themselves create a signal. Patients, not images or cells, are the units of the test. It needs the type and position of every cell (for example imaging mass cytometry, CODEX, MIBI, Xenium or CosMx), not spot-based data.</p>
+<p>Do T cells gather around tumour cells more in one group of patients than in another? spicyR tests this for every pair of cell types in imaging and spatial transcriptomics data, comparing groups of patients or relating co-localisation to survival. For each image it asks what fraction of the cells of one type have a cell of another type within a radius, and compares that with what you would expect if the cells had been labelled at random, using the cells actually present. Holes, air spaces and uneven cell density therefore do not by themselves create a signal. Patients, not images or cells, are the units of the test. It needs the type and position of every cell (for example imaging mass cytometry, CODEX, MIBI, Xenium or CosMx), not spot-based data.</p>
 <div class="float">
-<img src="reference/figures/spicyR_overview.png" alt="Left, a tumour cell with a 25 µm circle and the T cells inside it. Right, box plots of the extra T cells per tumour cell, one point per patient, higher in ER-positive than ER-negative tumours."><div class="figcaption">Left, a tumour cell with a 25 µm circle and the T cells inside it. Right, box plots of the extra T cells per tumour cell, one point per patient, higher in ER-positive than ER-negative tumours.</div>
+<img src="reference/figures/spicyR_overview.png" alt="Left, tumour cells marked by whether a T cell lies within 25 µm, with the circle drawn around two of them. Right, box plots of the extra fraction of tumour cells next to T cells, one point per patient, higher in ER-positive than ER-negative tumours."><div class="figcaption">Left, tumour cells marked by whether a T cell lies within 25 µm, with the circle drawn around two of them. Right, box plots of the extra fraction of tumour cells next to T cells, one point per patient, higher in ER-positive than ER-negative tumours.</div>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
@@ -72,14 +72,14 @@
 <span>             imageID <span class="op">=</span> <span class="st">"file_id"</span>, cellType <span class="op">=</span> <span class="st">"description"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span>                                       <span class="co"># the most significant pairs</span></span>
 <span><span class="fu"><a href="reference/signifPlot.html">signifPlot</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span>                                     <span class="co"># every pair at a glance</span></span>
-<span><span class="fu"><a href="reference/spicyBoxPlot.html">spicyBoxPlot</a></span><span class="op">(</span><span class="va">res</span>, from <span class="op">=</span> <span class="st">"T cells"</span>, to <span class="op">=</span> <span class="st">"HR- Ki67+"</span><span class="op">)</span>   <span class="co"># T cells around proliferating tumour cells</span></span></code></pre></div>
-<p>For your own data, <code><a href="reference/spicy.html">spicy()</a></code> accepts a <code>SpatialExperiment</code>, a <code>SingleCellExperiment</code> or a <code>data.frame</code>. It looks for the columns <code>imageID</code> and <code>cellType</code> (name yours with <code>imageID =</code> and <code>cellType =</code>) and takes coordinates from <code>spatialCoords()</code>, or from columns <code>x</code> and <code>y</code>. A pair <code>from</code> → <code>to</code> asks whether <code>to</code> cells are placed near <code>from</code> cells more than other cells are: how many extra <code>from</code> cells sit around each <code>to</code> cell.</p>
+<span><span class="fu"><a href="reference/spicyBoxPlot.html">spicyBoxPlot</a></span><span class="op">(</span><span class="va">res</span>, from <span class="op">=</span> <span class="st">"T cells"</span>, to <span class="op">=</span> <span class="st">"HR- Ki67+"</span><span class="op">)</span>   <span class="co"># proliferating tumour cells next to T cells</span></span></code></pre></div>
+<p>For your own data, <code><a href="reference/spicy.html">spicy()</a></code> accepts a <code>SpatialExperiment</code>, a <code>SingleCellExperiment</code> or a <code>data.frame</code>. It looks for the columns <code>imageID</code> and <code>cellType</code> (name yours with <code>imageID =</code> and <code>cellType =</code>) and takes coordinates from <code>spatialCoords()</code>, or from columns <code>x</code> and <code>y</code>. A pair <code>from</code> → <code>to</code> asks whether <code>to</code> cells are placed near <code>from</code> cells more than other cells are: the extra fraction of <code>to</code> cells with a <code>from</code> cell nearby (<code>effect = "count"</code> gives the number of extra <code>from</code> cells around each <code>to</code> cell instead).</p>
 </div>
 <div class="section level2">
 <h2 id="what-you-get">What you get<a class="anchor" aria-label="anchor" href="#what-you-get"></a>
 </h2>
 <ul>
-<li>A table with one row per pair of cell types: the number of extra neighbours per cell in each group, the difference, a p-value and an FDR-adjusted p-value. By default the test is adjusted for how common the counted cell type is in each image, so that a change in abundance alone is not reported as a change in arrangement; the unadjusted test is reported too.</li>
+<li>A table with one row per pair of cell types: the extra fraction of <code>to</code> cells next to <code>from</code> cells in each group, the difference, a p-value and an FDR-adjusted p-value. Each <code>to</code> cell counts once, however many <code>from</code> cells are beside it, so more numerous or more tightly packed <code>from</code> cells do not inflate the effect.</li>
 <li>A plot of every pair at once, the per-image values behind any pair (interactive, to find the images worth looking at), and a plot of any image.</li>
 <li>The same test with covariates, several radii, more than two groups, or a survival outcome.</li>
 </ul>
@@ -120,7 +120,7 @@
 <h2 id="contact">Contact<a class="anchor" aria-label="anchor" href="#contact"></a>
 </h2>
 <p>Questions and bug reports: <a href="https://github.com/SydneyBioX/spicyR/issues" class="external-link">GitHub issues</a> or <a href="mailto:ellis.patrick@sydney.edu.au">ellis.patrick@sydney.edu.au</a>. For developers: <a href="CONTRIBUTING.html">CONTRIBUTING</a>.</p>
-<p>spicyR 2.0 (version 1.99.0) is a development version. Authors: Nicolas Canete, Ellis Patrick, Sadiq Dohadwalla, Elijah Willie, Nicholas Robertson, Alex Qin, Farhan Ameen and Shreya Rao. Licence: GPL (&gt;= 2).</p>
+<p>spicyR 2.0 (version 1.99.6) is a development version. Authors: Nicolas Canete, Ellis Patrick, Sadiq Dohadwalla, Elijah Willie, Nicholas Robertson, Alex Qin, Farhan Ameen and Shreya Rao. Licence: GPL (&gt;= 2).</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

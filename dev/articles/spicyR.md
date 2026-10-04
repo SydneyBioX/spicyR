@@ -14,21 +14,29 @@ the test behaves when there is nothing to find.
 
 A pair is written `from` → `to` and asks whether `to` cells are placed
 near `from` cells more than other cells are. For each `to` cell, spicyR
-counts the `from` cells within a radius, and compares that count with
-what we would expect if the `to` cells were a random choice among the
-cells of the same image that are not `from` cells. The difference is the
-**excess**: the number of extra `from` cells around each `to` cell,
-beyond chance. Because the comparison uses only the cells that are
-actually there, empty regions such as holes or air spaces, and uneven
-cell density, do not by themselves create a signal (artefacts that
-affect one cell type more than others are not removed). spicyR then
-compares the excess between groups of patients, treating patients, not
-images or cells, as the units of the test.
+checks whether there is a `from` cell within a radius, and compares the
+share of `to` cells that have one with what we would expect if the `to`
+cells were a random choice among the cells of the same image that are
+not `from` cells. The effect is the **fraction of `to` cells placed next
+to `from` cells**, beyond chance: 0.2 means as if a fifth of the `to`
+cells had been moved next to `from` cells and the rest left where chance
+would put them. For a pair whose `to` cells avoid the `from` cells
+(fewer have one nearby than chance, over all images), the effect is
+measured the other way: -0.2 means as if a fifth of the `to` cells that
+chance would put next to a `from` cell had been moved away. The `side`
+column says which scale a pair uses. Each `to` cell counts once, however
+many `from` cells are beside it, so more numerous or more tightly packed
+`from` cells do not inflate the effect. Because the comparison uses only
+the cells that are actually there, empty regions such as holes or air
+spaces, and uneven cell density, do not by themselves create a signal
+(artefacts that affect one cell type more than others are not removed).
+spicyR then compares the effect between groups of patients, treating
+patients, not images or cells, as the units of the test.
 
 **Pairs are directional.** Tumour cells → T cells asks whether T cells
-are placed near tumour cells (extra tumour cells around each T cell),
-which is a different question from T cells → tumour cells (are tumour
-cells placed near T cells?).
+are placed near tumour cells (the extra fraction of T cells with a
+tumour cell nearby), which is a different question from T cells → tumour
+cells (are tumour cells placed near T cells?).
 
 spicyR needs the type and position of every cell, as from imaging mass
 cytometry, CODEX, MIBI, Xenium, CosMx or MERSCOPE; it is not designed
@@ -40,25 +48,27 @@ permutation, *spatialFDA* compares spatial summary functions between
 samples with functional models, and *panoramic* compares a
 co-localisation statistic across samples. spicyR is built for the
 comparison between groups of patients: it measures co-localisation
-against random labelling of the cells actually present, adjusts by
-default for how common each cell type is, treats patients as the units,
-and uses a test designed to keep false positives at the nominal rate
-with modest numbers of patients. It also relates co-localisation to
-survival. It works alongside other SydneyBioX packages: per-image
-statistics from *Statial* can be compared between groups with spicyR’s
-image-level test, and *lisaClust* finds spatial regions.
+against random labelling of the cells actually present, on a scale that
+more numerous or more tightly packed cells do not inflate, treats
+patients as the units, and uses a test designed to keep false positives
+at the nominal rate with modest numbers of patients. It also relates
+co-localisation to survival. It works alongside other SydneyBioX
+packages: per-image statistics from *Statial* can be compared between
+groups with spicyR’s image-level test, and *lisaClust* finds spatial
+regions.
 
 ![The pair T cells → proliferating tumour cells. For each proliferating
-tumour cell (red, the \`to\` type), spicyR counts the T cells (blue, the
-\`from\` type) within 25 µm and compares the count with chance. Each
-patient gets an excess, and the excess is compared between ER-negative
-and ER-positive tumours.](../reference/figures/spicyR_overview.png)
+tumour cell (red, the \`to\` type), spicyR checks whether a T cell
+(blue, the \`from\` type) lies within 25 µm, and compares the share of
+tumour cells that have one with chance. Each patient gets an effect, and
+the effect is compared between ER-negative and ER-positive
+tumours.](../reference/figures/spicyR_overview.png)
 
 The pair T cells → proliferating tumour cells. For each proliferating
-tumour cell (red, the `to` type), spicyR counts the T cells (blue, the
-`from` type) within 25 µm and compares the count with chance. Each
-patient gets an excess, and the excess is compared between ER-negative
-and ER-positive tumours.
+tumour cell (red, the `to` type), spicyR checks whether a T cell (blue,
+the `from` type) lies within 25 µm, and compares the share of tumour
+cells that have one with chance. Each patient gets an effect, and the
+effect is compared between ER-negative and ER-positive tumours.
 
 ## Installation
 
@@ -167,56 +177,65 @@ res <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
 res
 #> spicyR (cell-level test): 484 pairs, ER+ vs ER-, r = 25
 #> Units: 456 patients with 456 images
-#> Adjusted for: abundance (unadjusted test in the unadjusted_* columns)
-#> BH-adjusted p < 0.05: 19 pairs (34 without adjustment)
+#> BH-adjusted p < 0.05: 43 pairs
 #> See topPairs() and $cellResults.
 ```
 
-All 484 ordered pairs of cell types are tested, in about ten seconds on
-one core; run time and memory grow roughly in proportion to the number
-of cells and to the radius. By default each comparison is adjusted for
-how common the `from` type is in each image, for reasons we come to in
-[Why adjust for abundance?](#why-adjust-for-abundance).
+All 484 ordered pairs of cell types are tested, in a few seconds on one
+core; run time and memory grow roughly in proportion to the number of
+cells and to the radius.
 [`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md)
-lists the most significant. `intercept` is the average excess in ER−
-patients, and `coefficient` is the difference in average excess between
-ER+ and ER− patients (ER+ minus ER−), in extra `from` cells per `to`
-cell. P-values are adjusted across all pairs by the Benjamini–Hochberg
-method.
+lists the most significant. `intercept` is the average effect in ER−
+patients, and `coefficient` is the difference in average effect between
+ER+ and ER− patients (ER+ minus ER−), as a fraction of the `to` cells.
+P-values are adjusted across all pairs by the Benjamini–Hochberg method.
 
 ``` r
 
 topPairs(res, n = 8)
-#>                                intercept coefficient      p.value   adj.pvalue
-#> HR- CK7+__HR+ CK7- Ki67+      0.91473529 -0.57943094 2.071318e-06 0.0005130581
-#> HR+ CK7- Ki67+__HR- CK7+      0.24376555 -0.18071947 2.120075e-06 0.0005130581
-#> T cells__HR- Ki67+            0.01352875  0.21944204 8.011807e-06 0.0012925716
-#> HRlow CKlow__HR- CK7+        -0.05475078  0.03836229 9.104840e-05 0.0110168560
-#> HR- CK7-__HER2+               0.30230224 -0.18000011 1.242547e-04 0.0120278570
-#> Fibroblasts CD68+__HR- Ki67+  0.02082939  0.09210954 2.342215e-04 0.0188938708
-#> Fibroblasts__HR- Ki67+        0.15401401  0.21468734 3.015880e-04 0.0207038782
-#> Myofibroblasts__HR- CK7+     -0.35601117  0.16487292 3.422129e-04 0.0207038782
-#>                                           from             to
-#> HR- CK7+__HR+ CK7- Ki67+              HR- CK7+ HR+ CK7- Ki67+
-#> HR+ CK7- Ki67+__HR- CK7+        HR+ CK7- Ki67+       HR- CK7+
-#> T cells__HR- Ki67+                     T cells      HR- Ki67+
-#> HRlow CKlow__HR- CK7+              HRlow CKlow       HR- CK7+
-#> HR- CK7-__HER2+                       HR- CK7-          HER2+
-#> Fibroblasts CD68+__HR- Ki67+ Fibroblasts CD68+      HR- Ki67+
-#> Fibroblasts__HR- Ki67+             Fibroblasts      HR- Ki67+
-#> Myofibroblasts__HR- CK7+        Myofibroblasts       HR- CK7+
+#>                                   intercept coefficient      p.value
+#> HR+ CK7-__HR+ CK7- Ki67+         0.06993296   0.5326493 1.105842e-26
+#> HR+ CK7-__HR- CK7-               0.06935313   0.3231178 7.381916e-19
+#> HR+ CK7-__HR- CK7+               0.09557071   0.3551897 5.338352e-15
+#> HR+ CK7-__HR+ CK7-               0.20863150   0.3572057 7.584766e-10
+#> HR+ CK7- Ki67+__HR- CK7+         0.21189393  -0.1832958 6.962887e-08
+#> HR+ CK7-__Macrophages Vim+ Slug+ 0.03253888   0.2494906 1.492337e-07
+#> HR- CK7+__HR+ CK7- Ki67+         0.34430128  -0.2735128 1.085455e-06
+#> HR+ CK7-__HR+ CK7- Slug+         0.04652803   0.3834089 1.349181e-06
+#>                                    adj.pvalue           from
+#> HR+ CK7-__HR+ CK7- Ki67+         5.352274e-24       HR+ CK7-
+#> HR+ CK7-__HR- CK7-               1.786424e-16       HR+ CK7-
+#> HR+ CK7-__HR- CK7+               8.612542e-13       HR+ CK7-
+#> HR+ CK7-__HR+ CK7-               9.177567e-08       HR+ CK7-
+#> HR+ CK7- Ki67+__HR- CK7+         6.740075e-06 HR+ CK7- Ki67+
+#> HR+ CK7-__Macrophages Vim+ Slug+ 1.203818e-05       HR+ CK7-
+#> HR- CK7+__HR+ CK7- Ki67+         7.505147e-05       HR- CK7+
+#> HR+ CK7-__HR+ CK7- Slug+         8.162542e-05       HR+ CK7-
+#>                                                      to
+#> HR+ CK7-__HR+ CK7- Ki67+                 HR+ CK7- Ki67+
+#> HR+ CK7-__HR- CK7-                             HR- CK7-
+#> HR+ CK7-__HR- CK7+                             HR- CK7+
+#> HR+ CK7-__HR+ CK7-                             HR+ CK7-
+#> HR+ CK7- Ki67+__HR- CK7+                       HR- CK7+
+#> HR+ CK7-__Macrophages Vim+ Slug+ Macrophages Vim+ Slug+
+#> HR- CK7+__HR+ CK7- Ki67+                 HR+ CK7- Ki67+
+#> HR+ CK7-__HR+ CK7- Slug+                 HR+ CK7- Slug+
 ```
+
+The most significant pairs nearly all have `HR+ CK7-` tumour cells as
+the `from` type; we come back to them in [Tissue
+compartments](#tissue-compartments).
 
 The full results are in `res$cellResults`, with one row per pair:
 
 | Column | Meaning |
 |----|----|
-| `excess_ref`, `excess_comp` | average excess in the reference group (ER−) and the comparison group (ER+) |
+| `excess_ref`, `excess_comp` | average effect in the reference group (ER−) and the comparison group (ER+) |
 | `excess_difference`, `se`, `df` | their difference, its standard error and degrees of freedom |
 | `p_value`, `p_adj` | p-value, and Benjamini–Hochberg adjusted p-value across all pairs |
-| `tau2` | how much the excess varies between patients within a group |
-| `adjusted_for`, `abundance_effect` | what the test was adjusted for, and the effect of abundance |
-| `unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj` | the same test without the adjustment |
+| `tau2` | how much the effect varies between patients within a group |
+| `adjusted_for`, `<covariate>_effect` | with covariates, what the test was adjusted for and the effect of each covariate |
+| `unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj` | with covariates, the same test without them |
 
 With more than two groups there is one row per pair and group, each
 compared with the reference group, in a column `level`.
@@ -225,14 +244,14 @@ compared with the reference group, in a column `level`.
 
 [`signifPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/signifPlot.md)
 shows the whole study. Read rows as `from` and columns as `to`. Each
-circle is a pair: the left half is coloured by the excess in ER− tumours
-and the right half by the excess in ER+ tumours (red: more `from` cells
-around the `to` cells than chance, blue: fewer), the size reflects the
+circle is a pair: the left half is coloured by the effect in ER− tumours
+and the right half by the effect in ER+ tumours (red: more `to` cells
+next to `from` cells than chance, blue: fewer), the size reflects the
 p-value, and a black ring marks a BH-adjusted p-value below 0.05.
 
 ``` r
 
-signifPlot(res, fdr = TRUE, breaks = c(-2, 2, 0.5))
+signifPlot(res, fdr = TRUE, breaks = c(-0.5, 0.5, 0.1))
 ```
 
 ![](spicyR_files/figure-html/signif-plot-1.png)
@@ -240,31 +259,30 @@ signifPlot(res, fdr = TRUE, breaks = c(-2, 2, 0.5))
 ## Looking at one pair
 
 We focus on an immune pair, T cells → `HR- Ki67+`: are proliferating
-hormone-receptor-negative tumour cells placed near T cells? Its excess
-is the number of extra T cells around each of these tumour cells.
+hormone-receptor-negative tumour cells placed near T cells? Its effect
+is the extra fraction of these tumour cells with a T cell within 25 µm.
 
 ``` r
 
 res$cellResults["T cells__HR- Ki67+", c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
-#>                    excess_ref excess_comp excess_difference      p_value
-#> T cells__HR- Ki67+ 0.01352875   0.2329708          0.219442 8.011807e-06
-#>                          p_adj
-#> T cells__HR- Ki67+ 0.001292572
+#>                    excess_ref excess_comp excess_difference     p_value
+#> T cells__HR- Ki67+ 0.02118483    0.115245        0.09406016 0.001671982
+#>                         p_adj
+#> T cells__HR- Ki67+ 0.03518432
 ```
 
-In ER− tumours these tumour cells have no more T cells nearby than
-chance would give. In ER+ tumours they have about 0.23 extra T cells
-each, roughly one extra T cell for every four tumour cells.
+In ER− tumours these tumour cells have a T cell nearby barely more often
+than chance would give (0.02). In ER+ tumours the effect is 0.12, as if
+about one in nine of them had been placed next to T cells.
 
 [`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md)
-shows the excess in each image (here one image per patient), with a
+shows the effect in each image (here one image per patient), with a
 point per image behind each box. Points are sized by how much the image
 contributes to the test.
 
 ``` r
 
-spicyBoxPlot(res, from = "T cells", to = "HR- Ki67+") +
-  coord_cartesian(ylim = c(-2, 4))
+spicyBoxPlot(res, from = "T cells", to = "HR- Ki67+")
 ```
 
 ![](spicyR_files/figure-html/box-plot-1.png)
@@ -293,11 +311,11 @@ Images without any `HR- Ki67+` cells carry no information about the pair
 head(bind(res, pairName = "T cells__HR- Ki67+"))
 #>        imageID condition subject T cells__HR- Ki67+
 #> 1 MB0000_1_527       ER+ MB-0000                 NA
-#> 2 MB0002_1_345       ER+ MB-0002        -0.01081081
-#> 3 MB0005_1_211       ER+ MB-0005        -0.01289134
-#> 4 MB0010_1_420       ER+ MB-0010         0.24657169
+#> 2 MB0002_1_345       ER+ MB-0002        -0.01092896
+#> 3 MB0005_1_211       ER+ MB-0005        -0.01305970
+#> 4 MB0010_1_420       ER+ MB-0010         0.25661632
 #> 5 MB0013_1_371       ER+ MB-0013                 NA
-#> 6 MB0014_1_326       ER+ MB-0014         0.29756739
+#> 6 MB0014_1_326       ER+ MB-0014         0.48000000
 ```
 
 ## Looking at the images
@@ -305,20 +323,20 @@ head(bind(res, pairName = "T cells__HR- Ki67+"))
 [`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md)
 shows one image: the density of all cells in blue, the `from` cells in
 gold and the `to` cells in dark red. With `r`, it draws the circle
-around each `to` cell inside which `from` cells are counted. We look at
-three images found with the interactive box plot.
+around each `to` cell inside which spicyR looks for `from` cells. We
+look at three images found with the interactive box plot.
 
 ``` r
 
 pair <- "T cells__HR- Ki67+"
 examples <- c("MB0150_1_155", "MB0132_1_533", "MB0244_1_519")
 i <- match(examples, res$imageID)
-data.frame(image = examples, ER = res$condition[i], excess = res$pairwiseAssoc[[pair]][i],
+data.frame(image = examples, ER = res$condition[i], effect = res$pairwiseAssoc[[pair]][i],
            weight = res$imageWeights[[pair]][i])
-#>          image  ER     excess       weight
-#> 1 MB0150_1_155 ER+  1.4550137 3.744636e-03
-#> 2 MB0132_1_533 ER- -0.2220841 1.113268e-02
-#> 3 MB0244_1_519 ER+  8.2712418 3.523647e-05
+#>          image  ER      effect       weight
+#> 1 MB0150_1_155 ER+  0.67741935 0.0051620133
+#> 2 MB0132_1_533 ER- -0.07907636 0.0173813766
+#> 3 MB0244_1_519 ER+  1.00000000 0.0009064204
 ```
 
 ``` r
@@ -331,102 +349,97 @@ for (im in examples)
 ![](spicyR_files/figure-html/example-images-plot-1.png)![](spicyR_files/figure-html/example-images-plot-2.png)![](spicyR_files/figure-html/example-images-plot-3.png)
 
 In the ER+ image on the left, the T cells run along the band of tumour
-cells at the bottom: 1.5 extra T cells per tumour cell. In the ER− image
-in the middle, the T cells are concentrated top left, apart from most of
-the tumour cells, and each tumour cell has slightly fewer T cells nearby
-than chance (−0.22). The ER+ image on the right has the largest excess
-of all, 8.3, but it comes from just two tumour cells that happen to sit
-in a cluster of T cells.
+cells at the bottom: an effect of 0.68, as if two-thirds of the tumour
+cells had been placed next to T cells. In the ER− image in the middle,
+the T cells are concentrated top left, apart from most of the tumour
+cells, and slightly fewer tumour cells have a T cell nearby than chance
+would give (−0.08). The ER+ image on the right reaches the largest
+possible value, 1, but only because its two tumour cells both happen to
+sit in a cluster of T cells.
 
-**Point size matters.** The right-hand image is the highest point in the
-box plot, but its weight is close to zero: an excess estimated from two
+**Point size matters.** The right-hand image sits at the top of the box
+plot, but its weight is close to zero: an effect estimated from two
 cells says little. Weights also level off. Once an image has a few dozen
-`to` cells, more cells add little, because patients differ from one
-another more than repeated counts within a patient do. The weights are
-in `res$imageWeights`.
+`to` cells, more cells add little, because the differences between
+patients outweigh the noise within an image. The weights are in
+`res$imageWeights`.
 
-## Why adjust for abundance?
+## Tissue compartments
 
-A cell type that is simply more common will be found more often around
-any other cell, even if cells are arranged no differently. Here the
-`HR+ CK7-` tumour cells are much more common in ER+ tumours. Without
-adjustment, half of the pairs with `HR+ CK7-` as the `from` type (the
-type counted) differ significantly between ER+ and ER− patients, and
-they are the most significant pairs of all.
-
-By default, spicyR adjusts each comparison for the log of the `from`
-type’s share of all cells in each image. The excess is then compared
-between groups at the same abundance, and a difference in arrangement is
-not confused with a difference in composition. The unadjusted test is
-kept in the `unadjusted_*` columns.
+The most significant pairs have `HR+ CK7-` tumour cells as the `from`
+type. These cells make up about a quarter of the cells in a typical ER+
+core and almost none in ER− cores. In ER+ tumours they make up much of
+the tumour tissue and the other tumour cells sit among them, so far more
+of those cells have an `HR+ CK7-` cell nearby than if they had been
+placed at random among all the other cells, stroma included.
 
 ``` r
 
-tab <- res$cellResults[order(res$cellResults$unadjusted_p_value), ]
-head(tab[, c("from", "to", "unadjusted_difference", "unadjusted_p_adj", "excess_difference", "p_adj")], 8)
-#>                                 from                to unadjusted_difference
-#> HR+ CK7-__HR+ CK7- Ki67+    HR+ CK7-    HR+ CK7- Ki67+             1.9930606
-#> HR+ CK7-__Fibroblasts       HR+ CK7-       Fibroblasts            -0.5111635
-#> HR+ CK7-__HR- CK7+          HR+ CK7-          HR- CK7+             0.9996637
-#> HR+ CK7-__Myofibroblasts    HR+ CK7-    Myofibroblasts            -0.3747870
-#> HR+ CK7-__HR+ CK7-          HR+ CK7-          HR+ CK7-             1.3933788
-#> HR+ CK7-__Fibroblasts CD68+ HR+ CK7- Fibroblasts CD68+            -0.2034117
-#> HR+ CK7-__HR- CK7-          HR+ CK7-          HR- CK7-             0.6466170
-#> HR+ CK7-__HR+ CK7- Slug+    HR+ CK7-    HR+ CK7- Slug+             1.2171623
-#>                             unadjusted_p_adj excess_difference      p_adj
-#> HR+ CK7-__HR+ CK7- Ki67+        5.511528e-23        0.23693038 0.63209244
-#> HR+ CK7-__Fibroblasts           4.294326e-21        0.05765227 0.61194500
-#> HR+ CK7-__HR- CK7+              6.298646e-16        0.27181769 0.18464649
-#> HR+ CK7-__Myofibroblasts        3.590827e-12        0.06602786 0.63209244
-#> HR+ CK7-__HR+ CK7-              2.118001e-10        0.72822922 0.04147583
-#> HR+ CK7-__Fibroblasts CD68+     2.372546e-09        0.03308684 0.62050477
-#> HR+ CK7-__HR- CK7-              2.416549e-09        0.13284958 0.65174253
-#> HR+ CK7-__HR+ CK7- Slug+        1.859721e-08        0.05437067 0.93489013
+tab <- res$cellResults[res$cellResults$from == "HR+ CK7-", ]
+head(tab[order(tab$p_value), c("to", "excess_ref", "excess_comp", "p_adj")], 6)
+#>                                                      to excess_ref excess_comp
+#> HR+ CK7-__HR+ CK7- Ki67+                 HR+ CK7- Ki67+ 0.06993296   0.6025822
+#> HR+ CK7-__HR- CK7-                             HR- CK7- 0.06935313   0.3924709
+#> HR+ CK7-__HR- CK7+                             HR- CK7+ 0.09557071   0.4507604
+#> HR+ CK7-__HR+ CK7-                             HR+ CK7- 0.20863150   0.5658371
+#> HR+ CK7-__Macrophages Vim+ Slug+ Macrophages Vim+ Slug+ 0.03253888   0.2820295
+#> HR+ CK7-__HR+ CK7- Slug+                 HR+ CK7- Slug+ 0.04652803   0.4299370
+#>                                         p_adj
+#> HR+ CK7-__HR+ CK7- Ki67+         5.352274e-24
+#> HR+ CK7-__HR- CK7-               1.786424e-16
+#> HR+ CK7-__HR- CK7+               8.612542e-13
+#> HR+ CK7-__HR+ CK7-               9.177567e-08
+#> HR+ CK7-__Macrophages Vim+ Slug+ 1.203818e-05
+#> HR+ CK7-__HR+ CK7- Slug+         8.162542e-05
 ```
 
-All but one of the pairs with `HR+ CK7-` as the `from` type are no
-longer significant after the adjustment, so their unadjusted signal
-largely reflects abundance. Because abundance differs so much with ER
-status, the adjusted test also has less power for these pairs, so a
-non-significant adjusted result is not evidence of no effect.
+In ER+ tumours the effect for proliferating `HR+ CK7- Ki67+` cells is
+0.60, against 0.07 in ER− tumours, while fibroblasts and T cells are
+placed away from `HR+ CK7-` cells (where `HR+ CK7-` cells are rare, as
+in ER− cores, an effect cannot fall far below zero). These are real
+differences in arrangement, but they describe the structure of the
+tissue (tumour cells sit with tumour cells) more than an interaction
+between particular cell types.
+
+To ask about arrangement within a compartment, for example whether
+proliferating tumour cells sit closer to `HR+ CK7-` cells than other
+tumour cells do, compare with random labelling among the tumour cells
+only. The Kontextual test in the *Statial* package does this.
+
+## Allocation or count?
+
+By default spicyR asks whether each `to` cell has a `from` cell nearby.
+With `effect = "count"` it asks how many: the effect is then the number
+of extra `from` cells within the radius of each `to` cell.
 
 ``` r
 
-tab$highlight <- ifelse(rownames(tab) == pair, "T cells → HR- Ki67+",
-                        ifelse(tab$from == "HR+ CK7-", "HR+ CK7- counted", "other"))
-ggplot(tab, aes(pmin(-log10(unadjusted_p_adj), 10), pmin(-log10(p_adj), 10), colour = highlight)) +
-  geom_abline(linetype = 2, colour = "grey30") +
-  geom_point(alpha = 0.8) +
-  scale_colour_manual(values = c("T cells → HR- Ki67+" = "#1f6fb4", "HR+ CK7- counted" = "#b3261e", other = "grey60")) +
-  coord_equal(xlim = c(0, 10), ylim = c(0, 10)) +
-  labs(x = "-log10 adjusted p, without adjustment for abundance\n(values above 10 shown at 10)",
-       y = "-log10 adjusted p (the default test)", colour = NULL) +
-  theme_classic() +
-  theme(legend.position = "bottom")
+resCount <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
+                  imageID = "file_id", cellType = "description", effect = "count")
+resCount$cellResults[pair, c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+#>                    excess_ref excess_comp excess_difference     p_value
+#> T cells__HR- Ki67+ 0.01030367   0.1621154         0.1518117 0.000282357
+#>                          p_adj
+#> T cells__HR- Ki67+ 0.007356049
 ```
 
-![](spicyR_files/figure-html/abundance-plot-1.png)
+In ER+ tumours each proliferating tumour cell has about 0.16 extra T
+cells within 25 µm, against 0.01 in ER− tumours. The count also reflects
+how many T cells surround each tumour cell, but it grows with how
+tightly the `from` cells are packed: if T cells form denser clusters in
+one group, each tumour cell next to a cluster counts more T cells. The
+default effect counts each tumour cell once, however many T cells are
+beside it, so denser clusters do not inflate it.
 
-Our pair is more significant after the adjustment, not less (`p_value`
-against `unadjusted_p_value`). Each image has its own share of T cells,
-and tumours with many T cells have more T cells near any cell. Adjusting
-for it removes this noise. `abundance_effect` is the change in excess
-for each unit of log share: positive here, as expected.
-
-``` r
-
-res$cellResults[pair, c("excess_difference", "p_value", "abundance_effect", "abundance_p_value",
-                        "unadjusted_difference", "unadjusted_p_value")]
-#>                    excess_difference      p_value abundance_effect
-#> T cells__HR- Ki67+          0.219442 8.011807e-06       0.08407617
-#>                    abundance_p_value unadjusted_difference unadjusted_p_value
-#> T cells__HR- Ki67+      1.751034e-07             0.1518117        0.000282357
-```
-
-Use the default (adjusted) result when your question is about
-arrangement. If a change in composition is part of the biology you are
-asking about, use the unadjusted columns, or
-`spicy(..., adjustAbundance = FALSE)`.
+Use the default when your question is whether `to` cells are placed next
+to `from` cells. Use `effect = "count"` when the number of `from` cells
+around each `to` cell is the question, keeping in mind that it also
+rises when the `from` cells are packed more tightly.
+`adjustAbundance = TRUE` adds the log share of the `from` type in each
+image to the model, so that groups are compared at the same abundance;
+it does not account for how tightly the `from` cells are packed, and
+when that share differs strongly between groups, as for `HR+ CK7-` here,
+it leaves little power.
 
 ## Patients with several images
 
@@ -445,8 +458,7 @@ diabetes$stage <- droplevels(diabetes$stage)
 spicy(diabetes, condition = "stage", subject = "case", r = 50)
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 8 patients with 80 images
-#> Adjusted for: abundance (unadjusted test in the unadjusted_* columns)
-#> BH-adjusted p < 0.05: 0 pairs (0 without adjustment)
+#> BH-adjusted p < 0.05: 0 pairs
 #> See topPairs() and $cellResults.
 ```
 
@@ -458,13 +470,12 @@ No pair is significant with the 8 donors as the units. Leaving out
 spicy(diabetes, condition = "stage", r = 50)
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 80 images (no subject given: each image is a patient)
-#> Adjusted for: abundance (unadjusted test in the unadjusted_* columns)
-#> BH-adjusted p < 0.05: 2 pairs (9 without adjustment)
+#> BH-adjusted p < 0.05: 4 pairs
 #> See topPairs() and $cellResults.
 ```
 
 Treating every image as an independent patient overstates the evidence:
-images from one donor are alike, and here it turns up pairs that the
+images from one donor are alike, and here it turns up a pair that the
 donors do not support. Always give `subject` when patients have several
 images.
 
@@ -483,27 +494,27 @@ resCov <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
 resCov
 #> spicyR (cell-level test): 484 pairs, ER+ vs ER-, r = 25
 #> Units: 456 patients with 456 images
-#> Adjusted for: abundance, covariates (unadjusted test in the unadjusted_* columns)
+#> Adjusted for: covariates (unadjusted test in the unadjusted_* columns)
 #> 3 pairs could not be adjusted and are reported unadjusted (see adjusted_for)
-#> BH-adjusted p < 0.05: 4 pairs (34 without adjustment)
+#> BH-adjusted p < 0.05: 19 pairs (43 without adjustment)
 #> See topPairs() and $cellResults.
 ```
 
 The main columns (`excess_difference`, `p_value`, `p_adj`) are now the
-ER comparison adjusted for abundance, age and grade. Each covariate also
-has its own effect and p-value. A factor has one per level after the
-first: `Grade2` and `Grade3` compare grades 2 and 3 with grade 1.
+ER comparison adjusted for age and grade. Each covariate also has its
+own effect and p-value. A factor has one per level after the first:
+`Grade2` and `Grade3` compare grades 2 and 3 with grade 1.
 
 ``` r
 
 resCov$cellResults[pair, c("excess_difference", "p_value", "Age.At.Diagnosis_effect", "Age.At.Diagnosis_p_value",
                            "Grade2_effect", "Grade2_p_value", "Grade3_effect", "Grade3_p_value")]
 #>                    excess_difference     p_value Age.At.Diagnosis_effect
-#> T cells__HR- Ki67+         0.2294387 7.12482e-06             0.001072325
+#> T cells__HR- Ki67+        0.09163248 0.002731499            0.0008602902
 #>                    Age.At.Diagnosis_p_value Grade2_effect Grade2_p_value
-#> T cells__HR- Ki67+                0.3061597    0.07453645      0.1817184
+#> T cells__HR- Ki67+                0.2775524    0.02693205      0.6110919
 #>                    Grade3_effect Grade3_p_value
-#> T cells__HR- Ki67+    0.08227635      0.1300123
+#> T cells__HR- Ki67+    0.01757525      0.7263142
 ```
 
 The difference between ER+ and ER− patients is much the same after
@@ -534,19 +545,20 @@ an alternative).
 resR <- spicy(spe, condition = "ER", subject = "metabricId", r = c(10, 25, 50, 75),
               imageID = "file_id", cellType = "description")
 resR$cellResults[c("T cells__HR- Ki67+", "B cells__HR- Ki67+"), c("r", "excess_difference", "p_value")]
-#>                     r excess_difference      p_value
-#> T cells__HR- Ki67+ 25        0.21944204 2.731342e-05
-#> B cells__HR- Ki67+ 50        0.08572214 1.069835e-02
+#>                     r excess_difference    p_value
+#> T cells__HR- Ki67+ 25        0.09406016 0.00561658
+#> B cells__HR- Ki67+ 50        0.39317591 0.01314035
 ```
 
 `r` is the radius with the strongest evidence, and `p_value` the
 combined p-value over all radii.
 
-The excess grows with the radius simply because larger circles hold more
-cells, so compare p-values across radii rather than the size of the
-excess. The excess at the chosen radius is a little optimistic, because
-that radius was picked for its strength. This combined test is new, and
-its calibration is still being checked.
+The effect depends on the radius: at a larger radius more cells have a
+`from` cell nearby by chance, and the effect describes placement at that
+scale. Where most cells have a `from` cell nearby by chance, there is
+little room for an effect and it is noisy. Compare p-values across radii
+rather than the size of the effect. The effect at the chosen radius is a
+little optimistic, because that radius was picked for its strength.
 
 ``` r
 
@@ -556,7 +568,7 @@ ggplot(profile, aes(r, -log10(p_value), colour = from)) +
   geom_line() +
   geom_point() +
   expand_limits(y = 0) +
-  labs(x = "radius (µm)", y = "-log10 p at each radius, ER+ vs ER-", colour = "counted around HR- Ki67+") +
+  labs(x = "radius (µm)", y = "-log10 p at each radius, ER+ vs ER-", colour = "from (to: HR- Ki67+)") +
   theme_classic()
 ```
 
@@ -565,7 +577,7 @@ ggplot(profile, aes(r, -log10(p_value), colour = from)) +
 ## Is co-localisation associated with survival?
 
 With a `Surv` column as the condition, spicyR asks whether a patient’s
-excess is associated with their outcome. Here we use relapse-free
+effect is associated with their outcome. Here we use relapse-free
 survival, adjusting for age.
 
 ``` r
@@ -576,44 +588,53 @@ resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25,
 resS
 #> spicyR (cell-level test): 484 pairs, association with survival, r = 25
 #> Units: 456 patients with 456 images
-#> Adjusted for: abundance, covariates (unadjusted test in the unadjusted_* columns)
-#> BH-adjusted p < 0.05: 0 pairs (3 without adjustment)
+#> Adjusted for: covariates
+#> BH-adjusted p < 0.05: 3 pairs
 #> See topPairs() and $cellResults.
 head(resS$cellResults[order(resS$cellResults$p_value),
-                      c("from", "to", "p_value", "p_adj", "hazard_ratio_sd", "unadjusted_p_value", "unadjusted_p_adj")])
-#>                                                             from             to
-#> HRlow CKlow__HR- CK7+                                HRlow CKlow       HR- CK7+
-#> Vascular SMA+__HER2+                               Vascular SMA+          HER2+
-#> HR- CK7+__HRlow CKlow                                   HR- CK7+    HRlow CKlow
-#> Basal CKlow__Myoepithelial                           Basal CKlow  Myoepithelial
-#> Macrophages Vim+ CD45low__Myoepithelial Macrophages Vim+ CD45low  Myoepithelial
-#> HR+ CK7-__HR+ CK7- Ki67+                                HR+ CK7- HR+ CK7- Ki67+
-#>                                             p_value     p_adj hazard_ratio_sd
-#> HRlow CKlow__HR- CK7+                   0.000294744 0.1426561       0.7096738
-#> Vascular SMA+__HER2+                    0.001148443 0.2402531              NA
-#> HR- CK7+__HRlow CKlow                   0.001489172 0.2402531       0.7481943
-#> Basal CKlow__Myoepithelial              0.007104592 0.7306842       0.7143004
-#> Macrophages Vim+ CD45low__Myoepithelial 0.008175431 0.7306842       0.7133472
-#> HR+ CK7-__HR+ CK7- Ki67+                0.009058068 0.7306842       0.7927419
-#>                                         unadjusted_p_value unadjusted_p_adj
-#> HRlow CKlow__HR- CK7+                         0.0001923491       0.03544836
-#> Vascular SMA+__HER2+                          0.0007754965       0.09383508
-#> HR- CK7+__HRlow CKlow                         0.0025619655       0.24799826
-#> Basal CKlow__Myoepithelial                    0.0082132282       0.39752025
-#> Macrophages Vim+ CD45low__Myoepithelial       0.0145471257       0.50291492
-#> HR+ CK7-__HR+ CK7- Ki67+                      0.0001081977       0.03544836
+                      c("from", "to", "p_value", "p_adj", "hazard_ratio_sd")])
+#>                                                          from             to
+#> HR+ CK7-__HR- CK7+                                   HR+ CK7-       HR- CK7+
+#> HR+ CK7-__HR+ CK7- Ki67+                             HR+ CK7- HR+ CK7- Ki67+
+#> HRlow CKlow__HR- CK7+                             HRlow CKlow       HR- CK7+
+#> HR+ CK7-__HR- CK7-                                   HR+ CK7-       HR- CK7-
+#> HR+ CK7-__HR+ CK7-                                   HR+ CK7-       HR+ CK7-
+#> Macrophages Vim+ Slug+__HR- CKlow CK5+ Macrophages Vim+ Slug+ HR- CKlow CK5+
+#>                                             p_value       p_adj hazard_ratio_sd
+#> HR+ CK7-__HR- CK7+                     5.443729e-06 0.002634765       0.6295784
+#> HR+ CK7-__HR+ CK7- Ki67+               2.421992e-05 0.005861221       0.6810433
+#> HRlow CKlow__HR- CK7+                  1.705136e-04 0.027509521       0.6891072
+#> HR+ CK7-__HR- CK7-                     6.082885e-04 0.068888639       0.7445197
+#> HR+ CK7-__HR+ CK7-                     7.116595e-04 0.068888639       0.7421966
+#> Macrophages Vim+ Slug+__HR- CKlow CK5+ 1.711003e-03 0.138020933              NA
 ```
 
-The p-value comes from a score test that relates each patient’s excess
+The p-value comes from a score test that relates each patient’s effect
 to their outcome. `hazard_ratio_sd` is the hazard ratio for a one
-standard deviation higher excess, from a Cox model; below one, patients
-with a higher excess had a lower risk of relapse. It is missing when the
-excess barely varies between patients.
+standard deviation higher effect, from a Cox model; below one, patients
+with a higher effect had a lower risk of relapse. It is missing when the
+effect barely varies between patients.
 
-No pair is significant after adjusting for multiple testing. Without the
-abundance adjustment, three pairs are, all with tumour cell types as the
-`from` type. Tumour composition is itself prognostic, so those three may
-reflect composition as much as the arrangement of cells.
+Two pairs are significant after adjusting for multiple testing, both
+with `HR+ CK7-` tumour cells as the `from` type: patients in whom more
+of the other tumour cells sat next to `HR+ CK7-` cells relapsed later.
+These cells are typical of ER+ tumours, and ER status is itself related
+to relapse, so we add it to the covariates.
+
+``` r
+
+resSER <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25,
+                imageID = "file_id", cellType = "description", covariates = c("Age.At.Diagnosis", "ER"))
+resSER
+#> spicyR (cell-level test): 484 pairs, association with survival, r = 25
+#> Units: 456 patients with 456 images
+#> Adjusted for: covariates
+#> BH-adjusted p < 0.05: 0 pairs
+#> See topPairs() and $cellResults.
+```
+
+No pair remains significant: these two pairs say little about relapse
+beyond the tumour’s ER status.
 
 ## A check you can run
 
@@ -636,8 +657,8 @@ shuffles <- do.call(rbind, lapply(1:5, function(i) {
 }))
 aggregate(percent ~ threshold, shuffles, mean)
 #>   threshold  percent
-#> 1  p < 0.01 1.115702
-#> 2  p < 0.05 4.917355
+#> 1  p < 0.01 1.776860
+#> 2  p < 0.05 5.909091
 ```
 
 ``` r
@@ -662,32 +683,45 @@ design.
 
 ## How it works
 
-For a pair `from` → `to` and an image, let *O* be the number of `from`
-cells within *r* of the `to` cells. If the `to` cells were a random
-choice among the cells of the image that are not `from` cells, keeping
-every cell where it is, *O* would have an exact mean and variance, which
-spicyR computes without permutations. The excess of an image is
+For a pair `from` → `to` and an image, let *O* be the number of `to`
+cells with at least one `from` cell within *r*, out of *n* `to` cells.
+If the `to` cells were a random choice among the cells of the image that
+are not `from` cells, keeping every cell where it is, *O* would have an
+exact mean and variance, which spicyR computes without permutations. The
+effect of an image is
 
 ``` math
-\delta = \frac{O - \mathrm{E}_{\mathrm{RL}}(O)}{n},
+\delta = \frac{O - \mathrm{E}_{\mathrm{RL}}(O)}{n - \mathrm{E}_{\mathrm{RL}}(O)},
 ```
 
 where $`\mathrm{E}_{\mathrm{RL}}(O)`$ is that expectation under random
-labelling and *n* is the number of `to` cells.
+labelling. If a fraction *f* of the `to` cells were placed next to
+`from` cells and the rest at random, δ would estimate *f*. At radius
+*r*, *O*/*n* is the cross-type nearest-neighbour distribution function
+*G* of spatial statistics, and δ compares it with random labelling, much
+as the J function compares *G* with the empty-space function (van
+Lieshout and Baddeley 1996). Negative values mean fewer `to` cells next
+to `from` cells than chance; they are not a fraction, and the lowest
+possible value,
+$`-\mathrm{E}_{\mathrm{RL}}(O)/(n - \mathrm{E}_{\mathrm{RL}}(O))`$, is
+far below zero only where `from` cells are common. With
+`effect = "count"`, *O* is instead the sum, over the `to` cells, of the
+number of `from` cells within *r* of each, and the denominator is *n*,
+an analogue of Ripley’s K function.
 
 Images from the same patient are combined, giving more weight to more
 informative images (usually those with more `to` cells). Each patient
-has its own true excess, which varies around its group’s mean by an
+has its own true effect, which varies around its group’s mean by an
 amount estimated from the data (a frailty, or random-effects, model,
 with the between-patient variance estimated as by Paule and Mandel
-(1982)). The difference between groups, adjusted for the log share of
-the `from` type in each image and any covariates, is tested with a
-small-sample cluster-robust (CR2) variance on Satterthwaite degrees of
-freedom (Bell and McCaffrey 2002; Pustejovsky and Tipton 2018), with
-patients as the clusters. This is designed to keep false positives near
-the nominal rate even with modest numbers of patients. When the `to`
-cells cluster among themselves, the within-image variance is inflated to
-match. A paper describing the method is in preparation.
+(1982)). The difference between groups, adjusted for any covariates, is
+tested with a small-sample cluster-robust (CR2) variance on
+Satterthwaite degrees of freedom (Bell and McCaffrey 2002; Pustejovsky
+and Tipton 2018), with patients as the clusters. This is designed to
+keep false positives near the nominal rate even with modest numbers of
+patients. When the `to` cells cluster among themselves, the within-image
+variance is inflated to match. A paper describing the method is in
+preparation.
 
 ## Small studies
 
@@ -704,13 +738,12 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.4) to test,
-for every ordered pair of cell types, whether the number of `from` cells
-within 25 µm of each `to` cell, relative to random labelling of the
-cells in each image, differed between ER+ and ER− patients, adjusting
-for the abundance of the `from` type in each image, with patients as the
-units of analysis. P-values were adjusted across pairs by the
-Benjamini–Hochberg method.” Show a per-patient plot
+A methods sentence might read: “We used spicyR (version 1.99.6) to test,
+for every ordered pair of cell types, whether the fraction of `to` cells
+with at least one `from` cell within 25 µm, relative to random labelling
+of the cells in each image, differed between ER+ and ER− patients, with
+patients as the units of analysis. P-values were adjusted across pairs
+by the Benjamini–Hochberg method.” Show a per-patient plot
 ([`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md))
 and an image of the pair
 ([`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md))
@@ -769,8 +802,8 @@ topPairs(resImage)
 ```
 
 The image-level test summarises a different statistic, on a different
-scale, so its coefficient is not comparable with the excess; here it
-finds no evidence of a difference either way.
+scale, so its coefficient is not comparable with the cell-level effect;
+here it finds no evidence of a difference either way.
 
 ## Python
 
@@ -825,7 +858,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.2.2        
 #> [15] AnnotationHub_4.2.2         BiocFileCache_3.2.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.58.1        
-#> [19] generics_0.1.4              spicyR_1.99.4              
+#> [19] generics_0.1.4              spicyR_1.99.6              
 #> [21] BiocStyle_2.40.0           
 #> 
 #> loaded via a namespace (and not attached):
@@ -897,3 +930,7 @@ Pustejovsky, James E., and Elizabeth Tipton. 2018. “Small-Sample Methods
 for Cluster-Robust Variance Estimation and Hypothesis Testing in Fixed
 Effects Models.” *Journal of Business & Economic Statistics* 36 (4):
 672–83. <https://doi.org/10.1080/07350015.2016.1247004>.
+
+van Lieshout, M N M, and A J Baddeley. 1996. “A Nonparametric Measure of
+Spatial Interaction in Point Patterns.” *Statistica Neerlandica* 50:
+344–61.
