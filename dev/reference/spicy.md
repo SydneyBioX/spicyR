@@ -26,7 +26,7 @@ spicy(
   adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp", "auto"),
   frailty = TRUE,
-  labelClustering = TRUE,
+  labelClustering = FALSE,
   ref = NULL,
   cores = 1,
   ...
@@ -112,10 +112,11 @@ spicy(
 
 - frailty, labelClustering:
 
-  Cell method: the patient frailty and the label-clustering inflation of
-  the within-image variance (both on by default). The inflation of a
-  `to` type is estimated from every counted type, so a pair's result
-  does not depend on which other pairs are requested.
+  Cell method: the patient frailty (on by default) and the
+  label-clustering inflation of the within-image variance (off by
+  default). The inflation of a `to` type is estimated from every counted
+  type, so a pair's result does not depend on which other pairs are
+  requested.
 
 - ref:
 
@@ -228,17 +229,17 @@ res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th 0.1572171   0.1042547 0.4438588  0.4438588   Tc Th
+#> Tc__Th 0.2573739   0.1042285 0.3792698  0.3792698   Tc Th
 res$cellResults
 #>                       from to         level    side excess_ref
-#> Tc__Th__Onset           Tc Th         Onset attract  0.1572171
-#> Tc__Th__Long-duration   Tc Th Long-duration attract  0.1572171
+#> Tc__Th__Onset           Tc Th         Onset attract  0.2573739
+#> Tc__Th__Long-duration   Tc Th Long-duration attract  0.2573739
 #>                       excess_difference         se       df   p_value     p_adj
-#> Tc__Th__Onset                 0.1042547 0.12514142 4.851148 0.4438588 0.4438588
-#> Tc__Th__Long-duration         0.1046522 0.06477238 5.186591 0.1649824 0.1649824
+#> Tc__Th__Onset                0.10422855 0.10860300 5.251571 0.3792698 0.3792698
+#> Tc__Th__Long-duration        0.05161495 0.07179114 5.290259 0.5026656 0.5026656
 #>                              tau2
-#> Tc__Th__Onset         0.004543366
-#> Tc__Th__Long-duration 0.004543366
+#> Tc__Th__Onset         0.009930696
+#> Tc__Th__Long-duration 0.009930696
 
 # the extra number of Tc cells within 50 units of each Th cell
 resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
