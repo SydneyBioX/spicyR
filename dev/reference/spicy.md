@@ -24,7 +24,7 @@ spicy(
   k = NULL,
   combine = c("maxT", "cauchy"),
   adjustAbundance = FALSE,
-  variance = c("auto", "cr2", "hartung_knapp"),
+  variance = c("cr2", "hartung_knapp", "auto"),
   frailty = TRUE,
   labelClustering = TRUE,
   ref = NULL,
@@ -104,11 +104,11 @@ spicy(
 
 - variance:
 
-  Cell method: `"auto"` (the default: `"hartung_knapp"` when a condition
-  has at most 5 patients, `"cr2"` otherwise), `"cr2"` (CR2 on
-  Satterthwaite df) or `"hartung_knapp"` (for very few patients: the
-  model-based variance floored at CR2, on m - 2 df). The variance used
-  is in `$variance`.
+  Cell method: `"cr2"` (the default: CR2 on Satterthwaite df),
+  `"hartung_knapp"` (for very few patients: the model-based variance
+  floored at CR2, on m - 2 df) or `"auto"` (`"hartung_knapp"` when a
+  condition has at most 5 patients, `"cr2"` otherwise). The variance
+  used is in `$variance`.
 
 - frailty, labelClustering:
 
@@ -175,8 +175,7 @@ are packed, so a change in packing alone can appear as a change in
 co-localisation. Images are combined within patients and patients within
 conditions by a frailty GEE, and the difference between conditions is
 tested with a CR2 cluster-robust variance on Satterthwaite degrees of
-freedom (Hartung-Knapp on m - 2 df when a condition has at most 5
-patients), with **patients (`subject`) as the units**. The difference is
+freedom, with **patients (`subject`) as the units**. The difference is
 adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for
 the log share of the `from` type in each image; the unadjusted test is
 then reported alongside (`unadjusted_*` columns).
@@ -227,17 +226,16 @@ data("diabetesData")
 # the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
-#> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.
 topPairs(res)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th 0.1572171   0.1042547 0.4263462  0.4263462   Tc Th
+#> Tc__Th 0.1572171   0.1042547 0.4438588  0.4438588   Tc Th
 res$cellResults
 #>                       from to         level    side excess_ref
 #> Tc__Th__Onset           Tc Th         Onset attract  0.1572171
 #> Tc__Th__Long-duration   Tc Th Long-duration attract  0.1572171
-#>                       excess_difference         se df   p_value     p_adj
-#> Tc__Th__Onset                 0.1042547 0.12514142  9 0.4263462 0.4263462
-#> Tc__Th__Long-duration         0.1046522 0.08951869  9 0.2724121 0.2724121
+#>                       excess_difference         se       df   p_value     p_adj
+#> Tc__Th__Onset                 0.1042547 0.12514142 4.851148 0.4438588 0.4438588
+#> Tc__Th__Long-duration         0.1046522 0.06477238 5.186591 0.1649824 0.1649824
 #>                              tau2
 #> Tc__Th__Onset         0.004543366
 #> Tc__Th__Long-duration 0.004543366
@@ -245,7 +243,6 @@ res$cellResults
 # the extra number of Tc cells within 50 units of each Th cell
 resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
                   from = "Tc", to = "Th", effect = "count")
-#> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.
 
 # the original image-level test
 resImage <- spicy(diabetesData, condition = "stage", subject = "case",
@@ -253,5 +250,5 @@ resImage <- spicy(diabetesData, condition = "stage", subject = "case",
 #> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
 topPairs(resImage)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th
+#> Tc__Th  1.622672    5.961811 0.6122509  0.6122509   Tc Th
 ```

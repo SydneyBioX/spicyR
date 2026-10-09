@@ -74,7 +74,6 @@ spicyBoxPlot(spicyTest, rank = 1)
 data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
-#> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.
 spicyBoxPlot(res, from = "Tc", to = "Th")
 #> Ignoring unknown labels:
 #> • size : "Relative weight"

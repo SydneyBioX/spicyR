@@ -17,7 +17,7 @@ see its image, patient, excess and weight, which helps to find images worth look
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.6</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -110,7 +110,6 @@ tested (no <code>to</code> cells, for example) are not shown.</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"diabetesData"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="spicy.html">spicy</a></span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.</span>
 <span class="r-in"><span><span class="fu">spicyBoxPlot</span><span class="op">(</span><span class="va">res</span>, from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="st">"Th"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Ignoring unknown labels:</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">•</span> <span style="color: #00BB00;">size</span> : <span style="color: #0000BB;">"Relative weight"</span></span>

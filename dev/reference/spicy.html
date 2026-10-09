@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.6</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,7 +62,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  k <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxT"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
 <span>  adjustAbundance <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
+<span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span>, <span class="st">"auto"</span><span class="op">)</span>,</span>
 <span>  frailty <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  labelClustering <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -136,9 +136,9 @@ cells from more densely packed ones, and it removes real effects when the share 
 
 
 <dt id="arg-variance">variance<a class="anchor" aria-label="anchor" href="#arg-variance"></a></dt>
-<dd><p>Cell method: <code>"auto"</code> (the default: <code>"hartung_knapp"</code> when a condition has at most 5
-patients, <code>"cr2"</code> otherwise), <code>"cr2"</code> (CR2 on Satterthwaite df) or <code>"hartung_knapp"</code> (for very few
-patients: the model-based variance floored at CR2, on m - 2 df). The variance used is in <code>$variance</code>.</p></dd>
+<dd><p>Cell method: <code>"cr2"</code> (the default: CR2 on Satterthwaite df), <code>"hartung_knapp"</code> (for very few
+patients: the model-based variance floored at CR2, on m - 2 df) or <code>"auto"</code> (<code>"hartung_knapp"</code> when a
+condition has at most 5 patients, <code>"cr2"</code> otherwise). The variance used is in <code>$variance</code>.</p></dd>
 
 
 <dt id="arg-frailty-labelclustering">frailty, labelClustering<a class="anchor" aria-label="anchor" href="#arg-frailty-labelclustering"></a></dt>
@@ -188,8 +188,7 @@ cells within <code>r</code> of each <code>to</code> cell instead; it also reflec
 (depth of infiltration), but it grows with how densely the <code>from</code> cells are packed, so a change in
 packing alone can appear as a change in co-localisation. Images are combined within patients and
 patients within conditions by a frailty GEE, and the difference between conditions is tested with a
-CR2 cluster-robust variance on Satterthwaite degrees of freedom (Hartung-Knapp on m - 2 df when a condition has
-at most 5 patients), with <strong>patients (<code>subject</code>) as the
+CR2 cluster-robust variance on Satterthwaite degrees of freedom, with <strong>patients (<code>subject</code>) as the
 units</strong>. The difference is adjusted for any <code>covariates</code>, and, with <code>adjustAbundance = TRUE</code>, for the
 log share of the <code>from</code> type in each image; the unadjusted test is then reported alongside
 (<code>unadjusted_*</code> columns).</p>
@@ -224,17 +223,16 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-in"><span><span class="co"># the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.</span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        intercept coefficient   p.value adj.pvalue from to</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th 0.1572171   0.1042547 0.4263462  0.4263462   Tc Th</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th 0.1572171   0.1042547 0.4438588  0.4438588   Tc Th</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level    side excess_ref</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset attract  0.1572171</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration attract  0.1572171</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference         se df   p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1042547 0.12514142  9 0.4263462 0.4263462</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.1046522 0.08951869  9 0.2724121 0.2724121</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference         se       df   p_value     p_adj</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1042547 0.12514142 4.851148 0.4438588 0.4438588</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.1046522 0.06477238 5.186591 0.1649824 0.1649824</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                              tau2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.004543366</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.004543366</span>
@@ -242,7 +240,6 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-in"><span><span class="co"># the extra number of Tc cells within 50 units of each Th cell</span></span></span>
 <span class="r-in"><span><span class="va">resCount</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
 <span class="r-in"><span>                  from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="st">"Th"</span>, effect <span class="op">=</span> <span class="st">"count"</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> variance = "auto": a condition has 4 patients; using the Hartung-Knapp variance on m - 2 df.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># the original image-level test</span></span></span>
 <span class="r-in"><span><span class="va">resImage</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>,</span></span>
@@ -250,7 +247,7 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.</span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">resImage</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        intercept coefficient   p.value adj.pvalue from to</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th  1.622672    5.961811 0.6122509  0.6122509   Tc Th</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -738,7 +738,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.6) to test,
+A methods sentence might read: “We used spicyR (version 1.99.7) to test,
 for every ordered pair of cell types, whether the fraction of `to` cells
 with at least one `from` cell within 25 µm, relative to random labelling
 of the cells in each image, differed between ER+ and ER− patients, with
@@ -858,7 +858,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.2.2        
 #> [15] AnnotationHub_4.2.2         BiocFileCache_3.2.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.58.1        
-#> [19] generics_0.1.4              spicyR_1.99.6              
+#> [19] generics_0.1.4              spicyR_1.99.7              
 #> [21] BiocStyle_2.40.0           
 #> 
 #> loaded via a namespace (and not attached):
