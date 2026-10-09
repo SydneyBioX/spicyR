@@ -57,9 +57,9 @@
 #' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df), `"hartung_knapp"` (for very few
 #'   patients: the model-based variance floored at CR2, on m - 2 df) or `"auto"` (`"hartung_knapp"` when a
 #'   condition has at most 5 patients, `"cr2"` otherwise). The variance used is in `$variance`.
-#' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
-#'   of the within-image variance (both on by default). The inflation of a `to` type is estimated from every
-#'   counted type, so a pair's result does not depend on which other pairs are requested.
+#' @param frailty,labelClustering Cell method: the patient frailty (on by default) and the label-clustering
+#'   inflation of the within-image variance (off by default). The inflation of a `to` type is estimated from
+#'   every counted type, so a pair's result does not depend on which other pairs are requested.
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
@@ -128,7 +128,7 @@ spicy <- function(cells,
                   adjustAbundance = FALSE,
                   variance = c("cr2", "hartung_knapp", "auto"),
                   frailty = TRUE,
-                  labelClustering = TRUE,
+                  labelClustering = FALSE,
                   ref = NULL,
                   cores = 1,
                   ...) {

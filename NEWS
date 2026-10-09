@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.8
+-------------------------
+
+    o spicy(labelClustering = ) defaults to FALSE: the within-image variance is no longer inflated for
+      `to` cells that cluster among themselves unless asked for.
+
 CHANGES IN VERSION 1.99.7
 -------------------------
 

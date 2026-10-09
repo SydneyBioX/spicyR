@@ -22,7 +22,7 @@ spicy(
   adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp", "auto"),
   frailty = TRUE,
-  labelClustering = TRUE,
+  labelClustering = FALSE,
   ref = NULL,
   cores = 1,
   ...
@@ -69,9 +69,9 @@ cells from more densely packed ones, and it removes real effects when the share 
 patients: the model-based variance floored at CR2, on m - 2 df) or \code{"auto"} (\code{"hartung_knapp"} when a
 condition has at most 5 patients, \code{"cr2"} otherwise). The variance used is in \verb{$variance}.}
 
-\item{frailty, labelClustering}{Cell method: the patient frailty and the label-clustering inflation
-of the within-image variance (both on by default). The inflation of a \code{to} type is estimated from every
-counted type, so a pair's result does not depend on which other pairs are requested.}
+\item{frailty, labelClustering}{Cell method: the patient frailty (on by default) and the label-clustering
+inflation of the within-image variance (off by default). The inflation of a \code{to} type is estimated from
+every counted type, so a pair's result does not depend on which other pairs are requested.}
 
 \item{ref}{Cell method: the reference level of \code{condition}.}
 

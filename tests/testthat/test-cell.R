@@ -175,12 +175,13 @@ test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), 
   a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2")
   b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2)
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
-                                adjustAbundance = TRUE))$cellResults
+                                adjustAbundance = TRUE, labelClustering = TRUE))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
   expect_equal(res$adjusted_for, "abundance")
   expect_equal(res$unadjusted_p_value, a$p, tolerance = 1e-10)
   # the default is unadjusted
-  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour"))$cellResults
+  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
+                                 labelClustering = TRUE))$cellResults
   expect_equal(res0$p_value, res$unadjusted_p_value, tolerance = 1e-12)
   expect_null(res0$unadjusted_p_value)
 })

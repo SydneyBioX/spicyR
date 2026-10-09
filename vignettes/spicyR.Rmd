@@ -363,9 +363,7 @@ A pair that cannot be adjusted, for example because its cell types appear in ima
 unadjusted, and its `adjusted_for` column says why. The printed summary above counts these pairs.
 :::
 
-Testing every pair keeps the results the same across analyses. If you restrict `from` and `to`, the numbers for a
-pair can shift slightly, because spicyR estimates how much cells of a type cluster among themselves from all the
-pairs it tests.
+Restricting `from` and `to` does not change the results for the pairs that are tested.
 
 # Which radius?
 
@@ -489,8 +487,8 @@ Images from the same patient are combined, giving more weight to more informativ
 its own true effect, which varies around its group's mean by an amount estimated from the data (a frailty, or
 random-effects, model, with the between-patient variance estimated as by @paule1982consensus). The difference between groups, adjusted for any covariates, is tested with a small-sample cluster-robust (CR2) variance on Satterthwaite degrees of freedom
 [@bell2002bias; @pustejovsky2018small], with patients as the clusters. This is designed to keep false positives near
-the nominal rate even with modest numbers of patients. When the `to` cells cluster among themselves, the
-within-image variance is inflated to match. A paper describing the method is in preparation.
+the nominal rate even with modest numbers of patients. With `labelClustering = TRUE`, the within-image variance
+is inflated when the `to` cells cluster among themselves. A paper describing the method is in preparation.
 
 # Small studies
 
