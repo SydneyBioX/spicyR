@@ -124,7 +124,7 @@ spicyTestPair <- spicy(method = "image",
 
 topPairs(spicyTestPair)
 #>                         intercept coefficient      p.value   adj.pvalue
-#> CD8_T_cell__Neutrophils  -109.081    112.0185 2.166645e-05 2.166645e-05
+#> CD8_T_cell__Neutrophils  -109.081    112.0185 2.166646e-05 2.166646e-05
 #>                               from          to
 #> CD8_T_cell__Neutrophils CD8_T_cell Neutrophils
 ```
@@ -154,16 +154,16 @@ spicyTest <- spicy(method = "image",
 
 topPairs(spicyTest)
 #>                             intercept coefficient      p.value   adj.pvalue
-#> Macrophages__dn_T_CD3       56.446059   -50.08473 1.080298e-07 3.035637e-05
-#> dn_T_CD3__Macrophages       54.987158   -48.38665 2.193944e-07 3.082491e-05
-#> Macrophages__DC_or_Mono     73.239390   -59.90361 5.224726e-06 4.893826e-04
-#> DC_or_Mono__Macrophages     71.777128   -58.46838 7.431064e-06 5.220323e-04
-#> dn_T_CD3__dn_T_CD3         -63.786036   100.61010 2.878778e-05 1.208689e-03
-#> Neutrophils__dn_T_CD3      -63.141859    69.64357 2.891840e-05 1.208689e-03
-#> dn_T_CD3__Neutrophils      -63.133727    70.15509 3.010969e-05 1.208689e-03
-#> DC__Macrophages             96.893239   -92.55114 1.801250e-04 5.758191e-03
-#> Macrophages__DC             96.896213   -93.25193 1.844260e-04 5.758191e-03
-#> CD4_T_cell__Keratin_Tumour  -4.845025   -22.14997 2.834639e-04 7.409017e-03
+#> Macrophages__dn_T_CD3       56.446065   -50.08474 1.080268e-07 3.035554e-05
+#> dn_T_CD3__Macrophages       54.987150   -48.38664 2.194026e-07 3.082607e-05
+#> Macrophages__DC_or_Mono     73.239408   -59.90362 5.224650e-06 4.893755e-04
+#> DC_or_Mono__Macrophages     71.777083   -58.46833 7.431188e-06 5.220409e-04
+#> dn_T_CD3__dn_T_CD3         -63.786032   100.61010 2.878802e-05 1.208706e-03
+#> Neutrophils__dn_T_CD3      -63.141839    69.64356 2.891869e-05 1.208706e-03
+#> dn_T_CD3__Neutrophils      -63.133727    70.15508 3.011011e-05 1.208706e-03
+#> DC__Macrophages             96.893239   -92.55112 1.801305e-04 5.758112e-03
+#> Macrophages__DC             96.896215   -93.25194 1.844235e-04 5.758112e-03
+#> CD4_T_cell__Keratin_Tumour  -4.845036   -22.14995 2.834660e-04 7.409012e-03
 #>                                   from             to
 #> Macrophages__dn_T_CD3      Macrophages       dn_T_CD3
 #> dn_T_CD3__Macrophages         dn_T_CD3    Macrophages
@@ -346,16 +346,16 @@ spicySurvival = spicy(method = "image", kerenSPE,
 # top 10 significant pairs
 head(spicySurvival$survivalResults, 10)
 #>                      test         coef     se.coef      p.value
-#> 1     Other_Immune__Tregs  0.023565210 0.008656346 8.929388e-06
-#> 2       CD4_T_cell__Tregs  0.017697198 0.006849373 1.241136e-05
-#> 3     Tregs__Other_Immune  0.023714940 0.008733588 1.264815e-05
-#> 4       Tregs__CD4_T_cell  0.017081286 0.006758903 2.852433e-05
-#> 5  CD8_T_cell__CD8_T_cell  0.006050076 0.002723388 3.316548e-04
-#> 6      Tumour__CD8_T_cell -0.030532531 0.011429921 6.168829e-04
-#> 7      CD8_T_cell__Tumour -0.030478988 0.011593523 7.214859e-04
-#> 8    CD4_T_cell__dn_T_CD3  0.008453663 0.003533037 7.936990e-04
-#> 9    dn_T_CD3__CD4_T_cell  0.008398973 0.003530626 9.371932e-04
-#> 10       DC__Other_Immune -0.028885515 0.012294400 1.034131e-03
+#> 1     Other_Immune__Tregs  0.023565206 0.008656342 8.929522e-06
+#> 2       CD4_T_cell__Tregs  0.017697194 0.006849369 1.241121e-05
+#> 3     Tregs__Other_Immune  0.023714941 0.008733582 1.264807e-05
+#> 4       Tregs__CD4_T_cell  0.017081289 0.006758900 2.852449e-05
+#> 5  CD8_T_cell__CD8_T_cell  0.006050072 0.002723387 3.316528e-04
+#> 6      Tumour__CD8_T_cell -0.030532595 0.011429924 6.168710e-04
+#> 7      CD8_T_cell__Tumour -0.030478957 0.011593521 7.214929e-04
+#> 8    CD4_T_cell__dn_T_CD3  0.008453662 0.003533034 7.936924e-04
+#> 9    dn_T_CD3__CD4_T_cell  0.008398973 0.003530625 9.371907e-04
+#> 10       DC__Other_Immune -0.028885515 0.012294396 1.034119e-03
 ```
 
 ## Accounting for tissue inhomogeneity
@@ -430,16 +430,16 @@ spicyMixedTest <- spicy(method = "image",
 )
 topPairs(spicyMixedTest)
 #>                          intercept coefficient      p.value adj.pvalue
-#> beta__delta           6.081500e+01  -15.433248 0.0006616391 0.09171143
-#> delta__beta           6.090722e+01  -15.276362 0.0007164956 0.09171143
-#> B__Th                 4.440892e-16   10.480123 0.0127535334 0.42316681
-#> delta__delta          7.021912e+01  -16.358091 0.0155005357 0.42316681
-#> Th__B                 3.996803e-15   10.003453 0.0173028308 0.42316681
-#> B__unknown            2.386980e-15    4.584274 0.0182158698 0.42316681
-#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646992 0.42316681
-#> unknown__macrophage   4.339586e+00   -5.274674 0.0222619397 0.42316681
-#> unknown__B            9.992007e-16    4.680750 0.0244004301 0.42316681
-#> macrophage__unknown   4.305429e+00   -4.886438 0.0249693480 0.42316681
+#> beta__delta           6.081500e+01  -15.433250 0.0006616383 0.09171141
+#> delta__beta           6.090722e+01  -15.276363 0.0007164954 0.09171141
+#> B__Th                -2.664535e-15   10.480122 0.0127535357 0.42316682
+#> delta__delta          7.021913e+01  -16.358091 0.0155005353 0.42316682
+#> Th__B                 1.776357e-15   10.003453 0.0173028300 0.42316682
+#> B__unknown           -8.881784e-16    4.584273 0.0182158777 0.42316682
+#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646991 0.42316682
+#> unknown__macrophage   4.339586e+00   -5.274674 0.0222619404 0.42316682
+#> unknown__B            1.165734e-15    4.680750 0.0244004344 0.42316682
+#> macrophage__unknown   4.305429e+00   -4.886438 0.0249693485 0.42316682
 #>                             from         to
 #> beta__delta                 beta      delta
 #> delta__beta                delta       beta
