@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.9
+-------------------------
+
+    o Vignette: the numbers quoted in the text are computed from the results, and the statements about them
+      are checked when the vignette is built. The shuffled-label check uses 10 shuffles.
+
 CHANGES IN VERSION 1.99.8
 -------------------------
 

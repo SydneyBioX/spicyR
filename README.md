@@ -83,5 +83,5 @@ Questions and bug reports: [GitHub issues](https://github.com/SydneyBioX/spicyR/
 [ellis.patrick@sydney.edu.au](mailto:ellis.patrick@sydney.edu.au). For developers:
 [CONTRIBUTING](CONTRIBUTING.md).
 
-spicyR 2.0 (version 1.99.8) is a development version. Authors: Nicolas Canete, Ellis Patrick, Sadiq Dohadwalla,
+spicyR 2.0 (version 1.99.9) is a development version. Authors: Nicolas Canete, Ellis Patrick, Sadiq Dohadwalla,
 Elijah Willie, Nicholas Robertson, Alex Qin, Farhan Ameen and Shreya Rao. Licence: GPL (>= 2).
