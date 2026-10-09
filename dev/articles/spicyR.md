@@ -222,9 +222,8 @@ topPairs(res, n = 8)
 #> HR- CK7+__HR+ CK7- Ki67+                 HR+ CK7- Ki67+
 ```
 
-The most significant pairs nearly all have `HR+ CK7-` tumour cells as
-the `from` type; we come back to them in [Tissue
-compartments](#tissue-compartments).
+6 of these eight pairs have `HR+ CK7-` tumour cells as the `from` type;
+we come back to them in [Tissue compartments](#tissue-compartments).
 
 The full results are in `res$cellResults`, with one row per pair:
 
@@ -264,7 +263,8 @@ is the extra fraction of these tumour cells with a T cell within 25 µm.
 
 ``` r
 
-res$cellResults["T cells__HR- Ki67+", c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+onePair <- res$cellResults["T cells__HR- Ki67+", c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+onePair
 #>                    excess_ref excess_comp excess_difference      p_value
 #> T cells__HR- Ki67+ 0.02747419   0.1387424         0.1112682 0.0008112119
 #>                         p_adj
@@ -272,8 +272,8 @@ res$cellResults["T cells__HR- Ki67+", c("excess_ref", "excess_comp", "excess_dif
 ```
 
 In ER− tumours these tumour cells have a T cell nearby barely more often
-than chance would give (0.02). In ER+ tumours the effect is 0.12, as if
-about one in nine of them had been placed next to T cells.
+than chance would give (0.03). In ER+ tumours the effect is 0.14, as if
+about one in 7 of them had been placed next to T cells.
 
 [`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md)
 shows the effect in each image (here one image per patient), with a
@@ -331,8 +331,9 @@ look at three images found with the interactive box plot.
 pair <- "T cells__HR- Ki67+"
 examples <- c("MB0150_1_155", "MB0132_1_533", "MB0244_1_519")
 i <- match(examples, res$imageID)
-data.frame(image = examples, ER = res$condition[i], effect = res$pairwiseAssoc[[pair]][i],
-           weight = res$imageWeights[[pair]][i])
+ex <- data.frame(image = examples, ER = res$condition[i], effect = res$pairwiseAssoc[[pair]][i],
+                 weight = res$imageWeights[[pair]][i])
+ex
 #>          image  ER      effect      weight
 #> 1 MB0150_1_155 ER+  0.67741935 0.005465210
 #> 2 MB0132_1_533 ER- -0.07907636 0.017187607
@@ -349,13 +350,13 @@ for (im in examples)
 ![](spicyR_files/figure-html/example-images-plot-1.png)![](spicyR_files/figure-html/example-images-plot-2.png)![](spicyR_files/figure-html/example-images-plot-3.png)
 
 In the ER+ image on the left, the T cells run along the band of tumour
-cells at the bottom: an effect of 0.68, as if two-thirds of the tumour
-cells had been placed next to T cells. In the ER− image in the middle,
-the T cells are concentrated top left, apart from most of the tumour
-cells, and slightly fewer tumour cells have a T cell nearby than chance
-would give (−0.08). The ER+ image on the right reaches the largest
-possible value, 1, but only because its two tumour cells both happen to
-sit in a cluster of T cells.
+cells at the bottom: an effect of 0.68, as if that fraction of the
+tumour cells had been placed next to T cells. In the ER− image in the
+middle, the T cells are concentrated top left, apart from most of the
+tumour cells, and slightly fewer tumour cells have a T cell nearby than
+chance would give (-0.08). The ER+ image on the right reaches the
+largest possible value, 1, but only because its two tumour cells both
+happen to sit in a cluster of T cells.
 
 **Point size matters.** The right-hand image sits at the top of the box
 plot, but its weight is close to zero: an effect estimated from two
@@ -391,10 +392,11 @@ head(tab[order(tab$p_value), c("to", "excess_ref", "excess_comp", "p_adj")], 6)
 #> HR+ CK7-__HR+ CK7-               3.285398e-08
 #> HR+ CK7-__Macrophages Vim+ Slug+ 7.981797e-08
 #> HR+ CK7-__HR+ CK7- Slug+         5.200539e-07
+ki67 <- tab["HR+ CK7-__HR+ CK7- Ki67+", ]
 ```
 
 In ER+ tumours the effect for proliferating `HR+ CK7- Ki67+` cells is
-0.60, against 0.07 in ER− tumours, while fibroblasts and T cells are
+0.64, against 0.09 in ER− tumours, while fibroblasts and T cells are
 placed away from `HR+ CK7-` cells (where `HR+ CK7-` cells are rare, as
 in ER− cores, an effect cannot fall far below zero). These are real
 differences in arrangement, but they describe the structure of the
@@ -416,15 +418,16 @@ of extra `from` cells within the radius of each `to` cell.
 
 resCount <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
                   imageID = "file_id", cellType = "description", effect = "count")
-resCount$cellResults[pair, c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+onePairCount <- resCount$cellResults[pair, c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+onePairCount
 #>                    excess_ref excess_comp excess_difference      p_value
 #> T cells__HR- Ki67+ 0.04385209    0.291235          0.247383 6.653874e-05
 #>                          p_adj
 #> T cells__HR- Ki67+ 0.001533559
 ```
 
-In ER+ tumours each proliferating tumour cell has about 0.16 extra T
-cells within 25 µm, against 0.01 in ER− tumours. The count also reflects
+In ER+ tumours each proliferating tumour cell has about 0.29 extra T
+cells within 25 µm, against 0.04 in ER− tumours. The count also reflects
 how many T cells surround each tumour cell, but it grows with how
 tightly the `from` cells are packed: if T cells form denser clusters in
 one group, each tumour cell next to a cluster counts more T cells. The
@@ -455,7 +458,8 @@ with the 4 non-diabetic donors.
 data("diabetesData")
 diabetes <- diabetesData[, diabetesData$stage %in% c("Non-diabetic", "Onset")]
 diabetes$stage <- droplevels(diabetes$stage)
-spicy(diabetes, condition = "stage", subject = "case", r = 50)
+resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
+resDonors
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 8 patients with 80 images
 #> BH-adjusted p < 0.05: 0 pairs
@@ -467,7 +471,8 @@ No pair is significant with the 8 donors as the units. Leaving out
 
 ``` r
 
-spicy(diabetes, condition = "stage", r = 50)
+resImages <- spicy(diabetes, condition = "stage", r = 50)
+resImages
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 80 images (no subject given: each image is a patient)
 #> BH-adjusted p < 0.05: 6 pairs
@@ -475,7 +480,7 @@ spicy(diabetes, condition = "stage", r = 50)
 ```
 
 Treating every image as an independent patient overstates the evidence:
-images from one donor are alike, and here it turns up a pair that the
+images from one donor are alike, and here it turns up 6 pairs that the
 donors do not support. Always give `subject` when patients have several
 images.
 
@@ -507,8 +512,10 @@ own effect and p-value. A factor has one per level after the first:
 
 ``` r
 
-resCov$cellResults[pair, c("excess_difference", "p_value", "Age.At.Diagnosis_effect", "Age.At.Diagnosis_p_value",
-                           "Grade2_effect", "Grade2_p_value", "Grade3_effect", "Grade3_p_value")]
+covPair <- resCov$cellResults[pair, c("excess_difference", "p_value", "Age.At.Diagnosis_effect",
+                                      "Age.At.Diagnosis_p_value", "Grade2_effect", "Grade2_p_value",
+                                      "Grade3_effect", "Grade3_p_value")]
+covPair
 #>                    excess_difference     p_value Age.At.Diagnosis_effect
 #> T cells__HR- Ki67+         0.1141102 0.001119668             0.001110613
 #>                    Age.At.Diagnosis_p_value Grade2_effect Grade2_p_value
@@ -620,11 +627,11 @@ standard deviation higher effect, from a Cox model; below one, patients
 with a higher effect had a lower risk of relapse. It is missing when the
 effect barely varies between patients.
 
-Two pairs are significant after adjusting for multiple testing, both
-with `HR+ CK7-` tumour cells as the `from` type: patients in whom more
-of the other tumour cells sat next to `HR+ CK7-` cells relapsed later.
-These cells are typical of ER+ tumours, and ER status is itself related
-to relapse, so we add it to the covariates.
+5 pairs are significant after adjusting for multiple testing. The two
+strongest have `HR+ CK7-` tumour cells as the `from` type: patients in
+whom more of the other tumour cells sat next to `HR+ CK7-` cells
+relapsed later. These cells are typical of ER+ tumours, and ER status is
+itself related to relapse, so we add it to the covariates.
 
 ``` r
 
@@ -638,8 +645,8 @@ resSER
 #> See topPairs() and $cellResults.
 ```
 
-No pair remains significant: these two pairs say little about relapse
-beyond the tumour’s ER status.
+No pair remains significant: these pairs say little about relapse beyond
+the tumour’s ER status.
 
 ## A check you can run
 
@@ -652,7 +659,7 @@ difference, so about 5% of pairs should then have p \< 0.05, and about
 
 set.seed(2026)
 patients <- unique(as.data.frame(SummarizedExperiment::colData(spe))[, c("metabricId", "ER")])
-shuffles <- do.call(rbind, lapply(1:5, function(i) {
+shuffles <- do.call(rbind, lapply(1:10, function(i) {
   label <- setNames(sample(patients$ER), patients$metabricId)
   spe$shuffled <- label[spe$metabricId]
   s <- spicy(spe, condition = "shuffled", subject = "metabricId", r = 25,
@@ -660,10 +667,11 @@ shuffles <- do.call(rbind, lapply(1:5, function(i) {
   data.frame(shuffle = i, threshold = c("p < 0.05", "p < 0.01"),
              percent = 100 * c(mean(s$cellResults$p_value < 0.05), mean(s$cellResults$p_value < 0.01)))
 }))
-aggregate(percent ~ threshold, shuffles, mean)
+calibration <- aggregate(percent ~ threshold, shuffles, mean)
+calibration
 #>   threshold  percent
-#> 1  p < 0.01 1.818182
-#> 2  p < 0.05 6.859504
+#> 1  p < 0.01 1.446281
+#> 2  p < 0.05 6.074380
 ```
 
 ``` r
@@ -673,14 +681,15 @@ ggplot(shuffles, aes(threshold, percent)) +
   geom_point(data = data.frame(threshold = c("p < 0.05", "p < 0.01"), percent = c(5, 1)),
              shape = 95, size = 14, colour = "#b3261e") +
   scale_y_continuous(limits = c(0, 15), labels = function(v) paste0(v, "%")) +
-  labs(x = NULL, y = "pairs below the threshold", title = "5 shuffles of the ER labels (red: expected)") +
+  labs(x = NULL, y = "pairs below the threshold", title = "10 shuffles of the ER labels (red: expected)") +
   theme_classic()
 ```
 
 ![](spicyR_files/figure-html/shuffle-plot-1.png)
 
-Pairs share cells, so the percentage moves by a few points from one
-shuffle to the next.
+On average 6.1% of pairs have p \< 0.05 and 1.4% have p \< 0.01, close
+to the expected 5% and 1%. Pairs share cells, so the percentage moves by
+a few points from one shuffle to the next.
 
 Run this check on your own data before trusting a discovery. It takes a
 few minutes and shows whether the test is calibrated for your study
@@ -743,7 +752,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.8) to test,
+A methods sentence might read: “We used spicyR (version 1.99.9) to test,
 for every ordered pair of cell types, whether the fraction of `to` cells
 with at least one `from` cell within 25 µm, relative to random labelling
 of the cells in each image, differed between ER+ and ER− patients, with
@@ -863,7 +872,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.2.2        
 #> [15] AnnotationHub_4.2.2         BiocFileCache_3.2.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.58.1        
-#> [19] generics_0.1.4              spicyR_1.99.8              
+#> [19] generics_0.1.4              spicyR_1.99.9              
 #> [21] BiocStyle_2.40.0           
 #> 
 #> loaded via a namespace (and not attached):

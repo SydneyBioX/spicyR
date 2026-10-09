@@ -485,7 +485,7 @@ sessionInfo()
 #>  [5] ExperimentHub_3.2.2         AnnotationHub_4.2.2        
 #>  [7] BiocFileCache_3.2.0         dbplyr_2.6.0               
 #>  [9] SpatialExperiment_1.22.0    SingleCellExperiment_1.34.0
-#> [11] ggplot2_4.0.3               spicyR_1.99.8              
+#> [11] ggplot2_4.0.3               spicyR_1.99.9              
 #> [13] SummarizedExperiment_1.42.0 Biobase_2.72.0             
 #> [15] GenomicRanges_1.64.0        Seqinfo_1.2.0              
 #> [17] IRanges_2.46.0              S4Vectors_0.50.3           
