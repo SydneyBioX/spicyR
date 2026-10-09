@@ -18,8 +18,7 @@
 #' (depth of infiltration), but it grows with how densely the `from` cells are packed, so a change in
 #' packing alone can appear as a change in co-localisation. Images are combined within patients and
 #' patients within conditions by a frailty GEE, and the difference between conditions is tested with a
-#' CR2 cluster-robust variance on Satterthwaite degrees of freedom (Hartung-Knapp on m - 2 df when a condition has
-#' at most 5 patients), with **patients (`subject`) as the
+#' CR2 cluster-robust variance on Satterthwaite degrees of freedom, with **patients (`subject`) as the
 #' units**. The difference is adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for the
 #' log share of the `from` type in each image; the unadjusted test is then reported alongside
 #' (`unadjusted_*` columns).
@@ -55,9 +54,9 @@
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
-#' @param variance Cell method: `"auto"` (the default: `"hartung_knapp"` when a condition has at most 5
-#'   patients, `"cr2"` otherwise), `"cr2"` (CR2 on Satterthwaite df) or `"hartung_knapp"` (for very few
-#'   patients: the model-based variance floored at CR2, on m - 2 df). The variance used is in `$variance`.
+#' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df), `"hartung_knapp"` (for very few
+#'   patients: the model-based variance floored at CR2, on m - 2 df) or `"auto"` (`"hartung_knapp"` when a
+#'   condition has at most 5 patients, `"cr2"` otherwise). The variance used is in `$variance`.
 #' @param frailty,labelClustering Cell method: the patient frailty and the label-clustering inflation
 #'   of the within-image variance (both on by default). The inflation of a `to` type is estimated from every
 #'   counted type, so a pair's result does not depend on which other pairs are requested.
@@ -127,7 +126,7 @@ spicy <- function(cells,
                   k = NULL,
                   combine = c("maxT", "cauchy"),
                   adjustAbundance = FALSE,
-                  variance = c("auto", "cr2", "hartung_knapp"),
+                  variance = c("cr2", "hartung_knapp", "auto"),
                   frailty = TRUE,
                   labelClustering = TRUE,
                   ref = NULL,

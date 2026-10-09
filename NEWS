@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.7
+-------------------------
+
+    o spicy(variance = ) defaults to "cr2" again (CR2 on Satterthwaite df). "auto" (the Hartung-Knapp
+      variance when a condition has at most 5 patients, CR2 otherwise) remains available as an option.
+
 CHANGES IN VERSION 1.99.6
 -------------------------
 

@@ -1,7 +1,7 @@
 Package: spicyR
 Type: Package
 Title: Test Changes in the Co-Localisation of Cell Types Between Groups of Patients
-Version: 1.99.6
+Version: 1.99.7
 Authors@R: c(
     person("Nicolas", "Canete", , "nicolas.canete@sydney.edu.au", role = "aut"),
     person("Ellis", "Patrick", , "ellis.patrick@sydney.edu.au", role = c("aut", "cre")),
