@@ -251,5 +251,5 @@ resImage <- spicy(diabetesData, condition = "stage", subject = "case",
 #> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
 topPairs(resImage)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th
+#> Tc__Th  1.622672    5.961811 0.6122509  0.6122509   Tc Th
 ```
