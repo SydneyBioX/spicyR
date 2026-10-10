@@ -168,6 +168,8 @@ test.
   : Observed/expected proportion ratio for a fixed-k neighbourhood
 - [`getProp()`](https://sydneybiox.github.io/spicyR/dev/reference/getProp.md)
   : Get proportions from a SummarizedExperiment.
+- [`buildKnnGraph()`](https://sydneybiox.github.io/spicyR/dev/reference/buildKnnGraph.md)
+  : Build a k-nearest-neighbour graph between cells
 - [`convPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/convPairs.md)
   : Converts colPairs object into an abundance matrix based on number of
   nearby interactions for every cell type.
