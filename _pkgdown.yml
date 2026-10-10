@@ -46,6 +46,7 @@ reference:
   - getPairwise
   - getPairwiseProp
   - getProp
+  - buildKnnGraph
   - convPairs
   - colTest
 - title: "Data"

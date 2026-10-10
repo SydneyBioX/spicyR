@@ -19,25 +19,9 @@
 #'   , SummarizedExperiment::colData(diabetesData)$imageID %in% images
 #' ]
 #'
-#' diabetesData_SPE <- SpatialExperiment::SpatialExperiment(diabetesData,
-#'   colData = SummarizedExperiment::colData(diabetesData)
-#' )
-#' SpatialExperiment::spatialCoords(diabetesData_SPE) <- data.frame(
-#'   SummarizedExperiment::colData(diabetesData_SPE)$x,
-#'   SummarizedExperiment::colData(diabetesData_SPE)$y
-#' ) |>
-#'   as.matrix()
+#' diabetesData <- buildKnnGraph(diabetesData, k = 20)
 #'
-#' SpatialExperiment::spatialCoordsNames(diabetesData_SPE) <- c("x", "y")
-#'
-#' diabetesData_SPE <- imcRtools::buildSpatialGraph(diabetesData_SPE,
-#'   img_id = "imageID",
-#'   type = "knn",
-#'   k = 20,
-#'   coords = c("x", "y")
-#' )
-#'
-#' pairAbundances <- convPairs(diabetesData_SPE,
+#' pairAbundances <- convPairs(diabetesData,
 #'   colPair = "knn_interaction_graph"
 #' )
 #'

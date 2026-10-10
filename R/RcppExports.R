@@ -21,6 +21,10 @@ dataset_build_knn <- function(ptr, k, n_threads = 1L) {
     invisible(.Call(`_spicyR_dataset_build_knn`, ptr, k, n_threads))
 }
 
+knn_rows <- function(x, y, image_offsets, k, n_threads = 1L) {
+    .Call(`_spicyR_knn_rows`, x, y, image_offsets, k, n_threads)
+}
+
 dataset_poisson_model_data <- function(ptr, image_area, from, to) {
     .Call(`_spicyR_dataset_poisson_model_data`, ptr, image_area, from, to)
 }

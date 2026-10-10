@@ -91,6 +91,12 @@ void dataset_build_knn(SEXP ptr, int k, int n_threads = 1) {
   d->build_knn(k, n_threads);
 }
 
+// Neighbour row indices (0-based, nearest first, -1 for images with at most k cells), N x k row-major.
+// [[Rcpp::export]]
+IntegerVector knn_rows(NumericVector x, NumericVector y, IntegerVector image_offsets, int k, int n_threads = 1) {
+  return iv(knn_indices(dvec(x), dvec(y), ivec(image_offsets), k, n_threads));
+}
+
 // [[Rcpp::export]]
 List dataset_poisson_model_data(SEXP ptr, NumericVector image_area, int from, int to) {
   XPtr<Dataset> d(ptr);

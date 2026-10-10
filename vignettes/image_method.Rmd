@@ -65,7 +65,6 @@ library(spicyR)
 library(ggplot2)
 library(SpatialExperiment)
 library(SpatialDatasets)
-library(imcRtools)
 library(dplyr)
 library(survival)
 ```
@@ -184,15 +183,12 @@ spicyBoxPlot(results = spicyTest, rank = 1)
 
 # Linear modelling for custom metrics
 
-`spicyR` can also be applied to custom distance or abundance metrics. A kNN interactions graph can be generated with the function `buildSpatialGraph` from the `imcRtools` package. This generates a `colPairs` object inside of the `SpatialExperiment` object.
+`spicyR` can also be applied to custom distance or abundance metrics. A kNN interactions graph can be generated with the function `buildKnnGraph`, which stores it as a `colPairs` object inside of the `SpatialExperiment` object. It builds the same graph as `buildSpatialGraph(type = "knn")` from the `imcRtools` package, and a graph from `buildSpatialGraph` can be used in the same way.
 
 `spicyR` provides the function `convPairs` for converting a `colPairs` object into an abundance matrix by calculating the average number of nearby cells types for every cell type for a given `k`. For example, if there exists on average 5 neutrophils for every macrophage in image 1, the column `Neutrophil__Macrophage` would have a value of 5 for image 1.
 
 ```{r chunk-10}
-kerenSPE <- imcRtools::buildSpatialGraph(kerenSPE, 
-                                         img_id = "imageID", 
-                                         type = "knn", k = 20,
-                                        coords = c("x", "y"))
+kerenSPE <- buildKnnGraph(kerenSPE, k = 20)
 
 pairAbundances <- convPairs(kerenSPE,
                   colPair = "knn_interaction_graph")

@@ -76,6 +76,21 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// knn_rows
+IntegerVector knn_rows(NumericVector x, NumericVector y, IntegerVector image_offsets, int k, int n_threads);
+RcppExport SEXP _spicyR_knn_rows(SEXP xSEXP, SEXP ySEXP, SEXP image_offsetsSEXP, SEXP kSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image_offsets(image_offsetsSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(knn_rows(x, y, image_offsets, k, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_poisson_model_data
 List dataset_poisson_model_data(SEXP ptr, NumericVector image_area, int from, int to);
 RcppExport SEXP _spicyR_dataset_poisson_model_data(SEXP ptrSEXP, SEXP image_areaSEXP, SEXP fromSEXP, SEXP toSEXP) {
@@ -704,6 +719,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_image_areas", (DL_FUNC) &_spicyR_dataset_image_areas, 2},
     {"_spicyR_dataset_build_radius_index", (DL_FUNC) &_spicyR_dataset_build_radius_index, 2},
     {"_spicyR_dataset_build_knn", (DL_FUNC) &_spicyR_dataset_build_knn, 3},
+    {"_spicyR_knn_rows", (DL_FUNC) &_spicyR_knn_rows, 5},
     {"_spicyR_dataset_poisson_model_data", (DL_FUNC) &_spicyR_dataset_poisson_model_data, 4},
     {"_spicyR_dataset_build_intensity", (DL_FUNC) &_spicyR_dataset_build_intensity, 4},
     {"_spicyR_dataset_inhom_model_data", (DL_FUNC) &_spicyR_dataset_inhom_model_data, 5},
