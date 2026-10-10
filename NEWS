@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.11
+--------------------------
+
+    o Concave windows (method = "image", window = "concave") are computed by a C++ port of concaveman, which
+      gives the same polygon as concaveman::concaveman(); concaveman is no longer suggested.
+
 CHANGES IN VERSION 1.99.10
 --------------------------
 

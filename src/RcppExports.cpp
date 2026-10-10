@@ -26,6 +26,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// concaveHullR
+Rcpp::NumericMatrix concaveHullR(Rcpp::NumericVector x, Rcpp::NumericVector y, double concavity, double lengthThreshold);
+RcppExport SEXP _spicyR_concaveHullR(SEXP xSEXP, SEXP ySEXP, SEXP concavitySEXP, SEXP lengthThresholdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type concavity(concavitySEXP);
+    Rcpp::traits::input_parameter< double >::type lengthThreshold(lengthThresholdSEXP);
+    rcpp_result_gen = Rcpp::wrap(concaveHullR(x, y, concavity, lengthThreshold));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_create
 SEXP dataset_create(NumericVector x, NumericVector y, IntegerVector cell_type, IntegerVector image_offsets, int n_types);
 RcppExport SEXP _spicyR_dataset_create(SEXP xSEXP, SEXP ySEXP, SEXP cell_typeSEXP, SEXP image_offsetsSEXP, SEXP n_typesSEXP) {
@@ -715,6 +729,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_discWindowArea", (DL_FUNC) &_spicyR_discWindowArea, 5},
+    {"_spicyR_concaveHullR", (DL_FUNC) &_spicyR_concaveHullR, 4},
     {"_spicyR_dataset_create", (DL_FUNC) &_spicyR_dataset_create, 5},
     {"_spicyR_dataset_image_areas", (DL_FUNC) &_spicyR_dataset_image_areas, 2},
     {"_spicyR_dataset_build_radius_index", (DL_FUNC) &_spicyR_dataset_build_radius_index, 2},

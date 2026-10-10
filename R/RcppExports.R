@@ -5,6 +5,10 @@ discWindowArea <- function(x, y, r, npoly, rings) {
     .Call(`_spicyR_discWindowArea`, x, y, r, npoly, rings)
 }
 
+.concaveHull <- function(x, y, concavity, lengthThreshold) {
+    .Call(`_spicyR_concaveHullR`, x, y, concavity, lengthThreshold)
+}
+
 dataset_create <- function(x, y, cell_type, image_offsets, n_types) {
     .Call(`_spicyR_dataset_create`, x, y, cell_type, image_offsets, n_types)
 }

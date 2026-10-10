@@ -460,7 +460,6 @@ getPairwise <- function(
   # Inhomogeneous (sigma) or concave windows: per image in R, with spatstat.
   .need("spatstat.geom", "for `sigma` (inhomogeneous L) or concave windows")
   if (!is.null(sigma)) .need("spatstat.explore", "for `sigma` (inhomogeneous L)")
-  if (window == "concave") .need("concaveman", "for concave windows")
 
   cells2 <- getCellSummary(cells, bind = FALSE)
 
@@ -851,11 +850,8 @@ makeWindow <-
             )
           })
         )
-      ch <-
-        concaveman::concaveman(bigDat,
-          length_threshold = window.length,
-          concavity = 1
-        )
+      # concaveman's concave hull (C++ port in src/concaveman.cpp, giving the same polygon as concaveman::concaveman())
+      ch <- .concaveHull(bigDat[, 1], bigDat[, 2], concavity = 1, lengthThreshold = window.length)
       poly <- as.data.frame(ch[nrow(ch):1, ]) # nolint
       colnames(poly) <- c("x", "y")
       ow <-
