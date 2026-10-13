@@ -27,6 +27,7 @@ spicy(
   variance = c("cr2", "hartung_knapp", "auto"),
   frailty = TRUE,
   labelClustering = FALSE,
+  imageHeterogeneity = TRUE,
   ref = NULL,
   cores = 1,
   ...
@@ -118,6 +119,16 @@ spicy(
   type, so a pair's result does not depend on which other pairs are
   requested.
 
+- imageHeterogeneity:
+
+  Cell method: allow the effect to vary between a patient's images
+  beyond their sampling variance (on by default). Each image is weighted
+  by 1 / (its sampling variance + the between-image variance), so an
+  image with many cells cannot outweigh the patient's other images. The
+  between-image variance is estimated from the spread within patients
+  and reported as `tau2_image`. With one image per patient it has no
+  effect.
+
 - ref:
 
   Cell method: the reference level of `condition`.
@@ -147,11 +158,11 @@ full table: for the allocation effect, the pair's `side` (`"attract"` or
 `"avoid"`, which sets the scale of the effect), the effect in each
 condition (`excess_ref`, `excess_comp`, at the average covariates), the
 difference (`excess_difference`), its standard error, df, p-value and
-BH-adjusted p-value, the frailty variance and, when the test was
-adjusted, what for (`adjusted_for`), the effect and p-value of each
-adjustment, and the unadjusted test (`unadjusted_difference`,
-`unadjusted_p_value`, `unadjusted_p_adj`). `$effect` records which
-effect was estimated.
+BH-adjusted p-value, the frailty variance, the between-image variance
+(`tau2_image`) and, when the test was adjusted, what for
+(`adjusted_for`), the effect and p-value of each adjustment, and the
+unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
+`unadjusted_p_adj`). `$effect` records which effect was estimated.
 
 ## Details
 
@@ -200,6 +211,10 @@ Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for
 linear regression with multi-stage samples. Survey Methodology 28(2),
 169-181.
 
+DerSimonian R, Laird N (1986). Meta-analysis in clinical trials.
+Controlled Clinical Trials 7(3), 177-188.
+[doi:10.1016/0197-2456(86)90046-2](https://doi.org/10.1016/0197-2456%2886%2990046-2)
+
 Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust
 variance estimation and hypothesis testing in fixed effects models.
 Journal of Business & Economic Statistics 36(4), 672-683.
@@ -229,17 +244,17 @@ res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th 0.2573739   0.1042285 0.3792698  0.3792698   Tc Th
+#> Tc__Th  0.272768   0.1023755 0.4489368  0.4489368   Tc Th
 res$cellResults
 #>                       from to         level    side excess_ref
-#> Tc__Th__Onset           Tc Th         Onset attract  0.2573739
-#> Tc__Th__Long-duration   Tc Th Long-duration attract  0.2573739
-#>                       excess_difference         se       df   p_value     p_adj
-#> Tc__Th__Onset                0.10422855 0.10860300 5.251571 0.3792698 0.3792698
-#> Tc__Th__Long-duration        0.05161495 0.07179114 5.290259 0.5026656 0.5026656
-#>                              tau2
-#> Tc__Th__Onset         0.009930696
-#> Tc__Th__Long-duration 0.009930696
+#> Tc__Th__Onset           Tc Th         Onset attract   0.272768
+#> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768
+#>                       excess_difference        se       df   p_value     p_adj
+#> Tc__Th__Onset                 0.1023755 0.1249849 5.153215 0.4489368 0.4489368
+#> Tc__Th__Long-duration         0.0398330 0.0857751 5.231229 0.6610582 0.6610582
+#>                              tau2 tau2_image
+#> Tc__Th__Onset         0.001709649 0.05857091
+#> Tc__Th__Long-duration 0.001709649 0.05857091
 
 # the extra number of Tc cells within 50 units of each Th cell
 resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,

@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.11</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -65,6 +65,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span>, <span class="st">"auto"</span><span class="op">)</span>,</span>
 <span>  frailty <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  labelClustering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  imageHeterogeneity <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -147,6 +148,14 @@ inflation of the within-image variance (off by default). The inflation of a <cod
 every counted type, so a pair's result does not depend on which other pairs are requested.</p></dd>
 
 
+<dt id="arg-imageheterogeneity">imageHeterogeneity<a class="anchor" aria-label="anchor" href="#arg-imageheterogeneity"></a></dt>
+<dd><p>Cell method: allow the effect to vary between a patient's images beyond their
+sampling variance (on by default). Each image is weighted by 1 / (its sampling variance + the between-image
+variance), so an image with many cells cannot outweigh the patient's other images. The between-image variance
+is estimated from the spread within patients and reported as <code>tau2_image</code>. With one image per patient it has
+no effect.</p></dd>
+
+
 <dt id="arg-ref">ref<a class="anchor" aria-label="anchor" href="#arg-ref"></a></dt>
 <dd><p>Cell method: the reference level of <code>condition</code>.</p></dd>
 
@@ -167,9 +176,9 @@ every counted type, so a pair's result does not depend on which other pairs are 
 for both methods. For the cell method, <code>$cellResults</code> holds the full table: for the allocation effect,
 the pair's <code>side</code> (<code>"attract"</code> or <code>"avoid"</code>, which sets the scale of the effect), the effect in each
 condition (<code>excess_ref</code>, <code>excess_comp</code>, at the average covariates), the difference
-(<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
-and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect and p-value of each adjustment,
-and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>). <code>$effect</code>
+(<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
+between-image variance (<code>tau2_image</code>) and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect
+and p-value of each adjustment, and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>). <code>$effect</code>
 records which effect was estimated.</p>
     </div>
     <div class="section level2">
@@ -204,6 +213,8 @@ compared between conditions with a weighted linear model, or a mixed model when 
 Bioinformatics 38(11), 3099-3105. <a href="https://doi.org/10.1093/bioinformatics/btac268" class="external-link">doi:10.1093/bioinformatics/btac268</a></p>
 <p>Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
 samples. Survey Methodology 28(2), 169-181.</p>
+<p>DerSimonian R, Laird N (1986). Meta-analysis in clinical trials. Controlled Clinical Trials 7(3), 177-188.
+<a href="https://doi.org/10.1016/0197-2456%2886%2990046-2" class="external-link">doi:10.1016/0197-2456(86)90046-2</a></p>
 <p>Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 testing in fixed effects models. Journal of Business &amp; Economic Statistics 36(4), 672-683.
 <a href="https://doi.org/10.1080/07350015.2016.1247004" class="external-link">doi:10.1080/07350015.2016.1247004</a></p>
@@ -225,17 +236,17 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        intercept coefficient   p.value adj.pvalue from to</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th 0.2573739   0.1042285 0.3792698  0.3792698   Tc Th</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th  0.272768   0.1023755 0.4489368  0.4489368   Tc Th</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level    side excess_ref</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset attract  0.2573739</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration attract  0.2573739</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference         se       df   p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                0.10422855 0.10860300 5.251571 0.3792698 0.3792698</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration        0.05161495 0.07179114 5.290259 0.5026656 0.5026656</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              tau2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.009930696</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.009930696</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset attract   0.272768</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference        se       df   p_value     p_adj</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1023755 0.1249849 5.153215 0.4489368 0.4489368</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.0398330 0.0857751 5.231229 0.6610582 0.6610582</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                              tau2 tau2_image</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.001709649 0.05857091</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.001709649 0.05857091</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># the extra number of Tc cells within 50 units of each Th cell</span></span></span>
 <span class="r-in"><span><span class="va">resCount</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
