@@ -5,10 +5,30 @@ cells <- sim_cells()
 types <- sort(unique(cells$cellType))
 grid <- expand.grid(from = types, to = types, stringsAsFactors = FALSE)
 
+## The cell method through its internal steps, with the label-clustering inflation available (spicy() has it off)
+cell_internal <- function(cells, r, effect, label_clustering, variance, image_heterogeneity = TRUE) {
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
+  pairs <- lapply(seq_len(nrow(grid)), function(i) c(grid$from[i], grid$to[i]))
+  g <- spicyR:::.cell_graph(ctx, pairs, r = r, label_clustering = label_clustering, effect = effect)
+  g$image_heterogeneity <- image_heterogeneity
+  fits <- lapply(pairs, function(p) spicyR:::.cell_pair_test(ctx, g, p[1], p[2], TRUE, variance, FALSE))
+  spicyR:::.cell_table(fits, ctx, FALSE)
+}
+
+test_that("spicy() is the internal cell method with the frailty and image random effect, without inflation", {
+  for (ef in c("allocation", "count")) {
+    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef))$cellResults
+    int <- cell_internal(cells, 30, ef, FALSE, "cr2")
+    m <- merge(res, int, by = c("from", "to"))
+    expect_equal(nrow(m), nrow(grid))
+    expect_equal(m$p_value.x, m$p_value.y, tolerance = 1e-12)
+  }
+  expect_error(spicy(cells, "condition", subject = "patient", labelClustering = TRUE), "not an argument")
+})
+
 test_that("the cell method matches the plain-R reference for every pair", {
   for (ef in c("allocation", "count")) for (lc in c(FALSE, TRUE)) for (vr in c("cr2", "hartung_knapp")) {
-    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef,
-                                  labelClustering = lc, variance = vr))$cellResults
+    res <- cell_internal(cells, 30, ef, lc, vr)
     # the reference is in (counted, centre) order, which is the user's from -> to
     ref <- ref_spicy_cell(transform(cells, subject = patient), grid, 30, lc, vr, effect = ef)
     ref <- data.frame(from = ref$from, to = ref$to, p_ref = ref$p_value, d_ref = ref$excess_difference)
@@ -83,7 +103,7 @@ test_that("random labelling moments are exact (enumeration)", {
 })
 
 ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
-g <- spicyR:::.cell_graph(ctx, list(c("T", "tumour"), c("B", "macro")), r = 30)
+g <- spicyR:::.cell_graph(ctx, list(c("T", "tumour"), c("B", "macro")), r = 30, label_clustering = FALSE)
 rows_raw <- spicyR:::.cell_rows(ctx, g, "T", "tumour")
 g$image_heterogeneity <- TRUE   # as spicy() by default
 rows <- spicyR:::.cell_rows(ctx, g, "T", "tumour")
@@ -100,11 +120,10 @@ test_that("images within a patient: the core's rows match the reference", {
                attr(ref_image_heterogeneity(r2, r2$unit), "tau2_image"), tolerance = 1e-12)
 })
 
-test_that("with one image per patient, imageHeterogeneity changes nothing", {
+test_that("with one image per patient, the image random effect changes nothing", {
   one <- cells[grepl("_1$", cells$imageID), ]
-  a <- suppressMessages(spicy(one, "condition", subject = "patient", r = 30, from = "tumour"))$cellResults
-  b <- suppressMessages(spicy(one, "condition", subject = "patient", r = 30, from = "tumour",
-                              imageHeterogeneity = FALSE))$cellResults
+  a <- cell_internal(one, 30, "allocation", FALSE, "cr2", TRUE)
+  b <- cell_internal(one, 30, "allocation", FALSE, "cr2", FALSE)
   expect_equal(a$p_value, b$p_value, tolerance = 1e-10)
   expect_equal(a$excess_difference, b$excess_difference, tolerance = 1e-10)
   expect_true(all(a$tau2_image == 0))
@@ -199,13 +218,12 @@ test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), 
   a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2")
   b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2)
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
-                                adjustAbundance = TRUE, labelClustering = TRUE))$cellResults
+                                adjustAbundance = TRUE))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
   expect_equal(res$adjusted_for, "abundance")
   expect_equal(res$unadjusted_p_value, a$p, tolerance = 1e-10)
   # the default is unadjusted
-  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
-                                 labelClustering = TRUE))$cellResults
+  res0 <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour"))$cellResults
   expect_equal(res0$p_value, res$unadjusted_p_value, tolerance = 1e-12)
   expect_null(res0$unadjusted_p_value)
 })
@@ -268,27 +286,21 @@ test_that("allocation, avoidance: the effect is minus the fraction moved away, h
   }
   ck <- do.call(rbind, c(lapply(1:4, function(i) one_image(paste0("a", i), paste0("pa", i), "A", 25)),
                          lapply(1:4, function(i) one_image(paste0("b", i), paste0("pb", i), "B", 120))))
-  x <- suppressMessages(spicy(ck, "condition", subject = "patient", r = 4, from = "A", to = "T",
-                              labelClustering = FALSE))$cellResults["A__T", ]
+  x <- suppressMessages(spicy(ck, "condition", subject = "patient", r = 4, from = "A", to = "T"))$cellResults["A__T", ]
   expect_identical(x$side, "avoid")
   expect_lt(abs(x$excess_ref + 0.3), 0.03)
   expect_lt(abs(x$excess_comp + 0.3), 0.03)
   expect_gt(x$p_value, 0.05)
 })
 
-test_that("variance is CR2 by default; 'auto' uses Hartung-Knapp when a condition has at most 5 patients", {
+test_that("variance is CR2 by default, whatever the number of patients; Hartung-Knapp on request", {
   pts <- unique(cells[, c("patient", "condition")])
-  m_min <- min(table(pts$condition))
   small <- cells[cells$patient %in% unlist(lapply(split(pts$patient, pts$condition), head, 4)), ]
   def <- suppressMessages(spicy(small, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))
   expect_identical(def$variance, "cr2")
-  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
-                                variance = "auto"))
-  expect_identical(res$variance, if (m_min <= 5) "hartung_knapp" else "cr2")
-  rs <- suppressMessages(spicy(small, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
-                               variance = "auto"))
-  expect_identical(rs$variance, "hartung_knapp")
   hk <- suppressMessages(spicy(small, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
                                variance = "hartung_knapp"))
-  expect_equal(rs$cellResults$p_value, hk$cellResults$p_value)
+  expect_identical(hk$variance, "hartung_knapp")
+  expect_equal(hk$cellResults$df, 6)
+  expect_error(spicy(small, "condition", subject = "patient", variance = "auto"))
 })

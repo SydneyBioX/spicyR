@@ -17,7 +17,9 @@
 #' cells within `r` of each `to` cell instead; it also reflects how many `from` cells surround a `to` cell
 #' (depth of infiltration), but it grows with how densely the `from` cells are packed, so a change in
 #' packing alone can appear as a change in co-localisation. Images are combined within patients and
-#' patients within conditions by a frailty GEE, and the difference between conditions is tested with a
+#' patients within conditions by a frailty GEE with a second random effect for the images of a patient (each image
+#' is weighted by 1 / (its sampling variance + the between-image variance), so one large image cannot outweigh the
+#' patient's other images), and the difference between conditions is tested with a
 #' CR2 cluster-robust variance on Satterthwaite degrees of freedom, with **patients (`subject`) as the
 #' units**. The difference is adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for the
 #' log share of the `from` type in each image; the unadjusted test is then reported alongside
@@ -54,17 +56,9 @@
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
-#' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df), `"hartung_knapp"` (for very few
-#'   patients: the model-based variance floored at CR2, on m - 2 df) or `"auto"` (`"hartung_knapp"` when a
-#'   condition has at most 5 patients, `"cr2"` otherwise). The variance used is in `$variance`.
-#' @param frailty,labelClustering Cell method: the patient frailty (on by default) and the label-clustering
-#'   inflation of the within-image variance (off by default). The inflation of a `to` type is estimated from
-#'   every counted type, so a pair's result does not depend on which other pairs are requested.
-#' @param imageHeterogeneity Cell method: allow the effect to vary between a patient's images beyond their
-#'   sampling variance (on by default). Each image is weighted by 1 / (its sampling variance + the between-image
-#'   variance), so an image with many cells cannot outweigh the patient's other images. The between-image variance
-#'   is estimated from the spread within patients and reported as `tau2_image`. With one image per patient it has
-#'   no effect.
+#' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df) or `"hartung_knapp"` (the
+#'   model-based variance, scaled by the Pearson statistic when that exceeds its df and never below CR2, on m - 2
+#'   df).
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
@@ -134,10 +128,7 @@ spicy <- function(cells,
                   k = NULL,
                   combine = c("maxT", "cauchy"),
                   adjustAbundance = FALSE,
-                  variance = c("cr2", "hartung_knapp", "auto"),
-                  frailty = TRUE,
-                  labelClustering = FALSE,
-                  imageHeterogeneity = TRUE,
+                  variance = c("cr2", "hartung_knapp"),
                   ref = NULL,
                   cores = 1,
                   ...) {
@@ -153,6 +144,9 @@ spicy <- function(cells,
                                        imageID = imageID, cellType = cellType, spatialCoords = spatialCoords,
                                        r = r, from = from, to = to, cores = cores), dots)))
   }
+  gone <- intersect(names(dots), c("frailty", "labelClustering", "imageHeterogeneity"))
+  if (length(gone)) stop("`", gone[1], "` is not an argument of spicy(): the cell method always uses the patient ",
+                         "frailty and the image random effect, without label-clustering inflation.", call. = FALSE)
   if (length(dots)) stop("arguments not used by method = \"cell\": ", paste(names(dots), collapse = ", "),
                          ". They belong to method = \"image\".", call. = FALSE)
   combine <- match.arg(combine); variance <- match.arg(variance); effect <- match.arg(effect)
@@ -175,14 +169,6 @@ spicy <- function(cells,
   ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
                        ref = ref, survival = survival)
   pheno <- ctx$df[ctx$first, , drop = FALSE]
-  if (variance == "auto") {
-    # Hartung-Knapp (m - 2 df) when a condition has at most 5 patients, where CR2's Satterthwaite df are very small;
-    # CR2 otherwise (Hartung-Knapp's m - 2 df overstate the information of rare pairs in larger cohorts)
-    m_min <- if (survival) Inf else min(tapply(ctx$image_unit, ctx$image_group, function(u) length(unique(u))))
-    variance <- if (m_min <= 5) "hartung_knapp" else "cr2"
-    if (variance == "hartung_knapp") message("variance = \"auto\": a condition has ", m_min,
-                                             " patients; using the Hartung-Knapp variance on m - 2 df.")
-  }
 
   Z_extra <- NULL
   if (!is.null(covariates)) {
@@ -198,14 +184,13 @@ spicy <- function(cells,
   if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (survival) {
-    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjustAbundance, effect,
-                          imageHeterogeneity)
+    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, cores, adjustAbundance, effect)
   } else {
     per_r <- lapply(radii, function(rr) {
-      g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering,
+      g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = FALSE,
                        n_threads = cores, effect = effect)
-      g$image_heterogeneity <- imageHeterogeneity
-      lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], frailty, variance, adjustAbundance, Z_extra))
+      g$image_heterogeneity <- TRUE
+      lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], TRUE, variance, adjustAbundance, Z_extra))
     })
     res <- .cell_combine(per_r, radii, ctx, adjustAbundance || !is.null(covariates), combine)
   }
@@ -253,14 +238,13 @@ spicy <- function(cells,
 }
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair.
-.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust, effect = "allocation",
-                           image_heterogeneity = TRUE) {
+.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, cores, adjust, effect = "allocation") {
   sv <- .cell_survival_setup(ctx, pheno, covariates)
   rr <- radii[1]
   if (length(radii) > 1L) message("survival uses one radius; using r = ", rr, ".")
-  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores,
+  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = FALSE, n_threads = cores,
                    effect = effect)
-  g$image_heterogeneity <- image_heterogeneity
+  g$image_heterogeneity <- TRUE
   fits <- lapply(pairs, function(p) .cell_survival_test(ctx, .cell_rows(ctx, g, p[1], p[2]), p[1], p[2], sv, adjust, covariates))
   list(table = .cell_survival_table(fits, adjust, covariates), fits = fits)
 }

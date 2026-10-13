@@ -1,3 +1,11 @@
+CHANGES IN VERSION 1.99.13
+--------------------------
+
+    o spicy() fits one model for the cell method: the patient frailty and the image random effect, without the
+      label-clustering inflation. The arguments frailty, labelClustering and imageHeterogeneity are removed, and
+      variance = "auto" is removed: the variance is CR2 on Satterthwaite df for every study size unless
+      variance = "hartung_knapp" is given.
+
 CHANGES IN VERSION 1.99.12
 --------------------------
 
@@ -5,7 +13,7 @@ CHANGES IN VERSION 1.99.12
       default). Each image is weighted by 1 / (its sampling variance + the between-image variance), with the
       between-image variance estimated by DerSimonian-Laird from the spread within patients and reported as
       tau2_image, so one large image can no longer outweigh a patient's other images. With one image per patient
-      the results are unchanged. imageHeterogeneity = FALSE gives the previous weighting.
+      the results are unchanged.
 
 CHANGES IN VERSION 1.99.11
 --------------------------
