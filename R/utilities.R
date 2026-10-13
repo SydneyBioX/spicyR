@@ -28,48 +28,94 @@
 
 ## ---- parallel helpers --------------------------------------------------------------------------
 
-## Number of workers from `cores` (a number) or a BiocParallel param object (`cores` or `BPPARAM`), for
-## backward compatibility with code that passed BiocParallel params.
+## Number of workers from `cores` (a number) or a BiocParallel param object (`cores` or `BPPARAM`).
 .n_workers <- function(cores = 1, BPPARAM = NULL) {
     x <- if (!is.null(BPPARAM)) BPPARAM else cores
     if (is.null(x)) return(1L)
     if (is.numeric(x)) return(max(1L, as.integer(x[1])))
     if (.is_class(x, "BiocParallelParam")) {
-        .need("BiocParallel", "to use a BiocParallel param object; or pass `cores` as a number")
         return(max(1L, as.integer(BiocParallel::bpnworkers(x))))
     }
     stop("`cores` must be a number (or a BiocParallel param object).", call. = FALSE)
 }
 
-## lapply()/mapply() over `cores` forked workers (parallel::mclapply), sequential with one core or on
-## Windows.
+## A BiocParallel param for `cores` workers: forked workers (MulticoreParam), or socket workers (SnowParam) on
+## Windows. A param object is returned unchanged.
+.bpparam <- function(cores = 1L) {
+    if (.is_class(cores, "BiocParallelParam")) return(cores)
+    cores <- .n_workers(cores)
+    if (cores <= 1L) return(BiocParallel::SerialParam())
+    if (.Platform$OS.type == "windows") BiocParallel::SnowParam(cores) else BiocParallel::MulticoreParam(cores)
+}
+
+## The task function and elements of the current .par_lapply() call, found by forked workers in their copy of
+## this environment.
+.parallel_env <- new.env(parent = emptyenv())
+.run_task <- function(i) .parallel_env$task(.parallel_env$X[[i]])
+
+## lapply(X, FUN, ...) over the workers of `cores` (a number or a BiocParallel param).
+## - Forked workers start once, after the task exists, so they share the session's data without being sent it,
+##   and only task numbers and results pass between processes. Forking a new process for every chunk
+##   instead copies much of the session into each one.
+## - BLAS runs one thread in each worker during the call. OpenBLAS otherwise starts one thread per core in every
+##   worker (128 on a 128-core server), which slows the workers down many times. The setting is changed in this
+##   session before the workers start, because changing it inside a worker first restarts every thread.
+## - Tasks are handed out in about eight chunks per worker, so that quick and slow tasks balance out.
 .par_lapply <- function(X, FUN, ..., cores = 1L) {
-    cores <- .n_workers(cores)
-    if (cores > 1L && .Platform$OS.type != "windows" && length(X) > 1L) {
-        out <- parallel::mclapply(X, FUN, ..., mc.cores = cores)
-        .stop_on_worker_error(out)
-    } else {
-        lapply(X, FUN, ...)
+    BPPARAM <- .bpparam(cores)
+    workers <- BiocParallel::bpnworkers(BPPARAM)
+    if (workers <= 1L || length(X) <= 1L) return(lapply(X, FUN, ...))
+    task <- FUN
+    if (...length()) {
+        # The task's environment holds only FUN and the extra arguments, not X, so that socket workers aren't
+        # sent all of X with every chunk.
+        taskEnv <- list2env(list(FUN = FUN, args = list(...)), parent = asNamespace("spicyR"))
+        task <- function(x) do.call(FUN, c(list(x), args))
+        environment(task) <- taskEnv
     }
-}
 
-.par_mapply <- function(FUN, ..., MoreArgs = NULL, SIMPLIFY = FALSE, cores = 1L) {
-    cores <- .n_workers(cores)
-    if (cores > 1L && .Platform$OS.type != "windows") {
-        out <- parallel::mcmapply(FUN, ..., MoreArgs = MoreArgs, SIMPLIFY = SIMPLIFY, mc.cores = cores)
-        .stop_on_worker_error(out)
-    } else {
-        mapply(FUN, ..., MoreArgs = MoreArgs, SIMPLIFY = SIMPLIFY)
+    blasThreads <- RhpcBLASctl::blas_get_num_procs()
+    RhpcBLASctl::blas_set_num_threads(1L)
+    on.exit(RhpcBLASctl::blas_set_num_threads(blasThreads), add = TRUE)
+    if (BiocParallel::bpisup(BPPARAM) || !methods::is(BPPARAM, "MulticoreParam")) {
+        # Workers that are already running, or are new R sessions, are sent the task with each chunk.
+        threadVars <- Sys.getenv(c("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS"), unset = NA)
+        Sys.setenv(OPENBLAS_NUM_THREADS = 1L, OMP_NUM_THREADS = 1L)
+        on.exit(.restore_env(threadVars), add = TRUE)
+        return(BiocParallel::bplapply(X, task, BPPARAM = BPPARAM))
     }
-}
 
-## mclapply() returns errors as "try-error" values; raise the first, as bplapply() did.
-.stop_on_worker_error <- function(out) {
-    if (is.list(out)) {
-        bad <- vapply(out, inherits, logical(1), what = "try-error")
-        if (any(bad)) stop(attr(out[[which(bad)[1]]], "condition"))
+    assign("task", task, envir = .parallel_env)
+    assign("X", X, envir = .parallel_env)
+    on.exit(rm(list = c("task", "X"), envir = .parallel_env), add = TRUE)
+    tasks <- BiocParallel::bptasks(BPPARAM)
+    if (tasks == 0L) {
+        BiocParallel::bptasks(BPPARAM) <- min(length(X), 8L * workers)
+        on.exit(BiocParallel::bptasks(BPPARAM) <- tasks, add = TRUE, after = FALSE)
     }
+    BiocParallel::bpstart(BPPARAM)
+    on.exit(BiocParallel::bpstop(BPPARAM), add = TRUE, after = FALSE)
+    out <- BiocParallel::bplapply(seq_along(X), .run_task, BPPARAM = BPPARAM)
+    names(out) <- names(X)
     out
+}
+
+## mapply(FUN, ..., MoreArgs = MoreArgs, SIMPLIFY = FALSE) over the workers of `cores`.
+.par_mapply <- function(FUN, ..., MoreArgs = NULL, SIMPLIFY = FALSE, cores = 1L) {
+    args <- list(...)
+    n <- max(lengths(args))
+    out <- .par_lapply(seq_len(n), function(i) {
+        do.call(FUN, c(lapply(args, function(a) a[[(i - 1L) %% length(a) + 1L]]), MoreArgs))
+    }, cores = cores)
+    names(out) <- if (!is.null(names(args[[1]]))) names(args[[1]]) else if (is.character(args[[1]])) args[[1]]
+    if (isTRUE(SIMPLIFY)) simplify2array(out) else out
+}
+
+## Put environment variables back as they were (NA: unset).
+.restore_env <- function(values) {
+    for (name in names(values)) {
+        if (is.na(values[[name]])) Sys.unsetenv(name) else do.call(Sys.setenv, as.list(values[name]))
+    }
 }
 
 ## ---- small data helpers ------------------------------------------------------------------------
