@@ -1,3 +1,10 @@
+CHANGES IN VERSION 1.99.14
+--------------------------
+
+    o spicy(weightsByPair = TRUE) no longer fails for a cell type paired with itself: both terms of the weight
+      model have the same covariate, so it is fitted as one monotone smooth, which gives the predictions scam()
+      gives for the two-term model.
+
 CHANGES IN VERSION 1.99.13
 --------------------------
 

@@ -1097,24 +1097,31 @@ boxQP <- function(Q, c, lower) {
 # path scam() takes: penalties scaled as mgcv's smoothCon() scales them, the
 # pcls() start at sp = 0.05, then scam's BFGS search. Returns the predictions
 # at (x1new, x2new), or NULL if the C++ fit fails.
+# When x1 and x2 are the same (a cell type paired with itself), the two smooths
+# are not identifiable and the model is one smooth of x1; scam() gives the same
+# predictions either way.
 #' @importFrom splines splineDesign
 mpdWeightFit <- function(y, x1, x2, x1new, x2new) {
-  b1 <- mpdBasis(x1)
-  b2 <- mpdBasis(x2)
-  X <- cbind(1, b1$X, b2$X)
-  k <- ncol(b1$X)
+  same <- identical(x1, x2) && identical(x1new, x2new)
+  bases <- if (same) list(mpdBasis(x1)) else list(mpdBasis(x1), mpdBasis(x2))
+  X <- do.call(cbind, c(list(1), lapply(bases, `[[`, "X")))
+  k <- ncol(bases[[1]]$X)
   D <- crossprod(diff(diag(k)))
-  S1 <- S2 <- matrix(0, ncol(X), ncol(X))
-  S1[1 + seq_len(k), 1 + seq_len(k)] <- D / (norm(D) / norm(b1$X, type = "I")^2)
-  S2[1 + k + seq_len(k), 1 + k + seq_len(k)] <- D / (norm(D) / norm(b2$X, type = "I")^2)
-  iv <- c(FALSE, rep(TRUE, 2 * k))
+  S <- lapply(seq_along(bases), function(j) {
+    Sj <- matrix(0, ncol(X), ncol(X))
+    Sj[1 + (j - 1) * k + seq_len(k), 1 + (j - 1) * k + seq_len(k)] <- D / (norm(D) / norm(bases[[j]]$X, type = "I")^2)
+    Sj
+  })
+  iv <- c(FALSE, rep(TRUE, length(bases) * k))
   XtX <- crossprod(X)
   Xty <- drop(crossprod(X, y))
-  start <- boxQP(XtX + 0.05 * (S1 + S2), Xty, ifelse(iv, 1e-12, -Inf))
-  fit <- scamMonoFit(XtX, Xty, sum(y^2), length(y), list(S1, S2), iv, start,
-                     c(1L, 1L + k), c(k, k))
+  start <- boxQP(XtX + 0.05 * Reduce(`+`, S), Xty, ifelse(iv, 1e-12, -Inf))
+  fit <- scamMonoFit(XtX, Xty, sum(y^2), length(y), S, iv, start,
+                     1L + (seq_along(bases) - 1L) * k, rep(k, length(bases)))
   if (!fit$ok) return(NULL)
-  z <- drop(cbind(1, mpdPredict(b1, x1new), mpdPredict(b2, x2new)) %*% fit$coef)
+  newX <- list(mpdPredict(bases[[1]], x1new))
+  if (!same) newX <- c(newX, list(mpdPredict(bases[[2]], x2new)))
+  z <- drop(do.call(cbind, c(list(1), newX)) %*% fit$coef)
   names(z) <- seq_along(z) # as predict.scam() names them
   z
 }
