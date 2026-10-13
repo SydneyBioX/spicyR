@@ -321,7 +321,7 @@ argumentChecks = function(function_name, user_vals, env = parent.frame()) {
     }
   } else if ("BPPARAM" %in% names(user_vals)) {
     if (!is_param(user_vals$BPPARAM)) {
-      stop("'BBPARAM' must be a MulticoreParam or SerialParam object.")
+      stop("'BPPARAM' must be a MulticoreParam or SerialParam object.")
     }
   } else if ("cores" %in% names(user_vals)) {
     if (!is.numeric(user_vals$cores) && !is_param(user_vals$cores)) {
