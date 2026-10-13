@@ -1,3 +1,12 @@
+CHANGES IN VERSION 1.99.16
+--------------------------
+
+    o R-level parallel loops (method = "image" with sigma or a concave window, weightsByPair, survival models) run
+      on BiocParallel instead of parallel::mclapply: forked workers start once per call and share the data,
+      tasks are handed out in about eight chunks per worker, and socket workers are used on Windows. BLAS runs
+      one thread in each worker during the call; OpenBLAS otherwise starts one thread per core in every worker.
+      BiocParallel and RhpcBLASctl are imported; parallel is no longer imported.
+
 CHANGES IN VERSION 1.99.15
 --------------------------
 
