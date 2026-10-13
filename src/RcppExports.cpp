@@ -561,6 +561,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_image_heterogeneity_rows
+DataFrame stats_image_heterogeneity_rows(DataFrame rows, IntegerVector unit);
+RcppExport SEXP _spicyR_stats_image_heterogeneity_rows(SEXP rowsSEXP, SEXP unitSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_image_heterogeneity_rows(rows, unit));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_kontextual_clustering
 NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix raw, NumericMatrix counts, double h);
 RcppExport SEXP _spicyR_stats_kontextual_clustering(SEXP ptrSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP rawSEXP, SEXP countsSEXP, SEXP hSEXP) {
@@ -765,6 +777,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_excess_image_rows", (DL_FUNC) &_spicyR_stats_excess_image_rows, 7},
     {"_spicyR_stats_allocation_image_rows", (DL_FUNC) &_spicyR_stats_allocation_image_rows, 6},
     {"_spicyR_stats_kontextual_image_rows", (DL_FUNC) &_spicyR_stats_kontextual_image_rows, 5},
+    {"_spicyR_stats_image_heterogeneity_rows", (DL_FUNC) &_spicyR_stats_image_heterogeneity_rows, 2},
     {"_spicyR_stats_kontextual_clustering", (DL_FUNC) &_spicyR_stats_kontextual_clustering, 6},
     {"_spicyR_stats_label_clustering", (DL_FUNC) &_spicyR_stats_label_clustering, 7},
     {"_spicyR_stats_excess_test", (DL_FUNC) &_spicyR_stats_excess_test, 6},

@@ -149,6 +149,10 @@ stats_kontextual_image_rows <- function(sums, counts, from, to, psi) {
     .Call(`_spicyR_stats_kontextual_image_rows`, sums, counts, from, to, psi)
 }
 
+stats_image_heterogeneity_rows <- function(rows, unit) {
+    .Call(`_spicyR_stats_image_heterogeneity_rows`, rows, unit)
+}
+
 stats_kontextual_clustering <- function(ptr, from, to, raw, counts, h) {
     .Call(`_spicyR_stats_kontextual_clustering`, ptr, from, to, raw, counts, h)
 }

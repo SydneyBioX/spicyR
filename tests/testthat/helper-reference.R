@@ -155,15 +155,27 @@ ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")
     p_value = 2 * stats::pt(-abs(est / sqrt(V)), df))
 }
 
+## Images within a unit: each row becomes y = (O - E) / n with variance v / n^2 + tau2_image, tau2_image the
+## DerSimonian-Laird estimate from the spread of y within units (weights n^2 / v).
+ref_image_heterogeneity <- function(d, unit) {
+  y <- (d$O - d$E) / d$n; s2 <- d$v / d$n^2; w <- 1 / s2; Q <- 0; df <- 0; C <- 0
+  for (u in split(seq_along(y), unit)) { if (length(u) < 2) next
+    m <- sum(w[u] * y[u]) / sum(w[u]); Q <- Q + sum(w[u] * (y[u] - m)^2); df <- df + length(u) - 1
+    C <- C + sum(w[u]) - sum(w[u]^2) / sum(w[u]) }
+  tau2 <- if (df > 0 && C > 0) max(0, (Q - df) / C) else 0
+  d$O <- y; d$E <- 0; d$n <- 1; d$v <- s2 + tau2; attr(d, "tau2_image") <- tau2; d
+}
+
 ## Whole dataset: cells with imageID, cellType, x, y, condition (two levels) and optionally subject.
 ref_spicy_cell <- function(cells, pairs, r, label_clustering = TRUE, variance = "cr2", self_count = "spec",
-                           effect = "count") {
+                           effect = "count", image_heterogeneity = TRUE) {
   ims <- ref_image_data(cells, pairs, r, label_clustering, self_count, effect)
   info <- unique(cells[, intersect(c("imageID", "subject", "condition"), names(cells))])
   lev <- levels(factor(cells$condition))
   do.call(rbind, lapply(names(ims), function(k) { d <- ims[[k]]; i <- match(d$imageID, info$imageID)
     unit <- if (!is.null(info$subject)) as.character(info$subject[i]) else d$imageID
     group <- as.numeric(as.character(info$condition[i]) == lev[2])
+    if (image_heterogeneity) d <- ref_image_heterogeneity(d, unit)
     ft <- strsplit(k, "__", fixed = TRUE)[[1]]
     ok <- all(vapply(0:1, function(g) length(unique(unit[group == g])) >= 2, TRUE))
     res <- if (ok) ref_excess_test(d, unit, group, variance) else

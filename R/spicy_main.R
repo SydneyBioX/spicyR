@@ -60,6 +60,11 @@
 #' @param frailty,labelClustering Cell method: the patient frailty (on by default) and the label-clustering
 #'   inflation of the within-image variance (off by default). The inflation of a `to` type is estimated from
 #'   every counted type, so a pair's result does not depend on which other pairs are requested.
+#' @param imageHeterogeneity Cell method: allow the effect to vary between a patient's images beyond their
+#'   sampling variance (on by default). Each image is weighted by 1 / (its sampling variance + the between-image
+#'   variance), so an image with many cells cannot outweigh the patient's other images. The between-image variance
+#'   is estimated from the spread within patients and reported as `tau2_image`. With one image per patient it has
+#'   no effect.
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
@@ -69,15 +74,18 @@
 #'   for both methods. For the cell method, `$cellResults` holds the full table: for the allocation effect,
 #'   the pair's `side` (`"attract"` or `"avoid"`, which sets the scale of the effect), the effect in each
 #'   condition (`excess_ref`, `excess_comp`, at the average covariates), the difference
-#'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
-#'   and, when the test was adjusted, what for (`adjusted_for`), the effect and p-value of each adjustment,
-#'   and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`). `$effect`
+#'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
+#'   between-image variance (`tau2_image`) and, when the test was adjusted, what for (`adjusted_for`), the effect
+#'   and p-value of each adjustment, and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`). `$effect`
 #'   records which effect was estimated.
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
 #'   Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 #'
 #'   Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
 #'   samples. Survey Methodology 28(2), 169-181.
+#'
+#'   DerSimonian R, Laird N (1986). Meta-analysis in clinical trials. Controlled Clinical Trials 7(3), 177-188.
+#'   \doi{10.1016/0197-2456(86)90046-2}
 #'
 #'   Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 #'   testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
@@ -129,6 +137,7 @@ spicy <- function(cells,
                   variance = c("cr2", "hartung_knapp", "auto"),
                   frailty = TRUE,
                   labelClustering = FALSE,
+                  imageHeterogeneity = TRUE,
                   ref = NULL,
                   cores = 1,
                   ...) {
@@ -189,11 +198,13 @@ spicy <- function(cells,
   if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (survival) {
-    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjustAbundance, effect)
+    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjustAbundance, effect,
+                          imageHeterogeneity)
   } else {
     per_r <- lapply(radii, function(rr) {
       g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering,
                        n_threads = cores, effect = effect)
+      g$image_heterogeneity <- imageHeterogeneity
       lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], frailty, variance, adjustAbundance, Z_extra))
     })
     res <- .cell_combine(per_r, radii, ctx, adjustAbundance || !is.null(covariates), combine)
@@ -242,12 +253,14 @@ spicy <- function(cells,
 }
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair.
-.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust, effect = "allocation") {
+.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, labelClustering, cores, adjust, effect = "allocation",
+                           image_heterogeneity = TRUE) {
   sv <- .cell_survival_setup(ctx, pheno, covariates)
   rr <- radii[1]
   if (length(radii) > 1L) message("survival uses one radius; using r = ", rr, ".")
   g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = labelClustering, n_threads = cores,
                    effect = effect)
+  g$image_heterogeneity <- image_heterogeneity
   fits <- lapply(pairs, function(p) .cell_survival_test(ctx, .cell_rows(ctx, g, p[1], p[2]), p[1], p[2], sv, adjust, covariates))
   list(table = .cell_survival_table(fits, adjust, covariates), fits = fits)
 }

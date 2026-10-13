@@ -77,6 +77,14 @@ std::vector<double> kontextual_clustering_factor(const Dataset& data, const std:
                                                  const std::vector<double>& counts, int n_types, int n_images,
                                                  double h);
 
+// Images within a unit (Supplementary Methods, Section 1): a second random effect, for the spread of the effect
+// between a unit's images beyond their sampling variance. Each row becomes its effect y = (O - E) / n with
+// O = y, E = 0, n = 1 and v = v / n^2 + tau2_image, so an image's weight 1 / (v / n^2 + tau2_image) is at most
+// 1 / tau2_image however many cells it has. tau2_image is the DerSimonian-Laird estimate from the spread within
+// units (weights n^2 / v; units with one row do not contribute; 0 when no unit has two rows). `unit` is per row.
+// With one row per unit the rows are an exact rescaling of the input and every test gives the same result.
+ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>& unit, double* tau2_image = nullptr);
+
 // ------------------------------------------------------ the two-group test ---
 
 enum class Variance { CR2, HartungKnapp };

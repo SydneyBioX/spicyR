@@ -297,6 +297,36 @@ std::vector<double> kontextual_clustering_factor(const Dataset& data, const std:
   return out;
 }
 
+ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>& unit, double* tau2_image) {
+  const std::size_t N = rows.O.size();
+  if (unit.size() != N) throw std::invalid_argument("image_heterogeneity_rows: one unit per row");
+  std::vector<double> y(N), s2(N);
+  for (std::size_t i = 0; i < N; ++i) { y[i] = (rows.O[i] - rows.E[i]) / rows.n[i]; s2[i] = rows.v[i] / (rows.n[i] * rows.n[i]); }
+  // DerSimonian-Laird within units: Q = sum_u sum_j w (y - ybar_u)^2 on sum_u (k_u - 1) df,
+  // C = sum_u (sum w - sum w^2 / sum w)
+  int n_units = 0;
+  for (int u : unit) n_units = std::max(n_units, u + 1);
+  std::vector<double> sw(n_units, 0), swy(n_units, 0), sw2(n_units, 0);
+  std::vector<int> k(n_units, 0);
+  for (std::size_t i = 0; i < N; ++i) {
+    const double w = 1 / s2[i]; const int u = unit[i];
+    sw[u] += w; swy[u] += w * y[i]; sw2[u] += w * w; ++k[u];
+  }
+  double Q = 0, df = 0, C = 0;
+  for (std::size_t i = 0; i < N; ++i) {
+    const int u = unit[i];
+    if (k[u] > 1) { const double d = y[i] - swy[u] / sw[u]; Q += d * d / s2[i]; }
+  }
+  for (int u = 0; u < n_units; ++u)
+    if (k[u] > 1) { df += k[u] - 1; C += sw[u] - sw2[u] / sw[u]; }
+  const double tau2 = (df > 0 && C > 0) ? std::max(0.0, (Q - df) / C) : 0.0;
+  if (tau2_image) *tau2_image = tau2;
+  ImageRows out;
+  out.image = rows.image; out.O = y; out.E.assign(N, 0.0); out.n.assign(N, 1.0); out.v.resize(N);
+  for (std::size_t i = 0; i < N; ++i) out.v[i] = s2[i] + tau2;
+  return out;
+}
+
 double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group, int) {
   std::vector<int> g0, g1; split_groups(group, g0, g1);
   int m = distinct(g0, unit) + distinct(g1, unit);

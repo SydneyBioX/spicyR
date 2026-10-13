@@ -84,7 +84,31 @@ test_that("random labelling moments are exact (enumeration)", {
 
 ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
 g <- spicyR:::.cell_graph(ctx, list(c("T", "tumour"), c("B", "macro")), r = 30)
+rows_raw <- spicyR:::.cell_rows(ctx, g, "T", "tumour")
+g$image_heterogeneity <- TRUE   # as spicy() by default
 rows <- spicyR:::.cell_rows(ctx, g, "T", "tumour")
+
+test_that("images within a patient: the core's rows match the reference", {
+  ref <- ref_image_heterogeneity(rows_raw, rows_raw$unit)
+  expect_equal(attr(rows, "tau2_image"), attr(ref, "tau2_image"), tolerance = 1e-12)
+  for (k in c("O", "E", "n", "v")) expect_equal(rows[[k]], ref[[k]], tolerance = 1e-12)
+  # the patient's images agree here (no planted spread), and two images per patient carry a positive tau2 only
+  # when their effects differ beyond the sampling variance: check one where they do
+  r2 <- rows_raw; r2$O <- r2$O + ifelse(r2$img %% 2 == 0, 1, -1) * 3 * sqrt(r2$v)
+  expect_gt(attr(spicyR:::stats_image_heterogeneity_rows(r2, r2$unit), "tau2_image"), 0)
+  expect_equal(attr(spicyR:::stats_image_heterogeneity_rows(r2, r2$unit), "tau2_image"),
+               attr(ref_image_heterogeneity(r2, r2$unit), "tau2_image"), tolerance = 1e-12)
+})
+
+test_that("with one image per patient, imageHeterogeneity changes nothing", {
+  one <- cells[grepl("_1$", cells$imageID), ]
+  a <- suppressMessages(spicy(one, "condition", subject = "patient", r = 30, from = "tumour"))$cellResults
+  b <- suppressMessages(spicy(one, "condition", subject = "patient", r = 30, from = "tumour",
+                              imageHeterogeneity = FALSE))$cellResults
+  expect_equal(a$p_value, b$p_value, tolerance = 1e-10)
+  expect_equal(a$excess_difference, b$excess_difference, tolerance = 1e-10)
+  expect_true(all(a$tau2_image == 0))
+})
 m_units <- length(ctx$unit_labels)
 
 test_that("the design path with the two group indicators equals the closed form", {

@@ -23,6 +23,7 @@ spicy(
   variance = c("cr2", "hartung_knapp", "auto"),
   frailty = TRUE,
   labelClustering = FALSE,
+  imageHeterogeneity = TRUE,
   ref = NULL,
   cores = 1,
   ...
@@ -73,6 +74,12 @@ condition has at most 5 patients, \code{"cr2"} otherwise). The variance used is 
 inflation of the within-image variance (off by default). The inflation of a \code{to} type is estimated from
 every counted type, so a pair's result does not depend on which other pairs are requested.}
 
+\item{imageHeterogeneity}{Cell method: allow the effect to vary between a patient's images beyond their
+sampling variance (on by default). Each image is weighted by 1 / (its sampling variance + the between-image
+variance), so an image with many cells cannot outweigh the patient's other images. The between-image variance
+is estimated from the spread within patients and reported as \code{tau2_image}. With one image per patient it has
+no effect.}
+
 \item{ref}{Cell method: the reference level of \code{condition}.}
 
 \item{cores}{Number of threads (cell method) or cores (image method).}
@@ -86,9 +93,9 @@ A \code{SpicyResults} object. \code{topPairs()}, \code{signifPlot()}, \code{spic
 for both methods. For the cell method, \verb{$cellResults} holds the full table: for the allocation effect,
 the pair's \code{side} (\code{"attract"} or \code{"avoid"}, which sets the scale of the effect), the effect in each
 condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), the difference
-(\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance
-and, when the test was adjusted, what for (\code{adjusted_for}), the effect and p-value of each adjustment,
-and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}). \verb{$effect}
+(\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
+between-image variance (\code{tau2_image}) and, when the test was adjusted, what for (\code{adjusted_for}), the effect
+and p-value of each adjustment, and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}). \verb{$effect}
 records which effect was estimated.
 }
 \description{
@@ -147,6 +154,9 @@ Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 
 Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
 samples. Survey Methodology 28(2), 169-181.
+
+DerSimonian R, Laird N (1986). Meta-analysis in clinical trials. Controlled Clinical Trials 7(3), 177-188.
+\doi{10.1016/0197-2456(86)90046-2}
 
 Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.

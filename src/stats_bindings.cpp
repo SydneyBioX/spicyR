@@ -97,6 +97,14 @@ DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, 
 }
 
 // [[Rcpp::export]]
+DataFrame stats_image_heterogeneity_rows(DataFrame rows, IntegerVector unit) {
+  double tau2 = 0;
+  DataFrame out = rows_to(image_heterogeneity_rows(rows_from(rows), ivec(unit), &tau2));
+  out.attr("tau2_image") = tau2;
+  return out;
+}
+
+// [[Rcpp::export]]
 NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix raw,
                                           NumericMatrix counts, double h) {
   // raw: pairs x images (unweighted REF-TARGET pairs within r); returns types x images

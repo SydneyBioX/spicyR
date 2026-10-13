@@ -126,14 +126,23 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
   # allocation: the pair's side, chosen in the core from all images (attraction scales by 1 - q, avoidance by q)
-  if (g$effect == "allocation") attr(rows, "side") <- if (sum(rows$O - rows$E) < 0) "avoid" else "attract"
+  side <- if (g$effect == "allocation") { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
+  # images within a patient: each row becomes its effect (O - E) / n with variance v / n^2 + tau2_image
+  if (isTRUE(g$image_heterogeneity) && nrow(rows)) {
+    h <- stats_image_heterogeneity_rows(rows, rows$unit)
+    h$unit <- rows$unit; h$group <- rows$group
+    rows <- h
+  }
+  attr(rows, "side") <- side
   rows
 }
 
-## Add the allocation side of a fit to its table row(s).
+## Add the allocation side and the between-image variance of a fit to its table row(s).
 .cell_add_side <- function(row, o) {
   s <- attr(o$rows, "side")
   if (!is.null(s)) row$side <- s
+  h <- attr(o$rows, "tau2_image")
+  if (!is.null(h)) row$tau2_image <- h
   row
 }
 
@@ -298,7 +307,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## The main test first, then what it was adjusted for and the effects, then the unadjusted test.
 .cell_order_columns <- function(tab) {
   first <- intersect(c("from", "to", "parent", "level", "r", "side", "excess_ref", "excess_comp", "excess_difference",
-                       "se", "df", "p_value", "p_adj", "p_value_best_radius", "tau2", "adjusted_for"), names(tab))
+                       "se", "df", "p_value", "p_adj", "p_value_best_radius", "tau2", "tau2_image", "adjusted_for"), names(tab))
   un <- grep("^unadjusted_", names(tab), value = TRUE)
   tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]
 }
