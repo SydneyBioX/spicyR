@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.12</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.13</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,10 +62,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  k <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxT"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
 <span>  adjustAbundance <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span>, <span class="st">"auto"</span><span class="op">)</span>,</span>
-<span>  frailty <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  labelClustering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  imageHeterogeneity <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -137,23 +134,9 @@ cells from more densely packed ones, and it removes real effects when the share 
 
 
 <dt id="arg-variance">variance<a class="anchor" aria-label="anchor" href="#arg-variance"></a></dt>
-<dd><p>Cell method: <code>"cr2"</code> (the default: CR2 on Satterthwaite df), <code>"hartung_knapp"</code> (for very few
-patients: the model-based variance floored at CR2, on m - 2 df) or <code>"auto"</code> (<code>"hartung_knapp"</code> when a
-condition has at most 5 patients, <code>"cr2"</code> otherwise). The variance used is in <code>$variance</code>.</p></dd>
-
-
-<dt id="arg-frailty-labelclustering">frailty, labelClustering<a class="anchor" aria-label="anchor" href="#arg-frailty-labelclustering"></a></dt>
-<dd><p>Cell method: the patient frailty (on by default) and the label-clustering
-inflation of the within-image variance (off by default). The inflation of a <code>to</code> type is estimated from
-every counted type, so a pair's result does not depend on which other pairs are requested.</p></dd>
-
-
-<dt id="arg-imageheterogeneity">imageHeterogeneity<a class="anchor" aria-label="anchor" href="#arg-imageheterogeneity"></a></dt>
-<dd><p>Cell method: allow the effect to vary between a patient's images beyond their
-sampling variance (on by default). Each image is weighted by 1 / (its sampling variance + the between-image
-variance), so an image with many cells cannot outweigh the patient's other images. The between-image variance
-is estimated from the spread within patients and reported as <code>tau2_image</code>. With one image per patient it has
-no effect.</p></dd>
+<dd><p>Cell method: <code>"cr2"</code> (the default: CR2 on Satterthwaite df) or <code>"hartung_knapp"</code> (the
+model-based variance, scaled by the Pearson statistic when that exceeds its df and never below CR2, on m - 2
+df).</p></dd>
 
 
 <dt id="arg-ref">ref<a class="anchor" aria-label="anchor" href="#arg-ref"></a></dt>
@@ -196,7 +179,9 @@ reported in the <code>side</code> column. <code>effect = "count"</code> gives th
 cells within <code>r</code> of each <code>to</code> cell instead; it also reflects how many <code>from</code> cells surround a <code>to</code> cell
 (depth of infiltration), but it grows with how densely the <code>from</code> cells are packed, so a change in
 packing alone can appear as a change in co-localisation. Images are combined within patients and
-patients within conditions by a frailty GEE, and the difference between conditions is tested with a
+patients within conditions by a frailty GEE with a second random effect for the images of a patient (each image
+is weighted by 1 / (its sampling variance + the between-image variance), so one large image cannot outweigh the
+patient's other images), and the difference between conditions is tested with a
 CR2 cluster-robust variance on Satterthwaite degrees of freedom, with <strong>patients (<code>subject</code>) as the
 units</strong>. The difference is adjusted for any <code>covariates</code>, and, with <code>adjustAbundance = TRUE</code>, for the
 log share of the <code>from</code> type in each image; the unadjusted test is then reported alongside

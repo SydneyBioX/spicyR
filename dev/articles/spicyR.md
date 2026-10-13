@@ -728,18 +728,15 @@ informative images (usually those with more `to` cells), up to a limit:
 a patient’s images can differ in their true effect, by an amount
 estimated from the spread between each patient’s images (DerSimonian and
 Laird 1986), so one large image cannot outweigh the patient’s other
-images (`imageHeterogeneity = TRUE`, the default). Each patient has its
-own true effect, which varies around its group’s mean by an amount
-estimated from the data (a frailty, or random-effects, model, with the
-between-patient variance estimated as by Paule and Mandel (1982)). The
-difference between groups, adjusted for any covariates, is tested with a
-small-sample cluster-robust (CR2) variance on Satterthwaite degrees of
-freedom (Bell and McCaffrey 2002; Pustejovsky and Tipton 2018), with
-patients as the clusters. This is designed to keep false positives near
-the nominal rate even with modest numbers of patients. With
-`labelClustering = TRUE`, the within-image variance is inflated when the
-`to` cells cluster among themselves. A paper describing the method is in
-preparation.
+images. Each patient has its own true effect, which varies around its
+group’s mean by an amount estimated from the data (a frailty, or
+random-effects, model, with the between-patient variance estimated as by
+Paule and Mandel (1982)). The difference between groups, adjusted for
+any covariates, is tested with a small-sample cluster-robust (CR2)
+variance on Satterthwaite degrees of freedom (Bell and McCaffrey 2002;
+Pustejovsky and Tipton 2018), with patients as the clusters. This is
+designed to keep false positives near the nominal rate even with modest
+numbers of patients. A paper describing the method is in preparation.
 
 ## Small studies
 
@@ -756,7 +753,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.12) to
+A methods sentence might read: “We used spicyR (version 1.99.13) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -876,7 +873,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.2.2        
 #> [15] AnnotationHub_4.2.2         BiocFileCache_3.2.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.58.1        
-#> [19] generics_0.1.4              spicyR_1.99.12             
+#> [19] generics_0.1.4              spicyR_1.99.13             
 #> [21] BiocStyle_2.40.0           
 #> 
 #> loaded via a namespace (and not attached):

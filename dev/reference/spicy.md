@@ -24,10 +24,7 @@ spicy(
   k = NULL,
   combine = c("maxT", "cauchy"),
   adjustAbundance = FALSE,
-  variance = c("cr2", "hartung_knapp", "auto"),
-  frailty = TRUE,
-  labelClustering = FALSE,
-  imageHeterogeneity = TRUE,
+  variance = c("cr2", "hartung_knapp"),
   ref = NULL,
   cores = 1,
   ...
@@ -105,29 +102,9 @@ spicy(
 
 - variance:
 
-  Cell method: `"cr2"` (the default: CR2 on Satterthwaite df),
-  `"hartung_knapp"` (for very few patients: the model-based variance
-  floored at CR2, on m - 2 df) or `"auto"` (`"hartung_knapp"` when a
-  condition has at most 5 patients, `"cr2"` otherwise). The variance
-  used is in `$variance`.
-
-- frailty, labelClustering:
-
-  Cell method: the patient frailty (on by default) and the
-  label-clustering inflation of the within-image variance (off by
-  default). The inflation of a `to` type is estimated from every counted
-  type, so a pair's result does not depend on which other pairs are
-  requested.
-
-- imageHeterogeneity:
-
-  Cell method: allow the effect to vary between a patient's images
-  beyond their sampling variance (on by default). Each image is weighted
-  by 1 / (its sampling variance + the between-image variance), so an
-  image with many cells cannot outweigh the patient's other images. The
-  between-image variance is estimated from the spread within patients
-  and reported as `tau2_image`. With one image per patient it has no
-  effect.
+  Cell method: `"cr2"` (the default: CR2 on Satterthwaite df) or
+  `"hartung_knapp"` (the model-based variance, scaled by the Pearson
+  statistic when that exceeds its df and never below CR2, on m - 2 df).
 
 - ref:
 
@@ -185,12 +162,15 @@ instead; it also reflects how many `from` cells surround a `to` cell
 (depth of infiltration), but it grows with how densely the `from` cells
 are packed, so a change in packing alone can appear as a change in
 co-localisation. Images are combined within patients and patients within
-conditions by a frailty GEE, and the difference between conditions is
-tested with a CR2 cluster-robust variance on Satterthwaite degrees of
-freedom, with **patients (`subject`) as the units**. The difference is
-adjusted for any `covariates`, and, with `adjustAbundance = TRUE`, for
-the log share of the `from` type in each image; the unadjusted test is
-then reported alongside (`unadjusted_*` columns).
+conditions by a frailty GEE with a second random effect for the images
+of a patient (each image is weighted by 1 / (its sampling variance + the
+between-image variance), so one large image cannot outweigh the
+patient's other images), and the difference between conditions is tested
+with a CR2 cluster-robust variance on Satterthwaite degrees of freedom,
+with **patients (`subject`) as the units**. The difference is adjusted
+for any `covariates`, and, with `adjustAbundance = TRUE`, for the log
+share of the `from` type in each image; the unadjusted test is then
+reported alongside (`unadjusted_*` columns).
 
 When nearly every cell has a `from` cell within `r` (q close to 1),
 there is little room for attraction and an attracting pair's images
