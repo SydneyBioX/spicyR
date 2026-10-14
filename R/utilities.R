@@ -77,9 +77,15 @@
     # Only when BLAS has several threads: restoring them after forking restarts every thread, and the new
     # threads spin for a moment, so a single-threaded BLAS is left alone.
     blasThreads <- RhpcBLASctl::blas_get_num_procs()
-    if (blasThreads > 1L) {
+    if (isTRUE(blasThreads > 1L)) {
         RhpcBLASctl::blas_set_num_threads(1L)
         on.exit(RhpcBLASctl::blas_set_num_threads(blasThreads), add = TRUE)
+    }
+    # OpenMP likewise: forked workers can hang if this session has used several OpenMP threads.
+    ompThreads <- RhpcBLASctl::omp_get_max_threads()
+    if (isTRUE(ompThreads > 1L)) {
+        RhpcBLASctl::omp_set_num_threads(1L)
+        on.exit(RhpcBLASctl::omp_set_num_threads(ompThreads), add = TRUE)
     }
     if (BiocParallel::bpisup(BPPARAM) || !methods::is(BPPARAM, "MulticoreParam")) {
         # Workers that are already running, or are new R sessions, are sent the task with each chunk.
