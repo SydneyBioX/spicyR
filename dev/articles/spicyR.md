@@ -541,9 +541,12 @@ that are tested.
 
 The scale of an interaction is rarely known in advance. Give several
 radii and spicyR tests them together, using a max-T test that accounts
-for the strong correlation between neighbouring radii
-(`combine = "cauchy"`, the Cauchy combination of Liu and Xie (2020), is
-an alternative).
+for the strong correlation between neighbouring radii. The exact max-T
+handles up to six radii; for a finer grid, such as every 2 µm up to 50
+µm, `combine = "davies"` uses the bound of Davies (1987) for the maximum
+over a smooth range of radii, which stays close to the exact max-T when
+neighbouring radii are highly correlated. `combine = "cauchy"`, the
+Cauchy combination of Liu and Xie (2020), is another alternative.
 
 ``` r
 
@@ -753,7 +756,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.14) to
+A methods sentence might read: “We used spicyR (version 1.99.15) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -873,7 +876,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.2.2        
 #> [15] AnnotationHub_4.2.2         BiocFileCache_3.2.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.58.1        
-#> [19] generics_0.1.4              spicyR_1.99.14             
+#> [19] generics_0.1.4              spicyR_1.99.15             
 #> [21] BiocStyle_2.40.0           
 #> 
 #> loaded via a namespace (and not attached):
@@ -926,6 +929,10 @@ Damond, Nicolas, Stefanie Engler, Vito R. T. Zanotelli, Denis Schapiro,
 et al. 2019. “A Map of Human Type 1 Diabetes Progression by Imaging Mass
 Cytometry.” *Cell Metabolism* 29 (3): 755–68.
 <https://doi.org/10.1016/j.cmet.2018.11.014>.
+
+Davies, Robert B. 1987. “Hypothesis Testing When a Nuisance Parameter Is
+Present Only Under the Alternative.” *Biometrika* 74 (1): 33–43.
+<https://doi.org/10.1093/biomet/74.1.33>.
 
 DerSimonian, Rebecca, and Nan Laird. 1986. “Meta-Analysis in Clinical
 Trials.” *Controlled Clinical Trials* 7 (3): 177–88.

@@ -22,7 +22,7 @@ spicy(
   method = c("cell", "image"),
   effect = c("allocation", "count"),
   k = NULL,
-  combine = c("maxT", "cauchy"),
+  combine = c("maxT", "davies", "cauchy"),
   adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
@@ -90,7 +90,9 @@ spicy(
 - combine:
 
   Cell method with several radii: `"maxT"` (max-T with the sandwich
-  correlation across radii) or `"cauchy"` (Cauchy combination).
+  correlation across radii; up to 6 radii), `"davies"` (Davies' bound
+  for the same maximum, for many radii) or `"cauchy"` (Cauchy
+  combination).
 
 - adjustAbundance:
 

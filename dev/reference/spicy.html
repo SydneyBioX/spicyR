@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.14</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.15</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,7 +60,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cell"</span>, <span class="st">"image"</span><span class="op">)</span>,</span>
 <span>  effect <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allocation"</span>, <span class="st">"count"</span><span class="op">)</span>,</span>
 <span>  k <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxT"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
+<span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxT"</span>, <span class="st">"davies"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
 <span>  adjustAbundance <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -124,7 +124,8 @@ With <code>k</code>, "within <code>r</code>" means among the cell's <code>k</cod
 
 <dt id="arg-combine">combine<a class="anchor" aria-label="anchor" href="#arg-combine"></a></dt>
 <dd><p>Cell method with several radii: <code>"maxT"</code> (max-T with the sandwich correlation across
-radii) or <code>"cauchy"</code> (Cauchy combination).</p></dd>
+radii; up to 6 radii), <code>"davies"</code> (Davies' bound for the same maximum, for many radii) or <code>"cauchy"</code>
+(Cauchy combination).</p></dd>
 
 
 <dt id="arg-adjustabundance">adjustAbundance<a class="anchor" aria-label="anchor" href="#arg-adjustabundance"></a></dt>
