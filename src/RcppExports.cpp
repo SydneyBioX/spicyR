@@ -305,6 +305,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_multi_radius_totals
+List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types);
+RcppExport SEXP _spicyR_dataset_multi_radius_totals(SEXP ptrSEXP, SEXP radiiSEXP, SEXP allocationSEXP, SEXP n_typesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type radii(radiiSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_multi_radius_totals(ptr, radii, allocation, n_types));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_self_any_expected
 NumericMatrix dataset_self_any_expected(SEXP ptr, bool knn, int n_types);
 RcppExport SEXP _spicyR_dataset_self_any_expected(SEXP ptrSEXP, SEXP knnSEXP, SEXP n_typesSEXP) {
@@ -774,6 +788,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_pair_neighbour_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_sq_totals, 3},
     {"_spicyR_dataset_pair_neighbour_out_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_out_sq_totals, 3},
     {"_spicyR_dataset_pair_neighbour_any_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_any_totals, 3},
+    {"_spicyR_dataset_multi_radius_totals", (DL_FUNC) &_spicyR_dataset_multi_radius_totals, 4},
     {"_spicyR_dataset_self_any_expected", (DL_FUNC) &_spicyR_dataset_self_any_expected, 3},
     {"_spicyR_dataset_rl_model_data", (DL_FUNC) &_spicyR_dataset_rl_model_data, 3},
     {"_spicyR_dataset_weighted_phi_sums", (DL_FUNC) &_spicyR_dataset_weighted_phi_sums, 5},

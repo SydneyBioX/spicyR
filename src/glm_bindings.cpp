@@ -233,6 +233,29 @@ NumericVector dataset_pair_neighbour_any_totals(SEXP ptr, bool knn, int n_types)
   return out;
 }
 
+// Several radii from one neighbour search (Dataset::multi_radius_totals): a list with one element per radius, each
+// with `any` ([to, from, image]) and `self_expected` (types x images) for the allocation design, or `totals` and `sq`
+// ([to, from, image]) for the count, exactly as the single-radius bindings after dataset_build_radius_index.
+// [[Rcpp::export]]
+List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types) {
+  XPtr<Dataset> d(ptr);
+  Dataset::MultiRadiusTotals m = d->multi_radius_totals(std::vector<double>(radii.begin(), radii.end()), allocation);
+  const int K = radii.size();
+  const int n_img = static_cast<int>((allocation ? m.any[0].size() : m.totals[0].size()) / (static_cast<std::size_t>(n_types) * n_types));
+  auto cube = [&](const std::vector<double>& v) { NumericVector o(v.begin(), v.end());
+    o.attr("dim") = IntegerVector::create(n_types, n_types, n_img); return o; };
+  List out(K);
+  for (int k = 0; k < K; ++k) {
+    if (allocation) {
+      NumericMatrix se(n_types, n_img); std::copy(m.self_expected[k].begin(), m.self_expected[k].end(), se.begin());
+      out[k] = List::create(_["any"] = cube(m.any[k]), _["self_expected"] = se);
+    } else {
+      out[k] = List::create(_["totals"] = cube(m.totals[k]), _["sq"] = cube(m.sq[k]));
+    }
+  }
+  return out;
+}
+
 // Exact null expectation of a self-pair's allocation count, types x images (Dataset::self_any_expected).
 // [[Rcpp::export]]
 NumericMatrix dataset_self_any_expected(SEXP ptr, bool knn, int n_types) {

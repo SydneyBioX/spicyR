@@ -189,9 +189,11 @@ spicy <- function(cells,
   if (survival) {
     res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, cores, adjustAbundance, effect)
   } else {
-    per_r <- lapply(radii, function(rr) {
-      g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = FALSE,
-                       n_threads = cores, effect = effect)
+    # several radii: one neighbour search at the largest radius gives every radius's graph
+    graphs <- if (length(radii) > 1L) .cell_graphs_radii(ctx, radii, effect) else
+      list(.cell_graph(ctx, pairs, r = if (is.na(radii)) NULL else radii, k = k, label_clustering = FALSE,
+                       n_threads = cores, effect = effect))
+    per_r <- lapply(graphs, function(g) {
       g$image_heterogeneity <- TRUE
       lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], TRUE, variance, adjustAbundance, Z_extra))
     })
@@ -209,6 +211,9 @@ spicy <- function(cells,
   if (length(radii) == 1L) return(list(table = tabs[[1]], fits = per_r[[1]]))
   long <- do.call(rbind, Map(function(t, rr) if (!is.null(t)) cbind(r = rr, t), tabs, radii))
   keys <- unique(long[, c("from", "to")])
+  # each radius's fits indexed by pair; the long table split by pair
+  pos <- lapply(per_r, function(fs) { ix <- seq_along(fs); names(ix) <- vapply(fs, function(z) paste(z$from, z$to, sep = "\r"), ""); as.list(ix) })
+  long_by <- split(long, paste(long$from, long$to, sep = "\r"))
   comb <- function(tests) {
     ok <- !vapply(tests, is.null, TRUE)
     if (!any(ok)) return(NULL)
@@ -222,11 +227,12 @@ spicy <- function(cells,
   }
   rows <- lapply(seq_len(nrow(keys)), function(i) {
     f <- keys$from[i]; t <- keys$to[i]
-    fit_at <- lapply(per_r, function(fs) { o <- fs[[which(vapply(fs, function(z) z$from == f && z$to == t, TRUE))]]
+    fit_at <- lapply(seq_along(per_r), function(j) { o <- per_r[[j]][[pos[[j]][[paste(f, t, sep = "\r")]]]]
       if (o$ok) o else NULL })
     m <- comb(lapply(fit_at, function(o) o$test))
     if (is.null(m)) return(NULL)
-    row <- long[long$from == f & long$to == t & long$r == radii[m$best], , drop = FALSE]
+    lp <- long_by[[paste(f, t, sep = "\r")]]
+    row <- lp[lp$r == radii[m$best], , drop = FALSE]
     row$p_value <- m$p; row$p_value_best_radius <- m$p_best
     if (adjusted) {
       u <- comb(lapply(fit_at, function(o) o$unadjusted))

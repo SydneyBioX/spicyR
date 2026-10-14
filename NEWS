@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.17
+--------------------------
+
+    o spicy() with several radii finds every cell's neighbours once, at the largest radius, and counts them for each
+      radius from that one search. Results are identical; an omnibus over 25 radii takes about 4 times less time.
+
 CHANGES IN VERSION 1.99.16
 --------------------------
 

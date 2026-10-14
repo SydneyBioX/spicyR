@@ -898,30 +898,114 @@ std::vector<double> Dataset::self_any_expected(bool knn) const {
   if (!knn && grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
   const std::size_t T = static_cast<std::size_t>(n_types_);
   std::vector<double> out(static_cast<std::size_t>(n_images()) * T, 0.0), c;
-  std::vector<double> deg_count;  // number of cells with each neighbour count
-  auto lchoose = [](double n, double k) { return std::lgamma(n + 1) - std::lgamma(k + 1) - std::lgamma(n - k + 1); };
   for (int img = 0; img < n_images(); ++img) {
-    const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
-    if (N < 2) continue;
+    if (image_offsets_[img + 1] - image_offsets_[img] < 2) continue;
     own_neighbour_counts(img, knn, c);
-    deg_count.assign(static_cast<std::size_t>(N), 0.0);
-    for (int b = 0; b < N; ++b) {
-      double d = 0;
-      for (std::size_t t = 0; t < T; ++t) d += c[static_cast<std::size_t>(b) * T + t];
-      deg_count[static_cast<std::size_t>(d)] += 1.0;
+    self_any_from_counts(img, c, out.data() + static_cast<std::size_t>(img) * T);
+  }
+  return out;
+}
+
+void Dataset::self_any_from_counts(int img, const std::vector<double>& c, double* out_img) const {
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
+  if (N < 2) return;
+  auto lchoose = [](double n, double k) { return std::lgamma(n + 1) - std::lgamma(k + 1) - std::lgamma(n - k + 1); };
+  std::vector<double> deg_count(static_cast<std::size_t>(N), 0.0);  // number of cells with each neighbour count
+  for (int b = 0; b < N; ++b) {
+    double d = 0;
+    for (std::size_t t = 0; t < T; ++t) d += c[static_cast<std::size_t>(b) * T + t];
+    deg_count[static_cast<std::size_t>(d)] += 1.0;
+  }
+  for (std::size_t a = 0; a < T; ++a) {
+    const int na = type_count(img, static_cast<int>(a));
+    if (na < 2) continue;
+    // P(none of the other na - 1 a-labels among d of the N - 1 other cells) = C(N-1-d, na-1) / C(N-1, na-1)
+    const double m = na - 1, K = N - 1, lden = lchoose(K, m);
+    double S = 0;
+    for (int d = 1; d < N; ++d) {
+      if (deg_count[d] == 0) continue;
+      // 1 - C(K - d, m) / C(K, m), with expm1 to keep accuracy when the ratio is close to 1
+      S += deg_count[d] * (K - d >= m ? -std::expm1(lchoose(K - d, m) - lden) : 1.0);
     }
-    for (std::size_t a = 0; a < T; ++a) {
-      const int na = type_count(img, static_cast<int>(a));
-      if (na < 2) continue;
-      // P(none of the other na - 1 a-labels among d of the N - 1 other cells) = C(N-1-d, na-1) / C(N-1, na-1)
-      const double m = na - 1, K = N - 1, lden = lchoose(K, m);
-      double S = 0;
-      for (int d = 1; d < N; ++d) {
-        if (deg_count[d] == 0) continue;
-        // 1 - C(K - d, m) / C(K, m), with expm1 to keep accuracy when the ratio is close to 1
-        S += deg_count[d] * (K - d >= m ? -std::expm1(lchoose(K - d, m) - lden) : 1.0);
+    out_img[a] = static_cast<double>(na) / N * S;
+  }
+}
+
+Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double>& radii, bool allocation) {
+  const int K = static_cast<int>(radii.size());
+  if (K < 1) throw std::invalid_argument("radii must not be empty");
+  for (int k = 0; k < K; ++k)
+    if (!(radii[k] > 0) || (k > 0 && !(radii[k] > radii[k - 1]))) throw std::invalid_argument("radii must be positive and increasing");
+  build_radius_index(radii.back());
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  const std::size_t per = static_cast<std::size_t>(n_images()) * T * T;
+  MultiRadiusTotals out;
+  if (allocation) {
+    out.any.assign(K, std::vector<double>(per, 0.0));
+    out.self_expected.assign(K, std::vector<double>(static_cast<std::size_t>(n_images()) * T, 0.0));
+  } else {
+    out.totals.assign(K, std::vector<double>(per, 0.0));
+    out.sq.assign(K, std::vector<double>(per, 0.0));
+  }
+  std::vector<double> r2(K);
+  for (int k = 0; k < K; ++k) r2[k] = radii[k] * radii[k];
+  std::vector<int> e_row, e_type, e_k, order, k_start;
+  std::vector<double> c;
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], end = image_offsets_[img + 1];
+    const Grid& g = grids_[img];
+    e_row.clear(); e_type.clear(); e_k.clear();
+    // every neighbour pair (b, p), p != b, within the largest radius, with the smallest radius that contains it
+    for (int row = start; row < end; ++row) {
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+          std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+            if (grow_[p] == row) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py, d2 = dx * dx + dy * dy;
+            if (!(d2 <= r2[K - 1])) continue;
+            e_row.push_back(row - start); e_type.push_back(gtype_[p]);
+            e_k.push_back(static_cast<int>(std::lower_bound(r2.begin(), r2.end(), d2) - r2.begin()));
+          }
+        }
+    }
+    // counting sort of the pairs by radius
+    k_start.assign(K + 1, 0);
+    for (int k : e_k) ++k_start[k + 1];
+    for (int k = 0; k < K; ++k) k_start[k + 1] += k_start[k];
+    order.assign(e_k.size(), 0);
+    { std::vector<int> pos(k_start.begin(), k_start.end() - 1);
+      for (std::size_t e = 0; e < e_k.size(); ++e) order[pos[e_k[e]]++] = static_cast<int>(e); }
+    // cumulative own counts c_b[t] over the radii, and each radius's totals from them
+    c.assign(static_cast<std::size_t>(end - start) * T, 0.0);
+    for (int k = 0; k < K; ++k) {
+      for (int q = k_start[k]; q < k_start[k + 1]; ++q) { const int e = order[q];
+        c[static_cast<std::size_t>(e_row[e]) * T + static_cast<std::size_t>(e_type[e])] += 1.0; }
+      if (allocation) {
+        double* M = out.any[k].data() + static_cast<std::size_t>(img) * T * T;
+        for (int row = start; row < end; ++row) {
+          const double* cb = c.data() + static_cast<std::size_t>(row - start) * T;
+          const std::size_t to = static_cast<std::size_t>(type_[row]);
+          for (std::size_t from = 0; from < T; ++from) if (cb[from] > 0) M[from * T + to] += 1.0;
+        }
+        self_any_from_counts(img, c, out.self_expected[k].data() + static_cast<std::size_t>(img) * T);
+      } else {
+        double* M = out.sq[k].data() + static_cast<std::size_t>(img) * T * T;
+        double* Mt = out.totals[k].data() + static_cast<std::size_t>(img) * T * T;
+        for (int row = start; row < end; ++row) {
+          const double* cb = c.data() + static_cast<std::size_t>(row - start) * T;
+          const std::size_t ty = static_cast<std::size_t>(type_[row]);
+          for (std::size_t from = 0; from < T; ++from) M[from * T + ty] += cb[from] * cb[from];
+          // pair_neighbour_totals: the row as `from`, its neighbours of each type, the cell itself included
+          double* m = Mt + ty * T;
+          for (std::size_t t = 0; t < T; ++t) m[t] += cb[t];
+          m[ty] += 1.0;
+        }
       }
-      out[static_cast<std::size_t>(img) * T + a] = static_cast<double>(na) / N * S;
     }
   }
   return out;

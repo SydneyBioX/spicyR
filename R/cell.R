@@ -118,6 +118,19 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   g
 }
 
+## Several radii from one neighbour search (radius graph, no label-clustering inflation): one graph per radius, each
+## identical to .cell_graph(ctx, pairs, r = radii[i], label_clustering = FALSE, effect = effect).
+.cell_graphs_radii <- function(ctx, radii, effect = "allocation") {
+  allocation <- effect == "allocation"
+  m <- dataset_multi_radius_totals(ctx$data, as.numeric(radii), allocation, length(ctx$type_labels))
+  lapply(m, function(x) {
+    g <- if (allocation) list(knn = FALSE, effect = effect, any = x$any, self_expected = x$self_expected)
+         else list(knn = FALSE, effect = effect, totals = x$totals, sq = x$sq)
+    g$psi <- matrix(numeric(0), 0, 0)
+    g
+  })
+}
+
 ## One pair's image rows, with the unit and group of each row.
 .cell_rows <- function(ctx, g, f, t) {
   fc <- match(f, ctx$type_labels) - 1L; tc <- match(t, ctx$type_labels) - 1L

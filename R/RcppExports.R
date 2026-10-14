@@ -85,6 +85,10 @@ dataset_pair_neighbour_any_totals <- function(ptr, knn, n_types) {
     .Call(`_spicyR_dataset_pair_neighbour_any_totals`, ptr, knn, n_types)
 }
 
+dataset_multi_radius_totals <- function(ptr, radii, allocation, n_types) {
+    .Call(`_spicyR_dataset_multi_radius_totals`, ptr, radii, allocation, n_types)
+}
+
 dataset_self_any_expected <- function(ptr, knn, n_types) {
     .Call(`_spicyR_dataset_self_any_expected`, ptr, knn, n_types)
 }

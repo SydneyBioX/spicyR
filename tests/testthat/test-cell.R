@@ -216,6 +216,24 @@ test_that("Davies: one radius gives the single-radius p, matches a plain-R refer
                "up to 6 radii")
 })
 
+test_that("several radii from one neighbour search equal the single-radius graphs", {
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
+  radii <- c(5, 12.5, 20, 40)
+  for (eff in c("allocation", "count")) {
+    G <- spicyR:::.cell_graphs_radii(ctx, radii, eff)
+    for (i in seq_along(radii)) {
+      g1 <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = radii[i], label_clustering = FALSE, effect = eff)
+      for (nm in if (eff == "allocation") c("any", "self_expected") else c("totals", "sq")) expect_identical(G[[i]][[nm]], g1[[nm]])
+    }
+  }
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = radii, combine = "davies", from = "tumour", to = c("T", "B")))
+  one <- lapply(radii, function(r) suppressMessages(spicy(cells, "condition", subject = "patient", r = r, from = "tumour", to = c("T", "B")))$cellResults)
+  for (i in seq_along(radii)) {
+    rr <- res$radiusResults[res$radiusResults$r == radii[i], ]
+    expect_equal(rr$p_value[match(one[[i]]$to, rr$to)], one[[i]]$p_value, tolerance = 1e-12)
+  }
+})
+
 test_that("results work with topPairs, bind, spicyBoxPlot and signifPlot", {
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30))
   tp <- topPairs(res, n = 5)

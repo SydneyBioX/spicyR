@@ -125,6 +125,15 @@ class Dataset {
   //   (n_a / N) sum_b [1 - C(N - 1 - d_b, n_a - 1) / C(N - 1, n_a - 1)],
   // d_b the number of neighbours of cell b (other than b). 0 when n_a < 2.
   std::vector<double> self_any_expected(bool knn) const;
+  // Several radii from ONE neighbour search (radius graph; radii positive and increasing). For radius k the result
+  // equals build_radius_index(radii[k]) followed by pair_neighbour_totals(false) and pair_neighbour_out_sq_totals(false)
+  // (count; allocation = false) or pair_neighbour_any_totals(false) and self_any_expected(false) (allocation = true).
+  // A neighbour at squared distance d2 counts for every radius with d2 <= r^2, the comparison of the single-radius
+  // functions, so the results are identical. Leaves the radius index at the largest radius.
+  struct MultiRadiusTotals {
+    std::vector<std::vector<double>> totals, sq, any, self_expected;
+  };
+  MultiRadiusTotals multi_radius_totals(const std::vector<double>& radii, bool allocation);
   // Poisson design under the random-labelling null (Section 17): each REF cell's
   // offset is its number of candidate neighbours within r times the TARGET share
   // of the candidates. Candidates are the non-REF cells, or for a self-pair all
@@ -205,6 +214,8 @@ class Dataset {
   // For every cell b of image img, the number of cells of each type among b's own neighbours
   // (within r, or among its k nearest), b excluded: c[(row - start) * n_types + type].
   void own_neighbour_counts(int img, bool knn, std::vector<double>& c) const;
+  // self_any_expected for one image from its cells' own neighbour counts c (as own_neighbour_counts)
+  void self_any_from_counts(int img, const std::vector<double>& c, double* out_img) const;
 
   std::vector<double> x_, y_;
   std::vector<int> type_, image_offsets_;
