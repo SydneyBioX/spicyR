@@ -53,6 +53,13 @@
 .parallel_env <- new.env(parent = emptyenv())
 .run_task <- function(i) .parallel_env$task(.parallel_env$X[[i]])
 
+## task(x) in a worker with one BLAS and OpenMP thread, for workers this session did not start itself.
+.one_thread_task <- function(x, task) {
+    if (isTRUE(RhpcBLASctl::blas_get_num_procs() > 1L)) RhpcBLASctl::blas_set_num_threads(1L)
+    if (isTRUE(RhpcBLASctl::omp_get_max_threads() > 1L)) RhpcBLASctl::omp_set_num_threads(1L)
+    task(x)
+}
+
 ## lapply(X, FUN, ...) over the workers of `cores` (a number or a BiocParallel param).
 ## - Forked workers start once, after the task exists, so they share the session's data without being sent it,
 ##   and only task numbers and results pass between processes. Forking a new process for every chunk
@@ -87,22 +94,25 @@
         RhpcBLASctl::omp_set_num_threads(1L)
         on.exit(RhpcBLASctl::omp_set_num_threads(ompThreads), add = TRUE)
     }
+    # About eight chunks per worker, unless the param sets its own number of tasks.
+    tasks <- BiocParallel::bptasks(BPPARAM)
+    if (tasks == 0L && !BiocParallel::bpisup(BPPARAM)) {
+        BiocParallel::bptasks(BPPARAM) <- min(length(X), 8L * workers)
+        on.exit(BiocParallel::bptasks(BPPARAM) <- tasks, add = TRUE, after = FALSE)
+    }
     if (BiocParallel::bpisup(BPPARAM) || !methods::is(BPPARAM, "MulticoreParam")) {
-        # Workers that are already running, or are new R sessions, are sent the task with each chunk.
+        # Workers that are already running, or are new R sessions, are sent the task with each chunk. New
+        # socket workers start with one BLAS and OpenMP thread; workers that were already running set
+        # one thread themselves before their first task.
         threadVars <- Sys.getenv(c("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS"), unset = NA)
         Sys.setenv(OPENBLAS_NUM_THREADS = 1L, OMP_NUM_THREADS = 1L)
         on.exit(.restore_env(threadVars), add = TRUE)
-        return(BiocParallel::bplapply(X, task, BPPARAM = BPPARAM))
+        return(BiocParallel::bplapply(X, .one_thread_task, task = task, BPPARAM = BPPARAM))
     }
 
     assign("task", task, envir = .parallel_env)
     assign("X", X, envir = .parallel_env)
     on.exit(rm(list = c("task", "X"), envir = .parallel_env), add = TRUE)
-    tasks <- BiocParallel::bptasks(BPPARAM)
-    if (tasks == 0L) {
-        BiocParallel::bptasks(BPPARAM) <- min(length(X), 8L * workers)
-        on.exit(BiocParallel::bptasks(BPPARAM) <- tasks, add = TRUE, after = FALSE)
-    }
     BiocParallel::bpstart(BPPARAM)
     on.exit(BiocParallel::bpstop(BPPARAM), add = TRUE, after = FALSE)
     out <- BiocParallel::bplapply(seq_along(X), .run_task, BPPARAM = BPPARAM)
@@ -113,7 +123,11 @@
 ## mapply(FUN, ..., MoreArgs = MoreArgs, SIMPLIFY = FALSE) over the workers of `cores`.
 .par_mapply <- function(FUN, ..., MoreArgs = NULL, SIMPLIFY = FALSE, cores = 1L) {
     args <- list(...)
+    if (length(args) == 0L) return(list())
     n <- max(lengths(args))
+    if (any(lengths(args) == 0L) && n > 0L) {
+        stop("zero-length inputs cannot be mixed with those of non-zero length", call. = FALSE)
+    }
     out <- .par_lapply(seq_len(n), function(i) {
         do.call(FUN, c(lapply(args, function(a) a[[(i - 1L) %% length(a) + 1L]]), MoreArgs))
     }, cores = cores)
