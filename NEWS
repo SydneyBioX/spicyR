@@ -1,3 +1,10 @@
+CHANGES IN VERSION 1.99.15
+--------------------------
+
+    o spicy(combine = "davies") combines many radii by Davies' (1987) bound for the maximum of the standardised
+      effect over the radii, from the same per-radius tests and sandwich correlations as the max-T. It allows a fine
+      grid of radii; combine = "maxT" now stops with a message for more than six radii.
+
 CHANGES IN VERSION 1.99.14
 --------------------------
 

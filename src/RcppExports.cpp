@@ -725,6 +725,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_davies
+List stats_davies(NumericMatrix influence, NumericVector t, NumericVector df);
+RcppExport SEXP _spicyR_stats_davies(SEXP influenceSEXP, SEXP tSEXP, SEXP dfSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type influence(influenceSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type t(tSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type df(dfSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_davies(influence, t, df));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_mvn_outside
 double stats_mvn_outside(NumericVector lower, NumericVector upper, NumericMatrix R);
 RcppExport SEXP _spicyR_stats_mvn_outside(SEXP lowerSEXP, SEXP upperSEXP, SEXP RSEXP) {
@@ -788,6 +801,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_survival_test", (DL_FUNC) &_spicyR_stats_survival_test, 7},
     {"_spicyR_stats_cauchy", (DL_FUNC) &_spicyR_stats_cauchy, 1},
     {"_spicyR_stats_max_t", (DL_FUNC) &_spicyR_stats_max_t, 3},
+    {"_spicyR_stats_davies", (DL_FUNC) &_spicyR_stats_davies, 3},
     {"_spicyR_stats_mvn_outside", (DL_FUNC) &_spicyR_stats_mvn_outside, 3},
     {NULL, NULL, 0}
 };

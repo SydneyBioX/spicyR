@@ -193,6 +193,29 @@ test_that("max-T: one radius gives the single-radius p, and the tail matches an 
   expect_equal(nrow(res$radiusResults), 3L)
 })
 
+test_that("Davies: one radius gives the single-radius p, matches a plain-R reference and bounds the max-T", {
+  expect_equal(spicyR:::stats_davies(matrix(rnorm(10), 10), 2.1, 7)$p, 2 * stats::pt(-2.1, 7), tolerance = 1e-12)
+  set.seed(3); m <- 40; K <- 5
+  # nested radii: each radius adds neighbours to the previous one, so adjacent radii are highly correlated
+  base <- rnorm(m); U <- t(apply(matrix(rnorm(m * K), m), 1, cumsum)) + 2 * base
+  tt <- c(1.2, 2.4, 2.9, 2.6, 1.8); df <- rep(30, K)
+  R <- stats::cov2cor(crossprod(U)); z <- stats::qnorm(stats::pt(-abs(tt), df), lower.tail = FALSE); cc <- max(z)
+  V <- sum(acos(R[cbind(1:(K - 1), 2:K)]))
+  ref <- min(1, 2 * stats::pnorm(-cc) + V * exp(-cc^2 / 2) / pi)
+  d <- spicyR:::stats_davies(U, tt, df)
+  expect_equal(d$p, ref, tolerance = 1e-10)
+  expect_equal(d$best, 3L)
+  mt <- spicyR:::stats_max_t(U, tt, df)
+  expect_gte(d$p, mt$p * (1 - 1e-6))
+  expect_lt(d$p / mt$p, 1.25)
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = seq(5, 40, by = 5), combine = "davies",
+                                from = "tumour", to = "T"))
+  expect_true(is.finite(res$cellResults$p_value))
+  expect_equal(nrow(res$radiusResults), 8L)
+  expect_error(spicy(cells, "condition", subject = "patient", r = seq(5, 40, by = 5), from = "tumour", to = "T"),
+               "up to 6 radii")
+})
+
 test_that("results work with topPairs, bind, spicyBoxPlot and signifPlot", {
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30))
   tp <- topPairs(res, n = 5)

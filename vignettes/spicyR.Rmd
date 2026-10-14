@@ -407,8 +407,10 @@ Restricting `from` and `to` does not change the results for the pairs that are t
 # Which radius?
 
 The scale of an interaction is rarely known in advance. Give several radii and spicyR tests them together, using a
-max-T test that accounts for the strong correlation between neighbouring radii (`combine = "cauchy"`, the Cauchy
-combination of @liu2020cauchy, is an alternative).
+max-T test that accounts for the strong correlation between neighbouring radii. The exact max-T handles up to six
+radii; for a finer grid, such as every 2 µm up to 50 µm, `combine = "davies"` uses the bound of @davies1987hypothesis
+for the maximum over a smooth range of radii, which stays close to the exact max-T when neighbouring radii are highly
+correlated. `combine = "cauchy"`, the Cauchy combination of @liu2020cauchy, is another alternative.
 
 ```{r radii}
 resR <- spicy(spe, condition = "ER", subject = "metabricId", r = c(10, 25, 50, 75),

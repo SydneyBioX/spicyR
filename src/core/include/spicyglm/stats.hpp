@@ -179,6 +179,13 @@ struct MaxTResult {
 MaxTResult max_t(const std::vector<std::vector<double>>& influence, const std::vector<double>& t,
                  const std::vector<double>& df);
 
+// Davies (1987) upper bound for the maximum of a smooth Gaussian process over the radii, used as the p value of the
+// max-T for many radii: p = 2 Phi(-c) + V exp(-c^2 / 2) / pi, with c the largest |z| and V = sum_k arccos(rho_{k,k+1})
+// the length of the standardised process (correlations of adjacent radii, in the given order, from the influences).
+// Same inputs and result as max_t; any number of radii.
+MaxTResult davies_max(const std::vector<std::vector<double>>& influence, const std::vector<double>& t,
+                      const std::vector<double>& df);
+
 // P(Z outside the rectangle [lower, upper]) for Z ~ N(0, R), R a correlation matrix (row-major K x K):
 // recursive conditioning with Gauss-Legendre quadrature, relative accuracy kept in the tail.
 double mvn_outside(const std::vector<double>& lower, const std::vector<double>& upper,

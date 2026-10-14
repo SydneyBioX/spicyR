@@ -193,6 +193,10 @@ stats_max_t <- function(influence, t, df) {
     .Call(`_spicyR_stats_max_t`, influence, t, df)
 }
 
+stats_davies <- function(influence, t, df) {
+    .Call(`_spicyR_stats_davies`, influence, t, df)
+}
+
 stats_mvn_outside <- function(lower, upper, R) {
     .Call(`_spicyR_stats_mvn_outside`, lower, upper, R)
 }

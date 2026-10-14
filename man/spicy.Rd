@@ -18,7 +18,7 @@ spicy(
   method = c("cell", "image"),
   effect = c("allocation", "count"),
   k = NULL,
-  combine = c("maxT", "cauchy"),
+  combine = c("maxT", "davies", "cauchy"),
   adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
@@ -57,7 +57,8 @@ With \code{k}, "within \code{r}" means among the cell's \code{k} nearest neighbo
 \item{k}{Cell method: use the \code{k} nearest neighbours instead of a radius.}
 
 \item{combine}{Cell method with several radii: \code{"maxT"} (max-T with the sandwich correlation across
-radii) or \code{"cauchy"} (Cauchy combination).}
+radii; up to 6 radii), \code{"davies"} (Davies' bound for the same maximum, for many radii) or \code{"cauchy"}
+(Cauchy combination).}
 
 \item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
 (default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}

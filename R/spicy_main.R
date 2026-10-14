@@ -52,7 +52,8 @@
 #'   With `k`, "within `r`" means among the cell's `k` nearest neighbours.
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
 #' @param combine Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
-#'   radii) or `"cauchy"` (Cauchy combination).
+#'   radii; up to 6 radii), `"davies"` (Davies' bound for the same maximum, for many radii) or `"cauchy"`
+#'   (Cauchy combination).
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
@@ -126,7 +127,7 @@ spicy <- function(cells,
                   method = c("cell", "image"),
                   effect = c("allocation", "count"),
                   k = NULL,
-                  combine = c("maxT", "cauchy"),
+                  combine = c("maxT", "davies", "cauchy"),
                   adjustAbundance = FALSE,
                   variance = c("cr2", "hartung_knapp"),
                   ref = NULL,
@@ -183,6 +184,8 @@ spicy <- function(cells,
   radii <- if (is.null(k)) sort(unique(r)) else NA
   if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
+  if (combine == "maxT" && length(radii) > 6L && !survival)
+    stop("combine = \"maxT\" supports up to 6 radii; use combine = \"davies\" for more.", call. = FALSE)
   if (survival) {
     res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, cores, adjustAbundance, effect)
   } else {
@@ -211,8 +214,9 @@ spicy <- function(cells,
     if (!any(ok)) return(NULL)
     tt <- vapply(tests[ok], function(z) z$difference / z$se, 0); df <- vapply(tests[ok], `[[`, 0, "df")
     pv <- vapply(tests[ok], `[[`, 0, "p")
-    if (combine == "maxT") {
-      mt <- stats_max_t(do.call(cbind, lapply(tests[ok], `[[`, "influence")), tt, df)
+    if (combine %in% c("maxT", "davies")) {
+      fun <- if (combine == "maxT") stats_max_t else stats_davies
+      mt <- fun(do.call(cbind, lapply(tests[ok], `[[`, "influence")), tt, df)
       list(best = which(ok)[mt$best], p = mt$p, p_best = pv[mt$best])
     } else { b <- which.min(pv); list(best = which(ok)[b], p = stats_cauchy(pv), p_best = pv[b]) }
   }

@@ -205,6 +205,15 @@ List stats_max_t(NumericMatrix influence, NumericVector t, NumericVector df) {
 }
 
 // [[Rcpp::export]]
+List stats_davies(NumericMatrix influence, NumericVector t, NumericVector df) {
+  // influence: units x radii, radii in increasing order
+  std::vector<std::vector<double>> inf(influence.ncol(), std::vector<double>(influence.nrow()));
+  for (int k = 0; k < influence.ncol(); ++k) for (int u = 0; u < influence.nrow(); ++u) inf[k][u] = influence(u, k);
+  MaxTResult r = davies_max(inf, dvec(t), dvec(df));
+  return List::create(_["p"] = r.p, _["best"] = r.best + 1);
+}
+
+// [[Rcpp::export]]
 double stats_mvn_outside(NumericVector lower, NumericVector upper, NumericMatrix R) {
   const int K = R.nrow();
   std::vector<double> r(static_cast<std::size_t>(K) * K);

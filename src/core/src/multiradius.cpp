@@ -111,4 +111,28 @@ MaxTResult max_t(const std::vector<std::vector<double>>& infl, const std::vector
   return res;
 }
 
+MaxTResult davies_max(const std::vector<std::vector<double>>& infl, const std::vector<double>& t, const std::vector<double>& df) {
+  MaxTResult res;
+  const int K0 = static_cast<int>(t.size());
+  std::vector<int> use;
+  for (int k = 0; k < K0; ++k) if (std::isfinite(t[k]) && std::isfinite(df[k])) use.push_back(k);
+  if (use.empty()) { res.p = std::numeric_limits<double>::quiet_NaN(); return res; }
+  const std::size_t m = infl[use[0]].size();
+  auto cov = [&](int k, int l) { double s = 0; for (std::size_t u = 0; u < m; ++u) s += infl[k][u] * infl[l][u]; return s; };
+  double c = 0;
+  for (int k : use) {
+    double z = -norm_quantile(pt_upper(std::fabs(t[k]), df[k]));
+    if (z > c) { c = z; res.best = k; }
+  }
+  if (use.size() == 1) { res.p = pt_two_sided(t[use[0]], df[use[0]]); return res; }
+  double V = 0;
+  for (std::size_t i = 1; i < use.size(); ++i) {
+    double r = cov(use[i - 1], use[i]) / std::sqrt(cov(use[i - 1], use[i - 1]) * cov(use[i], use[i]));
+    if (!std::isfinite(r)) r = 0;
+    V += std::acos(std::min(1.0, std::max(-1.0, r)));
+  }
+  res.p = std::min(1.0, 2 * pnorm_upper(c) + V * std::exp(-c * c / 2) / kPi);
+  return res;
+}
+
 }  // namespace spicyglm
