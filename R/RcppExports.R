@@ -125,6 +125,14 @@ cell_stream_totals <- function(x, y, image_fac, image_map, n_images, type_fac, t
     .Call(`_spicyR_cell_stream_totals`, x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads)
 }
 
+cell_rows_differing <- function(v, image, ref) {
+    .Call(`_spicyR_cell_rows_differing`, v, image, ref)
+}
+
+cell_batch_totals <- function(x, y, type, offsets, n_types, radii, k, allocation, n_threads = 1L) {
+    .Call(`_spicyR_cell_batch_totals`, x, y, type, offsets, n_types, radii, k, allocation, n_threads)
+}
+
 first_appearance_factor <- function(x) {
     .Call(`_spicyR_first_appearance_factor`, x)
 }

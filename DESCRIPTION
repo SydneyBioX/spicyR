@@ -1,7 +1,7 @@
 Package: spicyR
 Type: Package
 Title: Test Changes in the Co-Localisation of Cell Types Between Groups of Patients
-Version: 1.99.19
+Version: 1.99.20
 Authors@R: c(
     person("Nicolas", "Canete", , "nicolas.canete@sydney.edu.au", role = "aut"),
     person("Ellis", "Patrick", , "ellis.patrick@sydney.edu.au", role = c("aut", "cre")),
@@ -56,6 +56,7 @@ Suggests:
     SpatialExperiment,
     lmerTest,
     lme4,
+    Rarr,
     scam,
     coxme,
     spatstat.geom,
@@ -68,4 +69,3 @@ Suggests:
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3

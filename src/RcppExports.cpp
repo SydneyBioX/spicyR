@@ -452,6 +452,38 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cell_rows_differing
+IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref);
+RcppExport SEXP _spicyR_cell_rows_differing(SEXP vSEXP, SEXP imageSEXP, SEXP refSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type v(vSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type ref(refSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_rows_differing(v, image, ref));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cell_batch_totals
+List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types, NumericVector radii, int k, bool allocation, int n_threads);
+RcppExport SEXP _spicyR_cell_batch_totals(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP offsetsSEXP, SEXP n_typesSEXP, SEXP radiiSEXP, SEXP kSEXP, SEXP allocationSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type offsets(offsetsSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type radii(radiiSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_batch_totals(x, y, type, offsets, n_types, radii, k, allocation, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // first_appearance_factor
 SEXP first_appearance_factor(SEXP x);
 RcppExport SEXP _spicyR_first_appearance_factor(SEXP xSEXP) {
@@ -858,6 +890,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_cell_layout", (DL_FUNC) &_spicyR_cell_layout, 4},
     {"_spicyR_cell_constant_within", (DL_FUNC) &_spicyR_cell_constant_within, 3},
     {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 12},
+    {"_spicyR_cell_rows_differing", (DL_FUNC) &_spicyR_cell_rows_differing, 3},
+    {"_spicyR_cell_batch_totals", (DL_FUNC) &_spicyR_cell_batch_totals, 9},
     {"_spicyR_first_appearance_factor", (DL_FUNC) &_spicyR_first_appearance_factor, 1},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},
     {"_spicyR_lmerRandomIntercept", (DL_FUNC) &_spicyR_lmerRandomIntercept, 5},

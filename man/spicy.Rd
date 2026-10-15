@@ -23,12 +23,17 @@ spicy(
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
   cores = 1,
+  table = NULL,
   ...
 )
 }
 \arguments{
 \item{cells}{A \code{data.frame}, \code{SingleCellExperiment} or \code{SpatialExperiment} with one row (column) per
-cell.}
+cell, or (cell method) the path of a SpatialData or AnnData Zarr store (read with the Rarr package). From a
+store, the columns are read a block of rows at a time and the coordinates a batch of whole images at a time,
+so the table is never held in memory; the results are those of the same cells given as a \code{data.frame}.
+Column names then refer to the table's \code{obs}; \code{imageID} defaults to the table's region key and
+\code{spatialCoords} to its \code{obsm} array \code{"spatial"}.}
 
 \item{condition}{The column of the image-level condition: two groups, or a \code{survival::Surv} column
 for a survival outcome.}
@@ -40,7 +45,8 @@ if omitted, every image is its own patient.}
 the excess, and the effect of each is reported as \verb{<column>_effect} and \verb{<column>_p_value};
 survival: added to the null Cox model).}
 
-\item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates.}
+\item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates. For a Zarr
+store, \code{spatialCoords} is either two \code{obs} columns or the name of one \code{obsm} array (its first two columns).}
 
 \item{r}{Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
 radius (default 50), or several to be combined by \code{combine}. Image method: the radii of the L
@@ -71,6 +77,9 @@ df).}
 \item{ref}{Cell method: the reference level of \code{condition}.}
 
 \item{cores}{Number of threads (cell method) or cores (image method).}
+
+\item{table}{Cell method with a SpatialData store: the name of the table in \verb{tables/} (by default the only
+table, or the one called \code{"table"}).}
 
 \item{...}{Arguments of the image method: \code{sigma}, \code{alternateResult}, \code{minLambda}, \code{weights},
 \code{weightsByPair}, \code{weightFactor}, \code{weightZThreshold}, \code{window}, \code{window.length}, \code{edgeCorrect},

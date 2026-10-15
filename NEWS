@@ -1,3 +1,14 @@
+CHANGES IN VERSION 1.99.20
+--------------------------
+
+    o spicy() (method = "cell") reads a SpatialData or AnnData Zarr store directly: give its path as `cells`, with
+      `table` choosing the table and the column arguments naming obs columns (`imageID` defaults to the table's
+      region key and `spatialCoords` to obsm "spatial"). One pass over the image, cell type, condition and subject
+      columns, a block of rows at a time, gives the cells per image and type and the image-level values; the
+      coordinates and cell types are then read a batch of whole images at a time, so the table is never held in
+      memory. Results are identical to those of the same cells as a data.frame. The batches of images are shared
+      among `cores` threads. Reading a store needs the Rarr package (Suggests).
+
 CHANGES IN VERSION 1.99.19
 --------------------------
 

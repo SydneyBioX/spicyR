@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <cstring>
 #include <limits>
+#include <exception>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -465,6 +467,102 @@ List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map,
       out[j] = List::create(_["totals"] = cube(a[j]), _["sq"] = cube(b[j]));
     }
   }
+  return out;
+}
+
+// The rows (1-based) where v differs from ref at the row's image (ref indexed by the image code, 1-based): the same
+// bits (for strings the same cached string) count as equal, so a row not returned holds the same value as
+// as.character() sees it; the caller compares the returned rows as.character().
+// [[Rcpp::export]]
+IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref) {
+  const R_xlen_t N = XLENGTH(v);
+  if (image.size() != N || TYPEOF(ref) != TYPEOF(v)) stop("cell_rows_differing: inconsistent input");
+  const R_xlen_t M = XLENGTH(ref);
+  std::vector<int> out;
+  for (R_xlen_t r = 0; r < N; ++r) {
+    const int i = image[r];
+    if (i == NA_INTEGER || i < 1 || i > M) stop("cell_rows_differing: image code out of range");
+    bool same;
+    switch (TYPEOF(v)) {
+      case INTSXP: case LGLSXP: same = INTEGER(v)[r] == INTEGER(ref)[i - 1]; break;
+      case REALSXP: same = std::memcmp(REAL(v) + r, REAL(ref) + (i - 1), sizeof(double)) == 0; break;
+      case STRSXP: same = STRING_ELT(v, r) == STRING_ELT(ref, i - 1); break;
+      default: stop("cell_rows_differing: unsupported type");
+    }
+    if (!same) out.push_back(static_cast<int>(r + 1));
+  }
+  return IntegerVector(out.begin(), out.end());
+}
+
+// The neighbour totals of the cell method for one batch of whole images that the caller has already gathered: the
+// cells image by image (each image's cells in row order), x, y and 0-based cell types, with offsets[i] the first cell
+// of image i of the batch. Returns one element per radius (one for kNN), each list(a, b): a the n_types x n_types
+// block of every image of the batch (any / totals), b its self_expected (n_types per image) or sq block, in the
+// layout of cell_stream_totals' output for these images. The images are shared among up to n_threads threads, each
+// running a Dataset of its own whole images, so each image's numbers are those of the whole-data Dataset.
+// [[Rcpp::export]]
+List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types,
+                       NumericVector radii, int k, bool allocation, int n_threads = 1) {
+  const int nb = offsets.size() - 1;
+  if (nb < 1) stop("no images in the batch");
+  const R_xlen_t N = x.size();
+  if (y.size() != N || type.size() != N || offsets[0] != 0 || offsets[nb] != N) stop("batch: inconsistent lengths");
+  for (int i = 0; i < nb; ++i) if (offsets[i + 1] < offsets[i]) stop("batch: offsets must be increasing");
+  for (R_xlen_t r = 0; r < N; ++r) if (type[r] < 0 || type[r] >= n_types) stop("batch: cell type out of range");
+  const bool knn = k > 0;
+  const int K = knn ? 1 : radii.size();
+  if (!knn && K < 1) stop("give a radius or k");
+  const std::size_t T = static_cast<std::size_t>(n_types);
+  const std::size_t per = static_cast<std::size_t>(nb) * T * T, per_b = allocation ? static_cast<std::size_t>(nb) * T : per;
+  std::vector<std::vector<double>> a(K, std::vector<double>(per, 0.0)), b(K, std::vector<double>(per_b, 0.0));
+  const std::vector<double> rad(radii.begin(), radii.end());
+  const double* px = x.begin(); const double* py = y.begin(); const int* pt = type.begin();
+  const std::vector<int> off(offsets.begin(), offsets.end());
+  // groups of consecutive images with about equal numbers of cells, one per thread
+  const int G = std::max(1, std::min(n_threads, nb));
+  std::vector<int> cut(1, 0);
+  for (int g = 1; g < G; ++g) {
+    const long long want = static_cast<long long>(N) * g / G;
+    int i = cut.back() + 1;
+    while (i < nb && off[i] < want) ++i;
+    if (i < nb && i > cut.back()) cut.push_back(i);
+  }
+  cut.push_back(nb);
+  std::vector<std::exception_ptr> err(cut.size() - 1);
+  auto work = [&](std::size_t g) {
+    try {
+      const int lo = cut[g], hi = cut[g + 1];
+      const std::size_t s = off[lo], e = off[hi];
+      std::vector<int> o(hi - lo + 1);
+      for (int i = lo; i <= hi; ++i) o[i - lo] = off[i] - off[lo];
+      Dataset d(std::vector<double>(px + s, px + e), std::vector<double>(py + s, py + e), std::vector<int>(pt + s, pt + e),
+                std::move(o), n_types);
+      const std::size_t at = static_cast<std::size_t>(lo) * T * T, at_se = static_cast<std::size_t>(lo) * T;
+      auto put = [](const std::vector<double>& from, std::vector<double>& to, std::size_t at) {
+        std::copy(from.begin(), from.end(), to.begin() + at); };
+      if (K > 1) {
+        Dataset::MultiRadiusTotals m = d.multi_radius_totals(rad, allocation);
+        for (int j = 0; j < K; ++j) {
+          if (allocation) { put(m.any[j], a[j], at); put(m.self_expected[j], b[j], at_se); }
+          else { put(m.totals[j], a[j], at); put(m.sq[j], b[j], at); }
+        }
+        return;
+      }
+      if (knn) d.build_knn(k, 1); else d.build_radius_index(rad[0]);
+      if (allocation) { put(d.pair_neighbour_any_totals(knn), a[0], at); put(d.self_any_expected(knn), b[0], at_se); }
+      else { put(d.pair_neighbour_totals(knn), a[0], at); put(d.pair_neighbour_out_sq_totals(knn), b[0], at); }
+    } catch (...) { err[g] = std::current_exception(); }
+  };
+  if (err.size() == 1) work(0);
+  else {
+    std::vector<std::thread> pool;
+    for (std::size_t g = 0; g < err.size(); ++g) pool.emplace_back(work, g);
+    for (std::thread& t : pool) t.join();
+  }
+  for (const std::exception_ptr& e : err) if (e) std::rethrow_exception(e);
+  List out(K);
+  for (int j = 0; j < K; ++j)
+    out[j] = List::create(_["a"] = NumericVector(a[j].begin(), a[j].end()), _["b"] = NumericVector(b[j].begin(), b[j].end()));
   return out;
 }
 

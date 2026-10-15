@@ -33,7 +33,11 @@
 #' (Canete et al. 2022).
 #'
 #' @param cells A `data.frame`, `SingleCellExperiment` or `SpatialExperiment` with one row (column) per
-#'   cell.
+#'   cell, or (cell method) the path of a SpatialData or AnnData Zarr store (read with the Rarr package). From a
+#'   store, the columns are read a block of rows at a time and the coordinates a batch of whole images at a time,
+#'   so the table is never held in memory; the results are those of the same cells given as a `data.frame`.
+#'   Column names then refer to the table's `obs`; `imageID` defaults to the table's region key and
+#'   `spatialCoords` to its `obsm` array `"spatial"`.
 #' @param condition The column of the image-level condition: two groups, or a `survival::Surv` column
 #'   for a survival outcome.
 #' @param subject The column of the patient (unit) of each image. Images of one patient are combined;
@@ -41,7 +45,8 @@
 #' @param covariates Image- or patient-level columns to adjust for (cell method: added to the design of
 #'   the excess, and the effect of each is reported as `<column>_effect` and `<column>_p_value`;
 #'   survival: added to the null Cox model).
-#' @param imageID,cellType,spatialCoords Column names of the image, cell type and coordinates.
+#' @param imageID,cellType,spatialCoords Column names of the image, cell type and coordinates. For a Zarr
+#'   store, `spatialCoords` is either two `obs` columns or the name of one `obsm` array (its first two columns).
 #' @param r Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
 #'   radius (default 50), or several to be combined by `combine`. Image method: the radii of the L
 #'   function (default 20, 50 and 100).
@@ -62,6 +67,8 @@
 #'   df).
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
+#' @param table Cell method with a SpatialData store: the name of the table in `tables/` (by default the only
+#'   table, or the one called `"table"`).
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
@@ -132,13 +139,18 @@ spicy <- function(cells,
                   variance = c("cr2", "hartung_knapp"),
                   ref = NULL,
                   cores = 1,
+                  table = NULL,
                   ...) {
   dots <- list(...)
+  from_store <- .is_store(cells)
   if (missing(method) && (!is.null(dots$alternateResult) || !is.null(dots$sigma))) {
     method <- "image"
     message("`alternateResult` / `sigma` given: using method = \"image\" (the original spicyR test).")
   }
   method <- match.arg(method)
+  if (from_store && method == "image")
+    stop("a SpatialData store is read by method = \"cell\"; for method = \"image\" give the cells as a data.frame.",
+         call. = FALSE)
   if (method == "image" && !missing(effect)) message("`effect` is used by method = \"cell\" only; ignored.")
   if (method == "image") {
     return(do.call(.spicyImage, c(list(cells = cells, condition = condition, subject = subject, covariates = covariates,
@@ -154,15 +166,28 @@ spicy <- function(cells,
   if (is.null(r) && is.null(k)) r <- 50
   if (!is.null(k) && length(r)) { message("`k` given: using the k nearest neighbours; `r` is ignored."); r <- NULL }
 
-  # the cells stay in input order (no sorted copy); .cell_context() takes the types in the sorted order
-  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE, sort = FALSE)
-  if (!is.null(subject) && !subject %in% names(cells)) stop("`subject` column not found.", call. = FALSE)
-  survival <- inherits(cells[[condition]], "Surv")
-  if (survival) {
-    sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
+  if (from_store) {
+    # a SpatialData store: the cell table is read a block of rows at a time, the cells a batch of whole images at a time
+    st <- .store_table(cells, table)
+    if (missing(imageID) && !is.null(st$attrs$region_key)) imageID <- st$attrs$region_key
+    if (missing(spatialCoords) && "spatial" %in% st$obsm) spatialCoords <- "spatial"
+    if (!is.null(subject) && !subject %in% st$obs_columns) stop("`subject` column not found.", call. = FALSE)
+    miss <- setdiff(covariates, st$obs_columns)
+    if (length(miss)) stop("covariates not found: ", paste(miss, collapse = ", "), call. = FALSE)
+    survival <- FALSE
+    ctx <- .cell_context_store(st, condition, subject, covariates, imageID, cellType,
+                               .store_coord_spec(st, spatialCoords), ref = ref)
+  } else {
+    # the cells stay in input order (no sorted copy); .cell_context() takes the types in the sorted order
+    cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE, sort = FALSE)
+    if (!is.null(subject) && !subject %in% names(cells)) stop("`subject` column not found.", call. = FALSE)
+    survival <- inherits(cells[[condition]], "Surv")
+    if (survival) {
+      sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
+    }
+    ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
+                         ref = ref, survival = survival, by_image = TRUE)
   }
-  ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
-                       ref = ref, survival = survival, by_image = TRUE)
   pheno <- ctx$pheno
   types <- ctx$type_labels
   bad <- setdiff(c(from, to), types)

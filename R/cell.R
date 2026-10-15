@@ -124,6 +124,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## The neighbour totals of every radius (or k), image by image from the cells' own columns (cell_stream_totals): one
 ## element per radius, list(any, self_expected) or list(totals, sq), as the whole-data dataset gives them.
 .cell_stream <- function(ctx, radii = NULL, k = NULL, allocation = TRUE, n_threads = 1L) {
+  if (!is.null(ctx$store)) return(.store_stream(ctx, radii = radii, k = k, allocation = allocation, n_threads = n_threads))
   z <- ctx$cells
   cell_stream_totals(z$x, z$y, z$image, z$image_map, ctx$n_images, z$type, z$type_map, length(ctx$type_labels),
                      as.numeric(if (is.null(radii)) numeric(0) else radii), if (is.null(k)) 0L else as.integer(k),
