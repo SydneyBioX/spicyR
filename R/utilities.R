@@ -185,7 +185,7 @@
 #' @importFrom S4Vectors as.data.frame
 #' @noRd
 .format_data <- function(
-    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose = FALSE) {
+    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose = FALSE, ids = TRUE) {
     if (is.data.frame(cells)) {
         # pass
     } else if (.is_class(cells, "SpatialExperiment")) {
@@ -241,6 +241,10 @@
 
     # Order the cells by imageID. This is important for when the data is split downstream
     cells <- cells[order(cells$imageID), , drop = FALSE]
+
+    # ids = FALSE (spicy()'s cell method, which uses neither): no cellID / imageCellID. Each is a unique string per cell,
+    # which at 100 million cells costs several GB and most of the time spent here.
+    if (!ids) return(cells)
 
     # create cellID if it does not exist
     if (is.null(cells$cellID)) {

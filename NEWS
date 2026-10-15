@@ -1,3 +1,10 @@
+CHANGES IN VERSION 1.99.18
+--------------------------
+
+    o spicy() (method = "cell") needs much less memory and time on large data: it no longer makes a cellID and an
+      imageCellID string for every cell (it uses neither), keeps one row per image instead of a reordered copy of the
+      whole cell table, and takes the cells per image and type from the counts it already has. Results are identical.
+
 CHANGES IN VERSION 1.99.17
 --------------------------
 

@@ -35,7 +35,7 @@ test_that("image rows match the plain-R reference (no edge correction, no label 
     S <- spicyR:::dataset_kontextual_sums(ctx$data, code(pr[1]), code(pr[2]))
     rows <- spicyR:::stats_kontextual_image_rows(S, ctx$counts, code(pr[1]), code(pr[2]), matrix(numeric(0), 0, 0))
     for (k in c(1, 7)) {
-      z <- ctx$df[ctx$image_codes == rows$img[k], ]
+      z <- cells[as.character(cells$imageID) == ctx$image_labels[rows$img[k] + 1L], ]   # the image's cells, in input order
       ref <- ref_kontextual_row(z, pr[1], pr[2], parent, 30)
       expect_equal(c(rows$O[k], rows$E[k], rows$n[k], rows$v[k]), c(ref$O, ref$E, ref$n, ref$v), tolerance = 1e-10)
     }

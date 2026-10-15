@@ -57,7 +57,7 @@ kontextualEngine <- function(cells,
   }
   ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"), ref = ref,
                        survival = survival)
-  pheno <- ctx$df[ctx$first, , drop = FALSE]
+  pheno <- ctx$pheno
   Z_extra <- NULL
   if (!is.null(covariates) && !survival) {
     miss <- setdiff(covariates, names(pheno))

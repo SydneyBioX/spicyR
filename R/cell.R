@@ -48,20 +48,21 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   image_labels <- sort(unique(image_chr), method = "radix")   # C-locale order, as the Python twin
   image_codes <- match(image_chr, image_labels) - 1L
   ord <- order(image_codes, method = "radix")
-  df <- cells[ord, , drop = FALSE]; image_codes <- image_codes[ord]
+  image_codes <- image_codes[ord]
   n_images <- length(image_labels)
   first <- match(seq_len(n_images) - 1L, image_codes)                       # first row of each image
+  col <- function(name) cells[[name]][ord]   # one column in image order (no copy of the whole table)
 
   # units: patients if `subject` maps several images to one patient, else images
   if (is.null(subject) || length(unique(as.character(cells[[subject]]))) == n_images) {
     unit_labels <- image_labels; image_unit <- seq_len(n_images) - 1L
   } else {
-    sub <- as.character(df[[subject]])[first]
+    sub <- as.character(cells[[subject]][ord[first]])
     unit_labels <- unique(sub); image_unit <- match(sub, unit_labels) - 1L
   }
 
-  ctx <- list(df = df, image_labels = image_labels, image_codes = image_codes, n_images = n_images,
-              unit_labels = unit_labels, image_unit = image_unit, first = first)
+  ctx <- list(pheno = cells[ord[first], , drop = FALSE], image_labels = image_labels, image_codes = image_codes,
+              n_images = n_images, unit_labels = unit_labels, image_unit = image_unit, first = first)
   if (!is.null(condition) && !survival) {
     lev <- .cell_levels(cells[[condition]])
     if (length(lev) < 2L)
@@ -70,7 +71,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
       if (!as.character(ref) %in% lev) stop("`ref` is not a level of `condition`.", call. = FALSE)
       lev <- c(as.character(ref), setdiff(lev, as.character(ref)))
     }
-    cond <- as.character(df[[condition]])
+    cond <- as.character(col(condition))
     if (any(tapply(cond, image_codes, function(z) length(unique(z))) > 1L))
       stop("'", condition, "' must be constant within each image.", call. = FALSE)
     ctx$levels <- lev
@@ -79,12 +80,18 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
       stop("each subject must belong to a single '", condition, "' level.", call. = FALSE)
   }
   ctx$type_labels <- unique(as.character(cells[[cell_type]]))
-  type_codes <- as.integer(match(as.character(df[[cell_type]]), ctx$type_labels) - 1L)
+  type_codes <- as.integer(match(as.character(col(cell_type)), ctx$type_labels) - 1L)
   ctx$counts <- unclass(table(factor(image_codes, levels = seq_len(n_images) - 1L),
                               factor(type_codes, levels = seq_along(ctx$type_labels) - 1L)))
   offsets <- as.integer(c(0L, cumsum(tabulate(image_codes + 1L, nbins = n_images))))
-  ctx$data <- dataset_create(as.numeric(df[[x_col]]), as.numeric(df[[y_col]]), type_codes, offsets,
+  ctx$data <- dataset_create(as.numeric(col(x_col)), as.numeric(col(y_col)), type_codes, offsets,
                              length(ctx$type_labels))
+  # cells per image and type as table(imageID, cellType) over the cells would give (factor levels, all levels), from
+  # the counts already made, so the full columns need not be tabulated again
+  lv <- function(x) if (is.factor(x)) levels(x) else sort(unique(as.character(x)))
+  li <- lv(cells[[image_id]]); lt <- lv(cells[[cell_type]])
+  nc <- ctx$counts[match(li, image_labels), match(lt, ctx$type_labels), drop = FALSE]; nc[is.na(nc)] <- 0L
+  ctx$n_cells <- structure(array(as.integer(nc), dim = dim(nc), dimnames = stats::setNames(list(li, lt), c("", ""))), class = "table")
   ctx
 }
 

@@ -154,7 +154,7 @@ spicy <- function(cells,
   if (is.null(r) && is.null(k)) r <- 50
   if (!is.null(k) && length(r)) { message("`k` given: using the k nearest neighbours; `r` is ignored."); r <- NULL }
 
-  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE)
+  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE)
   if (!is.null(subject) && !subject %in% names(cells)) stop("`subject` column not found.", call. = FALSE)
   survival <- inherits(cells[[condition]], "Surv")
   types <- unique(as.character(cells$cellType))
@@ -169,7 +169,7 @@ spicy <- function(cells,
   }
   ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
                        ref = ref, survival = survival)
-  pheno <- ctx$df[ctx$first, , drop = FALSE]
+  pheno <- ctx$pheno
 
   Z_extra <- NULL
   if (!is.null(covariates)) {
@@ -351,7 +351,7 @@ spicy <- function(cells,
   out$imageIDs <- ctx$image_labels
   out$imageID <- ctx$image_labels
   if (!is.null(subject)) out$subject <- as.character(pheno[[subject]])
-  out$nCells <- table(ctx$df$imageID, ctx$df$cellType)
+  out$nCells <- ctx$n_cells
   out$alternateResult <- FALSE
   out$r <- if (is.null(k)) radii else NULL
   out$k <- k
