@@ -265,13 +265,14 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 }
 
 ## The design of the main test: one indicator per condition, then the centred log share of the counted
-## type (adjust) and the centred covariates. Images with a missing covariate are left out. NULL when there
-## is nothing to adjust for (no covariates, and the share is constant or not asked for).
+## type (adjust) and the centred covariates. Images with a missing condition or covariate are left out, as the
+## unadjusted test leaves out images with a missing condition. NULL when there is nothing to adjust for (no
+## covariates, and the share is constant or not asked for).
 .cell_design <- function(ctx, rows, f, adjust, Z_extra) {
+  keep <- if (is.null(rows$group)) rep(TRUE, nrow(rows)) else !is.na(rows$group)
   X <- NULL
-  if (adjust) { s <- .cell_share(ctx, rows, f); if (stats::var(s) > 0) X <- cbind(abundance = s) }
-  keep <- rep(TRUE, nrow(rows))
-  if (!is.null(Z_extra)) { ze <- Z_extra[rows$img + 1L, , drop = FALSE]; keep <- stats::complete.cases(ze); X <- cbind(X, ze) }
+  if (adjust) { s <- .cell_share(ctx, rows, f); if (stats::var(s[keep]) > 0) X <- cbind(abundance = s) }
+  if (!is.null(Z_extra)) { ze <- Z_extra[rows$img + 1L, , drop = FALSE]; keep <- keep & stats::complete.cases(ze); X <- cbind(X, ze) }
   if (is.null(X)) return(NULL)
   rows <- rows[keep, , drop = FALSE]; X <- sweep(X[keep, , drop = FALSE], 2, colMeans(X[keep, , drop = FALSE]))
   G <- length(ctx$levels)

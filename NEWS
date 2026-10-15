@@ -1,3 +1,13 @@
+CHANGES IN VERSION 1.99.22
+--------------------------
+
+    o spicy() (method = "cell"): images whose condition is missing are now left out of the covariate design, as
+      they already were of the unadjusted test. Before, any such image made the adjusted design rank deficient, so
+      the covariate adjustment was dropped (`adjusted_for` "none (design_not_full_rank)") and the unadjusted test
+      reported, for some pairs or, from a store, for all of them (GitHub issue #82).
+    o Tests: the check that workers of a started BiocParallel param run one BLAS thread is skipped where BLAS can
+      only run one thread (the Bioconductor builders).
+
 CHANGES IN VERSION 1.99.21
 --------------------------
 

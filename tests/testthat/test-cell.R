@@ -345,3 +345,26 @@ test_that("variance is CR2 by default, whatever the number of patients; Hartung-
   expect_equal(hk$cellResults$df, 6)
   expect_error(spicy(small, "condition", subject = "patient", variance = "auto"))
 })
+
+test_that("images with a missing condition are left out of the covariate design, as of the unadjusted test", {
+    set.seed(2)
+    n <- 20
+    im <- data.frame(imageID = sprintf("i%02d", 1:n), cond = factor(rep(c("a", "b"), n / 2)), cv = rnorm(n))
+    im$cond[1:2] <- NA
+    cells <- do.call(rbind, lapply(1:n, function(i) data.frame(imageID = im$imageID[i],
+        cellType = sample(c("A", "B"), 500, TRUE), x = runif(500, 0, 500), y = runif(500, 0, 500))))
+    for (effect in c("count", "allocation")) {
+        r <- spicy(cells, condition = "cond", covariates = "cv", imageInfo = im, cellType = "cellType", r = 50,
+                   effect = effect)
+        expect_true(all(r$cellResults$adjusted_for == "covariates"))
+    }
+    keep <- !is.na(im$cond)
+    full <- spicy(cells, condition = "cond", covariates = "cv", imageInfo = im, cellType = "cellType", r = 50,
+                  effect = "count")
+    sub <- spicy(cells[cells$imageID %in% im$imageID[keep], ], condition = "cond", covariates = "cv",
+                 imageInfo = im[keep, ], cellType = "cellType", r = 50, effect = "count")
+    a <- full$cellResults[order(full$cellResults$from, full$cellResults$to), ]
+    b <- sub$cellResults[order(sub$cellResults$from, sub$cellResults$to), ]
+    expect_equal(a$p_value, b$p_value)
+    expect_equal(a$excess_difference, b$excess_difference)
+})
