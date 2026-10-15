@@ -6,8 +6,11 @@ CHANGES IN VERSION 1.99.20
       region key and `spatialCoords` to obsm "spatial"). One pass over the image, cell type, condition and subject
       columns, a block of rows at a time, gives the cells per image and type and the image-level values; the
       coordinates and cell types are then read a batch of whole images at a time, so the table is never held in
-      memory. Results are identical to those of the same cells as a data.frame. The batches of images are shared
-      among `cores` threads. Reading a store needs the Rarr package (Suggests).
+      memory. Results are identical to those of the same cells as a data.frame. Each image of a batch runs on its
+      own, the images shared among `cores` threads. A SpatialData object (spatialdataR) is read from the store it
+      came from, or else from its table. Reading a store needs the Rarr package (Suggests). spicy(r = 25) from a
+      store of 1 billion cells (500 images, 10 types) takes 38 minutes and at most 1.6 GB on one core, and
+      14 minutes and 6.3 GB on 8; 100 million cells take 224 s (1.7 GB) and 93 s (5.1 GB).
 
 CHANGES IN VERSION 1.99.19
 --------------------------

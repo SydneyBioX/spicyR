@@ -33,7 +33,8 @@ cell, or (cell method) the path of a SpatialData or AnnData Zarr store (read wit
 store, the columns are read a block of rows at a time and the coordinates a batch of whole images at a time,
 so the table is never held in memory; the results are those of the same cells given as a \code{data.frame}.
 Column names then refer to the table's \code{obs}; \code{imageID} defaults to the table's region key and
-\code{spatialCoords} to its \code{obsm} array \code{"spatial"}.}
+\code{spatialCoords} to its \code{obsm} array \code{"spatial"}. A \code{SpatialData} object (spatialdataR) read from a store
+is read from that store in the same way; one built in memory is analysed from its table.}
 
 \item{condition}{The column of the image-level condition: two groups, or a \code{survival::Surv} column
 for a survival outcome.}
