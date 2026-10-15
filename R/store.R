@@ -104,13 +104,11 @@
 }
 
 ## Coordinates of rows a..b: an obsm array (first two columns) or two obs columns.
-.store_coords <- function(st, coords, a, b, matrix = FALSE) {
+.store_coords <- function(st, coords, a, b) {
   if (coords$obsm) {
-    if (coords$both) {   # both columns in each chunk: one read (matrix = TRUE: x the n x 2 matrix, y NULL)
+    if (coords$both) {   # both columns in each chunk: one read
       m <- Rarr::read_zarr_array(coords$path, index = list(a:b, 1:2))
-      if (ncol(m) > 2L) m <- m[, 1:2]
-      if (!is.double(m)) storage.mode(m) <- "double"
-      return(if (matrix) list(x = m, y = NULL) else list(x = m[, 1], y = m[, 2]))
+      return(list(x = m[, 1], y = m[, 2]))
     }
     col <- function(j) { v <- Rarr::read_zarr_array(coords$path, index = list(a:b, j)); dim(v) <- NULL; v }
     return(list(x = col(1L), y = col(2L)))
@@ -268,8 +266,17 @@
     imgs <- ord[batch == bi]
     if (s$contiguous) {
       a <- ctx$first[imgs[1]]; b <- a + sum(size[imgs]) - 1L
-      xy <- .store_coords(s$st, s$coords, a, b, matrix = TRUE)
-      ty <- tmap(.store_codes(s$ct, a, b, s$levt))
+      # read a block of rows at a time into the batch (the reader's working memory grows with the rows read)
+      blk <- as.integer(.store_block()); n_b <- b - a + 1L
+      m <- matrix(0, n_b, 2L); ty <- integer(n_b)
+      for (u in seq.int(a, b, by = blk)) {
+        w <- as.integer(min(b, u + blk - 1L)); at <- (u - a + 1L):(w - a + 1L)
+        z <- .store_coords(s$st, s$coords, u, w)
+        m[at, 1L] <- z$x; m[at, 2L] <- z$y
+        ty[at] <- tmap(.store_codes(s$ct, u, w, s$levt))
+      }
+      xy <- list(x = m, y = NULL); rm(m, z)
+      invisible(gc(verbose = FALSE))   # the reader's working memory, before the neighbour sums
     } else {
       # scan the rows for the batch's images, then sort them stably by image
       img_of_level <- rep(NA_integer_, s$n_levels); img_of_level[s$image_level[imgs]] <- seq_along(imgs)

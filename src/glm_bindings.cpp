@@ -3,6 +3,7 @@
 #include <Rcpp.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <limits>
 #include <exception>
@@ -532,8 +533,8 @@ IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref, int ima
 // 0-based cell types, with offsets[i] the first cell
 // of image i of the batch. Returns one element per radius (one for kNN), each list(a, b): a the n_types x n_types
 // block of every image of the batch (any / totals), b its self_expected (n_types per image) or sq block, in the
-// layout of cell_stream_totals' output for these images. The images are shared among up to n_threads threads, each
-// running a Dataset of its own whole images, so each image's numbers are those of the whole-data Dataset.
+// layout of cell_stream_totals' output for these images. Each image runs in a Dataset of its own (on up to n_threads
+// threads), so each image's numbers are those of the whole-data Dataset.
 // [[Rcpp::export]]
 List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types,
                        NumericVector radii, int k, bool allocation, int n_threads = 1) {
@@ -555,45 +556,38 @@ List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, Int
   const std::vector<double> rad(radii.begin(), radii.end());
   const double* px = x.begin(); const double* py = matrix ? x.begin() + N : y.begin(); const int* pt = type.begin();
   const std::vector<int> off(offsets.begin(), offsets.end());
-  // groups of consecutive images with about equal numbers of cells, one per thread
+  // one image at a time (a Dataset of its own, so the neighbour index is never larger than one image), the images
+  // handed out to up to n_threads threads in turn
   const int G = std::max(1, std::min(n_threads, nb));
-  std::vector<int> cut(1, 0);
-  for (int g = 1; g < G; ++g) {
-    const long long want = static_cast<long long>(N) * g / G;
-    int i = cut.back() + 1;
-    while (i < nb && off[i] < want) ++i;
-    if (i < nb && i > cut.back()) cut.push_back(i);
-  }
-  cut.push_back(nb);
-  std::vector<std::exception_ptr> err(cut.size() - 1);
-  auto work = [&](std::size_t g) {
+  std::atomic<int> next(0);
+  std::vector<std::exception_ptr> err(G);
+  auto put = [](const std::vector<double>& from, std::vector<double>& to, std::size_t at) {
+    std::copy(from.begin(), from.end(), to.begin() + at); };
+  auto work = [&](int g) {
     try {
-      const int lo = cut[g], hi = cut[g + 1];
-      const std::size_t s = off[lo], e = off[hi];
-      std::vector<int> o(hi - lo + 1);
-      for (int i = lo; i <= hi; ++i) o[i - lo] = off[i] - off[lo];
-      Dataset d(std::vector<double>(px + s, px + e), std::vector<double>(py + s, py + e), std::vector<int>(pt + s, pt + e),
-                std::move(o), n_types);
-      const std::size_t at = static_cast<std::size_t>(lo) * T * T, at_se = static_cast<std::size_t>(lo) * T;
-      auto put = [](const std::vector<double>& from, std::vector<double>& to, std::size_t at) {
-        std::copy(from.begin(), from.end(), to.begin() + at); };
-      if (K > 1) {
-        Dataset::MultiRadiusTotals m = d.multi_radius_totals(rad, allocation);
-        for (int j = 0; j < K; ++j) {
-          if (allocation) { put(m.any[j], a[j], at); put(m.self_expected[j], b[j], at_se); }
-          else { put(m.totals[j], a[j], at); put(m.sq[j], b[j], at); }
+      for (int i = next++; i < nb; i = next++) {
+        const std::size_t s0 = off[i], e0 = off[i + 1];
+        Dataset d(std::vector<double>(px + s0, px + e0), std::vector<double>(py + s0, py + e0),
+                  std::vector<int>(pt + s0, pt + e0), std::vector<int>{0, static_cast<int>(e0 - s0)}, n_types);
+        const std::size_t at = static_cast<std::size_t>(i) * T * T, at_se = static_cast<std::size_t>(i) * T;
+        if (K > 1) {
+          Dataset::MultiRadiusTotals m = d.multi_radius_totals(rad, allocation);
+          for (int j = 0; j < K; ++j) {
+            if (allocation) { put(m.any[j], a[j], at); put(m.self_expected[j], b[j], at_se); }
+            else { put(m.totals[j], a[j], at); put(m.sq[j], b[j], at); }
+          }
+          continue;
         }
-        return;
+        if (knn) d.build_knn(k, 1); else d.build_radius_index(rad[0]);
+        if (allocation) { put(d.pair_neighbour_any_totals(knn), a[0], at); put(d.self_any_expected(knn), b[0], at_se); }
+        else { put(d.pair_neighbour_totals(knn), a[0], at); put(d.pair_neighbour_out_sq_totals(knn), b[0], at); }
       }
-      if (knn) d.build_knn(k, 1); else d.build_radius_index(rad[0]);
-      if (allocation) { put(d.pair_neighbour_any_totals(knn), a[0], at); put(d.self_any_expected(knn), b[0], at_se); }
-      else { put(d.pair_neighbour_totals(knn), a[0], at); put(d.pair_neighbour_out_sq_totals(knn), b[0], at); }
-    } catch (...) { err[g] = std::current_exception(); }
+    } catch (...) { err[g] = std::current_exception(); next = nb; }
   };
-  if (err.size() == 1) work(0);
+  if (G == 1) work(0);
   else {
     std::vector<std::thread> pool;
-    for (std::size_t g = 0; g < err.size(); ++g) pool.emplace_back(work, g);
+    for (int g = 0; g < G; ++g) pool.emplace_back(work, g);
     for (std::thread& t : pool) t.join();
   }
   for (const std::exception_ptr& e : err) if (e) std::rethrow_exception(e);
