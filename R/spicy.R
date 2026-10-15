@@ -1066,7 +1066,14 @@ calcWeights <- function(rS, M1, M2, nCells, weightFactor) {
     count1ToWeight = as.numeric(count1),
     count2ToWeight = as.numeric(count2)
   )))
-  w <- 1 / pmax(z1, stats::quantile(z1[z1 > 0.1], 0.01, na.rm = TRUE))
+  zFloor <- stats::quantile(z1[z1 > 0.1], 0.01, na.rm = TRUE)
+  if (is.na(zFloor)) {
+    # Every prediction of the weight model is <= 0.1, so there is no floor: the weights would all be NA and the
+    # condition would be dropped from the model. Use equal weights instead.
+    warning("Weight model predictions are all <= 0.1; not using weights for this pair.") # nolint
+    return(rep(1, length(count1)))
+  }
+  w <- 1 / pmax(z1, zFloor)
   w <- w / mean(w, na.rm = TRUE)
   w^weightFactor
 }
