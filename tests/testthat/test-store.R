@@ -72,7 +72,7 @@ test_that("a store is checked as a data.frame is", {
   expect_error(spicy(path, condition = "nope", imageID = "imageID"), "not found")
   expect_error(spicy(path, condition = "condition", subject = "nope", imageID = "imageID"), "`subject` column not found")
   expect_error(spicy(path, condition = "condition", covariates = "nope"), "covariates not found")
-  expect_error(spicy(path, condition = "condition", table = "other"), "table 'other' not found")
+  expect_error(spicy(path, condition = "condition", tableKey = "other"), "table 'other' not found")
   expect_error(spicy(path, condition = "condition", from = "nope"), "cell type not found")
   expect_error(spicy(path, condition = "condition", method = "image"), "method = \"cell\"")
   unlink(path, recursive = TRUE)
@@ -116,4 +116,76 @@ test_that("a SpatialData object (spatialdataR) is read from its store, or from i
   SingleCellExperiment::int_metadata(sce) <- m; tab[["table"]] <- sce; methods::slot(x, "tables") <- tab
   b <- suppressMessages(spicy(x, condition = "condition", subject = "subject", cellType = ct, r = 25))
   expect_identical(b, a)
+})
+
+test_that("imageInfo gives the image-level columns that the cell table lacks", {
+  d <- store_cells(6)
+  first <- !duplicated(d$imageID)
+  info <- d[first, c("imageID", "condition", "patient", "age")]
+  rownames(info) <- as.character(info$imageID); info <- info[rev(seq_len(nrow(info))), ]   # any row order
+  lean <- d[, setdiff(names(d), c("condition", "patient", "age"))]
+  a <- suppressMessages(spicy(d, condition = "condition", subject = "patient", imageID = "imageID", r = 30,
+                              covariates = "age"))
+  # a data.frame, by its imageID column or by its row names
+  expect_identical(suppressMessages(spicy(lean, condition = "condition", subject = "patient", imageID = "imageID",
+                                          r = 30, covariates = "age", imageInfo = info)), a)
+  expect_identical(suppressMessages(spicy(lean, condition = "condition", subject = "patient", imageID = "imageID",
+                                          r = 30, covariates = "age", imageInfo = info[, -1])), a)
+  # columns of the cell table come from the cells; imageInfo only adds the others
+  expect_identical(suppressMessages(spicy(d, condition = "condition", subject = "patient", imageID = "imageID",
+                                          r = 30, covariates = "age", imageInfo = info["age"])), a)
+  # from a store: a data.frame, or a table of the store
+  path <- write_cell_store(lean, tempfile(fileext = ".zarr"), chunk = 700L)
+  write_info_table(info[, -1], path)
+  for (ii in list(info, "images"))
+    expect_identical(suppressMessages(spicy(path, condition = "condition", subject = "patient", imageID = "imageID",
+                                            r = 30, covariates = "age", imageInfo = ii)), a)
+  # unknown and missing images
+  extra <- rbind(info, info[1, ]); extra$imageID <- as.character(extra$imageID); extra$imageID[nrow(extra)] <- "nope"
+  expect_error(spicy(lean, condition = "condition", imageID = "imageID", imageInfo = extra), "not found among the cells: nope")
+  expect_error(spicy(lean, condition = "condition", imageID = "imageID", imageInfo = info[-1, ]), "images missing from `imageInfo`")
+  expect_error(spicy(path, condition = "condition", imageID = "imageID", imageInfo = info[-1, ]), "images missing from `imageInfo`")
+  expect_error(spicy(lean, condition = "condition", imageID = "imageID", imageInfo = rbind(info, info[1, ])),
+               "more than one row")
+  unlink(path, recursive = TRUE)
+})
+
+test_that("a survival outcome from imageInfo, for a data.frame and for a store", {
+  d <- sim_cells(7); d$imageID <- factor(d$imageID); d$cellType <- factor(d$cellType); d$patient <- factor(d$patient)
+  pat <- levels(d$patient); set.seed(8)
+  tm <- stats::rexp(length(pat), 0.1); ev <- stats::rbinom(length(pat), 1, 0.7)
+  first <- !duplicated(d$imageID)
+  info <- d[first, c("imageID", "patient")]; rownames(info) <- as.character(info$imageID)
+  i <- match(info$patient, pat); info$os <- survival::Surv(tm[i], ev[i])
+  d$os <- info$os[match(d$imageID, info$imageID)]
+  a <- suppressMessages(spicy(d, condition = "os", subject = "patient", imageID = "imageID", r = 30, from = "tumour",
+                              to = c("T", "B")))
+  expect_true(all(c("hazard_ratio_sd", "p_value") %in% names(a$cellResults)))
+  lean <- d[, setdiff(names(d), c("os", "condition"))]
+  path <- write_cell_store(lean, tempfile(fileext = ".zarr"), chunk = 700L)
+  path2 <- write_cell_store(lean[, setdiff(names(lean), "patient")], tempfile(fileext = ".zarr"), chunk = 700L)
+  expect_identical(suppressMessages(spicy(lean, condition = "os", subject = "patient", imageID = "imageID", r = 30,
+                                          from = "tumour", to = c("T", "B"), imageInfo = info["os"])), a)
+  expect_identical(suppressMessages(spicy(path, condition = "os", subject = "patient", imageID = "imageID", r = 30,
+                                          from = "tumour", to = c("T", "B"), imageInfo = info["os"])), a)
+  # the subject from imageInfo too
+  expect_identical(suppressMessages(spicy(path2, condition = "os", subject = "patient", imageID = "imageID", r = 30,
+                                          from = "tumour", to = c("T", "B"), imageInfo = info)), a)
+  unlink(c(path, path2), recursive = TRUE)
+})
+
+test_that("writeCellStore() writes a store that spicy() and spatialdataR read", {
+  skip_if_not_installed("anndataR")
+  d <- store_cells(9)
+  info <- unique(d[, c("imageID", "condition", "patient")]); rownames(info) <- as.character(info$imageID)
+  info$imageID <- NULL
+  path <- writeCellStore(d[, c("imageID", "cellType", "x", "y", "age")], tempfile(fileext = ".zarr"), imageInfo = info)
+  a <- suppressMessages(spicy(d, condition = "condition", subject = "patient", r = 30, covariates = "age"))
+  expect_identical(suppressMessages(spicy(path, condition = "condition", subject = "patient", r = 30,
+                                          covariates = "age", imageInfo = "images")), a)
+  skip_if_not_installed("spatialdataR")
+  x <- suppressWarnings(spatialdataR::readSpatialData(path))
+  expect_identical(suppressMessages(spicy(x, condition = "condition", subject = "patient", r = 30, covariates = "age",
+                                          imageInfo = "images")), a)
+  unlink(path, recursive = TRUE)
 })

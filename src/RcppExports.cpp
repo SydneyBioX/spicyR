@@ -403,17 +403,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// cell_layout
-List cell_layout(SEXP image_fac, int n_image_levels, SEXP type_fac, int n_type_levels);
-RcppExport SEXP _spicyR_cell_layout(SEXP image_facSEXP, SEXP n_image_levelsSEXP, SEXP type_facSEXP, SEXP n_type_levelsSEXP) {
+// cell_block_scan
+List cell_block_scan(SEXP image, int image_base, int n_image_levels, SEXP type, int type_base, int n_type_levels, double offset, int prev);
+RcppExport SEXP _spicyR_cell_block_scan(SEXP imageSEXP, SEXP image_baseSEXP, SEXP n_image_levelsSEXP, SEXP typeSEXP, SEXP type_baseSEXP, SEXP n_type_levelsSEXP, SEXP offsetSEXP, SEXP prevSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type image_fac(image_facSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type image(imageSEXP);
+    Rcpp::traits::input_parameter< int >::type image_base(image_baseSEXP);
     Rcpp::traits::input_parameter< int >::type n_image_levels(n_image_levelsSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type type_fac(type_facSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< int >::type type_base(type_baseSEXP);
     Rcpp::traits::input_parameter< int >::type n_type_levels(n_type_levelsSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_layout(image_fac, n_image_levels, type_fac, n_type_levels));
+    Rcpp::traits::input_parameter< double >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< int >::type prev(prevSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_block_scan(image, image_base, n_image_levels, type, type_base, n_type_levels, offset, prev));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -427,6 +431,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< SEXP >::type image_fac(image_facSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type first_row(first_rowSEXP);
     rcpp_result_gen = Rcpp::wrap(cell_constant_within(v, image_fac, first_row));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cell_rows_differing
+IntegerVector cell_rows_differing(SEXP v, SEXP image, SEXP ref, int image_base);
+RcppExport SEXP _spicyR_cell_rows_differing(SEXP vSEXP, SEXP imageSEXP, SEXP refSEXP, SEXP image_baseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type v(vSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type image(imageSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type ref(refSEXP);
+    Rcpp::traits::input_parameter< int >::type image_base(image_baseSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_rows_differing(v, image, ref, image_base));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -449,38 +467,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
     rcpp_result_gen = Rcpp::wrap(cell_stream_totals(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads));
-    return rcpp_result_gen;
-END_RCPP
-}
-// cell_block_scan
-List cell_block_scan(IntegerVector image, int image_base, int n_image_levels, IntegerVector type, int type_base, int n_type_levels, int offset, int prev);
-RcppExport SEXP _spicyR_cell_block_scan(SEXP imageSEXP, SEXP image_baseSEXP, SEXP n_image_levelsSEXP, SEXP typeSEXP, SEXP type_baseSEXP, SEXP n_type_levelsSEXP, SEXP offsetSEXP, SEXP prevSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
-    Rcpp::traits::input_parameter< int >::type image_base(image_baseSEXP);
-    Rcpp::traits::input_parameter< int >::type n_image_levels(n_image_levelsSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type type(typeSEXP);
-    Rcpp::traits::input_parameter< int >::type type_base(type_baseSEXP);
-    Rcpp::traits::input_parameter< int >::type n_type_levels(n_type_levelsSEXP);
-    Rcpp::traits::input_parameter< int >::type offset(offsetSEXP);
-    Rcpp::traits::input_parameter< int >::type prev(prevSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_block_scan(image, image_base, n_image_levels, type, type_base, n_type_levels, offset, prev));
-    return rcpp_result_gen;
-END_RCPP
-}
-// cell_rows_differing
-IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref, int image_base);
-RcppExport SEXP _spicyR_cell_rows_differing(SEXP vSEXP, SEXP imageSEXP, SEXP refSEXP, SEXP image_baseSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< SEXP >::type v(vSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type ref(refSEXP);
-    Rcpp::traits::input_parameter< int >::type image_base(image_baseSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_rows_differing(v, image, ref, image_base));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -906,11 +892,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
     {"_spicyR_dataset_hac_phi_sums", (DL_FUNC) &_spicyR_dataset_hac_phi_sums, 5},
-    {"_spicyR_cell_layout", (DL_FUNC) &_spicyR_cell_layout, 4},
-    {"_spicyR_cell_constant_within", (DL_FUNC) &_spicyR_cell_constant_within, 3},
-    {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 12},
     {"_spicyR_cell_block_scan", (DL_FUNC) &_spicyR_cell_block_scan, 8},
+    {"_spicyR_cell_constant_within", (DL_FUNC) &_spicyR_cell_constant_within, 3},
     {"_spicyR_cell_rows_differing", (DL_FUNC) &_spicyR_cell_rows_differing, 4},
+    {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 12},
     {"_spicyR_cell_batch_totals", (DL_FUNC) &_spicyR_cell_batch_totals, 9},
     {"_spicyR_first_appearance_factor", (DL_FUNC) &_spicyR_first_appearance_factor, 1},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},

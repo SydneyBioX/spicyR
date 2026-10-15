@@ -23,7 +23,8 @@ spicy(
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
   cores = 1,
-  table = NULL,
+  tableKey = NULL,
+  imageInfo = NULL,
   ...
 )
 }
@@ -37,7 +38,7 @@ Column names then refer to the table's \code{obs}; \code{imageID} defaults to th
 is read from that store in the same way; one built in memory is analysed from its table.}
 
 \item{condition}{The column of the image-level condition: two groups, or a \code{survival::Surv} column
-for a survival outcome.}
+for a survival outcome (from a store, a column of \code{imageInfo}).}
 
 \item{subject}{The column of the patient (unit) of each image. Images of one patient are combined;
 if omitted, every image is its own patient.}
@@ -79,8 +80,14 @@ df).}
 
 \item{cores}{Number of threads (cell method) or cores (image method).}
 
-\item{table}{Cell method with a SpatialData store: the name of the table in \verb{tables/} (by default the only
-table, or the one called \code{"table"}).}
+\item{tableKey}{Cell method with a SpatialData store or object: the name of the cell table in \verb{tables/} (by
+default the only table, or the one called \code{"table"}).}
+
+\item{imageInfo}{Cell method: a table with one row per image, for \code{condition}, \code{subject}, \code{covariates} or a
+survival outcome that are not columns of the cell table: a \code{data.frame} whose \code{imageID} column, or else its
+row names, gives the image IDs, or the name of a table of the SpatialData store or object. Every image of the
+cells needs a row, and every row an image. A \code{survival::Surv} column given as \code{condition} makes a survival
+analysis, also from a store.}
 
 \item{...}{Arguments of the image method: \code{sigma}, \code{alternateResult}, \code{minLambda}, \code{weights},
 \code{weightsByPair}, \code{weightFactor}, \code{weightZThreshold}, \code{window}, \code{window.length}, \code{edgeCorrect},

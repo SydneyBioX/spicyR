@@ -6,6 +6,21 @@
 ## at a time for the neighbour sums (cell_batch_totals). The context has the fields .cell_context() gives a
 ## data.frame of the same cells, so every later step is shared.
 
+## The obs of a (small) table of the store as a data.frame, its index as the row names: a per-image table.
+.store_obs_frame <- function(path, table) {
+  # a table's own group (as a SpatialData object read from a store points to): the store is two levels up
+  if (basename(dirname(path)) == "tables" &&
+      identical(tryCatch(Rarr::read_zarr_attributes(path)[["encoding-type"]], error = function(e) NULL), "anndata"))
+    path <- dirname(dirname(path))
+  st <- .store_table(path, table)
+  obs <- Rarr::read_zarr_attributes(file.path(st$path, "obs"))
+  n <- st$n
+  d <- lapply(stats::setNames(st$obs_columns, st$obs_columns), function(nm) .store_read(.store_column(st, nm), seq_len(n)))
+  d <- as.data.frame(d, stringsAsFactors = FALSE, optional = TRUE)
+  if (!is.null(obs[["_index"]])) rownames(d) <- as.character(as.vector(Rarr::read_zarr_array(file.path(st$path, "obs", obs[["_index"]]))))
+  d
+}
+
 ## Whether `x` names a Zarr store (a directory).
 .is_store <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && dir.exists(x)
 
@@ -199,29 +214,12 @@
       cc <- .store_column(st, nm); o <- order(first); v <- .store_read(cc, first[o]); v[order(o)] })
   pheno <- structure(pheno, class = "data.frame", row.names = first)
 
-  if (!is.null(subject)) {
-    sv <- pheno[[subject]]
-    n_sub <- length(sub_all)   # as unique(as.character()) over all the cells
-  }
-  if (is.null(subject) || n_sub == n_images) {
-    unit_labels <- image_labels; image_unit <- seq_len(n_images) - 1L
-  } else {
-    sub <- as.character(sv); unit_labels <- unique(sub); image_unit <- match(sub, unit_labels) - 1L
-  }
-  ctx <- list(pheno = pheno, image_labels = image_labels, n_images = n_images, unit_labels = unit_labels,
-              image_unit = image_unit, first = first)
-  cv <- pheno[[condition]]
-  lev <- .cell_levels(cv)
-  if (length(lev) < 2L) stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
-  if (!is.null(ref)) {
-    if (!as.character(ref) %in% lev) stop("`ref` is not a level of `condition`.", call. = FALSE)
-    lev <- c(as.character(ref), setdiff(lev, as.character(ref)))
-  }
-  if (!constant[[condition]]) stop("'", condition, "' must be constant within each image.", call. = FALSE)
-  ctx$levels <- lev
-  ctx$image_group <- match(as.character(cv), lev) - 1L
-  if (any(tapply(ctx$image_group, image_unit, function(z) length(unique(z))) > 1L))
-    stop("each subject must belong to a single '", condition, "' level.", call. = FALSE)
+  ctx <- list(pheno = pheno, image_labels = image_labels, n_images = n_images, first = first)
+  # the subjects over all the cells: unique(as.character()) of the pass
+  ctx <- .cell_units(ctx, if (!is.null(subject)) pheno[[subject]], length(sub_all))
+  if (!is.null(condition))
+    ctx <- .cell_condition(ctx, pheno[[condition]], condition, ref, check = function()
+      if (!constant[[condition]]) stop("'", condition, "' must be constant within each image.", call. = FALSE))
 
   # types present (the last column of the layout is a missing type), by first appearance with the cells sorted by image
   tcol <- which(colSums(lay$counts) > 0)
@@ -310,8 +308,8 @@
 
 ## A SpatialData object (spatialdataR): its table's store when it was read from one (list(path, table = NULL)), else the
 ## table as a data.frame of its colData, its region column and the coordinates (reducedDim "spatial" as x and y, with
-## `coords` TRUE).
-.spatialdata_input <- function(x, table = NULL) {
+## `coords` TRUE). `info`: the name of a per-image table of the object, returned as a data.frame of its colData.
+.spatialdata_input <- function(x, table = NULL, info = NULL) {
   tabs <- methods::slot(x, "tables")
   if (!length(tabs)) stop("the SpatialData object has no table; give the path of its store instead.", call. = FALSE)
   if (is.null(table)) table <- if (length(tabs) == 1L) names(tabs) else if ("table" %in% names(tabs)) "table" else
@@ -331,5 +329,64 @@
   for (k in c(attrs$region_key, attrs$instance_key)) if (!k %in% names(d) && k %in% names(icd)) d[[k]] <- icd[[k]]
   xy <- if ("spatial" %in% SingleCellExperiment::reducedDimNames(sce)) SingleCellExperiment::reducedDim(sce, "spatial")
   if (!is.null(xy) && !any(c("x", "y") %in% names(d))) { d$x <- as.vector(xy[, 1]); d$y <- as.vector(xy[, 2]) }
-  list(cells = d, region_key = attrs$region_key)
+  if (is.character(info) && length(info) == 1L) {   # imageInfo: another table of the object, by name
+    if (!info %in% names(tabs)) stop("table '", info, "' not found; the object has: ", paste(names(tabs), collapse = ", "),
+                                     call. = FALSE)
+    info <- as.data.frame(SummarizedExperiment::colData(tabs[[info]]))
+  }
+  list(cells = d, region_key = attrs$region_key, info = info)
+}
+
+#' Write cells as a SpatialData Zarr store
+#'
+#' Writes a `data.frame` of cells as the cell table of a SpatialData Zarr store (an AnnData table under `tables/`,
+#' written with anndataR), which [spicy()] reads a block of rows at a time and spatialdataR's `readSpatialData()`
+#' reads as a `SpatialData` object. The coordinates become the `obsm` array `"spatial"`, the other columns the
+#' table's `obs` (factors as categorical columns), and the image column the table's region key. A table with one
+#' row per image can be added as a second table.
+#'
+#' @param cells A `data.frame` with one row per cell.
+#' @param path The directory of the store (replaced if it exists).
+#' @param imageID,spatialCoords The column of the image and the two columns of the coordinates.
+#' @param tableKey The name of the cell table.
+#' @param imageInfo Optional: a `data.frame` with one row per image (row names: the image IDs), written as the table
+#'   `infoKey`.
+#' @param infoKey The name of the per-image table.
+#' @return `path`, invisibly.
+#' @examples
+#' cells <- data.frame(imageID = factor(rep(c("a", "b"), each = 50)), cellType = factor(rep(c("T", "B"), 50)),
+#'                     x = runif(100, 0, 100), y = runif(100, 0, 100))
+#' if (requireNamespace("anndataR", quietly = TRUE) && requireNamespace("Rarr", quietly = TRUE)) {
+#'   path <- writeCellStore(cells, tempfile(fileext = ".zarr"))
+#'   list.files(file.path(path, "tables"))
+#' }
+#' @export
+writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("x", "y"), tableKey = "table",
+                           imageInfo = NULL, infoKey = "images") {
+  .need("anndataR", "to write a SpatialData store")
+  .need("Rarr", "to write a SpatialData store")
+  cells <- as.data.frame(cells)
+  miss <- setdiff(c(imageID, spatialCoords), names(cells))
+  if (length(miss)) stop("columns not found in `cells`: ", paste(miss, collapse = ", "), call. = FALSE)
+  unlink(path, recursive = TRUE); dir.create(file.path(path, "tables"), recursive = TRUE)
+  path <- normalizePath(path)
+  Rarr::write_zarr_group(path, "", zarr_version = 3L)
+  Rarr::write_zarr_group(path, "tables", zarr_version = 3L)
+  Rarr::write_zarr_attributes(path, new.zattrs = list(spatialdata_attrs = list(version = "0.2")))
+  regions <- unique(as.character(cells[[imageID]]))
+  obs <- cells[setdiff(names(cells), spatialCoords)]
+  obs$instance_id <- seq_len(nrow(obs)) - 1L
+  rownames(obs) <- as.character(seq_len(nrow(obs)) - 1L)
+  xy <- cbind(as.numeric(cells[[spatialCoords[1]]]), as.numeric(cells[[spatialCoords[2]]]))
+  attrs <- list(region = regions, region_key = imageID, instance_key = "instance_id")
+  tab <- file.path(path, "tables", tableKey)
+  anndataR::write_zarr(anndataR::AnnData(obs = obs, var = data.frame(row.names = character(0)),
+                                         obsm = list(spatial = xy), uns = list(spatialdata_attrs = attrs)), tab)
+  Rarr::write_zarr_attributes(tab, new.zattrs = c(list(`spatialdata-encoding-type` = "ngff:regions_table",
+                                                       version = "0.2"), attrs))
+  if (!is.null(imageInfo))
+    anndataR::write_zarr(anndataR::AnnData(obs = as.data.frame(imageInfo), var = data.frame(row.names = character(0))),
+                         file.path(path, "tables", infoKey))
+  Rarr::zarr_consolidate_metadata(path)
+  invisible(path)
 }

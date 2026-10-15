@@ -113,24 +113,20 @@ dataset_hac_phi_sums <- function(ptr, from, to, design, h) {
     .Call(`_spicyR_dataset_hac_phi_sums`, ptr, from, to, design, h)
 }
 
-cell_layout <- function(image_fac, n_image_levels, type_fac, n_type_levels) {
-    .Call(`_spicyR_cell_layout`, image_fac, n_image_levels, type_fac, n_type_levels)
+cell_block_scan <- function(image, image_base, n_image_levels, type, type_base, n_type_levels, offset = 0, prev = NA_integer_) {
+    .Call(`_spicyR_cell_block_scan`, image, image_base, n_image_levels, type, type_base, n_type_levels, offset, prev)
 }
 
 cell_constant_within <- function(v, image_fac, first_row) {
     .Call(`_spicyR_cell_constant_within`, v, image_fac, first_row)
 }
 
-cell_stream_totals <- function(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads = 1L) {
-    .Call(`_spicyR_cell_stream_totals`, x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads)
-}
-
-cell_block_scan <- function(image, image_base, n_image_levels, type, type_base, n_type_levels, offset, prev) {
-    .Call(`_spicyR_cell_block_scan`, image, image_base, n_image_levels, type, type_base, n_type_levels, offset, prev)
-}
-
 cell_rows_differing <- function(v, image, ref, image_base = 1L) {
     .Call(`_spicyR_cell_rows_differing`, v, image, ref, image_base)
+}
+
+cell_stream_totals <- function(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads = 1L) {
+    .Call(`_spicyR_cell_stream_totals`, x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads)
 }
 
 cell_batch_totals <- function(x, y, type, offsets, n_types, radii, k, allocation, n_threads = 1L) {

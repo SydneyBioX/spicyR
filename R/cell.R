@@ -34,6 +34,69 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   c(cross, lapply(types, function(t) c(t, t)))
 }
 
+## Units: patients if `subject` maps several images to one patient, else images. sv: the subject of each image (NULL
+## for none); n_sub: the number of subjects over all the cells (as the images' values when constant within images).
+.cell_units <- function(ctx, sv, n_sub = length(unique(as.character(sv)))) {
+  if (is.null(sv) || n_sub == ctx$n_images) {
+    ctx$unit_labels <- ctx$image_labels; ctx$image_unit <- seq_len(ctx$n_images) - 1L
+  } else {
+    sub <- as.character(sv)
+    ctx$unit_labels <- unique(sub); ctx$image_unit <- match(sub, ctx$unit_labels) - 1L
+  }
+  ctx
+}
+
+## The condition of each image (cv), its levels present (lev; `ref` first) and the image groups. check(): the caller's
+## check that the condition is constant within images, after the levels are checked.
+.cell_condition <- function(ctx, cv, condition, ref = NULL, lev = .cell_levels(cv), check = function() NULL) {
+  if (length(lev) < 2L)
+    stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
+  if (!is.null(ref)) {
+    if (!as.character(ref) %in% lev) stop("`ref` is not a level of `condition`.", call. = FALSE)
+    lev <- c(as.character(ref), setdiff(lev, as.character(ref)))
+  }
+  check()
+  ctx$levels <- lev
+  ctx$image_group <- match(as.character(cv), lev) - 1L
+  .cell_check_groups(ctx, condition)
+}
+
+.cell_check_groups <- function(ctx, condition) {
+  if (!is.null(ctx$image_group) && any(tapply(ctx$image_group, ctx$image_unit, function(z) length(unique(z))) > 1L))
+    stop("each subject must belong to a single '", condition, "' level.", call. = FALSE)
+  ctx
+}
+
+## The per-image table (`imageInfo`): one row per image of the analysis, in its order. Image IDs are the `imageID`
+## column, or else the row names. Every image needs a row, and every row an image.
+.image_info_table <- function(info, image_labels, imageID) {
+  if (!is.data.frame(info))
+    stop("`imageInfo` must be a data.frame with one row per image (or the name of a table of the store).", call. = FALSE)
+  ids <- if (imageID %in% names(info)) as.character(info[[imageID]]) else rownames(info)
+  if (anyDuplicated(ids)) stop("`imageInfo` has more than one row for an image.", call. = FALSE)
+  unknown <- setdiff(ids, image_labels)
+  if (length(unknown)) stop("images in `imageInfo` not found among the cells: ", paste(utils::head(unknown, 5), collapse = ", "),
+                            call. = FALSE)
+  m <- match(image_labels, ids)
+  if (anyNA(m)) stop("images missing from `imageInfo`: ", paste(utils::head(image_labels[is.na(m)], 5), collapse = ", "),
+                     call. = FALSE)
+  info[m, , drop = FALSE]
+}
+
+## Image-level columns from the per-image table `info` (rows in the analysis' order): `cols` are added to ctx$pheno,
+## and the condition (a survival outcome: its time and event) and the subject set when they come from it.
+.cell_image_info <- function(ctx, info, cols, condition = NULL, subject = NULL, ref = NULL, survival = FALSE) {
+  for (nm in cols) ctx$pheno[[nm]] <- info[[nm]]
+  if (!is.null(subject) && subject %in% cols) ctx <- .cell_check_groups(.cell_units(ctx, ctx$pheno[[subject]]), condition)
+  if (!is.null(condition) && condition %in% cols) {
+    if (survival) {
+      sv <- ctx$pheno[[condition]]; ctx$pheno[[condition]] <- NULL
+      ctx$pheno$.time <- sv[, 1]; ctx$pheno$.event <- sv[, 2]
+    } else ctx <- .cell_condition(ctx, ctx$pheno[[condition]], condition, ref)
+  }
+  ctx
+}
+
 ## ---- inputs -----------------------------------------------------------------------------------
 
 ## Image-level layout shared by every analysis of a data set: integer codes for images (C-locale order of their IDs),
@@ -53,7 +116,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   as_factor <- function(v) if (is.factor(v)) v else factor(as.character(v))
   fi <- as_factor(cells[[image_id]]); ft <- as_factor(cells[[cell_type]])
   li <- levels(fi); lt <- levels(ft)
-  lay <- cell_layout(fi, length(li), ft, length(lt))   # (image level, type level + NA): cells and first row
+  lay <- cell_block_scan(fi, 1L, length(li), ft, 1L, length(lt))   # (image level, type level + NA): cells and first row
   image_labels <- sort(li[rowSums(lay$counts) > 0], method = "radix")   # C-locale order, as the Python twin
   n_images <- length(image_labels)
   image_map <- match(li, image_labels) - 1L; image_map[is.na(image_map)] <- -1L   # image of each image level
@@ -62,36 +125,18 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 
   # units: patients if `subject` maps several images to one patient, else images. A subject constant within images
   # takes the same values in the images' first rows as in all the cells.
-  if (!is.null(subject)) {
-    sv <- cells[[subject]]
-    n_sub <- length(unique(as.character(if (cell_constant_within(sv, fi, first_level)) sv[first] else sv)))
-  }
-  if (is.null(subject) || n_sub == n_images) {
-    unit_labels <- image_labels; image_unit <- seq_len(n_images) - 1L
-  } else {
-    sub <- as.character(sv[first])
-    unit_labels <- unique(sub); image_unit <- match(sub, unit_labels) - 1L
-  }
-
-  ctx <- list(pheno = cells[first, , drop = FALSE], image_labels = image_labels, n_images = n_images,
-              unit_labels = unit_labels, image_unit = image_unit, first = first)
+  ctx <- list(pheno = cells[first, , drop = FALSE], image_labels = image_labels, n_images = n_images, first = first)
+  ctx <- .cell_units(ctx, if (!is.null(subject)) cells[[subject]][first],
+                     if (!is.null(subject)) { sv <- cells[[subject]]
+                       length(unique(as.character(if (cell_constant_within(sv, fi, first_level)) sv[first] else sv))) })
   if (!is.null(condition) && !survival) {
     cv <- cells[[condition]]
     # constant within images (as the same values): the levels present are those of the images' first rows
     constant <- cell_constant_within(cv, fi, first_level)
-    lev <- .cell_levels(if (constant) cv[first] else cv)
-    if (length(lev) < 2L)
-      stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
-    if (!is.null(ref)) {
-      if (!as.character(ref) %in% lev) stop("`ref` is not a level of `condition`.", call. = FALSE)
-      lev <- c(as.character(ref), setdiff(lev, as.character(ref)))
-    }
-    if (!constant && any(tapply(as.character(cv), image_map[as.integer(fi)], function(z) length(unique(z))) > 1L))
-      stop("'", condition, "' must be constant within each image.", call. = FALSE)
-    ctx$levels <- lev
-    ctx$image_group <- match(as.character(cv[first]), lev) - 1L
-    if (any(tapply(ctx$image_group, image_unit, function(z) length(unique(z))) > 1L))
-      stop("each subject must belong to a single '", condition, "' level.", call. = FALSE)
+    ctx <- .cell_condition(ctx, cv[first], condition, ref, lev = .cell_levels(if (constant) cv[first] else cv),
+                           check = function() if (!constant && any(tapply(as.character(cv), image_map[as.integer(fi)],
+                             function(z) length(unique(z))) > 1L))
+                             stop("'", condition, "' must be constant within each image.", call. = FALSE))
   }
   # types present (the last column of the layout is a missing type), by first appearance
   tcol <- which(colSums(lay$counts) > 0)

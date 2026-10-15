@@ -40,7 +40,7 @@
 #'   `spatialCoords` to its `obsm` array `"spatial"`. A `SpatialData` object (spatialdataR) read from a store
 #'   is read from that store in the same way; one built in memory is analysed from its table.
 #' @param condition The column of the image-level condition: two groups, or a `survival::Surv` column
-#'   for a survival outcome.
+#'   for a survival outcome (from a store, a column of `imageInfo`).
 #' @param subject The column of the patient (unit) of each image. Images of one patient are combined;
 #'   if omitted, every image is its own patient.
 #' @param covariates Image- or patient-level columns to adjust for (cell method: added to the design of
@@ -68,8 +68,13 @@
 #'   df).
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
-#' @param table Cell method with a SpatialData store: the name of the table in `tables/` (by default the only
-#'   table, or the one called `"table"`).
+#' @param tableKey Cell method with a SpatialData store or object: the name of the cell table in `tables/` (by
+#'   default the only table, or the one called `"table"`).
+#' @param imageInfo Cell method: a table with one row per image, for `condition`, `subject`, `covariates` or a
+#'   survival outcome that are not columns of the cell table: a `data.frame` whose `imageID` column, or else its
+#'   row names, gives the image IDs, or the name of a table of the SpatialData store or object. Every image of the
+#'   cells needs a row, and every row an image. A `survival::Surv` column given as `condition` makes a survival
+#'   analysis, also from a store.
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
@@ -140,13 +145,14 @@ spicy <- function(cells,
                   variance = c("cr2", "hartung_knapp"),
                   ref = NULL,
                   cores = 1,
-                  table = NULL,
+                  tableKey = NULL,
+                  imageInfo = NULL,
                   ...) {
   dots <- list(...)
   if (.is_class(cells, "SpatialData")) {   # spatialdataR: its table's store, or the table in memory
-    sd <- .spatialdata_input(cells, table)
-    if (!is.null(sd$path)) { cells <- sd$path; table <- sd$table } else {
-      cells <- sd$cells
+    sd <- .spatialdata_input(cells, tableKey, imageInfo)
+    if (!is.null(sd$path)) { cells <- sd$path; tableKey <- sd$table } else {
+      cells <- sd$cells; imageInfo <- sd$info
       if (missing(imageID) && !is.null(sd$region_key)) imageID <- sd$region_key
     }
   }
@@ -174,28 +180,42 @@ spicy <- function(cells,
   if (is.null(r) && is.null(k)) r <- 50
   if (!is.null(k) && length(r)) { message("`k` given: using the k nearest neighbours; `r` is ignored."); r <- NULL }
 
+  # image-level columns that are not columns of the cell table come from imageInfo (one row per image)
+  need <- unique(c(condition, subject, covariates))
+  if (is.character(imageInfo) && length(imageInfo) == 1L) {
+    if (!from_store) stop("`imageInfo` names a table of a SpatialData store or object; give a data.frame here.",
+                          call. = FALSE)
+    imageInfo <- .store_obs_frame(cells, imageInfo)
+  }
   if (from_store) {
     # a SpatialData store: the cell table is read a block of rows at a time, the cells a batch of whole images at a time
-    st <- .store_table(cells, table)
+    st <- .store_table(cells, tableKey)
     if (missing(imageID) && !is.null(st$attrs$region_key)) imageID <- st$attrs$region_key
     if (missing(spatialCoords) && "spatial" %in% st$obsm) spatialCoords <- "spatial"
-    if (!is.null(subject) && !subject %in% st$obs_columns) stop("`subject` column not found.", call. = FALSE)
-    miss <- setdiff(covariates, st$obs_columns)
+    info_cols <- intersect(setdiff(need, st$obs_columns), names(imageInfo))
+    if (!is.null(subject) && !subject %in% c(st$obs_columns, info_cols)) stop("`subject` column not found.", call. = FALSE)
+    miss <- setdiff(covariates, c(st$obs_columns, info_cols))
     if (length(miss)) stop("covariates not found: ", paste(miss, collapse = ", "), call. = FALSE)
-    survival <- FALSE
-    ctx <- .cell_context_store(st, condition, subject, covariates, imageID, cellType,
-                               .store_coord_spec(st, spatialCoords), ref = ref)
+    survival <- condition %in% info_cols && inherits(imageInfo[[condition]], "Surv")
+    ctx <- .cell_context_store(st, if (!condition %in% info_cols) condition,
+                               if (!is.null(subject) && !subject %in% info_cols) subject, setdiff(covariates, info_cols), imageID, cellType, .store_coord_spec(st, spatialCoords),
+                               ref = ref)
   } else {
     # the cells stay in input order (no sorted copy); .cell_context() takes the types in the sorted order
     cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE, sort = FALSE)
-    if (!is.null(subject) && !subject %in% names(cells)) stop("`subject` column not found.", call. = FALSE)
-    survival <- inherits(cells[[condition]], "Surv")
-    if (survival) {
+    info_cols <- intersect(setdiff(need, names(cells)), names(imageInfo))
+    if (!is.null(subject) && !subject %in% c(names(cells), info_cols)) stop("`subject` column not found.", call. = FALSE)
+    survival <- inherits(if (condition %in% info_cols) imageInfo[[condition]] else cells[[condition]], "Surv")
+    if (survival && !condition %in% info_cols) {
       sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
     }
-    ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
+    ctx <- .cell_context(cells, if (!survival && !condition %in% info_cols) condition,
+                         if (!is.null(subject) && !subject %in% info_cols) subject, "imageID", "cellType", c("x", "y"),
                          ref = ref, survival = survival, by_image = TRUE)
   }
+  if (!is.null(imageInfo))
+    ctx <- .cell_image_info(ctx, .image_info_table(imageInfo, ctx$image_labels, imageID), info_cols, condition,
+                            subject, ref, survival)
   pheno <- ctx$pheno
   types <- ctx$type_labels
   bad <- setdiff(c(from, to), types)

@@ -3,16 +3,12 @@
 #include <Rcpp.h>
 
 #include <algorithm>
-#include <atomic>
-#include <cstring>
 #include <limits>
-#include <exception>
 #include <string>
-#include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include "spicyglm/core.hpp"
+#include "spicyglm/stream.hpp"
 
 using namespace Rcpp;
 using namespace spicyglm;
@@ -320,281 +316,169 @@ NumericMatrix dataset_hac_phi_sums(SEXP ptr, int from, int to, int design, doubl
 }
 
 // ---- the cell method image by image -------------------------------------------------------------------------------
-// spicy()'s cell method needs only per-image summaries of the neighbour graph, so it never holds the whole data set
-// in the core: the cells stay in R's columns, in input order, and are gathered a batch of whole images at a time
-// into a Dataset of their own. Every Dataset function used here works image by image on the image's cells in row
-// order (rows relative to the image), so a batch's Dataset gives each of its images exactly the numbers the
-// whole-data Dataset gives it (cells sorted stably by image, as .cell_context() did).
+// The loop over images and the passes over the codes live in the core (spicyglm/stream.hpp), shared with spicyr;
+// these wrappers only describe R's vectors to it and convert the results.
 
 namespace {
 
-// A factor's codes (1-based, NA allowed) of length n, checked: an R integer vector.
-const int* factor_codes(SEXP f, R_xlen_t n, const char* what) {
-  if (TYPEOF(f) != INTSXP || XLENGTH(f) != n) stop("%s: expected integer codes of length %d", what, static_cast<int>(n));
-  return INTEGER(f);
+// An R numeric vector (double, or integer read as as.numeric() reads it) as a core column, without a copy.
+spicyglm::Column r_column(SEXP v, R_xlen_t n, const char* what) {
+  spicyglm::Column c;
+  if (XLENGTH(v) != n) stop("%s: wrong length", what);
+  if (TYPEOF(v) == REALSXP) { c.data = REAL(v); c.type = spicyglm::Column::Type::F64; }
+  else if (TYPEOF(v) == INTSXP || TYPEOF(v) == LGLSXP) { c.data = INTEGER(v); c.type = spicyglm::Column::Type::I32; c.int_na = NA_REAL; }
+  else stop("%s must be numeric", what);
+  c.size = static_cast<std::size_t>(n);
+  return c;
 }
 
-// Coordinates as R stores them (double or integer); an integer is converted as as.numeric() does.
-struct Coord {
-  const double* d = nullptr;
-  const int* i = nullptr;
-  Coord(SEXP v, R_xlen_t n, const char* what) {
-    if (XLENGTH(v) != n) stop("%s: wrong length", what);
-    if (TYPEOF(v) == REALSXP) d = REAL(v);
-    else if (TYPEOF(v) == INTSXP) i = INTEGER(v);
-    else stop("%s must be numeric", what);
+// Integer codes (a factor's, base 1; or 0-based Zarr codes, base 0) as core codes.
+spicyglm::Codes r_codes(SEXP v, int base, const char* what) {
+  if (TYPEOF(v) != INTSXP) stop("%s: expected integer codes", what);
+  spicyglm::Codes c;
+  c.column = r_column(v, XLENGTH(v), what);
+  c.base = base;
+  return c;
+}
+
+// The elements of an atomic vector as bytes: width and data (strings as their cached CHARSXP pointers).
+std::size_t r_width(SEXP v) {
+  switch (TYPEOF(v)) {
+    case INTSXP: case LGLSXP: return sizeof(int);
+    case REALSXP: return sizeof(double);
+    case STRSXP: return sizeof(SEXP);
+    default: return 0;
   }
-  double operator[](R_xlen_t r) const { return d ? d[r] : (i[r] == NA_INTEGER ? NA_REAL : static_cast<double>(i[r])); }
-};
+}
+const void* r_bytes(SEXP v) {
+  switch (TYPEOF(v)) {
+    case INTSXP: return INTEGER(v);
+    case LGLSXP: return LOGICAL(v);
+    case REALSXP: return REAL(v);
+    default: return STRING_PTR_RO(v);
+  }
+}
+
+spicyglm::StreamOptions stream_options(int n_types, const NumericVector& radii, int k, bool allocation) {
+  spicyglm::StreamOptions o;
+  o.radii.assign(radii.begin(), radii.end());
+  o.k = k;
+  o.allocation = allocation;
+  o.n_types = n_types;
+  return o;
+}
+
+// 0-based rows (-1 none) to 1-based (NA), as an integer vector
+IntegerVector r_rows(const std::vector<long long>& v) {
+  IntegerVector out(v.size());
+  for (std::size_t i = 0; i < v.size(); ++i) out[i] = v[i] < 0 ? NA_INTEGER : static_cast<int>(v[i] + 1);
+  return out;
+}
 
 }  // namespace
 
-// One pass over the cells: for every (image level, cell-type level) the number of cells and the first row (1-based;
-// NA when there is none). Type NA is the extra last column. Images must not be NA.
+// One pass over a block of rows of the image and type codes (base 1: factor codes, NA missing; base 0: Zarr codes,
+// -1 missing), rows offset + 1, offset + 2, ...: for every (image level, type level) the cells and the first row
+// (NA when none; a missing type is the extra last column), the number of changes of image between consecutive rows
+// (counting the first row when its image differs from `prev`, the 1-based image code of the row before the block,
+// NA for none), the last row's image code, and per image level the first position in the block (1-based; NA when
+// absent). Codes are returned 1-based. With offset 0 and prev NA, the layout of the whole table.
 // [[Rcpp::export]]
-List cell_layout(SEXP image_fac, int n_image_levels, SEXP type_fac, int n_type_levels) {
-  const R_xlen_t N = XLENGTH(image_fac);
-  const int* im = factor_codes(image_fac, N, "image");
-  const int* ty = factor_codes(type_fac, N, "cell type");
+List cell_block_scan(SEXP image, int image_base, int n_image_levels, SEXP type, int type_base, int n_type_levels,
+                     double offset = 0, int prev = NA_INTEGER) {
+  const spicyglm::CodeScan s = spicyglm::scan_codes(r_codes(image, image_base, "image"), n_image_levels,
+                                                    r_codes(type, type_base, "cell type"), n_type_levels,
+                                                    static_cast<long long>(offset), prev == NA_INTEGER ? -1 : prev - 1);
   const int T = n_type_levels + 1;
   IntegerMatrix counts(n_image_levels, T), first(n_image_levels, T);
-  std::fill(first.begin(), first.end(), NA_INTEGER);
-  for (R_xlen_t r = 0; r < N; ++r) {
-    const int i = im[r], t = ty[r] == NA_INTEGER ? n_type_levels : ty[r] - 1;
-    if (i == NA_INTEGER || i < 1 || i > n_image_levels) stop("missing or invalid image ID in row %d", static_cast<int>(r + 1));
-    if (t < 0 || t > n_type_levels) stop("invalid cell type code in row %d", static_cast<int>(r + 1));
-    const R_xlen_t at = static_cast<R_xlen_t>(t) * n_image_levels + (i - 1);
-    if (counts[at]++ == 0) first[at] = static_cast<int>(r + 1);
-  }
-  return List::create(_["counts"] = counts, _["first"] = first);
+  for (int i = 0; i < n_image_levels; ++i)
+    for (int t = 0; t < T; ++t) {
+      const std::size_t at = static_cast<std::size_t>(i) * T + t;
+      counts(i, t) = static_cast<int>(s.counts[at]);
+      first(i, t) = s.first[at] < 0 ? NA_INTEGER : static_cast<int>(s.first[at] + 1);
+    }
+  return List::create(_["counts"] = counts, _["first"] = first, _["runs"] = static_cast<double>(s.runs),
+                      _["last"] = s.last_image < 0 ? NA_INTEGER : static_cast<int>(s.last_image + 1),
+                      _["pos"] = r_rows(s.pos));
 }
 
 // Whether v takes the same value (the same bits; for strings the same cached string) in every row of each image
-// as in the image's first row (first_row: per image level, 1-based; codes 1-based). TRUE implies the values are
+// as in the image's first row (first_row: per image level, 1-based; factor codes). TRUE implies the values are
 // constant within images as as.character() sees them; FALSE leaves the caller to check as.character() values.
 // [[Rcpp::export]]
 bool cell_constant_within(SEXP v, SEXP image_fac, IntegerVector first_row) {
-  const R_xlen_t N = XLENGTH(image_fac);
-  const int* im = factor_codes(image_fac, N, "image");
-  if (XLENGTH(v) != N) return false;
-  for (R_xlen_t r = 0; r < N; ++r) {
-    const R_xlen_t f = first_row[im[r] - 1] - 1;
-    switch (TYPEOF(v)) {
-      case INTSXP: case LGLSXP: if (INTEGER(v)[r] != INTEGER(v)[f]) return false; break;
-      case REALSXP: if (std::memcmp(REAL(v) + r, REAL(v) + f, sizeof(double)) != 0) return false; break;
-      case STRSXP: if (STRING_ELT(v, r) != STRING_ELT(v, f)) return false; break;
-      default: return false;
-    }
-  }
-  return true;
+  if (XLENGTH(v) != XLENGTH(image_fac) || r_width(v) == 0) return false;
+  std::vector<long long> f(first_row.size());
+  for (R_xlen_t i = 0; i < first_row.size(); ++i) f[i] = first_row[i] == NA_INTEGER ? 0 : first_row[i] - 1;
+  return spicyglm::constant_within(r_bytes(v), r_width(v), r_codes(image_fac, 1, "image"), f.data());
 }
 
-// The neighbour totals of the cell method, image by image. Cells stay in input order: image_fac and type_fac are
-// factor codes (1-based; a type NA is code n_type_levels + 1), mapped by image_map / type_map (indexed by code - 1)
-// to the 0-based image (in .cell_context()'s sorted order) and cell type. k > 0: the k nearest neighbours; else the
-// radius graph at radii (one radius, or several from one neighbour search). Returns one element per radius (one for
-// kNN), each list(any, self_expected) (allocation) or list(totals, sq) (count), exactly as dataset_pair_neighbour_any_totals
-// and dataset_self_any_expected, or dataset_pair_neighbour_totals and dataset_pair_neighbour_out_sq_totals, after
-// dataset_build_radius_index / dataset_build_knn on the whole data set (or dataset_multi_radius_totals).
-// Images are gathered in batches of about 2^21 cells per thread (one image at least), one pass over the codes each.
+// The rows (1-based) where v differs from ref at the row's image (ref indexed by the image code): the same bits
+// (for strings the same cached string) count as equal, so a row not returned holds the same value as as.character()
+// sees it; the caller compares the returned rows as.character(). Image codes are 1-based, or 0-based with
+// image_base = 0.
+// [[Rcpp::export]]
+IntegerVector cell_rows_differing(SEXP v, SEXP image, SEXP ref, int image_base = 1) {
+  if (XLENGTH(image) != XLENGTH(v) || TYPEOF(ref) != TYPEOF(v)) stop("cell_rows_differing: inconsistent input");
+  if (r_width(v) == 0) stop("cell_rows_differing: unsupported type");
+  return r_rows(spicyglm::rows_differing(r_bytes(v), r_width(v), r_codes(image, image_base, "image"), r_bytes(ref),
+                                         XLENGTH(ref)));
+}
+
+// The neighbour totals of the cell method from the cells in input order (spicyglm::stream_totals): image_fac and
+// type_fac are factor codes, mapped by image_map / type_map (indexed by code - 1; type_map's last entry is a missing
+// type) to the 0-based image (in .cell_context()'s sorted order) and cell type. k > 0: the k nearest neighbours; else
+// the radius graph at radii. One element per radius (one for kNN), each list(any, self_expected) (allocation) or
+// list(totals, sq) (count), as the whole-data dataset gives them. Batches of about 2^21 cells per thread.
 // [[Rcpp::export]]
 List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac,
                         IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation,
                         int n_threads = 1) {
   const R_xlen_t N = XLENGTH(image_fac);
-  const int* im = factor_codes(image_fac, N, "image");
-  const int* ty = factor_codes(type_fac, N, "cell type");
-  const Coord X(x, N, "x"), Y(y, N, "y");
-  const int n_type_levels = type_map.size() - 1;
-  const bool knn = k > 0;
-  const int K = knn ? 1 : radii.size();
-  if (!knn && K < 1) stop("give a radius or k");
-  auto image_of = [&](R_xlen_t r) {
-    const int i = im[r];
-    if (i == NA_INTEGER || i < 1 || i > image_map.size()) stop("missing or invalid image ID in row %d", static_cast<int>(r + 1));
-    return image_map[i - 1];
-  };
-  std::vector<long long> size(n_images, 0);
-  for (R_xlen_t r = 0; r < N; ++r) {
-    const int m = image_of(r);
-    if (m < 0 || m >= n_images) stop("image map out of range");
-    ++size[m];
+  spicyglm::CellColumns cells{r_column(x, N, "x"), r_column(y, N, "y"), r_codes(image_fac, 1, "image"),
+                              r_codes(type_fac, 1, "cell type")};
+  if (XLENGTH(type_fac) != N) stop("cell type: wrong length");
+  spicyglm::CodeMaps maps{image_map.begin(), static_cast<std::size_t>(image_map.size()), type_map.begin(),
+                          static_cast<std::size_t>(type_map.size() - 1), n_images};
+  const spicyglm::StreamOptions o = stream_options(n_types, radii, k, allocation);
+  List res(o.n_results());
+  spicyglm::StreamOutput out;
+  for (std::size_t j = 0; j < o.n_results(); ++j) {
+    NumericVector a(o.block_a() * n_images), b(o.block_b() * n_images);
+    a.attr("dim") = IntegerVector::create(n_types, n_types, n_images);
+    if (allocation) b.attr("dim") = IntegerVector::create(n_types, n_images);
+    else b.attr("dim") = IntegerVector::create(n_types, n_types, n_images);
+    out.a.push_back(a.begin()); out.b.push_back(b.begin());
+    res[j] = allocation ? List::create(_["any"] = a, _["self_expected"] = b) : List::create(_["totals"] = a, _["sq"] = b);
   }
-  const std::size_t T = static_cast<std::size_t>(n_types), per = static_cast<std::size_t>(n_images) * T * T;
-  std::vector<std::vector<double>> a(K, std::vector<double>(per, 0.0));   // any / totals
-  std::vector<std::vector<double>> b(K, std::vector<double>(allocation ? static_cast<std::size_t>(n_images) * T : per, 0.0));
-  const std::vector<double> rad(radii.begin(), radii.end());
-  const long long budget = (1LL << 21) * std::max(1, n_threads);
-  for (int lo = 0, hi; lo < n_images; lo = hi) {
-    long long n = 0;
-    for (hi = lo; hi < n_images && (hi == lo || n + size[hi] <= budget); ++hi) n += size[hi];
-    // the batch's cells, image by image in row order
-    std::vector<int> offsets(hi - lo + 1, 0);
-    for (int i = lo; i < hi; ++i) offsets[i - lo + 1] = offsets[i - lo] + static_cast<int>(size[i]);
-    std::vector<double> bx(n), by(n);
-    std::vector<int> bt(n), fill(offsets.begin(), offsets.end() - 1);
-    for (R_xlen_t r = 0; r < N; ++r) {
-      const int m = image_map[im[r] - 1];
-      if (m < lo || m >= hi) continue;
-      const int t = ty[r] == NA_INTEGER ? n_type_levels : ty[r] - 1;
-      if (t < 0 || t > n_type_levels) stop("invalid cell type code in row %d", static_cast<int>(r + 1));
-      const int p = fill[m - lo]++;
-      bx[p] = X[r]; by[p] = Y[r]; bt[p] = type_map[t];
-    }
-    Dataset d(std::move(bx), std::move(by), std::move(bt), std::move(offsets), n_types);
-    const std::size_t at = static_cast<std::size_t>(lo) * T * T, at_se = static_cast<std::size_t>(lo) * T;
-    auto put = [](const std::vector<double>& from, std::vector<double>& to, std::size_t at) {
-      std::copy(from.begin(), from.end(), to.begin() + at); };
-    if (K > 1) {
-      Dataset::MultiRadiusTotals m = d.multi_radius_totals(rad, allocation);
-      for (int j = 0; j < K; ++j) {
-        if (allocation) { put(m.any[j], a[j], at); put(m.self_expected[j], b[j], at_se); }
-        else { put(m.totals[j], a[j], at); put(m.sq[j], b[j], at); }
-      }
-      continue;
-    }
-    if (knn) d.build_knn(k, n_threads); else d.build_radius_index(rad[0]);
-    if (allocation) { put(d.pair_neighbour_any_totals(knn), a[0], at); put(d.self_any_expected(knn), b[0], at_se); }
-    else { put(d.pair_neighbour_totals(knn), a[0], at); put(d.pair_neighbour_out_sq_totals(knn), b[0], at); }
-  }
-  auto cube = [&](const std::vector<double>& v) { NumericVector o(v.begin(), v.end());
-    o.attr("dim") = IntegerVector::create(n_types, n_types, n_images); return o; };
-  List out(K);
-  for (int j = 0; j < K; ++j) {
-    if (allocation) {
-      NumericMatrix se(n_types, n_images); std::copy(b[j].begin(), b[j].end(), se.begin());
-      out[j] = List::create(_["any"] = cube(a[j]), _["self_expected"] = se);
-    } else {
-      out[j] = List::create(_["totals"] = cube(a[j]), _["sq"] = cube(b[j]));
-    }
-  }
-  return out;
+  spicyglm::stream_totals(cells, maps, o, out, n_threads, (1LL << 21) * std::max(1, n_threads));
+  return res;
 }
 
-// One block of rows of a cell table read from a store: image and type codes as integers (base 0: Zarr categorical
-// codes, -1 missing; base 1: factor codes, NA missing), rows offset + 1, offset + 2, ... For every (image level,
-// type level) the cells and the first row (NA when none; a missing type is the extra last column), the number of
-// changes of image between consecutive rows (counting the first row when its image differs from `prev`, the image
-// code of the row before the block, NA for none), the last row's image code, and per image level the first position
-// in the block (1-based; NA when absent). Codes are returned 1-based.
-// [[Rcpp::export]]
-List cell_block_scan(IntegerVector image, int image_base, int n_image_levels, IntegerVector type, int type_base,
-                     int n_type_levels, int offset, int prev) {
-  const R_xlen_t N = image.size();
-  if (type.size() != N) stop("block: image and type codes differ in length");
-  const int T = n_type_levels + 1;
-  IntegerMatrix counts(n_image_levels, T), first(n_image_levels, T);
-  std::fill(first.begin(), first.end(), NA_INTEGER);
-  IntegerVector pos(n_image_levels, NA_INTEGER);
-  double runs = 0;
-  int last = prev;
-  for (R_xlen_t r = 0; r < N; ++r) {
-    const int iv = image[r], tv = type[r];
-    const int i = (iv == NA_INTEGER || iv < image_base) ? -1 : iv - image_base;   // 0-based
-    if (i < 0 || i >= n_image_levels) stop("missing or invalid image ID in row %d", static_cast<int>(offset + r + 1));
-    const int t = (tv == NA_INTEGER || tv < type_base) ? n_type_levels : tv - type_base;
-    if (t > n_type_levels) stop("invalid cell type code in row %d", static_cast<int>(offset + r + 1));
-    const R_xlen_t at = static_cast<R_xlen_t>(t) * n_image_levels + i;
-    if (counts[at]++ == 0) first[at] = static_cast<int>(offset + r + 1);
-    if (pos[i] == NA_INTEGER) pos[i] = static_cast<int>(r + 1);
-    if (last == NA_INTEGER || last != i + 1) ++runs;
-    last = i + 1;
-  }
-  return List::create(_["counts"] = counts, _["first"] = first, _["runs"] = runs, _["last"] = last, _["pos"] = pos);
-}
-
-// The rows (1-based) where v differs from ref at the row's image (ref indexed by the image code, 1-based): the same
-// bits (for strings the same cached string) count as equal, so a row not returned holds the same value as
-// as.character() sees it; the caller compares the returned rows as.character(). Image codes are 1-based, or 0-based
-// with image_base = 0.
-// [[Rcpp::export]]
-IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref, int image_base = 1) {
-  const R_xlen_t N = XLENGTH(v);
-  if (image.size() != N || TYPEOF(ref) != TYPEOF(v)) stop("cell_rows_differing: inconsistent input");
-  const R_xlen_t M = XLENGTH(ref);
-  std::vector<int> out;
-  for (R_xlen_t r = 0; r < N; ++r) {
-    const int i = image[r] == NA_INTEGER ? NA_INTEGER : image[r] - image_base + 1;
-    if (i == NA_INTEGER || i < 1 || i > M) stop("cell_rows_differing: image code out of range");
-    bool same;
-    switch (TYPEOF(v)) {
-      case INTSXP: case LGLSXP: same = INTEGER(v)[r] == INTEGER(ref)[i - 1]; break;
-      case REALSXP: same = std::memcmp(REAL(v) + r, REAL(ref) + (i - 1), sizeof(double)) == 0; break;
-      case STRSXP: same = STRING_ELT(v, r) == STRING_ELT(ref, i - 1); break;
-      default: stop("cell_rows_differing: unsupported type");
-    }
-    if (!same) out.push_back(static_cast<int>(r + 1));
-  }
-  return IntegerVector(out.begin(), out.end());
-}
-
-// The neighbour totals of the cell method for one batch of whole images that the caller has already gathered: the
-// cells image by image (each image's cells in row order), x, y (or x the N x 2 matrix of both and y empty) and
-// 0-based cell types, with offsets[i] the first cell
-// of image i of the batch. Returns one element per radius (one for kNN), each list(a, b): a the n_types x n_types
-// block of every image of the batch (any / totals), b its self_expected (n_types per image) or sq block, in the
-// layout of cell_stream_totals' output for these images. Each image runs in a Dataset of its own (on up to n_threads
-// threads), so each image's numbers are those of the whole-data Dataset.
+// The neighbour totals of one batch of whole images that the caller has already gathered (spicyglm::batch_totals):
+// the cells image by image (each image's cells in row order), x, y (or x the N x 2 matrix of both and y empty) and
+// 0-based cell types, offsets[i] the first cell of image i of the batch. One element per radius (one for kNN), each
+// list(a, b): the any / totals block and the self_expected / sq block of every image of the batch.
 // [[Rcpp::export]]
 List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types,
                        NumericVector radii, int k, bool allocation, int n_threads = 1) {
   const int nb = offsets.size() - 1;
-  if (nb < 1) stop("no images in the batch");
   const R_xlen_t N = type.size();
-  // y empty: x is the N x 2 matrix of the coordinates
-  const bool matrix = y.size() == 0 && x.size() == 2 * N;
-  if ((!matrix && (x.size() != N || y.size() != N)) || offsets[0] != 0 || offsets[nb] != N)
-    stop("batch: inconsistent lengths");
-  for (int i = 0; i < nb; ++i) if (offsets[i + 1] < offsets[i]) stop("batch: offsets must be increasing");
-  for (R_xlen_t r = 0; r < N; ++r) if (type[r] < 0 || type[r] >= n_types) stop("batch: cell type out of range");
-  const bool knn = k > 0;
-  const int K = knn ? 1 : radii.size();
-  if (!knn && K < 1) stop("give a radius or k");
-  const std::size_t T = static_cast<std::size_t>(n_types);
-  const std::size_t per = static_cast<std::size_t>(nb) * T * T, per_b = allocation ? static_cast<std::size_t>(nb) * T : per;
-  std::vector<std::vector<double>> a(K, std::vector<double>(per, 0.0)), b(K, std::vector<double>(per_b, 0.0));
-  const std::vector<double> rad(radii.begin(), radii.end());
-  const double* px = x.begin(); const double* py = matrix ? x.begin() + N : y.begin(); const int* pt = type.begin();
-  const std::vector<int> off(offsets.begin(), offsets.end());
-  // one image at a time (a Dataset of its own, so the neighbour index is never larger than one image), the images
-  // handed out to up to n_threads threads in turn
-  const int G = std::max(1, std::min(n_threads, nb));
-  std::atomic<int> next(0);
-  std::vector<std::exception_ptr> err(G);
-  auto put = [](const std::vector<double>& from, std::vector<double>& to, std::size_t at) {
-    std::copy(from.begin(), from.end(), to.begin() + at); };
-  auto work = [&](int g) {
-    try {
-      for (int i = next++; i < nb; i = next++) {
-        const std::size_t s0 = off[i], e0 = off[i + 1];
-        Dataset d(std::vector<double>(px + s0, px + e0), std::vector<double>(py + s0, py + e0),
-                  std::vector<int>(pt + s0, pt + e0), std::vector<int>{0, static_cast<int>(e0 - s0)}, n_types);
-        const std::size_t at = static_cast<std::size_t>(i) * T * T, at_se = static_cast<std::size_t>(i) * T;
-        if (K > 1) {
-          Dataset::MultiRadiusTotals m = d.multi_radius_totals(rad, allocation);
-          for (int j = 0; j < K; ++j) {
-            if (allocation) { put(m.any[j], a[j], at); put(m.self_expected[j], b[j], at_se); }
-            else { put(m.totals[j], a[j], at); put(m.sq[j], b[j], at); }
-          }
-          continue;
-        }
-        if (knn) d.build_knn(k, 1); else d.build_radius_index(rad[0]);
-        if (allocation) { put(d.pair_neighbour_any_totals(knn), a[0], at); put(d.self_any_expected(knn), b[0], at_se); }
-        else { put(d.pair_neighbour_totals(knn), a[0], at); put(d.pair_neighbour_out_sq_totals(knn), b[0], at); }
-      }
-    } catch (...) { err[g] = std::current_exception(); next = nb; }
-  };
-  if (G == 1) work(0);
-  else {
-    std::vector<std::thread> pool;
-    for (int g = 0; g < G; ++g) pool.emplace_back(work, g);
-    for (std::thread& t : pool) t.join();
+  const bool matrix = y.size() == 0 && x.size() == 2 * N;   // y empty: x is the N x 2 matrix of the coordinates
+  if (nb < 1 || (!matrix && (x.size() != N || y.size() != N)) || offsets[nb] != N) stop("batch: inconsistent lengths");
+  const spicyglm::StreamOptions o = stream_options(n_types, radii, k, allocation);
+  std::vector<int> index(nb);
+  for (int i = 0; i < nb; ++i) index[i] = i;
+  List res(o.n_results());
+  spicyglm::StreamOutput out;
+  for (std::size_t j = 0; j < o.n_results(); ++j) {
+    NumericVector a(o.block_a() * nb), b(o.block_b() * nb);
+    out.a.push_back(a.begin()); out.b.push_back(b.begin());
+    res[j] = List::create(_["a"] = a, _["b"] = b);
   }
-  for (const std::exception_ptr& e : err) if (e) std::rethrow_exception(e);
-  List out(K);
-  for (int j = 0; j < K; ++j)
-    out[j] = List::create(_["a"] = NumericVector(a[j].begin(), a[j].end()), _["b"] = NumericVector(b[j].begin(), b[j].end()));
-  return out;
+  spicyglm::batch_totals(x.begin(), matrix ? x.begin() + N : y.begin(), type.begin(), offsets.begin(), nb,
+                         index.data(), o, out, n_threads);
+  return res;
 }
 
 // factor(x, levels = unique(x)) for a character vector without attributes, in one pass with no hash of the whole
@@ -606,30 +490,17 @@ List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, Int
 SEXP first_appearance_factor(SEXP x) {
   if (TYPEOF(x) != STRSXP) return R_NilValue;   // the caller passes only vectors without attributes
   const R_xlen_t N = XLENGTH(x);
-  std::unordered_map<SEXP, int> code;
-  std::vector<SEXP> levels;
   IntegerVector out(N);
-  SEXP last = nullptr; int last_code = 0;
-  for (R_xlen_t r = 0; r < N; ++r) {
-    SEXP s = STRING_ELT(x, r);
-    if (s == last) { out[r] = last_code; continue; }
-    int c;
-    if (s == NA_STRING) c = NA_INTEGER;
-    else {
-      auto it = code.find(s);
-      if (it != code.end()) c = it->second;
-      else {
-        for (const char* p = CHAR(s); *p; ++p) if (static_cast<unsigned char>(*p) >= 0x80) return R_NilValue;
-        if (levels.size() >= (1u << 20)) return R_NilValue;
-        levels.push_back(s);
-        c = static_cast<int>(levels.size());
-        code.emplace(s, c);
-      }
-    }
-    out[r] = last_code = c; last = s;
+  std::vector<std::size_t> rows;
+  if (!spicyglm::first_appearance_codes(reinterpret_cast<const void* const*>(STRING_PTR_RO(x)), N, NA_STRING,
+                                        NA_INTEGER, 1u << 20, out.begin(), rows))
+    return R_NilValue;
+  CharacterVector lev(rows.size());
+  for (std::size_t l = 0; l < rows.size(); ++l) {
+    SEXP s = STRING_ELT(x, rows[l]);
+    for (const char* p = CHAR(s); *p; ++p) if (static_cast<unsigned char>(*p) >= 0x80) return R_NilValue;
+    SET_STRING_ELT(lev, l, s);
   }
-  CharacterVector lev(levels.size());
-  for (std::size_t i = 0; i < levels.size(); ++i) SET_STRING_ELT(lev, i, levels[i]);
   out.attr("levels") = lev;
   out.attr("class") = "factor";
   return out;

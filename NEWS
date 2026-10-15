@@ -1,3 +1,25 @@
+CHANGES IN VERSION 1.99.21
+--------------------------
+
+    o spicy() (method = "cell") takes `imageInfo`: a table with one row per image (a data.frame whose imageID column,
+      or else its row names, gives the image IDs, or the name of a table of the SpatialData store or object) for the
+      condition, subject, covariates or survival outcome when they are not columns of the cell table. It works for
+      cells in memory and in a store, so a survival outcome (a Surv column of imageInfo) can now be analysed from a
+      store. Images missing from imageInfo, and rows for images not among the cells, are errors. Results are
+      identical to those with the same columns in the cell table. The argument choosing a store's cell table is now
+      called `tableKey` (it was `table`), matching spicyr's `table_key`.
+    o writeCellStore() writes a data.frame of cells (and optionally a per-image table) as a SpatialData Zarr store,
+      which spicy() and spatialdataR's readSpatialData() read. The vignette ends with a small example: a store of 40
+      METABRIC cores, analysed from its path and as a SpatialData object, with results identical to the data.frame.
+      spatialdataR and anndataR are suggested.
+    o The image-by-image loop of the cell method is in the C++ core shared with spicyr (src/core/src/stream.cpp):
+      the passes over the image and cell-type codes, the gathering of each batch of whole images and the neighbour
+      sums of each image in a Dataset of its own, the images shared among `cores` threads. The R bindings only
+      describe R's vectors to it. Results are identical (to 1.99.20 on 100 million and 1 billion cells, and on the
+      tests). From a store of 100 million cells, spicy(r = 25) takes 196 s and 1.5 GB on one core (250 s and 1.7 GB
+      before, run the same night) and 78 s and 5.2 GB on 8 cores (109 s and 5.1 GB); 1 billion cells take 15
+      minutes and 5.3 GB on 8 cores and 44 minutes and 1.65 GB on one, on a busy server.
+
 CHANGES IN VERSION 1.99.20
 --------------------------
 

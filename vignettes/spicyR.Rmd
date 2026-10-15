@@ -606,8 +606,85 @@ Python. The names follow Python conventions:
 | `topPairs(res)`, `res$cellResults` | `res.top_pairs()`, `res.cell_results` |
 | `signifPlot(res)`, `spicyBoxPlot(res, from, to)`, `bind(res)` | `res.signif_plot()`, `res.box_plot(from_, to)`, `res.bind()` |
 | `plotImage(spe, image, from, to)`, `res$imageWeights` | `spicyr.plot_image(adata, image, from_, to)`, `res.image_weights` |
+| `spicy("cells.zarr", condition, tableKey =, imageInfo =)` | `spicy("cells.zarr", condition, table_key=, image_info=)` |
 
 The image-level test is available only in R.
+
+# Very large data sets: SpatialData stores
+
+Some imaging studies hold more cells than fit in memory. `spicy()` also reads a SpatialData Zarr store from disk:
+give the path of the store as `cells`. Every neighbour count is a sum within one image, so spicyR reads the cell
+table's image and cell-type columns a block of rows at a time, and the coordinates one batch of whole images at a
+time. Memory then depends on the size of an image and on the number of `cores`, not on the size of the study, and
+the results are the same as for the same cells in memory.
+
+To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It needs a `data.frame` with one
+row per cell; the image column becomes the table's region key and the coordinates its `obsm` array `"spatial"`. A
+second table holds one row per core, with the patient and ER status.
+
+```{r store-write}
+someCores <- unlist(lapply(c("ER-", "ER+"), function(g) head(sort(unique(cells$file_id[cells$ER == g])), 20)))
+small <- cells[cells$file_id %in% someCores, ]
+small <- small[order(small$file_id), ]                         # the rows of each core together
+coreInfo <- unique(small[, c("file_id", "metabricId", "ER")])
+rownames(coreInfo) <- coreInfo$file_id
+path <- file.path(tempdir(), "metabric.zarr")
+writeCellStore(small[, c("file_id", "description", "Location_Center_X", "Location_Center_Y")], path,
+               imageID = "file_id", spatialCoords = c("Location_Center_X", "Location_Center_Y"),
+               imageInfo = coreInfo[, c("metabricId", "ER")])
+```
+
+The store holds the `r nrow(small)` cells of `r length(someCores)` cores in a cell table, and a table of the cores
+called `"images"`.
+
+`spicy()` reads the store with the arguments used above. The image column defaults to the table's region key
+and the coordinates to `obsm` `"spatial"`. The condition and the patient are not columns of the cell table, so
+`imageInfo` names the table that holds them.
+
+```{r store-spicy}
+resStore <- spicy(path, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
+                  imageInfo = "images")
+```
+
+spatialdataR reads the same store as a `SpatialData` object. `spicy()` analyses the object from the store it was
+read from.
+
+```{r store-sdata}
+library(spatialdataR)
+sdata <- readSpatialData(path)
+sdata
+resObject <- spicy(sdata, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
+                   imageInfo = "images")
+```
+
+Both results are those of the same cells as a `data.frame`:
+
+```{r store-same}
+resMemory <- spicy(small, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id",
+                   cellType = "description", spatialCoords = c("Location_Center_X", "Location_Center_Y"))
+c(store = identical(resStore, resMemory), object = identical(resObject, resMemory))
+```
+
+```{r check-store-same, include = FALSE}
+stopifnot(identical(resStore, resMemory), identical(resObject, resMemory))
+```
+
+Every estimate, standard error and p-value is identical, not just close.
+
+A few arguments matter for stores. `tableKey` chooses the cell table when the store has several (by default the
+only table, or the one called `"table"`). `imageInfo` supplies the condition, the patient, covariates or a
+`Surv` survival outcome when they are not columns of the cell table: give a `data.frame` whose `imageID` column,
+or else its row names, holds the image IDs, or the name of a table in the store. Every image needs a row in it.
+`spatialCoords` names either two `obs` columns or one `obsm` array, whose first two columns are used.
+
+::: {.callout .callout-tip}
+**Store the cells grouped by image.** When the rows of each image sit together, as they do when the table is sorted
+by its region column before it is written, each batch of images is read as one slice of rows. Otherwise each batch
+needs a pass over the image column. Categorical image and cell-type columns also keep the store small.
+:::
+
+In a benchmark on a synthetic store of one billion cells in 500 images, `spicy()` ran on one core in under 2 GB of
+memory.
 
 # Session information
 
