@@ -15,7 +15,8 @@ write_cell_store <- function(d, path, table = "table", region_key = "imageID", x
   w_attrs(path, list(spatialdata_attrs = list(version = "0.2")))
   tab <- file.path(path, "tables", table)
   w_group(tab)
-  w_attrs(tab, list(`encoding-type` = "anndata", `encoding-version` = "0.1.0", region = as.list(unique(as.character(d[[region_key]]))),
+  w_attrs(tab, list(`encoding-type` = "anndata", `encoding-version` = "0.1.0",
+                    `spatialdata-encoding-type` = "ngff:regions_table", version = "0.2", region = as.list(unique(as.character(d[[region_key]]))),
                     region_key = region_key, instance_key = "instance_id"))
   obs <- file.path(tab, "obs"); w_group(obs)
   cols <- setdiff(names(d), if (!coords_in_obs) xy)
@@ -35,5 +36,6 @@ write_cell_store <- function(d, path, table = "table", region_key = "imageID", x
   }
   w_group(file.path(tab, "obsm"))
   if (!coords_in_obs) w_array(cbind(as.numeric(d[[xy[1]]]), as.numeric(d[[xy[2]]])), file.path(tab, "obsm", "spatial"))
+  if (zarr_version == 3L) Rarr::zarr_consolidate_metadata(path)
   invisible(path)
 }

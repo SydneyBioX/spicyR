@@ -307,3 +307,29 @@
   lapply(seq_len(K), function(j)
     if (allocation) list(any = A[[j]], self_expected = B[[j]]) else list(totals = A[[j]], sq = B[[j]]))
 }
+
+## A SpatialData object (spatialdataR): its table's store when it was read from one (list(path, table = NULL)), else the
+## table as a data.frame of its colData, its region column and the coordinates (reducedDim "spatial" as x and y, with
+## `coords` TRUE).
+.spatialdata_input <- function(x, table = NULL) {
+  tabs <- methods::slot(x, "tables")
+  if (!length(tabs)) stop("the SpatialData object has no table; give the path of its store instead.", call. = FALSE)
+  if (is.null(table)) table <- if (length(tabs) == 1L) names(tabs) else if ("table" %in% names(tabs)) "table" else
+    stop("the SpatialData object has several tables (", paste(names(tabs), collapse = ", "), "); choose one with `table`.",
+         call. = FALSE)
+  if (!table %in% names(tabs)) stop("table '", table, "' not found; the object has: ", paste(names(tabs), collapse = ", "),
+                                    call. = FALSE)
+  sce <- tabs[[table]]
+  .need("SingleCellExperiment", "to read a SpatialData object's table")
+  meta <- SingleCellExperiment::int_metadata(sce)
+  src <- meta$source_path
+  if (is.character(src) && length(src) == 1L && dir.exists(src) && requireNamespace("Rarr", quietly = TRUE))
+    return(list(path = src, table = NULL))
+  d <- as.data.frame(SummarizedExperiment::colData(sce))
+  attrs <- meta$spatialdata_attrs
+  icd <- SingleCellExperiment::int_colData(sce)
+  for (k in c(attrs$region_key, attrs$instance_key)) if (!k %in% names(d) && k %in% names(icd)) d[[k]] <- icd[[k]]
+  xy <- if ("spatial" %in% SingleCellExperiment::reducedDimNames(sce)) SingleCellExperiment::reducedDim(sce, "spatial")
+  if (!is.null(xy) && !any(c("x", "y") %in% names(d))) { d$x <- as.vector(xy[, 1]); d$y <- as.vector(xy[, 2]) }
+  list(cells = d, region_key = attrs$region_key)
+}

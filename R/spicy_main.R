@@ -37,7 +37,8 @@
 #'   store, the columns are read a block of rows at a time and the coordinates a batch of whole images at a time,
 #'   so the table is never held in memory; the results are those of the same cells given as a `data.frame`.
 #'   Column names then refer to the table's `obs`; `imageID` defaults to the table's region key and
-#'   `spatialCoords` to its `obsm` array `"spatial"`.
+#'   `spatialCoords` to its `obsm` array `"spatial"`. A `SpatialData` object (spatialdataR) read from a store
+#'   is read from that store in the same way; one built in memory is analysed from its table.
 #' @param condition The column of the image-level condition: two groups, or a `survival::Surv` column
 #'   for a survival outcome.
 #' @param subject The column of the patient (unit) of each image. Images of one patient are combined;
@@ -142,6 +143,13 @@ spicy <- function(cells,
                   table = NULL,
                   ...) {
   dots <- list(...)
+  if (.is_class(cells, "SpatialData")) {   # spatialdataR: its table's store, or the table in memory
+    sd <- .spatialdata_input(cells, table)
+    if (!is.null(sd$path)) { cells <- sd$path; table <- sd$table } else {
+      cells <- sd$cells
+      if (missing(imageID) && !is.null(sd$region_key)) imageID <- sd$region_key
+    }
+  }
   from_store <- .is_store(cells)
   if (missing(method) && (!is.null(dots$alternateResult) || !is.null(dots$sigma))) {
     method <- "image"

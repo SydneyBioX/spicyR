@@ -98,3 +98,22 @@ test_that("a store written by the Python spatialdata package is read", {
   a <- suppressMessages(spicy(d, condition = "condition", subject = "subject", r = 25))
   expect_identical(suppressMessages(spicy(path, condition = "condition", subject = "subject", cellType = ct, r = 25)), a)
 })
+
+test_that("a SpatialData object (spatialdataR) is read from its store, or from its table in memory", {
+  pkg <- "spatialdataR"   # not on CRAN or Bioconductor: used only when installed
+  skip_if_not_installed(pkg)
+  skip_if_not_installed("SingleCellExperiment")
+  path <- Sys.getenv("SPICYR_SDATA_STORE")
+  skip_if(!nzchar(path) || !dir.exists(path), "no SpatialData store from Python given")
+  x <- suppressWarnings(getExportedValue(pkg, "readSpatialData")(path, images = FALSE, labels = FALSE, points = FALSE,
+                                                                 shapes = FALSE))
+  ct <- intersect(c("cellType", "cell_type"), unlist(Rarr::read_zarr_attributes(file.path(path, "tables", "table", "obs"))[["column-order"]]))[1]
+  a <- suppressMessages(spicy(path, condition = "condition", subject = "subject", cellType = ct, r = 25))
+  expect_identical(suppressMessages(spicy(x, condition = "condition", subject = "subject", cellType = ct, r = 25)), a)
+  # without a store behind it: the table in memory
+  tab <- methods::slot(x, "tables")
+  sce <- tab[["table"]]; m <- SingleCellExperiment::int_metadata(sce); m$source_path <- NULL
+  SingleCellExperiment::int_metadata(sce) <- m; tab[["table"]] <- sce; methods::slot(x, "tables") <- tab
+  b <- suppressMessages(spicy(x, condition = "condition", subject = "subject", cellType = ct, r = 25))
+  expect_identical(b, a)
+})
