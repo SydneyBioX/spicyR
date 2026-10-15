@@ -51,6 +51,15 @@ test.
   : Perform a simple wilcoxon-rank-sum test or t-test on the columns of
   a data frame
 
+## Large data sets
+
+Cells stored on disk as a SpatialData Zarr store, which
+[`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
+reads image by image.
+
+- [`writeCellStore()`](https://sydneybiox.github.io/spicyR/dev/reference/writeCellStore.md)
+  : Write cells as a SpatialData Zarr store
+
 ## Data
 
 - [`diabetesData`](https://sydneybiox.github.io/spicyR/dev/reference/diabetesData.md)

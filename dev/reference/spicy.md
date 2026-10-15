@@ -27,6 +27,8 @@ spicy(
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
   cores = 1,
+  tableKey = NULL,
+  imageInfo = NULL,
   ...
 )
 ```
@@ -36,13 +38,22 @@ spicy(
 - cells:
 
   A `data.frame`, `SingleCellExperiment` or `SpatialExperiment` with one
-  row (column) per cell.
+  row (column) per cell, or (cell method) the path of a SpatialData or
+  AnnData Zarr store (read with the Rarr package). From a store, the
+  columns are read a block of rows at a time and the coordinates a batch
+  of whole images at a time, so the table is never held in memory; the
+  results are those of the same cells given as a `data.frame`. Column
+  names then refer to the table's `obs`; `imageID` defaults to the
+  table's region key and `spatialCoords` to its `obsm` array
+  `"spatial"`. A `SpatialData` object (spatialdataR) read from a store
+  is read from that store in the same way; one built in memory is
+  analysed from its table.
 
 - condition:
 
   The column of the image-level condition: two groups, or a
   [`survival::Surv`](https://rdrr.io/pkg/survival/man/Surv.html) column
-  for a survival outcome.
+  for a survival outcome (from a store, a column of `imageInfo`).
 
 - subject:
 
@@ -58,7 +69,9 @@ spicy(
 
 - imageID, cellType, spatialCoords:
 
-  Column names of the image, cell type and coordinates.
+  Column names of the image, cell type and coordinates. For a Zarr
+  store, `spatialCoords` is either two `obs` columns or the name of one
+  `obsm` array (its first two columns).
 
 - r:
 
@@ -115,6 +128,23 @@ spicy(
 - cores:
 
   Number of threads (cell method) or cores (image method).
+
+- tableKey:
+
+  Cell method with a SpatialData store or object: the name of the cell
+  table in `tables/` (by default the only table, or the one called
+  `"table"`).
+
+- imageInfo:
+
+  Cell method: a table with one row per image, for `condition`,
+  `subject`, `covariates` or a survival outcome that are not columns of
+  the cell table: a `data.frame` whose `imageID` column, or else its row
+  names, gives the image IDs, or the name of a table of the SpatialData
+  store or object. Every image of the cells needs a row, and every row
+  an image. A
+  [`survival::Surv`](https://rdrr.io/pkg/survival/man/Surv.html) column
+  given as `condition` makes a survival analysis, also from a store.
 
 - ...:
 
@@ -248,5 +278,5 @@ resImage <- spicy(diabetesData, condition = "stage", subject = "case",
 #> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
 topPairs(resImage)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th
+#> Tc__Th  1.622672    5.961811 0.6122509  0.6122509   Tc Th
 ```
