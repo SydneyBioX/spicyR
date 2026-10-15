@@ -49,6 +49,10 @@ reference:
   - buildKnnGraph
   - convPairs
   - colTest
+- title: "Large data sets"
+  desc: "Cells stored on disk as a SpatialData Zarr store, which `spicy()` reads image by image."
+  contents:
+  - writeCellStore
 - title: "Data"
   contents:
   - diabetesData
