@@ -21,6 +21,8 @@ jobs:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      # the devel branch builds against Bioconductor devel (spatialdataR and its dependencies are only there)
+      R_BIOC_VERSION: "3.24"
     permissions:
       contents: write
     steps:
