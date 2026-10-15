@@ -27,7 +27,7 @@ ref_kontextual_row <- function(z, from, to, parent, r) {
 }
 
 test_that("image rows match the plain-R reference (no edge correction, no label clustering)", {
-  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"), dataset = TRUE)
   code <- function(z) match(z, ctx$type_labels) - 1L
   spicyR:::dataset_build_radius_index(ctx$data, 30)
   spicyR:::dataset_build_context(ctx$data, code(parent), "convex", FALSE)

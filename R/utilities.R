@@ -185,7 +185,7 @@
 #' @importFrom S4Vectors as.data.frame
 #' @noRd
 .format_data <- function(
-    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose = FALSE, ids = TRUE) {
+    cells, imageIDCol, cellTypeCol, spatialCoordCols, verbose = FALSE, ids = TRUE, sort = TRUE) {
     if (is.data.frame(cells)) {
         # pass
     } else if (.is_class(cells, "SpatialExperiment")) {
@@ -231,16 +231,21 @@
     keep <- setdiff(colnames(cells), c("imageID", "cellType", "x", "y"))
     cells <- cbind(as.data.frame(cells)[, keep, drop = FALSE], needed)
 
-    # imageID and cellType as factors, levels in order of first appearance
+    # imageID and cellType as factors, levels in order of first appearance (in one pass for plain ASCII strings)
+    first_appearance <- function(x) {
+        f <- if (is.character(x) && is.null(attributes(x))) first_appearance_factor(x)
+        if (is.null(f)) factor(x, levels = unique(x)) else f
+    }
     if (!is.factor(cells$imageID)) {
-        cells$imageID <- factor(cells$imageID, levels = unique(cells$imageID))
+        cells$imageID <- first_appearance(cells$imageID)
     }
     if (!is.factor(cells$cellType)) {
-        cells$cellType <- factor(cells$cellType, levels = unique(cells$cellType))
+        cells$cellType <- first_appearance(cells$cellType)
     }
 
-    # Order the cells by imageID. This is important for when the data is split downstream
-    cells <- cells[order(cells$imageID), , drop = FALSE]
+    # Order the cells by imageID. This is important for when the data is split downstream. sort = FALSE (spicy()'s
+    # cell method, which reads the cells image by image itself): input order, without a sorted copy of every column.
+    if (sort) cells <- cells[order(cells$imageID), , drop = FALSE]
 
     # ids = FALSE (spicy()'s cell method, which uses neither): no cellID / imageCellID. Each is a unique string per cell,
     # which at 100 million cells costs several GB and most of the time spent here.

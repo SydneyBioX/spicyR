@@ -7,7 +7,7 @@ grid <- expand.grid(from = types, to = types, stringsAsFactors = FALSE)
 
 ## The cell method through its internal steps, with the label-clustering inflation available (spicy() has it off)
 cell_internal <- function(cells, r, effect, label_clustering, variance, image_heterogeneity = TRUE) {
-  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"), dataset = TRUE)
   pairs <- lapply(seq_len(nrow(grid)), function(i) c(grid$from[i], grid$to[i]))
   g <- spicyR:::.cell_graph(ctx, pairs, r = r, label_clustering = label_clustering, effect = effect)
   g$image_heterogeneity <- image_heterogeneity
@@ -76,7 +76,7 @@ test_that("allocation moments are exact: cross-pairs by enumeration, self-pairs 
   expect_equal(mean(O), ia$E, tolerance = 1e-12)
   # and the core's expectation
   ctx1 <- spicyR:::.cell_context(transform(z, imageID = "i", condition = "a"), NULL, NULL, "imageID", "cellType",
-                                 c("x", "y"))
+                                 c("x", "y"), dataset = TRUE)
   spicyR:::dataset_build_radius_index(ctx1$data, 25)
   se <- spicyR:::dataset_self_any_expected(ctx1$data, FALSE, length(ctx1$type_labels))
   expect_equal(se[match("A", ctx1$type_labels), 1], ia$E, tolerance = 1e-10)

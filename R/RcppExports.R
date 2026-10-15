@@ -113,6 +113,22 @@ dataset_hac_phi_sums <- function(ptr, from, to, design, h) {
     .Call(`_spicyR_dataset_hac_phi_sums`, ptr, from, to, design, h)
 }
 
+cell_layout <- function(image_fac, n_image_levels, type_fac, n_type_levels) {
+    .Call(`_spicyR_cell_layout`, image_fac, n_image_levels, type_fac, n_type_levels)
+}
+
+cell_constant_within <- function(v, image_fac, first_row) {
+    .Call(`_spicyR_cell_constant_within`, v, image_fac, first_row)
+}
+
+cell_stream_totals <- function(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads = 1L) {
+    .Call(`_spicyR_cell_stream_totals`, x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads)
+}
+
+first_appearance_factor <- function(x) {
+    .Call(`_spicyR_first_appearance_factor`, x)
+}
+
 inhomLCpp <- function(x, y, type, nTypes, Rs, labelVal, isFrom, isTo, wt, lam, area, edge, edgeCorrect) {
     .Call(`_spicyR_inhomLCpp`, x, y, type, nTypes, Rs, labelVal, isFrom, isTo, wt, lam, area, edge, edgeCorrect)
 }

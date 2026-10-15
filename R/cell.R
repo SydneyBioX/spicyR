@@ -36,81 +36,126 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 
 ## ---- inputs -----------------------------------------------------------------------------------
 
-## Image-level layout shared by every analysis of a data set: cells sorted by image, integer codes
-## for images, types and units (patients), the per-image condition, and the C++ dataset.
+## Image-level layout shared by every analysis of a data set: integer codes for images (C-locale order of their IDs),
+## types and units (patients), the per-image condition, and the cells per image and type. The cells stay in `cells`, in
+## input order, with no sorted copy: one pass in the core gives the cells and the first row of every (image, type), and
+## the neighbour sums are taken image by image from the columns themselves (.cell_stream()). The whole-data C++ dataset
+## (ctx$data, used by Kontextual and the label-clustering factor) is built only with `dataset = TRUE`. Cell types are
+## in order of first appearance; by_image = TRUE: with the cells sorted stably by the levels of the image factor, as
+## .format_data() sorts them (spicy() passes its cells unsorted), else in row order.
 .cell_context <- function(cells, condition, subject, image_id, cell_type, spatial_coords, ref = NULL,
-                          survival = FALSE) {
+                          survival = FALSE, by_image = FALSE, dataset = FALSE) {
   x_col <- spatial_coords[1]; y_col <- spatial_coords[2]
   needed <- c(condition, image_id, cell_type, x_col, y_col, subject)
   missing_cols <- setdiff(needed, names(cells))
   if (length(missing_cols)) stop("columns not found in `cells`: ", paste(missing_cols, collapse = ", "), call. = FALSE)
-  image_chr <- as.character(cells[[image_id]])
-  image_labels <- sort(unique(image_chr), method = "radix")   # C-locale order, as the Python twin
-  image_codes <- match(image_chr, image_labels) - 1L
-  ord <- order(image_codes, method = "radix")
-  image_codes <- image_codes[ord]
+  # images and types as factors (their integer codes are all the core reads); a character column is converted once
+  as_factor <- function(v) if (is.factor(v)) v else factor(as.character(v))
+  fi <- as_factor(cells[[image_id]]); ft <- as_factor(cells[[cell_type]])
+  li <- levels(fi); lt <- levels(ft)
+  lay <- cell_layout(fi, length(li), ft, length(lt))   # (image level, type level + NA): cells and first row
+  image_labels <- sort(li[rowSums(lay$counts) > 0], method = "radix")   # C-locale order, as the Python twin
   n_images <- length(image_labels)
-  first <- match(seq_len(n_images) - 1L, image_codes)                       # first row of each image
-  col <- function(name) cells[[name]][ord]   # one column in image order (no copy of the whole table)
+  image_map <- match(li, image_labels) - 1L; image_map[is.na(image_map)] <- -1L   # image of each image level
+  first_level <- apply(lay$first, 1, function(z) if (all(is.na(z))) NA_integer_ else min(z, na.rm = TRUE))
+  first <- first_level[match(image_labels, li)]                              # first row of each image in `cells`
 
-  # units: patients if `subject` maps several images to one patient, else images
-  if (is.null(subject) || length(unique(as.character(cells[[subject]]))) == n_images) {
+  # units: patients if `subject` maps several images to one patient, else images. A subject constant within images
+  # takes the same values in the images' first rows as in all the cells.
+  if (!is.null(subject)) {
+    sv <- cells[[subject]]
+    n_sub <- length(unique(as.character(if (cell_constant_within(sv, fi, first_level)) sv[first] else sv)))
+  }
+  if (is.null(subject) || n_sub == n_images) {
     unit_labels <- image_labels; image_unit <- seq_len(n_images) - 1L
   } else {
-    sub <- as.character(cells[[subject]][ord[first]])
+    sub <- as.character(sv[first])
     unit_labels <- unique(sub); image_unit <- match(sub, unit_labels) - 1L
   }
 
-  ctx <- list(pheno = cells[ord[first], , drop = FALSE], image_labels = image_labels, image_codes = image_codes,
-              n_images = n_images, unit_labels = unit_labels, image_unit = image_unit, first = first)
+  ctx <- list(pheno = cells[first, , drop = FALSE], image_labels = image_labels, n_images = n_images,
+              unit_labels = unit_labels, image_unit = image_unit, first = first)
   if (!is.null(condition) && !survival) {
-    lev <- .cell_levels(cells[[condition]])
+    cv <- cells[[condition]]
+    # constant within images (as the same values): the levels present are those of the images' first rows
+    constant <- cell_constant_within(cv, fi, first_level)
+    lev <- .cell_levels(if (constant) cv[first] else cv)
     if (length(lev) < 2L)
       stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
     if (!is.null(ref)) {
       if (!as.character(ref) %in% lev) stop("`ref` is not a level of `condition`.", call. = FALSE)
       lev <- c(as.character(ref), setdiff(lev, as.character(ref)))
     }
-    cond <- as.character(col(condition))
-    if (any(tapply(cond, image_codes, function(z) length(unique(z))) > 1L))
+    if (!constant && any(tapply(as.character(cv), image_map[as.integer(fi)], function(z) length(unique(z))) > 1L))
       stop("'", condition, "' must be constant within each image.", call. = FALSE)
     ctx$levels <- lev
-    ctx$image_group <- match(cond[first], lev) - 1L
+    ctx$image_group <- match(as.character(cv[first]), lev) - 1L
     if (any(tapply(ctx$image_group, image_unit, function(z) length(unique(z))) > 1L))
       stop("each subject must belong to a single '", condition, "' level.", call. = FALSE)
   }
-  ctx$type_labels <- unique(as.character(cells[[cell_type]]))
-  type_codes <- as.integer(match(as.character(col(cell_type)), ctx$type_labels) - 1L)
-  ctx$counts <- unclass(table(factor(image_codes, levels = seq_len(n_images) - 1L),
-                              factor(type_codes, levels = seq_along(ctx$type_labels) - 1L)))
-  offsets <- as.integer(c(0L, cumsum(tabulate(image_codes + 1L, nbins = n_images))))
-  ctx$data <- dataset_create(as.numeric(col(x_col)), as.numeric(col(y_col)), type_codes, offsets,
-                             length(ctx$type_labels))
+  # types present (the last column of the layout is a missing type), by first appearance
+  tcol <- which(colSums(lay$counts) > 0)
+  key <- if (by_image) apply(lay$first[, tcol, drop = FALSE], 2, function(z) { i <- which(!is.na(z))[1]; c(i, z[i]) })
+         else rbind(apply(lay$first[, tcol, drop = FALSE], 2, min, na.rm = TRUE))
+  tcol <- tcol[do.call(order, as.data.frame(t(key)))]
+  ctx$type_labels <- c(lt, NA_character_)[tcol]
+  type_map <- rep(-1L, length(lt) + 1L); type_map[tcol] <- seq_along(tcol) - 1L   # type of each type level (+ NA)
+  # cells per image and type, as table(image code, type code) over the cells gave them
+  tb <- table(factor(integer(0), levels = seq_len(n_images) - 1L), factor(integer(0), levels = seq_along(tcol) - 1L))
+  tb[] <- lay$counts[match(image_labels, li), tcol, drop = FALSE]
+  ctx$counts <- unclass(tb)
+  ctx$cells <- list(x = cells[[x_col]], y = cells[[y_col]], image = fi, image_map = image_map, type = ft,
+                    type_map = type_map)   # the columns themselves, not copies
+  if (dataset) {
+    ord <- order(image_map[as.integer(fi)], method = "radix")   # cells sorted (stably) by image
+    tc <- as.integer(ft)[ord]; tc[is.na(tc)] <- length(lt) + 1L
+    ctx$data <- dataset_create(as.numeric(cells[[x_col]][ord]), as.numeric(cells[[y_col]][ord]), type_map[tc],
+                               as.integer(c(0L, cumsum(rowSums(ctx$counts)))), length(ctx$type_labels))
+  }
   # cells per image and type as table(imageID, cellType) over the cells would give (factor levels, all levels), from
   # the counts already made, so the full columns need not be tabulated again
-  lv <- function(x) if (is.factor(x)) levels(x) else sort(unique(as.character(x)))
-  li <- lv(cells[[image_id]]); lt <- lv(cells[[cell_type]])
+  lv <- function(x, f) if (is.factor(x)) levels(x) else sort(levels(f))   # levels(f): the unique values
+  li <- lv(cells[[image_id]], fi); lt <- lv(cells[[cell_type]], ft)
   nc <- ctx$counts[match(li, image_labels), match(lt, ctx$type_labels), drop = FALSE]; nc[is.na(nc)] <- 0L
   ctx$n_cells <- structure(array(as.integer(nc), dim = dim(nc), dimnames = stats::setNames(list(li, lt), c("", ""))), class = "table")
   ctx
 }
 
+## The neighbour totals of every radius (or k), image by image from the cells' own columns (cell_stream_totals): one
+## element per radius, list(any, self_expected) or list(totals, sq), as the whole-data dataset gives them.
+.cell_stream <- function(ctx, radii = NULL, k = NULL, allocation = TRUE, n_threads = 1L) {
+  z <- ctx$cells
+  cell_stream_totals(z$x, z$y, z$image, z$image_map, ctx$n_images, z$type, z$type_map, length(ctx$type_labels),
+                     as.numeric(if (is.null(radii)) numeric(0) else radii), if (is.null(k)) 0L else as.integer(k),
+                     allocation, as.integer(n_threads))
+}
+
 ## Neighbour sums and the label-clustering factor at one radius (or k). effect "allocation": for every cell, whether
-## it has any cell of each type among its neighbours; "count": how many.
+## it has any cell of each type among its neighbours; "count": how many. Without the label-clustering factor (as
+## spicy()) the sums are taken image by image (.cell_stream()); the factor needs the whole-data dataset (ctx$data, from
+## .cell_context(dataset = TRUE)).
 .cell_graph <- function(ctx, pairs, r = NULL, k = NULL, label_clustering = TRUE, window = "convex", n_threads = 1L,
                         effect = "allocation") {
   knn <- !is.null(k)
+  allocation <- effect == "allocation"
+  if (!label_clustering) {
+    x <- .cell_stream(ctx, radii = r, k = k, allocation = allocation, n_threads = n_threads)[[1]]
+    g <- if (allocation) list(knn = knn, effect = effect, any = x$any, self_expected = x$self_expected)
+         else list(knn = knn, effect = effect, totals = x$totals, sq = x$sq)
+    g$psi <- matrix(numeric(0), 0, 0)
+    return(g)
+  }
+  if (is.null(ctx$data)) stop("the label-clustering factor needs .cell_context(dataset = TRUE).", call. = FALSE)
   n_types <- length(ctx$type_labels)
   if (knn) {
     dataset_build_knn(ctx$data, as.integer(k), as.integer(n_threads))
     scale <- stats::median(sqrt(k / (pi * rowSums(ctx$counts) / dataset_image_areas(ctx$data, window))))
-    if (label_clustering) dataset_build_radius_index(ctx$data, scale)
+    dataset_build_radius_index(ctx$data, scale)
     h <- 2 * scale
   } else {
     dataset_build_radius_index(ctx$data, r)
     h <- 2 * r
   }
-  allocation <- effect == "allocation"
   g <- if (allocation) list(knn = knn, effect = effect, any = dataset_pair_neighbour_any_totals(ctx$data, knn, n_types),
                             self_expected = dataset_self_any_expected(ctx$data, knn, n_types))
        else list(knn = knn, effect = effect, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
@@ -120,16 +165,15 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   tos <- unique(vapply(pairs, `[`, "", 2L))
   all_pairs <- expand.grid(from = ctx$type_labels, to = tos, stringsAsFactors = FALSE)
   codes <- rbind(match(all_pairs$from, ctx$type_labels), match(all_pairs$to, ctx$type_labels)) - 1L
-  g$psi <- if (label_clustering) stats_label_clustering(ctx$data, codes[1, ], codes[2, ], ctx$counts, knn, h, allocation)
-           else matrix(numeric(0), 0, 0)
+  g$psi <- stats_label_clustering(ctx$data, codes[1, ], codes[2, ], ctx$counts, knn, h, allocation)
   g
 }
 
-## Several radii from one neighbour search (radius graph, no label-clustering inflation): one graph per radius, each
-## identical to .cell_graph(ctx, pairs, r = radii[i], label_clustering = FALSE, effect = effect).
+## Several radii from one neighbour search (radius graph, no label-clustering inflation), image by image: one graph
+## per radius, each identical to .cell_graph(ctx, pairs, r = radii[i], label_clustering = FALSE, effect = effect).
 .cell_graphs_radii <- function(ctx, radii, effect = "allocation") {
   allocation <- effect == "allocation"
-  m <- dataset_multi_radius_totals(ctx$data, as.numeric(radii), allocation, length(ctx$type_labels))
+  m <- .cell_stream(ctx, radii = radii, allocation = allocation)
   lapply(m, function(x) {
     g <- if (allocation) list(knn = FALSE, effect = effect, any = x$any, self_expected = x$self_expected)
          else list(knn = FALSE, effect = effect, totals = x$totals, sq = x$sq)

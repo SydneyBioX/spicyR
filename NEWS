@@ -1,3 +1,13 @@
+CHANGES IN VERSION 1.99.19
+--------------------------
+
+    o spicy() (method = "cell") reads the cells image by image: the neighbour search and its sums run on one batch
+      of whole images at a time, gathered from the cell table's own columns, so the cells are neither sorted nor
+      copied as a whole. Image IDs and cell types that are plain character columns become factors in one pass.
+      Results are identical; at 100 million cells (50 images) the peak memory above the data falls from about
+      17 GB to about 1 GB (0.8 GB of it the integer codes of the two factors), and the run takes 241 s
+      instead of 363 s.
+
 CHANGES IN VERSION 1.99.18
 --------------------------
 

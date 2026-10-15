@@ -403,6 +403,66 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cell_layout
+List cell_layout(SEXP image_fac, int n_image_levels, SEXP type_fac, int n_type_levels);
+RcppExport SEXP _spicyR_cell_layout(SEXP image_facSEXP, SEXP n_image_levelsSEXP, SEXP type_facSEXP, SEXP n_type_levelsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type image_fac(image_facSEXP);
+    Rcpp::traits::input_parameter< int >::type n_image_levels(n_image_levelsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type type_fac(type_facSEXP);
+    Rcpp::traits::input_parameter< int >::type n_type_levels(n_type_levelsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_layout(image_fac, n_image_levels, type_fac, n_type_levels));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cell_constant_within
+bool cell_constant_within(SEXP v, SEXP image_fac, IntegerVector first_row);
+RcppExport SEXP _spicyR_cell_constant_within(SEXP vSEXP, SEXP image_facSEXP, SEXP first_rowSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type v(vSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type image_fac(image_facSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type first_row(first_rowSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_constant_within(v, image_fac, first_row));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cell_stream_totals
+List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac, IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation, int n_threads);
+RcppExport SEXP _spicyR_cell_stream_totals(SEXP xSEXP, SEXP ySEXP, SEXP image_facSEXP, SEXP image_mapSEXP, SEXP n_imagesSEXP, SEXP type_facSEXP, SEXP type_mapSEXP, SEXP n_typesSEXP, SEXP radiiSEXP, SEXP kSEXP, SEXP allocationSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type y(ySEXP);
+    Rcpp::traits::input_parameter< SEXP >::type image_fac(image_facSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image_map(image_mapSEXP);
+    Rcpp::traits::input_parameter< int >::type n_images(n_imagesSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type type_fac(type_facSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type type_map(type_mapSEXP);
+    Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type radii(radiiSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_stream_totals(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// first_appearance_factor
+SEXP first_appearance_factor(SEXP x);
+RcppExport SEXP _spicyR_first_appearance_factor(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(first_appearance_factor(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 // inhomLCpp
 Rcpp::NumericMatrix inhomLCpp(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::IntegerVector type, int nTypes, Rcpp::NumericVector Rs, Rcpp::NumericVector labelVal, Rcpp::LogicalVector isFrom, Rcpp::LogicalVector isTo, Rcpp::NumericVector wt, Rcpp::NumericVector lam, double area, Rcpp::NumericMatrix edge, bool edgeCorrect);
 RcppExport SEXP _spicyR_inhomLCpp(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP nTypesSEXP, SEXP RsSEXP, SEXP labelValSEXP, SEXP isFromSEXP, SEXP isToSEXP, SEXP wtSEXP, SEXP lamSEXP, SEXP areaSEXP, SEXP edgeSEXP, SEXP edgeCorrectSEXP) {
@@ -795,6 +855,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
     {"_spicyR_dataset_hac_phi_sums", (DL_FUNC) &_spicyR_dataset_hac_phi_sums, 5},
+    {"_spicyR_cell_layout", (DL_FUNC) &_spicyR_cell_layout, 4},
+    {"_spicyR_cell_constant_within", (DL_FUNC) &_spicyR_cell_constant_within, 3},
+    {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 12},
+    {"_spicyR_first_appearance_factor", (DL_FUNC) &_spicyR_first_appearance_factor, 1},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},
     {"_spicyR_lmerRandomIntercept", (DL_FUNC) &_spicyR_lmerRandomIntercept, 5},
     {"_spicyR_getPairwiseCpp", (DL_FUNC) &_spicyR_getPairwiseCpp, 14},

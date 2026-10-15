@@ -2,8 +2,11 @@
 // (pybind11). The core itself is untouched and shared between the two.
 #include <Rcpp.h>
 
+#include <algorithm>
+#include <cstring>
 #include <limits>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "spicyglm/core.hpp"
@@ -311,4 +314,194 @@ NumericMatrix dataset_hac_phi_sums(SEXP ptr, int from, int to, int design, doubl
   std::copy(v.begin(), v.end(), out.begin());
   return out;   // rows: HAC variance of O, sum c_b, number of candidates, and G with
                 // E[HAC] = p (1 - p) G under random labelling; one column per image
+}
+
+// ---- the cell method image by image -------------------------------------------------------------------------------
+// spicy()'s cell method needs only per-image summaries of the neighbour graph, so it never holds the whole data set
+// in the core: the cells stay in R's columns, in input order, and are gathered a batch of whole images at a time
+// into a Dataset of their own. Every Dataset function used here works image by image on the image's cells in row
+// order (rows relative to the image), so a batch's Dataset gives each of its images exactly the numbers the
+// whole-data Dataset gives it (cells sorted stably by image, as .cell_context() did).
+
+namespace {
+
+// A factor's codes (1-based, NA allowed) of length n, checked: an R integer vector.
+const int* factor_codes(SEXP f, R_xlen_t n, const char* what) {
+  if (TYPEOF(f) != INTSXP || XLENGTH(f) != n) stop("%s: expected integer codes of length %d", what, static_cast<int>(n));
+  return INTEGER(f);
+}
+
+// Coordinates as R stores them (double or integer); an integer is converted as as.numeric() does.
+struct Coord {
+  const double* d = nullptr;
+  const int* i = nullptr;
+  Coord(SEXP v, R_xlen_t n, const char* what) {
+    if (XLENGTH(v) != n) stop("%s: wrong length", what);
+    if (TYPEOF(v) == REALSXP) d = REAL(v);
+    else if (TYPEOF(v) == INTSXP) i = INTEGER(v);
+    else stop("%s must be numeric", what);
+  }
+  double operator[](R_xlen_t r) const { return d ? d[r] : (i[r] == NA_INTEGER ? NA_REAL : static_cast<double>(i[r])); }
+};
+
+}  // namespace
+
+// One pass over the cells: for every (image level, cell-type level) the number of cells and the first row (1-based;
+// NA when there is none). Type NA is the extra last column. Images must not be NA.
+// [[Rcpp::export]]
+List cell_layout(SEXP image_fac, int n_image_levels, SEXP type_fac, int n_type_levels) {
+  const R_xlen_t N = XLENGTH(image_fac);
+  const int* im = factor_codes(image_fac, N, "image");
+  const int* ty = factor_codes(type_fac, N, "cell type");
+  const int T = n_type_levels + 1;
+  IntegerMatrix counts(n_image_levels, T), first(n_image_levels, T);
+  std::fill(first.begin(), first.end(), NA_INTEGER);
+  for (R_xlen_t r = 0; r < N; ++r) {
+    const int i = im[r], t = ty[r] == NA_INTEGER ? n_type_levels : ty[r] - 1;
+    if (i == NA_INTEGER || i < 1 || i > n_image_levels) stop("missing or invalid image ID in row %d", static_cast<int>(r + 1));
+    if (t < 0 || t > n_type_levels) stop("invalid cell type code in row %d", static_cast<int>(r + 1));
+    const R_xlen_t at = static_cast<R_xlen_t>(t) * n_image_levels + (i - 1);
+    if (counts[at]++ == 0) first[at] = static_cast<int>(r + 1);
+  }
+  return List::create(_["counts"] = counts, _["first"] = first);
+}
+
+// Whether v takes the same value (the same bits; for strings the same cached string) in every row of each image
+// as in the image's first row (first_row: per image level, 1-based; codes 1-based). TRUE implies the values are
+// constant within images as as.character() sees them; FALSE leaves the caller to check as.character() values.
+// [[Rcpp::export]]
+bool cell_constant_within(SEXP v, SEXP image_fac, IntegerVector first_row) {
+  const R_xlen_t N = XLENGTH(image_fac);
+  const int* im = factor_codes(image_fac, N, "image");
+  if (XLENGTH(v) != N) return false;
+  for (R_xlen_t r = 0; r < N; ++r) {
+    const R_xlen_t f = first_row[im[r] - 1] - 1;
+    switch (TYPEOF(v)) {
+      case INTSXP: case LGLSXP: if (INTEGER(v)[r] != INTEGER(v)[f]) return false; break;
+      case REALSXP: if (std::memcmp(REAL(v) + r, REAL(v) + f, sizeof(double)) != 0) return false; break;
+      case STRSXP: if (STRING_ELT(v, r) != STRING_ELT(v, f)) return false; break;
+      default: return false;
+    }
+  }
+  return true;
+}
+
+// The neighbour totals of the cell method, image by image. Cells stay in input order: image_fac and type_fac are
+// factor codes (1-based; a type NA is code n_type_levels + 1), mapped by image_map / type_map (indexed by code - 1)
+// to the 0-based image (in .cell_context()'s sorted order) and cell type. k > 0: the k nearest neighbours; else the
+// radius graph at radii (one radius, or several from one neighbour search). Returns one element per radius (one for
+// kNN), each list(any, self_expected) (allocation) or list(totals, sq) (count), exactly as dataset_pair_neighbour_any_totals
+// and dataset_self_any_expected, or dataset_pair_neighbour_totals and dataset_pair_neighbour_out_sq_totals, after
+// dataset_build_radius_index / dataset_build_knn on the whole data set (or dataset_multi_radius_totals).
+// Images are gathered in batches of about 2^21 cells per thread (one image at least), one pass over the codes each.
+// [[Rcpp::export]]
+List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac,
+                        IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation,
+                        int n_threads = 1) {
+  const R_xlen_t N = XLENGTH(image_fac);
+  const int* im = factor_codes(image_fac, N, "image");
+  const int* ty = factor_codes(type_fac, N, "cell type");
+  const Coord X(x, N, "x"), Y(y, N, "y");
+  const int n_type_levels = type_map.size() - 1;
+  const bool knn = k > 0;
+  const int K = knn ? 1 : radii.size();
+  if (!knn && K < 1) stop("give a radius or k");
+  auto image_of = [&](R_xlen_t r) {
+    const int i = im[r];
+    if (i == NA_INTEGER || i < 1 || i > image_map.size()) stop("missing or invalid image ID in row %d", static_cast<int>(r + 1));
+    return image_map[i - 1];
+  };
+  std::vector<long long> size(n_images, 0);
+  for (R_xlen_t r = 0; r < N; ++r) {
+    const int m = image_of(r);
+    if (m < 0 || m >= n_images) stop("image map out of range");
+    ++size[m];
+  }
+  const std::size_t T = static_cast<std::size_t>(n_types), per = static_cast<std::size_t>(n_images) * T * T;
+  std::vector<std::vector<double>> a(K, std::vector<double>(per, 0.0));   // any / totals
+  std::vector<std::vector<double>> b(K, std::vector<double>(allocation ? static_cast<std::size_t>(n_images) * T : per, 0.0));
+  const std::vector<double> rad(radii.begin(), radii.end());
+  const long long budget = (1LL << 21) * std::max(1, n_threads);
+  for (int lo = 0, hi; lo < n_images; lo = hi) {
+    long long n = 0;
+    for (hi = lo; hi < n_images && (hi == lo || n + size[hi] <= budget); ++hi) n += size[hi];
+    // the batch's cells, image by image in row order
+    std::vector<int> offsets(hi - lo + 1, 0);
+    for (int i = lo; i < hi; ++i) offsets[i - lo + 1] = offsets[i - lo] + static_cast<int>(size[i]);
+    std::vector<double> bx(n), by(n);
+    std::vector<int> bt(n), fill(offsets.begin(), offsets.end() - 1);
+    for (R_xlen_t r = 0; r < N; ++r) {
+      const int m = image_map[im[r] - 1];
+      if (m < lo || m >= hi) continue;
+      const int t = ty[r] == NA_INTEGER ? n_type_levels : ty[r] - 1;
+      if (t < 0 || t > n_type_levels) stop("invalid cell type code in row %d", static_cast<int>(r + 1));
+      const int p = fill[m - lo]++;
+      bx[p] = X[r]; by[p] = Y[r]; bt[p] = type_map[t];
+    }
+    Dataset d(std::move(bx), std::move(by), std::move(bt), std::move(offsets), n_types);
+    const std::size_t at = static_cast<std::size_t>(lo) * T * T, at_se = static_cast<std::size_t>(lo) * T;
+    auto put = [](const std::vector<double>& from, std::vector<double>& to, std::size_t at) {
+      std::copy(from.begin(), from.end(), to.begin() + at); };
+    if (K > 1) {
+      Dataset::MultiRadiusTotals m = d.multi_radius_totals(rad, allocation);
+      for (int j = 0; j < K; ++j) {
+        if (allocation) { put(m.any[j], a[j], at); put(m.self_expected[j], b[j], at_se); }
+        else { put(m.totals[j], a[j], at); put(m.sq[j], b[j], at); }
+      }
+      continue;
+    }
+    if (knn) d.build_knn(k, n_threads); else d.build_radius_index(rad[0]);
+    if (allocation) { put(d.pair_neighbour_any_totals(knn), a[0], at); put(d.self_any_expected(knn), b[0], at_se); }
+    else { put(d.pair_neighbour_totals(knn), a[0], at); put(d.pair_neighbour_out_sq_totals(knn), b[0], at); }
+  }
+  auto cube = [&](const std::vector<double>& v) { NumericVector o(v.begin(), v.end());
+    o.attr("dim") = IntegerVector::create(n_types, n_types, n_images); return o; };
+  List out(K);
+  for (int j = 0; j < K; ++j) {
+    if (allocation) {
+      NumericMatrix se(n_types, n_images); std::copy(b[j].begin(), b[j].end(), se.begin());
+      out[j] = List::create(_["any"] = cube(a[j]), _["self_expected"] = se);
+    } else {
+      out[j] = List::create(_["totals"] = cube(a[j]), _["sq"] = cube(b[j]));
+    }
+  }
+  return out;
+}
+
+// factor(x, levels = unique(x)) for a character vector without attributes, in one pass with no hash of the whole
+// vector (R's unique() hashes every element: about 3 GB transient at 100 million cells). Equal ASCII strings are
+// the same cached CHARSXP, so strings are compared by pointer; NULL (the caller then uses factor()) when x is not
+// such a vector, has a non-ASCII string (equal strings may then differ in their encoding mark), or has more than
+// 2^20 distinct values.
+// [[Rcpp::export]]
+SEXP first_appearance_factor(SEXP x) {
+  if (TYPEOF(x) != STRSXP) return R_NilValue;   // the caller passes only vectors without attributes
+  const R_xlen_t N = XLENGTH(x);
+  std::unordered_map<SEXP, int> code;
+  std::vector<SEXP> levels;
+  IntegerVector out(N);
+  SEXP last = nullptr; int last_code = 0;
+  for (R_xlen_t r = 0; r < N; ++r) {
+    SEXP s = STRING_ELT(x, r);
+    if (s == last) { out[r] = last_code; continue; }
+    int c;
+    if (s == NA_STRING) c = NA_INTEGER;
+    else {
+      auto it = code.find(s);
+      if (it != code.end()) c = it->second;
+      else {
+        for (const char* p = CHAR(s); *p; ++p) if (static_cast<unsigned char>(*p) >= 0x80) return R_NilValue;
+        if (levels.size() >= (1u << 20)) return R_NilValue;
+        levels.push_back(s);
+        c = static_cast<int>(levels.size());
+        code.emplace(s, c);
+      }
+    }
+    out[r] = last_code = c; last = s;
+  }
+  CharacterVector lev(levels.size());
+  for (std::size_t i = 0; i < levels.size(); ++i) SET_STRING_ELT(lev, i, levels[i]);
+  out.attr("levels") = lev;
+  out.attr("class") = "factor";
+  return out;
 }

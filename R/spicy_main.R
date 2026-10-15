@@ -154,22 +154,23 @@ spicy <- function(cells,
   if (is.null(r) && is.null(k)) r <- 50
   if (!is.null(k) && length(r)) { message("`k` given: using the k nearest neighbours; `r` is ignored."); r <- NULL }
 
-  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE)
+  # the cells stay in input order (no sorted copy); .cell_context() takes the types in the sorted order
+  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE, sort = FALSE)
   if (!is.null(subject) && !subject %in% names(cells)) stop("`subject` column not found.", call. = FALSE)
   survival <- inherits(cells[[condition]], "Surv")
-  types <- unique(as.character(cells$cellType))
+  if (survival) {
+    sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
+  }
+  ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
+                       ref = ref, survival = survival, by_image = TRUE)
+  pheno <- ctx$pheno
+  types <- ctx$type_labels
   bad <- setdiff(c(from, to), types)
   if (length(bad)) stop("cell type not found: ", paste(bad, collapse = ", "), call. = FALSE)
   # from -> to: are `to` cells placed next to `from` cells (allocation: the extra fraction of `to` cells with a `from`
   # cell within r; count: extra `from` cells within r of each `to` cell), beyond the `to` cells being a random subset
   # of the cells that are not `from` cells. This is the core's own (counted, centre) order, so pairs pass through.
   pairs <- enumerate_pairs(from, to, types, "binomial")
-  if (survival) {
-    sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
-  }
-  ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"),
-                       ref = ref, survival = survival)
-  pheno <- ctx$pheno
 
   Z_extra <- NULL
   if (!is.null(covariates)) {
@@ -182,7 +183,7 @@ spicy <- function(cells,
   }
 
   radii <- if (is.null(k)) sort(unique(r)) else NA
-  if (length(radii) > 1L && !survival && length(.cell_levels(cells[[condition]])) > 2L)
+  if (length(radii) > 1L && !survival && length(ctx$levels) > 2L)
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (combine == "maxT" && length(radii) > 6L && !survival)
     stop("combine = \"maxT\" supports up to 6 radii; use combine = \"davies\" for more.", call. = FALSE)

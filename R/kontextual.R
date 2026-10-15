@@ -56,7 +56,7 @@ kontextualEngine <- function(cells,
     sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
   }
   ctx <- .cell_context(cells, if (survival) NULL else condition, subject, "imageID", "cellType", c("x", "y"), ref = ref,
-                       survival = survival)
+                       survival = survival, dataset = TRUE)
   pheno <- ctx$pheno
   Z_extra <- NULL
   if (!is.null(covariates) && !survival) {
