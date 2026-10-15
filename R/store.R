@@ -9,9 +9,11 @@
 ## Whether `x` names a Zarr store (a directory).
 .is_store <- function(x) is.character(x) && length(x) == 1L && !is.na(x) && dir.exists(x)
 
-## Rows read per block in the pass over the columns, and cells per thread in a batch of whole images.
+## Rows read per block in the pass over the columns, cells per thread in a batch of whole images, and at most this
+## many cells in a batch of more than one image.
 .store_block <- function() getOption("spicyR.store_block", 2^23)
 .store_batch <- function() getOption("spicyR.store_batch", 2^24)
+.store_batch_max <- function() getOption("spicyR.store_batch_max", 2^26)
 
 ## The AnnData group of the cell table: the store itself when it is an AnnData group, else tables/<table> (the only
 ## table, or "table", when `table` is NULL).
@@ -71,23 +73,45 @@
   v
 }
 
-## Integer codes (1-based, NA where missing) of rows a..b of a categorical column; for any other column, the codes
-## against `lev`, a growing record of the values in order of first appearance (an environment).
+## Codes of rows a..b of a column: for a categorical, its own codes (0-based, -1 where missing; base 0); for any
+## other column, 1-based codes against `lev`, a growing record of the values in order of first appearance (an
+## environment; base 1).
 .store_codes <- function(col, a, b, lev = NULL) {
   if (col$kind == "categorical") {
-    v <- as.integer(as.vector(Rarr::read_zarr_array(col$path, index = list(a:b)))) + 1L
-    v[v < 1L] <- NA_integer_
-    return(v)
+    v <- Rarr::read_zarr_array(col$path, index = list(a:b)); dim(v) <- NULL
+    if (!is.integer(v)) v <- as.integer(v)
+    return(structure(v, base = 0L))
   }
   v <- .store_read(col, a:b)
   u <- unique(v); u <- u[!is.na(u)]
   lev$values <- c(lev$values, u[!u %in% lev$values])
-  match(v, lev$values)
+  structure(match(v, lev$values), base = 1L)
+}
+
+## Rows a..b of an image-level column as compared within images: a categorical's codes, else its values.
+.store_values <- function(col, a, b) {
+  if (col$kind != "categorical") return(.store_read(col, a:b))
+  v <- Rarr::read_zarr_array(col$path, index = list(a:b)); dim(v) <- NULL
+  if (!is.integer(v)) v <- as.integer(v)
+  v
+}
+
+## Values from .store_values() as R values (a categorical's codes as a factor).
+.store_as_values <- function(col, v) {
+  if (col$kind != "categorical") return(v)
+  v <- as.integer(v) + 1L; v[v < 1L] <- NA_integer_
+  structure(v, levels = col$levels, class = c(if (col$ordered) "ordered", "factor"))
 }
 
 ## Coordinates of rows a..b: an obsm array (first two columns) or two obs columns.
-.store_coords <- function(st, coords, a, b) {
+.store_coords <- function(st, coords, a, b, matrix = FALSE) {
   if (coords$obsm) {
+    if (coords$both) {   # both columns in each chunk: one read (matrix = TRUE: x the n x 2 matrix, y NULL)
+      m <- Rarr::read_zarr_array(coords$path, index = list(a:b, 1:2))
+      if (ncol(m) > 2L) m <- m[, 1:2]
+      if (!is.double(m)) storage.mode(m) <- "double"
+      return(if (matrix) list(x = m, y = NULL) else list(x = m[, 1], y = m[, 2]))
+    }
     col <- function(j) { v <- Rarr::read_zarr_array(coords$path, index = list(a:b, j)); dim(v) <- NULL; v }
     return(list(x = col(1L), y = col(2L)))
   }
@@ -101,7 +125,7 @@
                                           paste(st$obsm, collapse = ", "), call. = FALSE)
     p <- file.path(st$path, "obsm", spatialCoords)
     if (length(.store_dim(p)) != 2L || .store_dim(p)[2] < 2L) stop("obsm '", spatialCoords, "' needs two columns.", call. = FALSE)
-    return(list(obsm = TRUE, path = p, label = spatialCoords))
+    return(list(obsm = TRUE, path = p, label = spatialCoords, both = .store_chunk(p)[2] >= 2L))
   }
   list(obsm = FALSE, x = .store_column(st, spatialCoords[1]), y = .store_column(st, spatialCoords[2]),
        label = spatialCoords)
@@ -109,9 +133,8 @@
 
 ## Whether v (rows of the table) equals, as as.character() sees it, ref at each row's image (codes im); NA equals NA.
 .same_value <- function(v, im, ref) {
-  if (is.factor(v)) { v <- unclass(v); attributes(v) <- NULL; ref <- unclass(ref); attributes(ref) <- NULL }   # codes
-  d <- cell_rows_differing(v, im, ref)
-  !length(d) || identical(as.character(v[d]), as.character(ref[im[d]]))
+  d <- cell_rows_differing(v, im, ref, attr(im, "base"))
+  !length(d) || identical(as.character(v[d]), as.character(ref[im[d] + 1L - attr(im, "base")]))
 }
 
 ## The context of the cell method (as .cell_context(by_image = TRUE) gives it for the same cells as a data.frame)
@@ -146,25 +169,24 @@
   seen <- logical(nli); sub_all <- NULL
   for (a in seq.int(1L, N, by = as.integer(.store_block()))) {
     b <- as.integer(min(N, a + .store_block() - 1))
-    im <- .store_codes(ci, a, b, levi)
-    if (anyNA(im)) stop("missing image ID in row ", a - 1L + which(is.na(im))[1], ".", call. = FALSE)
-    ty <- .store_codes(ct, a, b, levt)
-    lay <- cell_layout(im, nli, ty, nlt)
-    counts <- counts + lay$counts
-    fr <- lay$first + (a - 1L); fill <- is.na(first_rows) & !is.na(fr); first_rows[fill] <- fr[fill]
-    n <- length(im)
-    runs <- runs + sum(im[-1L] != im[-n]) + (is.na(prev) || prev != im[1L]); prev <- im[n]
-    new <- which(!seen & tabulate(im, nli) > 0L); pos <- match(new, im)
+    im <- .store_codes(ci, a, b, levi); ty <- .store_codes(ct, a, b, levt)
+    sc <- cell_block_scan(im, attr(im, "base"), nli, ty, attr(ty, "base"), nlt, a - 1L, prev)
+    rm(ty)
+    counts <- counts + sc$counts
+    fill <- is.na(first_rows) & !is.na(sc$first); first_rows[fill] <- sc$first[fill]
+    runs <- runs + sc$runs; prev <- sc$last
+    new <- which(!seen & !is.na(sc$pos))
     for (nm in names(cl)) {
-      v <- .store_read(cl[[nm]], a:b)
+      v <- .store_values(cl[[nm]], a, b)
       if (is.null(ref_val[[nm]])) ref_val[[nm]] <- v[rep(NA_integer_, nli)]
-      ref_val[[nm]][new] <- v[pos]
+      ref_val[[nm]][new] <- v[sc$pos[new]]
       if (constant[[nm]] && !.same_value(v, im, ref_val[[nm]])) constant[[nm]] <- FALSE
-      if (!is.null(subject) && nm == subject && !constant[[nm]])
-        sub_all <- unique(c(sub_all, unique(as.character(v))))
+      if (!is.null(subject) && nm == subject) sub_all <- unique(c(sub_all, unique(v)))
     }
     seen[new] <- TRUE
   }
+  ref_val <- Map(.store_as_values, cl, ref_val)
+  if (!is.null(subject)) sub_all <- unique(as.character(.store_as_values(cl[[subject]], sub_all)))
   lay <- list(counts = counts, first = first_rows)
 
   image_labels <- sort(li[rowSums(lay$counts) > 0], method = "radix")   # C-locale order, as the Python twin
@@ -181,7 +203,7 @@
 
   if (!is.null(subject)) {
     sv <- pheno[[subject]]
-    n_sub <- if (constant[[subject]]) length(unique(as.character(sv))) else length(sub_all)
+    n_sub <- length(sub_all)   # as unique(as.character()) over all the cells
   }
   if (is.null(subject) || n_sub == n_images) {
     unit_labels <- image_labels; image_unit <- seq_len(n_images) - 1L
@@ -231,7 +253,7 @@
   A <- lapply(seq_len(K), function(j) array(0, c(Tn, Tn, n)))
   B <- lapply(seq_len(K), function(j) if (allocation) matrix(0, Tn, n) else array(0, c(Tn, Tn, n)))
   size <- rowSums(ctx$counts)
-  budget <- .store_batch() * max(1L, as.integer(n_threads))
+  budget <- min(.store_batch() * max(1L, as.integer(n_threads)), max(.store_batch(), .store_batch_max()))
   # batches of consecutive images (in row order when each image is a run of rows)
   ord <- if (s$contiguous) order(ctx$first) else seq_len(n)
   batch <- integer(n); acc <- 0; id <- 1L
@@ -239,12 +261,14 @@
     if (acc > 0 && acc + size[ord[j]] > budget) { id <- id + 1L; acc <- 0 }
     batch[j] <- id; acc <- acc + size[ord[j]]
   }
-  tmap <- function(ty) { ty[is.na(ty)] <- length(s$type_map); s$type_map[ty] }
+  tmap <- function(ty) {   # codes (base 0 or 1, missing as -1 or NA) to the context's 0-based types
+    base <- attr(ty, "base"); ty <- as.integer(ty) + (1L - base); ty[is.na(ty) | ty < 1L] <- length(s$type_map)
+    s$type_map[ty] }
   for (bi in unique(batch)) {
     imgs <- ord[batch == bi]
     if (s$contiguous) {
       a <- ctx$first[imgs[1]]; b <- a + sum(size[imgs]) - 1L
-      xy <- .store_coords(s$st, s$coords, a, b)
+      xy <- .store_coords(s$st, s$coords, a, b, matrix = TRUE)
       ty <- tmap(.store_codes(s$ct, a, b, s$levt))
     } else {
       # scan the rows for the batch's images, then sort them stably by image
@@ -252,19 +276,19 @@
       parts <- list()
       for (a in seq.int(1L, s$n_rows, by = as.integer(.store_block()))) {
         b <- as.integer(min(s$n_rows, a + .store_block() - 1))
-        im <- img_of_level[.store_codes(s$ci, a, b, s$levi)]
+        ic <- .store_codes(s$ci, a, b, s$levi); im <- img_of_level[as.integer(ic) + (1L - attr(ic, "base"))]
         keep <- which(!is.na(im))
         if (!length(keep)) next
         xy <- .store_coords(s$st, s$coords, a, b)
-        ty <- .store_codes(s$ct, a, b, s$levt)
+        ty <- tmap(.store_codes(s$ct, a, b, s$levt))
         parts[[length(parts) + 1L]] <- list(im = im[keep], x = xy$x[keep], y = xy$y[keep], ty = ty[keep])
       }
       im <- unlist(lapply(parts, `[[`, "im")); o <- order(im, method = "radix")
       xy <- list(x = unlist(lapply(parts, `[[`, "x"))[o], y = unlist(lapply(parts, `[[`, "y"))[o])
-      ty <- tmap(unlist(lapply(parts, `[[`, "ty"))[o])
+      ty <- unlist(lapply(parts, `[[`, "ty"))[o]
       rm(parts, im, o)
     }
-    res <- cell_batch_totals(as.numeric(xy$x), as.numeric(xy$y), ty, as.integer(c(0L, cumsum(size[imgs]))), Tn,
+    res <- cell_batch_totals(as.numeric(xy$x), if (is.null(xy$y)) numeric(0) else as.numeric(xy$y), ty, as.integer(c(0L, cumsum(size[imgs]))), Tn,
                              as.numeric(if (is.null(radii)) numeric(0) else radii), if (is.null(k)) 0L else as.integer(k),
                              allocation, as.integer(n_threads))
     rm(xy, ty)

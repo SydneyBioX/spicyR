@@ -470,17 +470,50 @@ List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map,
   return out;
 }
 
+// One block of rows of a cell table read from a store: image and type codes as integers (base 0: Zarr categorical
+// codes, -1 missing; base 1: factor codes, NA missing), rows offset + 1, offset + 2, ... For every (image level,
+// type level) the cells and the first row (NA when none; a missing type is the extra last column), the number of
+// changes of image between consecutive rows (counting the first row when its image differs from `prev`, the image
+// code of the row before the block, NA for none), the last row's image code, and per image level the first position
+// in the block (1-based; NA when absent). Codes are returned 1-based.
+// [[Rcpp::export]]
+List cell_block_scan(IntegerVector image, int image_base, int n_image_levels, IntegerVector type, int type_base,
+                     int n_type_levels, int offset, int prev) {
+  const R_xlen_t N = image.size();
+  if (type.size() != N) stop("block: image and type codes differ in length");
+  const int T = n_type_levels + 1;
+  IntegerMatrix counts(n_image_levels, T), first(n_image_levels, T);
+  std::fill(first.begin(), first.end(), NA_INTEGER);
+  IntegerVector pos(n_image_levels, NA_INTEGER);
+  double runs = 0;
+  int last = prev;
+  for (R_xlen_t r = 0; r < N; ++r) {
+    const int iv = image[r], tv = type[r];
+    const int i = (iv == NA_INTEGER || iv < image_base) ? -1 : iv - image_base;   // 0-based
+    if (i < 0 || i >= n_image_levels) stop("missing or invalid image ID in row %d", static_cast<int>(offset + r + 1));
+    const int t = (tv == NA_INTEGER || tv < type_base) ? n_type_levels : tv - type_base;
+    if (t > n_type_levels) stop("invalid cell type code in row %d", static_cast<int>(offset + r + 1));
+    const R_xlen_t at = static_cast<R_xlen_t>(t) * n_image_levels + i;
+    if (counts[at]++ == 0) first[at] = static_cast<int>(offset + r + 1);
+    if (pos[i] == NA_INTEGER) pos[i] = static_cast<int>(r + 1);
+    if (last == NA_INTEGER || last != i + 1) ++runs;
+    last = i + 1;
+  }
+  return List::create(_["counts"] = counts, _["first"] = first, _["runs"] = runs, _["last"] = last, _["pos"] = pos);
+}
+
 // The rows (1-based) where v differs from ref at the row's image (ref indexed by the image code, 1-based): the same
 // bits (for strings the same cached string) count as equal, so a row not returned holds the same value as
-// as.character() sees it; the caller compares the returned rows as.character().
+// as.character() sees it; the caller compares the returned rows as.character(). Image codes are 1-based, or 0-based
+// with image_base = 0.
 // [[Rcpp::export]]
-IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref) {
+IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref, int image_base = 1) {
   const R_xlen_t N = XLENGTH(v);
   if (image.size() != N || TYPEOF(ref) != TYPEOF(v)) stop("cell_rows_differing: inconsistent input");
   const R_xlen_t M = XLENGTH(ref);
   std::vector<int> out;
   for (R_xlen_t r = 0; r < N; ++r) {
-    const int i = image[r];
+    const int i = image[r] == NA_INTEGER ? NA_INTEGER : image[r] - image_base + 1;
     if (i == NA_INTEGER || i < 1 || i > M) stop("cell_rows_differing: image code out of range");
     bool same;
     switch (TYPEOF(v)) {
@@ -495,7 +528,8 @@ IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref) {
 }
 
 // The neighbour totals of the cell method for one batch of whole images that the caller has already gathered: the
-// cells image by image (each image's cells in row order), x, y and 0-based cell types, with offsets[i] the first cell
+// cells image by image (each image's cells in row order), x, y (or x the N x 2 matrix of both and y empty) and
+// 0-based cell types, with offsets[i] the first cell
 // of image i of the batch. Returns one element per radius (one for kNN), each list(a, b): a the n_types x n_types
 // block of every image of the batch (any / totals), b its self_expected (n_types per image) or sq block, in the
 // layout of cell_stream_totals' output for these images. The images are shared among up to n_threads threads, each
@@ -505,8 +539,11 @@ List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, Int
                        NumericVector radii, int k, bool allocation, int n_threads = 1) {
   const int nb = offsets.size() - 1;
   if (nb < 1) stop("no images in the batch");
-  const R_xlen_t N = x.size();
-  if (y.size() != N || type.size() != N || offsets[0] != 0 || offsets[nb] != N) stop("batch: inconsistent lengths");
+  const R_xlen_t N = type.size();
+  // y empty: x is the N x 2 matrix of the coordinates
+  const bool matrix = y.size() == 0 && x.size() == 2 * N;
+  if ((!matrix && (x.size() != N || y.size() != N)) || offsets[0] != 0 || offsets[nb] != N)
+    stop("batch: inconsistent lengths");
   for (int i = 0; i < nb; ++i) if (offsets[i + 1] < offsets[i]) stop("batch: offsets must be increasing");
   for (R_xlen_t r = 0; r < N; ++r) if (type[r] < 0 || type[r] >= n_types) stop("batch: cell type out of range");
   const bool knn = k > 0;
@@ -516,7 +553,7 @@ List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, Int
   const std::size_t per = static_cast<std::size_t>(nb) * T * T, per_b = allocation ? static_cast<std::size_t>(nb) * T : per;
   std::vector<std::vector<double>> a(K, std::vector<double>(per, 0.0)), b(K, std::vector<double>(per_b, 0.0));
   const std::vector<double> rad(radii.begin(), radii.end());
-  const double* px = x.begin(); const double* py = y.begin(); const int* pt = type.begin();
+  const double* px = x.begin(); const double* py = matrix ? x.begin() + N : y.begin(); const int* pt = type.begin();
   const std::vector<int> off(offsets.begin(), offsets.end());
   // groups of consecutive images with about equal numbers of cells, one per thread
   const int G = std::max(1, std::min(n_threads, nb));

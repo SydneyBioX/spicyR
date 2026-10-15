@@ -452,16 +452,35 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cell_block_scan
+List cell_block_scan(IntegerVector image, int image_base, int n_image_levels, IntegerVector type, int type_base, int n_type_levels, int offset, int prev);
+RcppExport SEXP _spicyR_cell_block_scan(SEXP imageSEXP, SEXP image_baseSEXP, SEXP n_image_levelsSEXP, SEXP typeSEXP, SEXP type_baseSEXP, SEXP n_type_levelsSEXP, SEXP offsetSEXP, SEXP prevSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
+    Rcpp::traits::input_parameter< int >::type image_base(image_baseSEXP);
+    Rcpp::traits::input_parameter< int >::type n_image_levels(n_image_levelsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< int >::type type_base(type_baseSEXP);
+    Rcpp::traits::input_parameter< int >::type n_type_levels(n_type_levelsSEXP);
+    Rcpp::traits::input_parameter< int >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< int >::type prev(prevSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_block_scan(image, image_base, n_image_levels, type, type_base, n_type_levels, offset, prev));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cell_rows_differing
-IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref);
-RcppExport SEXP _spicyR_cell_rows_differing(SEXP vSEXP, SEXP imageSEXP, SEXP refSEXP) {
+IntegerVector cell_rows_differing(SEXP v, IntegerVector image, SEXP ref, int image_base);
+RcppExport SEXP _spicyR_cell_rows_differing(SEXP vSEXP, SEXP imageSEXP, SEXP refSEXP, SEXP image_baseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type v(vSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type image(imageSEXP);
     Rcpp::traits::input_parameter< SEXP >::type ref(refSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_rows_differing(v, image, ref));
+    Rcpp::traits::input_parameter< int >::type image_base(image_baseSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_rows_differing(v, image, ref, image_base));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -890,7 +909,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_cell_layout", (DL_FUNC) &_spicyR_cell_layout, 4},
     {"_spicyR_cell_constant_within", (DL_FUNC) &_spicyR_cell_constant_within, 3},
     {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 12},
-    {"_spicyR_cell_rows_differing", (DL_FUNC) &_spicyR_cell_rows_differing, 3},
+    {"_spicyR_cell_block_scan", (DL_FUNC) &_spicyR_cell_block_scan, 8},
+    {"_spicyR_cell_rows_differing", (DL_FUNC) &_spicyR_cell_rows_differing, 4},
     {"_spicyR_cell_batch_totals", (DL_FUNC) &_spicyR_cell_batch_totals, 9},
     {"_spicyR_first_appearance_factor", (DL_FUNC) &_spicyR_first_appearance_factor, 1},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},

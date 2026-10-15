@@ -90,9 +90,11 @@ test_that("a store written by the Python spatialdata package is read", {
     } else as.vector(Rarr::read_zarr_array(p))
   }
   key <- Rarr::read_zarr_attributes(tab)$region_key
+  ct <- intersect(c("cellType", "cell_type"), unlist(Rarr::read_zarr_attributes(file.path(tab, "obs"))[["column-order"]]))[1]
   xy <- Rarr::read_zarr_array(file.path(tab, "obsm", "spatial"))
-  d <- data.frame(imageID = rd(key), cellType = rd("cellType"), condition = rd("condition"), subject = rd("subject"),
+  d <- data.frame(imageID = rd(key), cellType = rd(ct), condition = rd("condition"), subject = rd("subject"),
                   x = xy[, 1], y = xy[, 2])
+  rm(xy)
   a <- suppressMessages(spicy(d, condition = "condition", subject = "subject", r = 25))
-  expect_identical(suppressMessages(spicy(path, condition = "condition", subject = "subject", r = 25)), a)
+  expect_identical(suppressMessages(spicy(path, condition = "condition", subject = "subject", cellType = ct, r = 25)), a)
 })
