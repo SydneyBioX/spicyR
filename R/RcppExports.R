@@ -229,6 +229,14 @@ stats_mvn_outside <- function(lower, upper, R) {
     .Call(`_spicyR_stats_mvn_outside`, lower, upper, R)
 }
 
+stats_mvn_outside_qmc <- function(lower, upper, R, abseps = 1e-4, max_points = 1e5) {
+    .Call(`_spicyR_stats_mvn_outside_qmc`, lower, upper, R, abseps, max_points)
+}
+
+stats_mvn_outside_quadrature <- function(lower, upper, R) {
+    .Call(`_spicyR_stats_mvn_outside_quadrature`, lower, upper, R)
+}
+
 stats_pair_tests <- function(a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads = 1L) {
     .Call(`_spicyR_stats_pair_tests`, a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads)
 }

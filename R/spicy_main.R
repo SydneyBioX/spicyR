@@ -59,7 +59,9 @@
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
 #' @param combine Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
 #'   radii; up to 6 radii), `"davies"` (Davies' bound for the same maximum, for many radii) or `"cauchy"`
-#'   (Cauchy combination).
+#'   (Cauchy combination). The max-T p-value is the multivariate normal probability of the largest |z|, computed
+#'   by the quasi-Monte Carlo method of Genz and Bretz with an absolute error of about 1e-4 (by quadrature for two
+#'   radii); the same inputs always give the same value.
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.

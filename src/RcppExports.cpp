@@ -862,6 +862,34 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_mvn_outside_qmc
+List stats_mvn_outside_qmc(NumericVector lower, NumericVector upper, NumericMatrix R, double abseps, double max_points);
+RcppExport SEXP _spicyR_stats_mvn_outside_qmc(SEXP lowerSEXP, SEXP upperSEXP, SEXP RSEXP, SEXP absepsSEXP, SEXP max_pointsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type upper(upperSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type R(RSEXP);
+    Rcpp::traits::input_parameter< double >::type abseps(absepsSEXP);
+    Rcpp::traits::input_parameter< double >::type max_points(max_pointsSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_mvn_outside_qmc(lower, upper, R, abseps, max_points));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stats_mvn_outside_quadrature
+double stats_mvn_outside_quadrature(NumericVector lower, NumericVector upper, NumericMatrix R);
+RcppExport SEXP _spicyR_stats_mvn_outside_quadrature(SEXP lowerSEXP, SEXP upperSEXP, SEXP RSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type upper(upperSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type R(RSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_mvn_outside_quadrature(lower, upper, R));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_pair_tests
 List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix counts, NumericMatrix psi, IntegerVector from, IntegerVector to, IntegerVector image_unit, IntegerVector image_group, int n_units, bool image_heterogeneity, bool frailty, std::string variance, bool adjust, NumericMatrix z, int keep_radius, std::string combine, int n_threads);
 RcppExport SEXP _spicyR_stats_pair_tests(SEXP aSEXP, SEXP bSEXP, SEXP allocationSEXP, SEXP knnSEXP, SEXP countsSEXP, SEXP psiSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP image_unitSEXP, SEXP image_groupSEXP, SEXP n_unitsSEXP, SEXP image_heterogeneitySEXP, SEXP frailtySEXP, SEXP varianceSEXP, SEXP adjustSEXP, SEXP zSEXP, SEXP keep_radiusSEXP, SEXP combineSEXP, SEXP n_threadsSEXP) {
@@ -950,6 +978,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_max_t", (DL_FUNC) &_spicyR_stats_max_t, 3},
     {"_spicyR_stats_davies", (DL_FUNC) &_spicyR_stats_davies, 3},
     {"_spicyR_stats_mvn_outside", (DL_FUNC) &_spicyR_stats_mvn_outside, 3},
+    {"_spicyR_stats_mvn_outside_qmc", (DL_FUNC) &_spicyR_stats_mvn_outside_qmc, 5},
+    {"_spicyR_stats_mvn_outside_quadrature", (DL_FUNC) &_spicyR_stats_mvn_outside_quadrature, 3},
     {"_spicyR_stats_pair_tests", (DL_FUNC) &_spicyR_stats_pair_tests, 19},
     {NULL, NULL, 0}
 };

@@ -192,10 +192,32 @@ MaxTResult max_t(const std::vector<std::vector<double>>& influence, const std::v
 MaxTResult davies_max(const std::vector<std::vector<double>>& influence, const std::vector<double>& t,
                       const std::vector<double>& df);
 
-// P(Z outside the rectangle [lower, upper]) for Z ~ N(0, R), R a correlation matrix (row-major K x K):
-// recursive conditioning with Gauss-Legendre quadrature, relative accuracy kept in the tail.
+// P(Z outside the rectangle [lower, upper]) for Z ~ N(0, R), R a correlation matrix (row-major K x K), as max_t
+// uses it: for K <= 2 the quadrature below (accurate to about 1e-10); for K >= 3 Genz-Bretz quasi-Monte Carlo
+// (mvn_outside_qmc) with an absolute error target of 1e-4.
 double mvn_outside(const std::vector<double>& lower, const std::vector<double>& upper,
                    const std::vector<double>& R, int K);
+
+// Genz (1992) and Genz & Bretz (2009, Computation of Multivariate Normal and t Probabilities, Springer, Chapter 4)
+// quasi-Monte Carlo for the same probability (K <= 6): separation of variables on the Cholesky factor, with the
+// variables reordered so the narrowest expected interval comes first, integrated over the unit cube by Korobov
+// lattice rules of growing size with the baker's transformation and antithetic points, each rule under 12 random
+// shifts. The shifts come from a fixed-seed generator, so the result is the same on every call. The rules are
+// combined by inverse-variance weights until 3.5 standard errors are below `abseps`, or at most `max_points` points
+// (per shift, over all rules). Coordinates with conditional variance below 1e-10 (a singular R) are deterministic
+// given the others and enter as indicators.
+struct MvnResult {
+  double p = 0;
+  double error = 0;   // 3.5 standard errors of p over the shifts
+  long points = 0;    // lattice points used, per shift
+};
+MvnResult mvn_outside_qmc(const std::vector<double>& lower, const std::vector<double>& upper,
+                          const std::vector<double>& R, int K, double abseps = 1e-4, long max_points = 100000);
+
+// The quadrature max_t used up to spicyR 1.99.24, kept for comparison: recursive conditioning with Gauss-Legendre
+// quadrature (about 2e6 evaluations; K <= 6), relative accuracy kept in the tail.
+double mvn_outside_quadrature(const std::vector<double>& lower, const std::vector<double>& upper,
+                              const std::vector<double>& R, int K);
 
 // ------------------------------------------- every pair at every radius ---
 

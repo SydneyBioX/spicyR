@@ -193,6 +193,25 @@ test_that("max-T: one radius gives the single-radius p, and the tail matches an 
   expect_equal(nrow(res$radiusResults), 3L)
 })
 
+test_that("max-T: the Genz-Bretz quasi-Monte Carlo matches mvtnorm::pmvnorm and repeats exactly", {
+  skip_if_not_installed("mvtnorm")
+  ar1 <- function(K, rho) rho^abs(outer(seq_len(K), seq_len(K), "-"))
+  mats <- list(ar1(3, 0.6), ar1(4, 0.9), ar1(6, 0.5),
+               stats::cov2cor(crossprod(matrix(c(3, 1, 0, 2, 1, 2, 2, 0, 1, 1, 3, 1, 0, 2, 1, 2, 1, 1, 0, 3), 5))))
+  cvs <- c(2.2, 2.8, 3.1, 2.5)
+  for (i in seq_along(mats)) {
+    R <- mats[[i]]; K <- nrow(R); cv <- rep(cvs[i], K)
+    p <- spicyR:::stats_mvn_outside(-cv, cv, R)
+    set.seed(1)
+    ref <- 1 - mvtnorm::pmvnorm(-cv, cv, corr = R, algorithm = mvtnorm::GenzBretz(maxpts = 2e6, abseps = 1e-6, releps = 0))[1]
+    expect_lt(abs(p - ref), 2e-4)
+    expect_identical(spicyR:::stats_mvn_outside(-cv, cv, R), p)
+    q <- spicyR:::stats_mvn_outside_qmc(-cv, cv, R)
+    expect_identical(q$p, p)
+    expect_lt(q$error, 1e-4)
+  }
+})
+
 test_that("Davies: one radius gives the single-radius p, matches a plain-R reference and bounds the max-T", {
   expect_equal(spicyR:::stats_davies(matrix(rnorm(10), 10), 2.1, 7)$p, 2 * stats::pt(-2.1, 7), tolerance = 1e-12)
   set.seed(3); m <- 40; K <- 5

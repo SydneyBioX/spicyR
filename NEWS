@@ -1,3 +1,28 @@
+CHANGES IN VERSION 1.99.25
+--------------------------
+
+    o spicy(combine = "maxT") computes the max-T p-value, the probability that a multivariate normal vector with the
+      radii's sandwich correlation leaves the cube [-c, c]^K, by the quasi-Monte Carlo method of Genz (1992) and
+      Genz & Bretz (2009), with an absolute error target of 1e-4, in place of recursive Gauss-Legendre quadrature.
+      The variables are separated on the Cholesky factor of the correlation, reordered so the narrowest expected
+      interval comes first, and integrated by Korobov lattice rules of growing size (the baker's transformation,
+      antithetic points, 12 random shifts) until 3.5 standard errors are below 1e-4, or 100,000 points per shift.
+      The shifts come from a fixed seed, so the same inputs give the same p-value on every call, at any number of
+      cores. The method and its lattice parameters are written from the publications (inst/scripts/
+      korobov_search.cpp finds the parameters); no code is taken from mvtnorm. Two radii keep the quadrature,
+      which is accurate to about 1e-10 there; the quadrature itself remains in the core
+      (mvn_outside_quadrature()) for comparison.
+      The quadrature took 3.2 million evaluations per pair with six radii; the new method takes about 26,000 (18 ms
+      against 233 ms per pair). On one core, for 50 images of 5,000 cells with r = c(5, 10, 20, 30, 40, 50), 80 cell
+      types take 141 s (1,438 s before), 40 types 32 s (381 s), 20 types 8.4 s (90 s), 10 types 2.1 s (23 s) and
+      5 types 0.6 s (5.6 s).
+      Against mvtnorm::pmvnorm() at an absolute error of 1e-6, on the 100 tests of 10 cell types the new p-values
+      differ by at most 6.1e-5 (0.44% relative at p < 0.05), and on 308 random and singular correlation matrices
+      with three to six radii by at most 1.0e-4 (4.8% relative for 0.001 <= p < 0.05); pmvnorm() at 1e-4 differs
+      from the same reference by up to 8.3e-4. On the timing data (4,200 pairs at 10, 20 and 40 types, allocation and
+      count), 6 p-values change by more than 1e-4 (at most 1.4e-4) and none crosses 0.05; the other columns are
+      unchanged, and results without maxT are identical() to 1.99.24's.
+
 CHANGES IN VERSION 1.99.24
 --------------------------
 

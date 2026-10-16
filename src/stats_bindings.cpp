@@ -241,6 +241,24 @@ double stats_mvn_outside(NumericVector lower, NumericVector upper, NumericMatrix
 }
 
 // [[Rcpp::export]]
+List stats_mvn_outside_qmc(NumericVector lower, NumericVector upper, NumericMatrix R, double abseps = 1e-4,
+                           double max_points = 1e5) {
+  const int K = R.nrow();
+  std::vector<double> r(static_cast<std::size_t>(K) * K);
+  for (int i = 0; i < K; ++i) for (int j = 0; j < K; ++j) r[static_cast<std::size_t>(i) * K + j] = R(i, j);
+  MvnResult m = mvn_outside_qmc(dvec(lower), dvec(upper), r, K, abseps, static_cast<long>(max_points));
+  return List::create(_["p"] = m.p, _["error"] = m.error, _["points"] = static_cast<double>(m.points));
+}
+
+// [[Rcpp::export]]
+double stats_mvn_outside_quadrature(NumericVector lower, NumericVector upper, NumericMatrix R) {
+  const int K = R.nrow();
+  std::vector<double> r(static_cast<std::size_t>(K) * K);
+  for (int i = 0; i < K; ++i) for (int j = 0; j < K; ++j) r[static_cast<std::size_t>(i) * K + j] = R(i, j);
+  return mvn_outside_quadrature(dvec(lower), dvec(upper), r, K);
+}
+
+// [[Rcpp::export]]
 List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix counts, NumericMatrix psi,
                       IntegerVector from, IntegerVector to, IntegerVector image_unit, IntegerVector image_group,
                       int n_units, bool image_heterogeneity, bool frailty, std::string variance, bool adjust,

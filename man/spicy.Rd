@@ -66,7 +66,9 @@ With \code{k}, "within \code{r}" means among the cell's \code{k} nearest neighbo
 
 \item{combine}{Cell method with several radii: \code{"maxT"} (max-T with the sandwich correlation across
 radii; up to 6 radii), \code{"davies"} (Davies' bound for the same maximum, for many radii) or \code{"cauchy"}
-(Cauchy combination).}
+(Cauchy combination). The max-T p-value is the multivariate normal probability of the largest |z|, computed
+by the quasi-Monte Carlo method of Genz and Bretz with an absolute error of about 1e-4 (by quadrature for two
+radii); the same inputs always give the same value.}
 
 \item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
 (default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}
