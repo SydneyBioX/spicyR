@@ -36,7 +36,8 @@ logical vectors.}
 Writes a \code{data.frame} of cells as the cell table of a SpatialData Zarr store (an AnnData table under \verb{tables/}, in
 Zarr v3), which \code{\link[=spicy]{spicy()}} reads a block of rows at a time and spatialdataR's \code{readSpatialData()} reads as a
 \code{SpatialData} object. The coordinates become the \code{obsm} array \code{"spatial"}, the other columns the table's \code{obs}
-(factors as categorical columns), and the image column the table's region key. A table with one row per image can
+(factors as categorical columns), and the image column the table's region key (always a categorical column, its
+categories the levels of a factor, else the images in order of first appearance). A table with one row per image can
 be added as a second table. Each column is written in chunks of 2^20 rows compressed with zstd, one chunk at a
 time, so writing needs little memory beyond that of \code{cells}, however many cells it has.
 }

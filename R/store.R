@@ -342,7 +342,8 @@
 #' Writes a `data.frame` of cells as the cell table of a SpatialData Zarr store (an AnnData table under `tables/`, in
 #' Zarr v3), which [spicy()] reads a block of rows at a time and spatialdataR's `readSpatialData()` reads as a
 #' `SpatialData` object. The coordinates become the `obsm` array `"spatial"`, the other columns the table's `obs`
-#' (factors as categorical columns), and the image column the table's region key. A table with one row per image can
+#' (factors as categorical columns), and the image column the table's region key (always a categorical column, its
+#' categories the levels of a factor, else the images in order of first appearance). A table with one row per image can
 #' be added as a second table. Each column is written in chunks of 2^20 rows compressed with zstd, one chunk at a
 #' time, so writing needs little memory beyond that of `cells`, however many cells it has.
 #'
@@ -386,6 +387,9 @@ writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("
     .zarr_free()
   }
   if (is.factor(img)) regions <- levels(img)[regions]
+  # the region key as a categorical (as spatialdata requires): a factor keeps its levels, other IDs take theirs in
+  # order of first appearance
+  else obs[[imageID]] <- structure(match(as.character(img), regions), levels = regions, class = "factor")
   attrs <- list(region = regions, region_key = imageID, instance_key = "instance_id")
   cx <- cells[[spatialCoords[1]]]; cy <- cells[[spatialCoords[2]]]
   .zarr_write_anndata(file.path(path, "tables", tableKey), obs, n,
@@ -566,8 +570,8 @@ writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("
   .zarr_group(p, c(list(`encoding-type` = nullable, `encoding-version` = "0.1.0"),
                    if (is.character(x)) list(`na-value` = "NA")))
   .zarr_write_rows(file.path(p, "values"), n, type, function(a, b) { v <- x[a:b]; v[is.na(v)] <- fill; v },
-                   encoding = if (is.character(x)) enc)
-  .zarr_write_rows(file.path(p, "mask"), n, "bool", function(a, b) is.na(x[a:b]), encoding = NULL)
+                   encoding = enc)
+  .zarr_write_rows(file.path(p, "mask"), n, "bool", function(a, b) is.na(x[a:b]))
   invisible(p)
 }
 
@@ -583,7 +587,8 @@ writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("
                        `column-order` = as.list(cols)))
   .zarr_write_rows(file.path(op, "_index"), n, "string", index, encoding = c("string-array", "0.2.0"))
   for (cn in names(obs)) .zarr_write_column(file.path(op, cn), obs[[cn]], n)
-  if (instance) .zarr_write_rows(file.path(op, "instance_id"), n, .zarr_int_type(0, n - 1),
+  # instance IDs in 16 bits at least (spatialdata refuses an 8-bit instance key)
+  if (instance) .zarr_write_rows(file.path(op, "instance_id"), n, .zarr_int_type(0, max(n - 1, 256)),
                                  function(a, b) (a:b) - 1L)
   vp <- file.path(tab, "var")
   .zarr_group(vp, list(`encoding-type` = "dataframe", `encoding-version` = "0.2.0", `_index` = "_index",

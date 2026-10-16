@@ -625,7 +625,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_excess_image_rows
-DataFrame stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, NumericMatrix counts, int from, int to, bool knn, NumericMatrix psi);
+List stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, NumericMatrix counts, int from, int to, bool knn, NumericMatrix psi);
 RcppExport SEXP _spicyR_stats_excess_image_rows(SEXP totalsSEXP, SEXP out_sq_totalsSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP knnSEXP, SEXP psiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -642,7 +642,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_allocation_image_rows
-DataFrame stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts, int from, int to, NumericMatrix psi);
+List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts, int from, int to, NumericMatrix psi);
 RcppExport SEXP _spicyR_stats_allocation_image_rows(SEXP any_totalsSEXP, SEXP self_expectedSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -658,7 +658,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_kontextual_image_rows
-DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi);
+List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi);
 RcppExport SEXP _spicyR_stats_kontextual_image_rows(SEXP sumsSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -673,12 +673,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_image_heterogeneity_rows
-DataFrame stats_image_heterogeneity_rows(DataFrame rows, IntegerVector unit);
+List stats_image_heterogeneity_rows(List rows, IntegerVector unit);
 RcppExport SEXP _spicyR_stats_image_heterogeneity_rows(SEXP rowsSEXP, SEXP unitSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
     rcpp_result_gen = Rcpp::wrap(stats_image_heterogeneity_rows(rows, unit));
     return rcpp_result_gen;
@@ -718,12 +718,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_excess_test
-List stats_excess_test(DataFrame rows, IntegerVector unit, IntegerVector group, int n_units, bool frailty, std::string variance);
+List stats_excess_test(List rows, IntegerVector unit, IntegerVector group, int n_units, bool frailty, std::string variance);
 RcppExport SEXP _spicyR_stats_excess_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP groupSEXP, SEXP n_unitsSEXP, SEXP frailtySEXP, SEXP varianceSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
     Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
@@ -734,12 +734,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_design_test
-List stats_design_test(DataFrame rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericVector contrast, double tau2);
+List stats_design_test(List rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericVector contrast, double tau2);
 RcppExport SEXP _spicyR_stats_design_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP ZSEXP, SEXP contrastSEXP, SEXP tau2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
     Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type Z(ZSEXP);
@@ -750,12 +750,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_design_tests
-List stats_design_tests(DataFrame rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts, double tau2, bool hartung_knapp);
+List stats_design_tests(List rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts, double tau2, bool hartung_knapp);
 RcppExport SEXP _spicyR_stats_design_tests(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP ZSEXP, SEXP contrastsSEXP, SEXP tau2SEXP, SEXP hartung_knappSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
     Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type Z(ZSEXP);
@@ -767,12 +767,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_availability_test
-List stats_availability_test(DataFrame rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x, double tau2);
+List stats_availability_test(List rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x, double tau2);
 RcppExport SEXP _spicyR_stats_availability_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP groupSEXP, SEXP n_unitsSEXP, SEXP xSEXP, SEXP tau2SEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type group(groupSEXP);
     Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
@@ -796,12 +796,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_survival_test
-List stats_survival_test(DataFrame rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time, IntegerVector event, NumericVector x);
+List stats_survival_test(List rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time, IntegerVector event, NumericVector x);
 RcppExport SEXP _spicyR_stats_survival_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP martingaleSEXP, SEXP timeSEXP, SEXP eventSEXP, SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< DataFrame >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
     Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type martingale(martingaleSEXP);
@@ -859,6 +859,35 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type upper(upperSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type R(RSEXP);
     rcpp_result_gen = Rcpp::wrap(stats_mvn_outside(lower, upper, R));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stats_pair_tests
+List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix counts, NumericMatrix psi, IntegerVector from, IntegerVector to, IntegerVector image_unit, IntegerVector image_group, int n_units, bool image_heterogeneity, bool frailty, std::string variance, bool adjust, NumericMatrix z, int keep_radius, std::string combine, int n_threads);
+RcppExport SEXP _spicyR_stats_pair_tests(SEXP aSEXP, SEXP bSEXP, SEXP allocationSEXP, SEXP knnSEXP, SEXP countsSEXP, SEXP psiSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP image_unitSEXP, SEXP image_groupSEXP, SEXP n_unitsSEXP, SEXP image_heterogeneitySEXP, SEXP frailtySEXP, SEXP varianceSEXP, SEXP adjustSEXP, SEXP zSEXP, SEXP keep_radiusSEXP, SEXP combineSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type a(aSEXP);
+    Rcpp::traits::input_parameter< List >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type from(fromSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type to(toSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image_unit(image_unitSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image_group(image_groupSEXP);
+    Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
+    Rcpp::traits::input_parameter< bool >::type image_heterogeneity(image_heterogeneitySEXP);
+    Rcpp::traits::input_parameter< bool >::type frailty(frailtySEXP);
+    Rcpp::traits::input_parameter< std::string >::type variance(varianceSEXP);
+    Rcpp::traits::input_parameter< bool >::type adjust(adjustSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type z(zSEXP);
+    Rcpp::traits::input_parameter< int >::type keep_radius(keep_radiusSEXP);
+    Rcpp::traits::input_parameter< std::string >::type combine(combineSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_pair_tests(a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -921,6 +950,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_max_t", (DL_FUNC) &_spicyR_stats_max_t, 3},
     {"_spicyR_stats_davies", (DL_FUNC) &_spicyR_stats_davies, 3},
     {"_spicyR_stats_mvn_outside", (DL_FUNC) &_spicyR_stats_mvn_outside, 3},
+    {"_spicyR_stats_pair_tests", (DL_FUNC) &_spicyR_stats_pair_tests, 19},
     {NULL, NULL, 0}
 };
 

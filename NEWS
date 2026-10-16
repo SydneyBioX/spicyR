@@ -1,3 +1,25 @@
+CHANGES IN VERSION 1.99.24
+--------------------------
+
+    o spicy() (method = "cell", two conditions) tests every pair at every radius in one call to the C++ core
+      (src/core/src/pairs.cpp, pair_tests()): the image rows, the image random effect, the frailty test, the
+      adjusted design and, with several radii, the max-T, Davies or Cauchy combination. Before, each (pair, radius)
+      test went back to R, which turned the core's results into data.frames one row at a time; that bookkeeping,
+      not the arithmetic, took over 95% of the time. The tests, degrees of freedom, variances and combinations are
+      unchanged and the results are identical() to 1.99.23's. On one core, for 50 images of 5,000 cells: with
+      r = seq_len(25) * 2 and combine = "davies", 80 cell types (6,320 pairs) take 8.6 s (263 s before), 40 types
+      3.1 s (62 s), 20 types 1.4 s (15 s) and 10 types 0.9 s (4.8 s); with r = 25, 80 types take 0.6 s (10.9 s)
+      and 40 types 0.3 s (2.5 s). Ten million cells with r = 25 and 10 types take 9.3 s, as before. With
+      `cores` > 1 the pairs are also tested on that many threads, with identical results. More than two conditions,
+      survival outcomes and Kontextual keep their per-pair path, with the core's image rows now returned as
+      data.frames without a call to as.data.frame().
+    o writeCellStore() writes the image column as a categorical always (a character column with the images in
+      order of first appearance, a factor with its own levels), so Python's spatialdata.read_zarr() reads stores
+      made from a data.frame with character image IDs (it requires a categorical region key). The instance IDs are
+      written in 16 bits at least, which spatialdata also requires. In a column with missing values, the mask and
+      the numeric or logical values now carry the "array" encoding attributes, as anndata writes them, so anndata
+      no longer gives an OldFormatWarning on R stores. spicy() results from these stores are identical to those before.
+
 CHANGES IN VERSION 1.99.23
 --------------------------
 

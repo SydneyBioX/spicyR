@@ -431,7 +431,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_image_excess <- function(fits, ctx) {
   out <- lapply(fits, function(o) {
     v <- rep(NA_real_, ctx$n_images)
-    if (!is.null(o$rows) && nrow(o$rows)) v[o$rows$img + 1L] <- (o$rows$O - o$rows$E) / o$rows$n
+    if (length(o$rows$O)) v[o$rows$img + 1L] <- (o$rows$O - o$rows$E) / o$rows$n
     v })
   names(out) <- vapply(fits, .cell_labels, "")
   out

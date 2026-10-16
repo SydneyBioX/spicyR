@@ -189,3 +189,19 @@ test_that("writeCellStore() writes a store that spicy() and spatialdataR read", 
                                           imageInfo = "images")), a)
   unlink(path, recursive = TRUE)
 })
+
+test_that("a store with character image IDs and missing values is read by Python's spatialdata", {
+  py <- "/dskh/nobackup/ellisp/team-patrick/scratch/venv_spicyr_dev/bin/python"
+  skip_if_not(file.exists(py), "the spicyr-py development Python is not available")
+  d <- store_cells(4); d$imageID <- as.character(d$imageID)
+  d$score <- ifelse(seq_len(nrow(d)) %% 7 == 0, NA, seq_len(nrow(d)))   # a nullable integer column
+  path <- writeCellStore(d[, c("imageID", "cellType", "x", "y", "score")], tempfile(fileext = ".zarr"))
+  # an error if spatialdata refuses the table, or anndata warns of an old format
+  code <- paste0("import warnings, anndata, spatialdata as sd; ",
+                 "warnings.simplefilter('error', anndata._warnings.OldFormatWarning); ",
+                 "t = sd.read_zarr('", path, "').tables['table']; print(t.obs['imageID'].dtype, t.n_obs)")
+  out <- suppressWarnings(system2(py, c("-c", shQuote(code)), stdout = TRUE, stderr = TRUE))
+  expect_null(attr(out, "status"))
+  expect_true(any(grepl(paste("category", nrow(d)), out)))
+  unlink(path, recursive = TRUE)
+})

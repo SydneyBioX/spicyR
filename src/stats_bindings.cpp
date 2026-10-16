@@ -16,7 +16,7 @@ std::vector<int> ivec(const IntegerVector& v) { return std::vector<int>(v.begin(
 std::vector<double> dvec(const NumericVector& v) { return std::vector<double>(v.begin(), v.end()); }
 NumericVector nv(const std::vector<double>& v) { return NumericVector(v.begin(), v.end()); }
 
-ImageRows rows_from(const DataFrame& d) {
+ImageRows rows_from(const List& d) {
   ImageRows r;
   IntegerVector img = d["img"];
   NumericVector O = d["O"], E = d["E"], n = d["n"], v = d["v"];
@@ -24,9 +24,28 @@ ImageRows rows_from(const DataFrame& d) {
   return r;
 }
 
-DataFrame rows_to(const ImageRows& r) {
-  return DataFrame::create(_["img"] = IntegerVector(r.image.begin(), r.image.end()), _["O"] = nv(r.O),
-                           _["E"] = nv(r.E), _["n"] = nv(r.n), _["v"] = nv(r.v));
+// The image rows as the plain list of their columns.
+List rows_list(const ImageRows& r) {
+  return List::create(_["img"] = IntegerVector(r.image.begin(), r.image.end()), _["O"] = nv(r.O),
+                      _["E"] = nv(r.E), _["n"] = nv(r.n), _["v"] = nv(r.v));
+}
+
+// ... and as a data.frame, made directly (the class and compact row names as.data.frame gives) rather than by
+// DataFrame::create, which calls R's as.data.frame
+List rows_to(const ImageRows& r) {
+  List out = rows_list(r);
+  const int n = static_cast<int>(r.O.size());
+  out.attr("row.names") = n > 0 ? IntegerVector::create(NA_INTEGER, -n) : IntegerVector(0);
+  out.attr("class") = "data.frame";
+  return out;
+}
+
+// counts: R's images x types matrix, image-major
+std::vector<double> image_major(const NumericMatrix& counts) {
+  const int n_images = counts.nrow(), T = counts.ncol();
+  std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
+  for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
+  return cnt;
 }
 
 List design_list(const DesignResult& d) {
@@ -52,7 +71,7 @@ NumericVector stats_norm_quantile(NumericVector p) {
 }
 
 // [[Rcpp::export]]
-DataFrame stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, NumericMatrix counts,
+List stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, NumericMatrix counts,
                                   int from, int to, bool knn, NumericMatrix psi) {
   // counts: images x types (R layout); psi: types x images, or 0 x 0 for psi = 1
   const int n_images = counts.nrow(), T = counts.ncol();
@@ -67,7 +86,7 @@ DataFrame stats_excess_image_rows(NumericVector totals, NumericVector out_sq_tot
 }
 
 // [[Rcpp::export]]
-DataFrame stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts,
+List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts,
                                       int from, int to, NumericMatrix psi) {
   // self_expected: types x images (dataset_self_any_expected); counts: images x types; psi: types x images, or 0 x 0
   const int n_images = counts.nrow(), T = counts.ncol();
@@ -83,7 +102,7 @@ DataFrame stats_allocation_image_rows(NumericVector any_totals, NumericMatrix se
 }
 
 // [[Rcpp::export]]
-DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi) {
+List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi) {
   // sums: 7 x images (dataset_kontextual_sums); counts: images x types; psi: types x images, or 0 x 0
   const int n_images = counts.nrow(), T = counts.ncol();
   std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
@@ -97,9 +116,9 @@ DataFrame stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, 
 }
 
 // [[Rcpp::export]]
-DataFrame stats_image_heterogeneity_rows(DataFrame rows, IntegerVector unit) {
+List stats_image_heterogeneity_rows(List rows, IntegerVector unit) {
   double tau2 = 0;
-  DataFrame out = rows_to(image_heterogeneity_rows(rows_from(rows), ivec(unit), &tau2));
+  List out = rows_to(image_heterogeneity_rows(rows_from(rows), ivec(unit), &tau2));
   out.attr("tau2_image") = tau2;
   return out;
 }
@@ -133,7 +152,7 @@ NumericMatrix stats_label_clustering(SEXP ptr, IntegerVector from, IntegerVector
 }
 
 // [[Rcpp::export]]
-List stats_excess_test(DataFrame rows, IntegerVector unit, IntegerVector group, int n_units, bool frailty,
+List stats_excess_test(List rows, IntegerVector unit, IntegerVector group, int n_units, bool frailty,
                        std::string variance) {
   ExcessResult r = excess_test(rows_from(rows), ivec(unit), ivec(group), n_units, frailty,
                                variance == "hartung_knapp" ? Variance::HartungKnapp : Variance::CR2);
@@ -144,7 +163,7 @@ List stats_excess_test(DataFrame rows, IntegerVector unit, IntegerVector group, 
 }
 
 // [[Rcpp::export]]
-List stats_design_test(DataFrame rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericVector contrast,
+List stats_design_test(List rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericVector contrast,
                        double tau2) {
   const int N = Z.nrow(), q = Z.ncol();
   std::vector<double> z(static_cast<std::size_t>(N) * q);
@@ -153,7 +172,7 @@ List stats_design_test(DataFrame rows, IntegerVector unit, int n_units, NumericM
 }
 
 // [[Rcpp::export]]
-List stats_design_tests(DataFrame rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts,
+List stats_design_tests(List rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts,
                         double tau2, bool hartung_knapp) {
   // contrasts: one row per contrast, q columns
   const int N = Z.nrow(), q = Z.ncol(), k = contrasts.nrow();
@@ -167,7 +186,7 @@ List stats_design_tests(DataFrame rows, IntegerVector unit, int n_units, Numeric
 }
 
 // [[Rcpp::export]]
-List stats_availability_test(DataFrame rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x,
+List stats_availability_test(List rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x,
                              double tau2) {
   return design_list(availability_test(rows_from(rows), ivec(unit), ivec(group), n_units, dvec(x), tau2));
 }
@@ -183,7 +202,7 @@ List stats_cox_fit(NumericVector time, IntegerVector event, NumericMatrix X) {
 }
 
 // [[Rcpp::export]]
-List stats_survival_test(DataFrame rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time,
+List stats_survival_test(List rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time,
                          IntegerVector event, NumericVector x) {
   SurvivalResult r = survival_test(rows_from(rows), ivec(unit), n_units, dvec(martingale), dvec(time), ivec(event), dvec(x));
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["score_coef"] = r.score_coef, _["score_se"] = r.score_se,
@@ -219,4 +238,64 @@ double stats_mvn_outside(NumericVector lower, NumericVector upper, NumericMatrix
   std::vector<double> r(static_cast<std::size_t>(K) * K);
   for (int i = 0; i < K; ++i) for (int j = 0; j < K; ++j) r[static_cast<std::size_t>(i) * K + j] = R(i, j);
   return mvn_outside(dvec(lower), dvec(upper), r, K);
+}
+
+// [[Rcpp::export]]
+List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix counts, NumericMatrix psi,
+                      IntegerVector from, IntegerVector to, IntegerVector image_unit, IntegerVector image_group,
+                      int n_units, bool image_heterogeneity, bool frailty, std::string variance, bool adjust,
+                      NumericMatrix z, int keep_radius, std::string combine, int n_threads = 1) {
+  // a, b: one vector per radius (allocation: any totals and self_expected; count: totals and sq); counts: images x
+  // types; psi: types x images, or 0 x 0 for psi = 1; z: images x covariates (centred, NA where missing), or 0 x 0;
+  // keep_radius and the radius chosen are 1-based. Per pair and radius: K x P matrices.
+  const int K = a.size(), n_images = counts.nrow(), T = counts.ncol();
+  if (b.size() != K || K < 1) stop("stats_pair_tests: one a and one b per radius");
+  std::vector<NumericVector> av, bv;
+  PairTestInput in;
+  for (int k = 0; k < K; ++k) {
+    av.push_back(as<NumericVector>(a[k])); bv.push_back(as<NumericVector>(b[k]));
+    in.a.push_back(av.back().begin()); in.b.push_back(bv.back().begin());
+  }
+  std::vector<double> cnt = image_major(counts), ps, zz;
+  if (psi.nrow() > 0) {
+    ps.resize(static_cast<std::size_t>(T) * n_images);
+    for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) ps[static_cast<std::size_t>(t) * n_images + i] = psi(t, i);
+    in.psi = ps.data();
+  }
+  if (z.ncol() > 0) {
+    zz = image_major(z);
+    in.z = zz.data(); in.n_z = z.ncol();
+  }
+  in.allocation = allocation; in.knn = knn; in.counts = cnt.data(); in.n_types = T; in.n_images = n_images;
+  in.from = ivec(from); in.to = ivec(to);
+  in.image_unit = image_unit.begin(); in.image_group = image_group.begin(); in.n_units = n_units;
+  in.image_heterogeneity = image_heterogeneity; in.frailty = frailty;
+  in.variance = variance == "hartung_knapp" ? Variance::HartungKnapp : Variance::CR2;
+  in.adjust = adjust; in.keep_radius = keep_radius - 1; in.n_threads = n_threads;
+  in.combine = combine == "maxT" ? Combine::MaxT : combine == "davies" ? Combine::Davies
+             : combine == "cauchy" ? Combine::Cauchy : Combine::None;
+  PairTests r = pair_tests(in);
+  const int P = r.n_pairs, ne = 1 + r.n_z;
+  auto km = [&](const std::vector<double>& v) { NumericVector x(v.begin(), v.end()); x.attr("dim") = Dimension(K, P); return x; };
+  auto ki = [&](const std::vector<int>& v) { IntegerVector x(v.begin(), v.end()); x.attr("dim") = Dimension(K, P); return x; };
+  auto ke = [&](const std::vector<double>& v) { NumericVector x(v.begin(), v.end()); x.attr("dim") = Dimension(ne, K, P); return x; };
+  CharacterVector reason(r.design_reason.begin(), r.design_reason.end());
+  reason.attr("dim") = Dimension(K, P);
+  List rows(P), weight(P);
+  for (int p = 0; p < P; ++p) { rows[p] = rows_list(r.rows[p]); weight[p] = nv(r.image_weight[p]); }
+  IntegerVector best(P);
+  for (int p = 0; p < P; ++p) best[p] = r.best[p] < 0 ? NA_INTEGER : r.best[p] + 1;
+  List out;   // (more elements than List::create takes)
+  out.push_back(ki(r.ok), "ok"); out.push_back(ki(r.side), "side"); out.push_back(ki(r.n_rows), "n_rows");
+  out.push_back(km(r.tau2_image), "tau2_image"); out.push_back(km(r.coef_ref), "coef_ref");
+  out.push_back(km(r.coef_comp), "coef_comp"); out.push_back(km(r.difference), "difference");
+  out.push_back(km(r.se), "se"); out.push_back(km(r.df), "df"); out.push_back(km(r.p), "p");
+  out.push_back(km(r.tau2), "tau2"); out.push_back(km(r.u_difference), "u_difference");
+  out.push_back(km(r.u_se), "u_se"); out.push_back(km(r.u_df), "u_df"); out.push_back(km(r.u_p), "u_p");
+  out.push_back(ki(r.design), "design"); out.push_back(ki(r.abundance), "abundance");
+  out.push_back(reason, "design_reason"); out.push_back(ke(r.effect), "effect"); out.push_back(ke(r.effect_p), "effect_p");
+  out.push_back(rows, "rows"); out.push_back(weight, "image_weight"); out.push_back(best, "best");
+  out.push_back(nv(r.comb_p), "comb_p"); out.push_back(nv(r.comb_p_best), "comb_p_best");
+  out.push_back(nv(r.comb_u_p), "comb_u_p");
+  return out;
 }

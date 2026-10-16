@@ -229,3 +229,7 @@ stats_mvn_outside <- function(lower, upper, R) {
     .Call(`_spicyR_stats_mvn_outside`, lower, upper, R)
 }
 
+stats_pair_tests <- function(a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads = 1L) {
+    .Call(`_spicyR_stats_pair_tests`, a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads)
+}
+

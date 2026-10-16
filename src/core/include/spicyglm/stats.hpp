@@ -52,6 +52,12 @@ ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
                                 const std::vector<double>& psi);
 
+// The two above on the caller's arrays, without copies (psi: nullptr for psi = 1).
+ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, const double* counts, int n_types,
+                            int n_images, int from, int to, bool knn, const double* psi);
+ImageRows allocation_image_rows(const double* any_totals, const double* self_expected, const double* counts,
+                                int n_types, int n_images, int from, int to, const double* psi);
+
 // Label-clustering factor (Supplementary, "Label Clustering"): per (TARGET type, image) the median
 // over the requested REF types of HAC / (sigma^2 R), floored at 1. Returns type-major n_types x
 // n_images. Needs the radius index built at the HAC bandwidth's scale (radius graph: r).
@@ -190,5 +196,82 @@ MaxTResult davies_max(const std::vector<std::vector<double>>& influence, const s
 // recursive conditioning with Gauss-Legendre quadrature, relative accuracy kept in the tail.
 double mvn_outside(const std::vector<double>& lower, const std::vector<double>& upper,
                    const std::vector<double>& R, int K);
+
+// ------------------------------------------- every pair at every radius ---
+
+// spicy()'s two-condition test of every pair at every radius (or at the one k) in one call, with no per-test trip
+// back to the front end: per pair and radius the image rows (allocation_image_rows or excess_image_rows), the side,
+// the image random effect (image_heterogeneity_rows), excess_test and, when there is something to adjust for, the
+// design of the adjusted test (pair_design_test); then, with several radii, their combination (max_t, davies_max
+// or cauchy_combine) for the main and the unadjusted test. The numbers are exactly those of the front end calling
+// these functions one test at a time (R/cell.R of spicyR 1.99.23), whatever n_threads.
+enum class Combine { None, MaxT, Davies, Cauchy };
+
+struct PairTestInput {
+  // per radius (or the one k): allocation: a = any_totals, b = self_expected; count: a = totals, b = out_sq_totals
+  // (the layouts of allocation_image_rows / excess_image_rows)
+  std::vector<const double*> a, b;
+  bool allocation = true, knn = false;
+  const double* counts = nullptr;     // image-major n_images x n_types
+  int n_types = 0, n_images = 0;
+  const double* psi = nullptr;        // type-major n_types x n_images, or nullptr for psi = 1 (every radius)
+  std::vector<int> from, to;          // the pairs (0-based types)
+  const int* image_unit = nullptr;    // per image: its unit (patient) code
+  const int* image_group = nullptr;   // per image: its condition, 0 or 1, or negative when missing
+  int n_units = 0;
+  bool image_heterogeneity = true, frailty = true;
+  Variance variance = Variance::CR2;
+  // the adjusted test: the abundance (log share of the `from` type) and the covariates z (image-major
+  // n_images x n_z, already centred over the images; NaN where missing)
+  bool adjust = false;
+  const double* z = nullptr;
+  int n_z = 0;
+  int keep_radius = 0;                // the radius whose image rows and image weights are returned
+  Combine combine = Combine::None;    // with several radii
+  int n_threads = 1;                  // pairs handed out in turn to up to n_threads threads
+};
+
+// The adjusted test of one pair (R/cell.R .cell_design, .cell_design_tau2 and .cell_contrasts of spicyR 1.99.23, two
+// conditions): rows (after the image random effect) with a group of 0 or 1 (negative: missing; left out) and
+// complete covariates (NaN: missing), the design of the two group indicators, the centred log share of the `from`
+// type (adjust; when not constant) and the centred covariates; tau2 re-estimated (-1) when every added column is
+// constant within units, else held at `tau2` (frailty; 0 without). design = 0: nothing to adjust for (no column
+// added); 1: adjusted, `tests` = the condition contrast, then one per added column (abundance first); 2: the design
+// failed (`tests[0].reason`).
+struct PairDesign {
+  int design = 0;
+  bool abundance = false;             // the abundance column entered the design
+  std::vector<DesignResult> tests;
+};
+PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
+                            int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
+                            int n_z, bool frailty, double tau2, bool hartung_knapp);
+
+// Results, per pair and radius at index p * K + k (K radii); the main test is the adjusted one when design == 1,
+// else the unadjusted one.
+struct PairTests {
+  int n_pairs = 0, n_radii = 0, n_z = 0;
+  std::vector<int> ok;                // the unadjusted test was done
+  std::vector<int> side;              // allocation: 1 attraction, -1 avoidance; count: 0
+  std::vector<int> n_rows;            // image rows tested
+  std::vector<double> tau2_image;     // NaN without the image random effect or rows
+  std::vector<double> coef_ref, coef_comp, difference, se, df, p, tau2;   // the main test
+  std::vector<double> u_difference, u_se, u_df, u_p;   // the unadjusted test
+  std::vector<int> design;            // PairDesign::design
+  std::vector<int> abundance;         // PairDesign::abundance
+  std::vector<std::string> design_reason;   // design == 2: why
+  // the added columns (abundance, then the n_z covariates) at ((p * K + k) * (1 + n_z) + j): estimate and p, NaN
+  // where not in the design
+  std::vector<double> effect, effect_p;
+  // at keep_radius, per pair: the image rows tested and the unadjusted test's image weights (empty when not done)
+  std::vector<ImageRows> rows;
+  std::vector<std::vector<double>> image_weight;
+  // several radii, per pair with at least one radius tested: the radius chosen (0-based; -1 for none), the
+  // combined p of the main and of the unadjusted test, and the main test's p at the chosen radius
+  // (comb_u_p only when there is something to adjust for, else NaN)
+  std::vector<int> best;
+  std::vector<double> comb_p, comb_p_best, comb_u_p;
+};
+PairTests pair_tests(const PairTestInput& in);
 
 }  // namespace spicyglm

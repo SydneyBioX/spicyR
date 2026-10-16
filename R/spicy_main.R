@@ -247,58 +247,86 @@ spicy <- function(cells,
     graphs <- if (length(radii) > 1L) .cell_graphs_radii(ctx, radii, effect) else
       list(.cell_graph(ctx, pairs, r = if (is.na(radii)) NULL else radii, k = k, label_clustering = FALSE,
                        n_threads = cores, effect = effect))
-    per_r <- lapply(graphs, function(g) {
-      g$image_heterogeneity <- TRUE
-      lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], TRUE, variance, adjustAbundance, Z_extra))
-    })
-    res <- .cell_combine(per_r, radii, ctx, adjustAbundance || !is.null(covariates), combine)
+    if (length(ctx$levels) > 2L) {   # one radius: each pair's design in turn
+      g <- graphs[[1]]; g$image_heterogeneity <- TRUE
+      fits <- lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], TRUE, variance, adjustAbundance, Z_extra))
+      res <- list(table = .cell_table(fits, ctx, adjustAbundance || !is.null(covariates)), fits = fits)
+    } else res <- .cell_pairs(ctx, graphs, pairs, variance, adjustAbundance, Z_extra, radii, combine, cores)
   }
   out <- .cell_results(res, ctx, pheno, condition, subject, survival, radii, k, effect)
   if (!survival) out$variance <- variance
   out
 }
 
-## Several radii: per-radius tables, and one row per pair with the combined p-value (the main test and,
-## when adjusted, the unadjusted test). The other columns are those of the radius chosen by max-T.
-.cell_combine <- function(per_r, radii, ctx, adjusted, combine) {
-  tabs <- lapply(per_r, .cell_table, ctx = ctx, adjusted = adjusted)
-  if (length(radii) == 1L) return(list(table = tabs[[1]], fits = per_r[[1]]))
+## Two conditions: every pair at every radius in one call to the core (stats_pair_tests: per pair and radius the
+## image rows, the image random effect, the frailty test and the adjusted design, as .cell_pair_test() does for one,
+## and with several radii their combination), then the tables. Several radii: per-radius tables, and one row per pair
+## with the combined p-value (the main test and, when adjusted, the unadjusted test); the other columns are those of
+## the radius chosen by max-T. The image rows are those of the radius nearest the median.
+.cell_pairs <- function(ctx, graphs, pairs, variance, adjust, Z_extra, radii, combine, n_threads = 1L) {
+  allocation <- graphs[[1]]$effect == "allocation"
+  K <- length(graphs)
+  keep <- if (K > 1L) which.min(abs(radii - stats::median(radii))) else 1L
+  from <- vapply(pairs, `[`, "", 1L); to <- vapply(pairs, `[`, "", 2L)
+  x <- stats_pair_tests(lapply(graphs, `[[`, if (allocation) "any" else "totals"),
+                        lapply(graphs, `[[`, if (allocation) "self_expected" else "sq"), allocation, graphs[[1]]$knn,
+                        ctx$counts, graphs[[1]]$psi, match(from, ctx$type_labels) - 1L, match(to, ctx$type_labels) - 1L,
+                        ctx$image_unit, ctx$image_group, length(ctx$unit_labels), TRUE, TRUE, variance, adjust,
+                        if (is.null(Z_extra)) matrix(0, 0, 0) else Z_extra, keep, if (K > 1L) combine else "none",
+                        as.integer(n_threads))
+  adjusted <- adjust || !is.null(Z_extra)
+  tabs <- lapply(seq_len(K), function(k) .cell_pairs_table(x, k, from, to, allocation, adjust, colnames(Z_extra)))
+  fits <- lapply(seq_along(pairs), function(i) list(from = from[i], to = to[i], rows = x$rows[[i]],
+                                                    unadjusted = list(image_weight = x$image_weight[[i]])))
+  if (K == 1L) return(list(table = tabs[[1]], fits = fits))
   long <- do.call(rbind, Map(function(t, rr) if (!is.null(t)) cbind(r = rr, t), tabs, radii))
-  keys <- unique(long[, c("from", "to")])
-  # each radius's fits indexed by pair; the long table split by pair
-  pos <- lapply(per_r, function(fs) { ix <- seq_along(fs); names(ix) <- vapply(fs, function(z) paste(z$from, z$to, sep = "\r"), ""); as.list(ix) })
-  long_by <- split(long, paste(long$from, long$to, sep = "\r"))
-  comb <- function(tests) {
-    ok <- !vapply(tests, is.null, TRUE)
-    if (!any(ok)) return(NULL)
-    tt <- vapply(tests[ok], function(z) z$difference / z$se, 0); df <- vapply(tests[ok], `[[`, 0, "df")
-    pv <- vapply(tests[ok], `[[`, 0, "p")
-    if (combine %in% c("maxT", "davies")) {
-      fun <- if (combine == "maxT") stats_max_t else stats_davies
-      mt <- fun(do.call(cbind, lapply(tests[ok], `[[`, "influence")), tt, df)
-      list(best = which(ok)[mt$best], p = mt$p, p_best = pv[mt$best])
-    } else { b <- which.min(pv); list(best = which(ok)[b], p = stats_cauchy(pv), p_best = pv[b]) }
-  }
-  rows <- lapply(seq_len(nrow(keys)), function(i) {
-    f <- keys$from[i]; t <- keys$to[i]
-    fit_at <- lapply(seq_along(per_r), function(j) { o <- per_r[[j]][[pos[[j]][[paste(f, t, sep = "\r")]]]]
-      if (o$ok) o else NULL })
-    m <- comb(lapply(fit_at, function(o) o$test))
-    if (is.null(m)) return(NULL)
-    lp <- long_by[[paste(f, t, sep = "\r")]]
-    row <- lp[lp$r == radii[m$best], , drop = FALSE]
-    row$p_value <- m$p; row$p_value_best_radius <- m$p_best
-    if (adjusted) {
-      u <- comb(lapply(fit_at, function(o) o$unadjusted))
-      row$unadjusted_p_value <- if (is.null(u)) NA_real_ else u$p
-    }
-    row
-  })
-  tab <- do.call(rbind, rows); tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
+  # the rows of `long`: radius by radius, the pairs tested there; one row per pair (in order of first appearance),
+  # that of its chosen radius
+  pk <- lapply(seq_len(K), function(k) which(x$ok[k, ] == 1L))
+  at <- matrix(NA_integer_, K, length(pairs)); at[cbind(rep(seq_len(K), lengths(pk)), unlist(pk))] <- seq_along(unlist(pk))
+  key <- unique(unlist(pk))
+  tab <- long[at[cbind(x$best[key], key)], , drop = FALSE]
+  tab$p_value <- x$comb_p[key]; tab$p_value_best_radius <- x$comb_p_best[key]
+  if (adjusted) tab$unadjusted_p_value <- x$comb_u_p[key]
+  tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
   if (adjusted) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
   for (col in c("unadjusted_difference", "unadjusted_se", "unadjusted_df")) tab[[col]] <- NULL
   rownames(tab) <- paste(tab$from, tab$to, sep = "__")
-  list(table = .cell_order_columns(tab), fits = per_r[[which.min(abs(radii - stats::median(radii)))]], radius_table = long)
+  list(table = .cell_order_columns(tab), fits = fits, radius_table = long)
+}
+
+## The table of one radius from stats_pair_tests() (the columns and rows .cell_table() gives for the same fits).
+.cell_pairs_table <- function(x, k, from, to, allocation, adjust, zn) {
+  s <- which(x$ok[k, ] == 1L)
+  if (!length(s)) return(NULL)
+  at <- function(m) m[k, s]
+  tab <- data.frame(from = from[s], to = to[s], excess_ref = at(x$coef_ref), excess_comp = at(x$coef_comp),
+                    excess_difference = at(x$difference), se = at(x$se), df = at(x$df), p_value = at(x$p),
+                    tau2 = at(x$tau2), stringsAsFactors = FALSE)
+  if (allocation) tab$side <- c("avoid", "attract")[(at(x$side) > 0L) + 1L]
+  tab$tau2_image <- at(x$tau2_image)
+  if (adjust || !is.null(zn)) {
+    d <- at(x$design); ab <- at(x$abundance) == 1L
+    with_ab <- adjust & (ab | "abundance" %in% zn)
+    lab <- if (is.null(zn)) ifelse(with_ab, "abundance", "") else ifelse(with_ab, "abundance+covariates", "covariates")
+    tab$adjusted_for <- ifelse(d == 1L, lab, ifelse(d == 2L, paste0("none (", at(x$design_reason), ")"), "none"))
+    # the effect of each added column (abundance first, then the covariates), as named in the fits adjusted
+    dk <- which(d == 1L)
+    enames <- if (length(dk)) unique(c(if (ab[dk[1]]) "abundance", zn, if (any(ab[dk])) "abundance"))
+    for (nm in enames) {
+      j <- if (nm == "abundance") ifelse(ab, 1L, 1L + match(nm, zn)) else rep(1L + match(nm, zn), length(s))
+      e <- d == 1L & !is.na(j)
+      i3 <- cbind(j, k, s)[e, , drop = FALSE]
+      v <- rep(NA_real_, length(s)); v[e] <- x$effect[i3]; tab[[paste0(nm, "_effect")]] <- v
+      v <- rep(NA_real_, length(s)); v[e] <- x$effect_p[i3]; tab[[paste0(nm, "_p_value")]] <- v
+    }
+    tab$unadjusted_difference <- at(x$u_difference); tab$unadjusted_se <- at(x$u_se); tab$unadjusted_df <- at(x$u_df)
+    tab$unadjusted_p_value <- at(x$u_p)
+  }
+  tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
+  if (adjust || !is.null(zn)) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
+  rownames(tab) <- paste(tab$from, tab$to, sep = "__")
+  .cell_order_columns(tab)
 }
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair.

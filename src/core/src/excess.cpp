@@ -119,6 +119,12 @@ int distinct(const std::vector<int>& idx, const std::vector<int>& unit) {
 ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector<double>& out_sq_totals,
                             const std::vector<double>& counts, int n_types, int n_images, int from, int to,
                             bool knn, const std::vector<double>& psi) {
+  return excess_image_rows(totals.data(), out_sq_totals.data(), counts.data(), n_types, n_images, from, to, knn,
+                           psi.empty() ? nullptr : psi.data());
+}
+
+ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, const double* counts, int n_types,
+                            int n_images, int from, int to, bool knn, const double* psi) {
   // totals[(img * T + b) * T + a] = sum over the image's b cells of their a neighbours (R: tot[a, b, img])
   const int T = n_types;
   const bool self = from == to;
@@ -138,7 +144,7 @@ ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector
     double M = self ? N : N - nA;
     double p = self ? std::max(nA - 1, 0.0) / std::max(M - 1, 1.0) : nB / std::max(M, 1.0);
     double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(Q - L * L / std::max(M, 1.0), 0.0);
-    if (!psi.empty()) v *= psi[static_cast<std::size_t>(to) * n_images + img];
+    if (psi) v *= psi[static_cast<std::size_t>(to) * n_images + img];
     if (nB > 0 && v > 0) {
       out.image.push_back(img); out.O.push_back(O); out.E.push_back(p * L); out.n.push_back(nB); out.v.push_back(v);
     }
@@ -149,13 +155,19 @@ ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector
 ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
                                 const std::vector<double>& psi) {
+  return allocation_image_rows(any_totals.data(), self_expected.data(), counts.data(), n_types, n_images, from, to,
+                               psi.empty() ? nullptr : psi.data());
+}
+
+ImageRows allocation_image_rows(const double* any_totals, const double* self_expected, const double* counts,
+                                int n_types, int n_images, int from, int to, const double* psi) {
   // any_totals[(img * T + a) * T + b] = the number of the image's b cells with an a cell among their neighbours
   const int T = n_types;
   const bool self = from == to;
   auto any = [&](int a, int b, int img) { return any_totals[(static_cast<std::size_t>(img) * T + a) * T + b]; };
   ImageRows out;
   for (int img = 0; img < n_images; ++img) {
-    const double* cnt = counts.data() + static_cast<std::size_t>(img) * T;
+    const double* cnt = counts + static_cast<std::size_t>(img) * T;
     double nA = cnt[from], nB = cnt[to], N = 0;
     for (int t = 0; t < T; ++t) N += cnt[t];
     double O = any(from, to, img), L = 0;
@@ -164,7 +176,7 @@ ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std
     double p = self ? std::max(nA - 1, 0.0) / std::max(M - 1, 1.0) : nB / std::max(M, 1.0);
     double E = self ? self_expected[static_cast<std::size_t>(img) * T + from] : p * L;
     double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(L - L * L / std::max(M, 1.0), 0.0);
-    if (!psi.empty()) v *= psi[static_cast<std::size_t>(to) * n_images + img];
+    if (psi) v *= psi[static_cast<std::size_t>(to) * n_images + img];
     if (nB > 0 && v > 0) {
       out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(nB); out.v.push_back(v);
     }
