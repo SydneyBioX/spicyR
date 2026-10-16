@@ -231,11 +231,13 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## One pair's image rows, with the unit and group of each row.
 .cell_rows <- function(ctx, g, f, t) {
   fc <- match(f, ctx$type_labels) - 1L; tc <- match(t, ctx$type_labels) - 1L
-  rows <- if (g$effect == "allocation") stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi)
-          else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi)
+  # images with a missing condition give no row: they play no part in the side, tau2_image or the test
+  rows <- if (g$effect == "allocation") stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi,
+                                                                    ctx$image_group)
+          else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi, ctx$image_group)
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
-  # allocation: the pair's side, chosen in the core from all images (attraction scales by 1 - q, avoidance by q)
+  # allocation: the pair's side, chosen in the core from the images (attraction scales by 1 - q, avoidance by q)
   side <- if (g$effect == "allocation") { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
   # images within a patient: each row becomes its effect (O - E) / n with variance v / n^2 + tau2_image
   if (isTRUE(g$image_heterogeneity) && nrow(rows)) {
@@ -305,23 +307,26 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_rows_test <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra = NULL) {
   if (length(ctx$levels) > 2L) return(.cell_pair_test_levels(ctx, rows, f, t, frailty, variance, adjust, Z_extra))
   m <- length(ctx$unit_labels)
-  r <- stats_excess_test(rows, rows$unit, rows$group, m, frailty, variance)
+  rules <- .cell_rules(rows)
+  r <- stats_excess_test(rows, rows$unit, rows$group, m, frailty, variance, rules$pooled_dispersion)
   out <- list(from = f, to = t, ok = r$ok, reason = r$reason, rows = rows, test = r, unadjusted = r, adjusted_for = "none")
   if (!r$ok) return(out)
-  # allocation: a condition with no informative patient (every image at -1 or +1, the bounds of the fraction) has a
-  # CR2 variance of exactly 0; the radius is not tested (as the core's pair_tests)
-  noinfo <- r$se > 0 && .cell_no_information(rows, 2L)
-  if (noinfo) { out$test$p <- NaN; out$unadjusted$p <- NaN }
+  # not tested (as the core's pair_tests): allocation, a condition with no informative patient (every image at -1 or
+  # +1, the bounds of the fraction; its CR2 variance is exactly 0); then a condition with fewer than 3 effective
+  # patients (its mean rests on one or two of them)
+  skip <- if (r$se > 0 && .cell_no_information(rows, 2L)) "no_information"
+          else if (rules$min_effective_units && r$se > 0 && min(r$n_eff) < rules$min_n_eff) "few_effective_units"
+  if (!is.null(skip)) { out$test$p <- NaN; out$unadjusted$p <- NaN }
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
-  if (noinfo) { out$adjusted_for <- "none (no_information)"; return(out) }
+  if (!is.null(skip)) { out$adjusted_for <- paste0("none (", skip, ")"); return(out) }
   # no variation (the unadjusted test is 0 / 0): an adjusted design would only fit rounding noise; not tested
   if (!(r$se > 0)) {
     out$test$p <- NaN; out$adjusted_for <- "none (no_variation)"
     return(out)
   }
   a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(2L, ncol(d$Z)), .cell_design_tau2(d, 2L, frailty, r$tau2),
-                          variance == "hartung_knapp")
+                          variance == "hartung_knapp", if (rules$pooled_dispersion) 2L else 0L)
   # a design that is not of full rank (e.g. a covariate confounded with the condition): the unadjusted test
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
   x <- a[[1]]
@@ -331,6 +336,10 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out$adjusted_for <- d$adjusted_for
   out
 }
+
+## The rules of the condition test for these rows' effect (the core's test_rules: allocation, image rows with a side, or
+## the count effect and Kontextual): the pooled dispersion, and the minimum effective number of patients per condition.
+.cell_rules <- function(rows) stats_test_rules(!is.null(attr(rows, "side")))
 
 ## Allocation (image rows with a side): TRUE when a condition (of G) has no informative patient, one with at least one
 ## image whose effect (O - E) / n is not exactly -1 or +1, the bounds of the fraction.
@@ -343,23 +352,27 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## reference (the first level), with the same adjustments as for two conditions.
 .cell_pair_test_levels <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra) {
   G <- length(ctx$levels); m <- length(ctx$unit_labels); hk <- variance == "hartung_knapp"
+  rules <- .cell_rules(rows); ng <- if (rules$pooled_dispersion) G else 0L
   per_level <- tapply(rows$unit, factor(rows$group, levels = seq_len(G) - 1L), function(u) length(unique(u)))
   out <- list(from = f, to = t, ok = FALSE, rows = rows, levels = ctx$levels, adjusted_for = "none")
   if (any(is.na(per_level) | per_level < 2L)) { out$reason <- "one_patient_per_group"; return(out) }
   rg <- rows[!is.na(rows$group), , drop = FALSE]   # images with a missing condition are left out
   Zg <- outer(rg$group, seq_len(G) - 1L, `==`) * 1
-  u <- stats_design_tests(rg, rg$unit, m, Zg, .cell_contrasts(G, G), if (frailty) -1 else 0, hk)
+  u <- stats_design_tests(rg, rg$unit, m, Zg, .cell_contrasts(G, G), if (frailty) -1 else 0, hk, ng)
   # not of full rank, or no variation (the condition means fit the response exactly; the design test checks it, so no
   # adjusted design is fitted then either)
   if (!u[[1]]$ok) { out$reason <- if (u[[1]]$reason == "no_variation") "no_variation" else "design_not_full_rank"; return(out) }
   if (.cell_no_information(rows, G)) { out$reason <- "no_information"; return(out) }
+  if (rules$min_effective_units && any(stats_effective_units(rg, rg$unit, rg$group, G, u[[1]]$tau2) < rules$min_n_eff)) {
+    out$reason <- "few_effective_units"; return(out)
+  }
   names(u) <- ctx$levels[-1]
   out$ok <- TRUE; out$levels_test <- out$unadjusted_levels <- u
   out$test <- list(coef_ref = u[[1]]$theta[1], tau2 = u[[1]]$tau2)
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
   a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(G, ncol(d$Z)),
-                          .cell_design_tau2(d, G, frailty, u[[1]]$tau2), hk)
+                          .cell_design_tau2(d, G, frailty, u[[1]]$tau2), hk, ng)
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
   out$levels_test <- stats::setNames(a[seq_len(G - 1L)], ctx$levels[-1])
   out$effects <- stats::setNames(a[-seq_len(G - 1L)], d$extra)

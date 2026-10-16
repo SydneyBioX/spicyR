@@ -143,16 +143,32 @@ ref_cr2 <- function(f, ell = c(-1, 1)) {
   list(V = sum(zeta^2), df = sum(diag(Om))^2 / sum(Om^2), Omega = Om)
 }
 
-## One pair: the test of delta_2 = delta_1 (Section 4.4), and the Hartung-Knapp option (Section 4.5).
-ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")) {
+## The pooled dispersion: each group's CR2 variance over its model variance (the diagonal of the bread), averaged
+## with the groups' numbers of units as weights; G group columns first in the design.
+ref_phi <- function(f, G, units_g) {
+  q <- ncol(f$B)
+  sum(vapply(seq_len(G), function(g) units_g[g] * ref_cr2(f, replace(numeric(q), g, 1))$V / f$B[g, g], 0)) / sum(units_g)
+}
+
+## Kish's effective number of units of each group: (sum w)^2 / sum w^2 of the units' weights w = D_i' W_i D_i.
+ref_n_eff <- function(f) vapply(1:2, function(g) {
+  w <- vapply(seq_along(f$idx)[f$g_u == g - 1], function(k) (t(f$D[[k]]) %*% f$W[[k]] %*% f$D[[k]])[g, g], 0)
+  sum(w)^2 / sum(w^2) }, 0)
+
+## One pair: the test of delta_2 = delta_1 (Section 4.4), and the Hartung-Knapp option (Section 4.5); the pooled
+## dispersion (with CR2), and no test when a group has fewer than 3 effective units.
+ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp"), effect = "count") {
   variance <- match.arg(variance)
   tau2 <- ref_tau2(d, unit, group); f <- ref_gee_fit(d, unit, group, tau2); cr <- ref_cr2(f)
   est <- f$beta[2] - f$beta[1]; V <- cr$V; df <- cr$df
   if (variance == "hartung_knapp") {
     m <- length(f$idx); X <- ref_pearson(d, unit, group, tau2); Vm <- f$B[1, 1] + f$B[2, 2]
-    V <- max(V, Vm * max(1, X / (m - 2))); df <- m - 2 }
+    V <- max(V, Vm * max(1, X / (m - 2))); df <- m - 2
+  } else V <- ref_phi(f, 2, as.vector(table(factor(f$g_u, 0:1)))) * (f$B[1, 1] + f$B[2, 2])
+  p <- 2 * stats::pt(-abs(est / sqrt(V)), df)
+  if (cr$V > 0 && min(ref_n_eff(f)) < 3) p <- NA_real_
   c(delta_ref = f$beta[1], delta_comp = f$beta[2], excess_difference = est, tau2 = tau2, se = sqrt(V), df = df,
-    p_value = 2 * stats::pt(-abs(est / sqrt(V)), df))
+    p_value = p)
 }
 
 ## Images within a unit: each row becomes y = (O - E) / n with variance v / n^2 + tau2_image, tau2_image the
@@ -178,7 +194,7 @@ ref_spicy_cell <- function(cells, pairs, r, label_clustering = TRUE, variance = 
     if (image_heterogeneity) d <- ref_image_heterogeneity(d, unit)
     ft <- strsplit(k, "__", fixed = TRUE)[[1]]
     ok <- all(vapply(0:1, function(g) length(unique(unit[group == g])) >= 2, TRUE))
-    res <- if (ok) ref_excess_test(d, unit, group, variance) else
+    res <- if (ok) ref_excess_test(d, unit, group, variance, effect) else
       c(delta_ref = NA, delta_comp = NA, excess_difference = NA, tau2 = NA, se = NA, df = NA, p_value = NA)
     data.frame(from = ft[1], to = ft[2], t(res)) }))
 }
@@ -191,7 +207,8 @@ ref_bdiag <- function(ms) {
 
 ## A general design (new_methods.pdf, Section 1) from the definitions: dense GLS with V_i = diag(v) + tau2 n n',
 ## the Bell-McCaffrey adjustment with symmetric square roots, and Omega = Gamma' Sigma Gamma.
-ref_design <- function(d, unit, Z, cvec, tau2) {
+## n_groups > 0: the pooled dispersion over the first n_groups columns (the group indicators).
+ref_design <- function(d, unit, Z, cvec, tau2, n_groups = 0) {
   idx <- split(seq_len(nrow(d)), factor(unit, levels = unique(unit)))
   V <- lapply(idx, function(u) diag(d$v[u], length(u)) + tau2 * tcrossprod(d$n[u])); W <- lapply(V, solve)
   D <- lapply(idx, function(u) d$n[u] * Z[u, , drop = FALSE]); Y <- lapply(idx, function(u) d$O[u] - d$E[u])
@@ -200,7 +217,12 @@ ref_design <- function(d, unit, Z, cvec, tau2) {
   f <- list(idx = idx, V = V, W = W, D = D, B = B, e = Map(function(D, y) drop(y - D %*% theta), D, Y))
   cr <- ref_cr2(f, cvec)
   est <- sum(cvec * theta)
-  c(estimate = est, se = sqrt(cr$V), df = cr$df, p = 2 * stats::pt(-abs(est / sqrt(cr$V)), cr$df))
+  V <- cr$V
+  if (n_groups > 0) {
+    units_g <- vapply(seq_len(n_groups), function(g) sum(vapply(idx, function(u) any(Z[u, g] != 0), NA)), 0)
+    V <- ref_phi(f, n_groups, units_g) * drop(t(cvec) %*% B %*% cvec)
+  }
+  c(estimate = est, se = sqrt(V), df = cr$df, p = 2 * stats::pt(-abs(est / sqrt(V)), cr$df))
 }
 
 ## A small data set: n_pat patients per group, two images each, six types; in group B, a fraction of the

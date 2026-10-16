@@ -12,8 +12,8 @@
 #' if a fraction f of the `to` cells were moved next to `from` cells, the effect is f. For a pair that avoids
 #' it is (observed share - q) / q: if a fraction f of the `to` cells that would have a `from` cell nearby were
 #' moved away, the effect is -f. Either way it does not depend on how many `from` cells there are or how
-#' densely they are packed. The side is chosen once per pair from all images, without the conditions, and is
-#' reported in the `side` column. `effect = "count"` gives the number of extra `from`
+#' densely they are packed. The side is chosen once per pair from all images with a condition, without the
+#' conditions, and is reported in the `side` column. `effect = "count"` gives the number of extra `from`
 #' cells within `r` of each `to` cell instead; it also reflects how many `from` cells surround a `to` cell
 #' (depth of infiltration), but it grows with how densely the `from` cells are packed, so a change in
 #' packing alone can appear as a change in co-localisation. Images are combined within patients and
@@ -35,6 +35,23 @@
 #' standard error would rest on the other condition alone. Its p-value is `NA` (with adjustment, `adjusted_for` is
 #' `"none (no_information)"`), and it is left out of the combination over radii. With more than two conditions, a
 #' pair where any condition has no informative patient is not tested.
+#'
+#' The conditions share one dispersion. Each condition's CR2 variance is divided by its
+#' model-based variance, the ratios are averaged over the conditions with their numbers of patients as weights,
+#' and the model-based variance of the difference is multiplied by this average. The degrees of freedom are those
+#' of CR2. A small condition's own spread does not set the standard error alone, which matters when the conditions
+#' are of unequal size and the patients' effects are skewed. With adjustment, the ratios are those of the
+#' coefficient of each condition in the adjusted design, and every coefficient's variance is scaled the same way.
+#' `variance = "hartung_knapp"` keeps its own variance.
+#'
+#' A patient's weight within its condition grows with the information of its images, so one or two patients can
+#' carry nearly all of a condition's weight. A radius where a condition has fewer than
+#' 3 effective patients (Kish's (sum w)^2 / sum w^2 of the patients' weights w) is not tested: its p-value is `NA`
+#' (with adjustment, `adjusted_for` is `"none (few_effective_units)"`), and it is left out of the combination over
+#' radii. With more than two conditions, a pair where any condition has fewer than 3 is not tested.
+#'
+#' Images with a missing condition are left out of every step: the choice of the side, the between-image
+#' variance and the tests.
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -73,9 +90,9 @@
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
-#' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df) or `"hartung_knapp"` (the
-#'   model-based variance, scaled by the Pearson statistic when that exceeds its df and never below CR2, on m - 2
-#'   df).
+#' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df, with the dispersion shared by the
+#'   conditions, see Details) or `"hartung_knapp"` (the model-based variance, scaled by
+#'   the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
 #' @param tableKey Cell method with a SpatialData store or object: the name of the cell table in `tables/` (by
@@ -417,7 +434,8 @@ spicy <- function(cells,
 .cell_results <- function(res, ctx, pheno, condition, subject, survival, radii, k, effect = "count") {
   tab <- res$table
   num <- vapply(tab, is.double, TRUE); tab[num] <- lapply(tab[num], function(z) { z[is.nan(z)] <- NA_real_; z })
-  if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types).",
+  if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types, ",
+                         "and at least 3 effective patients).",
                          call. = FALSE)
   out <- list(method = "cell", cellResults = tab)
   if (!survival && length(ctx$levels) > 2L) {

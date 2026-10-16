@@ -1,3 +1,47 @@
+CHANGES IN VERSION 1.99.29
+--------------------------
+
+    o spicy() (method = "cell", both effects) and kontextualEngine() no longer test a radius where a condition has
+      fewer than 3 effective patients: Kish's (sum w)^2 / sum w^2 of the patients' weights in that condition. A
+      patient's weight grows with the information of its images, and when the patients do not differ (frailty
+      variance 0) nothing caps it, so one patient with many cells can carry nearly all of a condition's weight. Such a
+      radius has p-value NA (and the unadjusted one; with adjustment, adjusted_for is "none (few_effective_units)")
+      and is left out of the combination over radii (davies, maxT, cauchy), as a radius with no informative patient
+      is. With more than two conditions, a pair where any condition has fewer than 3 is not tested. A condition with
+      fewer than 3 patients is never tested, and one with 3 or 4 rarely is.
+    o The test now shares one dispersion between the conditions. Each condition's CR2 variance is divided by its
+      model-based variance, the ratios are averaged with the conditions' numbers of patients as weights, and the
+      model-based variance of the difference is multiplied by this average; the Satterthwaite df are unchanged.
+      Before, each condition's CR2 variance entered on its own, so with conditions of unequal size and skewed patient
+      effects a small condition's low spread set the standard error and the test gave too many small p-values. With
+      adjustment, the ratios are those of each condition's coefficient in the adjusted design, and every coefficient's
+      variance (also the reported effect of each adjustment) is scaled by their average. variance = "hartung_knapp" is
+      unchanged.
+    o Images with a missing condition are now also left out of the choice of an allocation pair's side and of the
+      between-image variance (tau2_image), so the result equals the one with those images removed, also with
+      adjustment and several images per patient. Their per-image effect and weight (pairwiseAssoc, imageWeights) are
+      NA.
+    o Survival is unchanged.
+    o Calibration, on 11 real-data analyses with 30 relabellings of the conditions between patients each (the two
+      worst-calibrated, sorin and cords, and 9 others), as the share of relabellings with any BH-significant pair for
+      the combination over 25 radii (davies). The allocation effect: from 37% to 3.3% in sorin (404 patients, 340
+      against 64), from 23% to 3.3% in cords (one patient carried 99% of a condition's weight), and from 5.2% to 3.0%
+      on average over the other 9; for one radius, from 17% to 3.3% in sorin and from 17% to 6.7% in cords. The count
+      effect: from 33% to 3.3% in sorin, from 27% to 0% in cords and from 4.1% to 3.0% over the other 9; for one
+      radius, from 20% to 3.3%, from 17% to 0% and from 5.9% to 2.6%. On the 12 worst-calibrated of the paper's
+      analyses, the any-BH rate falls from 10.8% to 1.7% for the allocation effect (one radius: 5.0% to 2.5%) and
+      from 10.0% to 0.8% for the count effect (one radius: 5.6% to 1.1%).
+    o The pooled dispersion costs power where the conditions' dispersions differ. With the true labels, BH-significant
+      pairs over the 11 analyses go from 535 to 510 for the allocation effect (vannan 132 to 72, while karimi goes from
+      68 to 90 and jackson from 7 to 15) and from 641 to 546 for the count effect (vannan 224 to 67, while karimi goes
+      from 61 to 84 and metabric from 60 to 71).
+    o Results change at every condition test (the standard error, so the p-value; the estimates are unchanged) and
+      wherever images lack a condition. On the reference configurations, a radius's p-value moves by a median of 1e-4
+      to 0.05 depending on the data set, and a combined p-value by at most 0.66. diabetesData, with 4 patients in each
+      of its three stages, no longer tests 69 of its 179 allocation pairs at r = 50, and kontextualEngine() tests
+      neither triple alpha -> Tc, Th within T cells there (the example now uses delta cells). Survival is identical()
+      to 1.99.28's.
+
 CHANGES IN VERSION 1.99.28
 --------------------------
 

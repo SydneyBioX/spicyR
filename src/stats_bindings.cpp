@@ -72,8 +72,10 @@ NumericVector stats_norm_quantile(NumericVector p) {
 
 // [[Rcpp::export]]
 List stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, NumericMatrix counts,
-                                  int from, int to, bool knn, NumericMatrix psi) {
-  // counts: images x types (R layout); psi: types x images, or 0 x 0 for psi = 1
+                                  int from, int to, bool knn, NumericMatrix psi,
+                                  Nullable<IntegerVector> image_group = R_NilValue) {
+  // counts: images x types (R layout); psi: types x images, or 0 x 0 for psi = 1; image_group: per image (NA: a
+  // missing condition, no row), or NULL for every image
   const int n_images = counts.nrow(), T = counts.ncol();
   std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
   for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
@@ -82,13 +84,17 @@ List stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, 
     ps.resize(static_cast<std::size_t>(T) * n_images);
     for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) ps[static_cast<std::size_t>(t) * n_images + i] = psi(t, i);
   }
-  return rows_to(excess_image_rows(dvec(totals), dvec(out_sq_totals), cnt, T, n_images, from, to, knn, ps));
+  std::vector<int> ig;
+  if (image_group.isNotNull()) ig = ivec(IntegerVector(image_group));
+  return rows_to(excess_image_rows(dvec(totals), dvec(out_sq_totals), cnt, T, n_images, from, to, knn, ps, ig));
 }
 
 // [[Rcpp::export]]
 List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts,
-                                      int from, int to, NumericMatrix psi) {
-  // self_expected: types x images (dataset_self_any_expected); counts: images x types; psi: types x images, or 0 x 0
+                                      int from, int to, NumericMatrix psi,
+                                      Nullable<IntegerVector> image_group = R_NilValue) {
+  // self_expected: types x images (dataset_self_any_expected); counts: images x types; psi: types x images, or 0 x 0;
+  // image_group: per image (NA: a missing condition, no row and no part in the side), or NULL for every image
   const int n_images = counts.nrow(), T = counts.ncol();
   std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
   for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
@@ -97,8 +103,10 @@ List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_ex
     ps.resize(static_cast<std::size_t>(T) * n_images);
     for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) ps[static_cast<std::size_t>(t) * n_images + i] = psi(t, i);
   }
+  std::vector<int> ig;
+  if (image_group.isNotNull()) ig = ivec(IntegerVector(image_group));
   return rows_to(allocation_image_rows(dvec(any_totals), std::vector<double>(self_expected.begin(), self_expected.end()),
-                                       cnt, T, n_images, from, to, ps));
+                                       cnt, T, n_images, from, to, ps, ig));
 }
 
 // [[Rcpp::export]]
@@ -131,6 +139,20 @@ IntegerVector stats_informative_units(List rows, IntegerVector unit, IntegerVect
 }
 
 // [[Rcpp::export]]
+NumericVector stats_effective_units(List rows, IntegerVector unit, IntegerVector group, int n_groups, double tau2) {
+  // group: 0 .. n_groups - 1 per row (NA: left out)
+  std::vector<double> r = effective_units(rows_from(rows), ivec(unit), ivec(group), n_groups, tau2);
+  return NumericVector(r.begin(), r.end());
+}
+
+// [[Rcpp::export]]
+List stats_test_rules(bool allocation) {
+  TestRules r = test_rules(allocation);
+  return List::create(_["pooled_dispersion"] = r.pooled_dispersion, _["min_effective_units"] = r.min_effective_units,
+                      _["min_n_eff"] = kMinEffectiveUnits);
+}
+
+// [[Rcpp::export]]
 NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix raw,
                                           NumericMatrix counts, double h) {
   // raw: pairs x images (unweighted REF-TARGET pairs within r); returns types x images
@@ -160,13 +182,14 @@ NumericMatrix stats_label_clustering(SEXP ptr, IntegerVector from, IntegerVector
 
 // [[Rcpp::export]]
 List stats_excess_test(List rows, IntegerVector unit, IntegerVector group, int n_units, bool frailty,
-                       std::string variance) {
+                       std::string variance, bool pooled_dispersion = false) {
   ExcessResult r = excess_test(rows_from(rows), ivec(unit), ivec(group), n_units, frailty,
-                               variance == "hartung_knapp" ? Variance::HartungKnapp : Variance::CR2);
+                               variance == "hartung_knapp" ? Variance::HartungKnapp : Variance::CR2, pooled_dispersion);
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["coef_ref"] = r.coef_ref, _["coef_comp"] = r.coef_comp,
                       _["difference"] = r.difference, _["se"] = r.se, _["df"] = r.df, _["p"] = r.p, _["tau2"] = r.tau2,
                       _["influence"] = nv(r.influence), _["unit_summary"] = nv(r.unit_summary),
-                      _["unit_info"] = nv(r.unit_info), _["image_weight"] = nv(r.image_weight));
+                      _["unit_info"] = nv(r.unit_info), _["image_weight"] = nv(r.image_weight),
+                      _["n_eff"] = nv(r.n_eff));
 }
 
 // [[Rcpp::export]]
@@ -180,13 +203,14 @@ List stats_design_test(List rows, IntegerVector unit, int n_units, NumericMatrix
 
 // [[Rcpp::export]]
 List stats_design_tests(List rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericMatrix contrasts,
-                        double tau2, bool hartung_knapp) {
+                        double tau2, bool hartung_knapp, int n_groups = 0) {
   // contrasts: one row per contrast, q columns
   const int N = Z.nrow(), q = Z.ncol(), k = contrasts.nrow();
   std::vector<double> z(static_cast<std::size_t>(N) * q), c(static_cast<std::size_t>(k) * q);
   for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) z[static_cast<std::size_t>(i) * q + j] = Z(i, j);
   for (int i = 0; i < k; ++i) for (int j = 0; j < q; ++j) c[static_cast<std::size_t>(i) * q + j] = contrasts(i, j);
-  std::vector<DesignResult> r = design_tests(rows_from(rows), ivec(unit), n_units, z, q, c, k, tau2, hartung_knapp);
+  std::vector<DesignResult> r = design_tests(rows_from(rows), ivec(unit), n_units, z, q, c, k, tau2, hartung_knapp,
+                                             n_groups);
   List out(k);
   for (int i = 0; i < k; ++i) out[i] = design_list(r[i]);
   return out;

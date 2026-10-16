@@ -34,7 +34,8 @@ test_that("the cell method matches the plain-R reference for every pair", {
     ref <- data.frame(from = ref$from, to = ref$to, p_ref = ref$p_value, d_ref = ref$excess_difference)
     m <- merge(res, ref, by = c("from", "to"))
     expect_equal(nrow(m), nrow(grid))
-    expect_lt(max(abs(m$p_value - m$p_ref)), 1e-8)
+    expect_identical(is.na(m$p_value), is.na(m$p_ref))
+    expect_lt(max(abs(m$p_value - m$p_ref), na.rm = TRUE), 1e-8)
     expect_lt(max(abs(m$excess_difference - m$d_ref)), 1e-8)
   }
 })
@@ -264,8 +265,8 @@ test_that("results work with topPairs, bind, spicyBoxPlot and signifPlot", {
 })
 
 test_that("more than two conditions give one contrast per level", {
-  c3 <- cells; c3$condition <- as.character(c3$condition)
-  c3$condition[c3$patient %in% c("A01", "A02", "A03")] <- "C"
+  c3 <- sim_cells(n_pat = 10); c3$condition <- as.character(c3$condition)
+  c3$condition[c3$patient %in% sprintf("A%02d", 1:5)] <- "C"
   res <- suppressMessages(spicy(c3, "condition", subject = "patient", r = 30, from = "tumour", to = "T"))
   expect_equal(sort(unique(res$cellResults$level)), c("B", "C"))
   expect_equal(colnames(res$p.value), c("(Intercept)", "conditionB", "conditionC"))
@@ -275,8 +276,8 @@ test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), 
   # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T
   share <- spicyR:::.cell_share(ctx, rows, "T")
   Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share))
-  a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2")
-  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2)
+  a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2", TRUE)
+  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2, n_groups = 2)
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
                                 adjustAbundance = TRUE))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
@@ -365,53 +366,65 @@ test_that("variance is CR2 by default, whatever the number of patients; Hartung-
   expect_error(spicy(small, "condition", subject = "patient", variance = "auto"))
 })
 
-## Images with a missing condition are left out of every test: with one image per patient, the result equals that with
-## those images removed.
-mc_data <- function(n = 20) {
-  set.seed(2)
-  im <- data.frame(imageID = sprintf("i%02d", 1:n), cond = factor(rep(c("a", "b"), n / 2)), cv = rnorm(n),
-                   cond3 = factor(rep(c("x", "y", "z"), length.out = n)))
-  im$cond[1:2] <- NA; im$cond3[1:2] <- NA
-  cells <- do.call(rbind, lapply(1:n, function(i) data.frame(imageID = im$imageID[i],
-      cellType = sample(c("A", "B"), 500, TRUE), x = runif(500, 0, 500), y = runif(500, 0, 500))))
+## Images with a missing condition are left out of every step (the side, tau2_image, the tests): the result equals
+## that with those images removed. Patients have two images; p01 and p04 have no condition.
+mc_data <- function(n_pat = 18, seed = 2) {
+  set.seed(seed); n <- 2 * n_pat; pat <- rep(seq_len(n_pat), each = 2)
+  im <- data.frame(imageID = sprintf("i%02d", 1:n), patient = sprintf("p%02d", pat), cv = rnorm(n),
+                   cond = factor(rep(c("a", "b"), length.out = n_pat)[pat]),
+                   cond3 = factor(rep(c("x", "y", "z"), length.out = n_pat)[pat]))
+  im$cond[c(1:2, 7:8)] <- NA; im$cond3[c(1:2, 7:8)] <- NA
+  cells <- do.call(rbind, lapply(1:n, function(i) {
+    m <- sample(300:500, 1)
+    data.frame(imageID = im$imageID[i], cellType = sample(c("A", "B", "C"), m, TRUE, c(.5, .3, .2)),
+               x = runif(m, 0, 400), y = runif(m, 0, 400)) }))
   list(cells = cells, im = im)
 }
-mc_pair <- function(d, keep, ...) {
-  run <- function(cells, im) suppressMessages(spicy(cells, imageInfo = im, cellType = "cellType", r = 50, ...))
+mc_pair <- function(d, keep, r = 20, ...) {
+  run <- function(cells, im) suppressMessages(spicy(cells, imageInfo = im, cellType = "cellType", r = r, ...))
   full <- run(d$cells, d$im)
   sub <- run(d$cells[d$cells$imageID %in% d$im$imageID[keep], ], d$im[keep, ])
-  key <- function(x) x$cellResults[do.call(order, x$cellResults[intersect(c("from", "to", "level"), names(x$cellResults))]), ]
-  list(full = key(full), sub = key(sub))
+  key <- function(x) x[do.call(order, x[intersect(c("from", "to", "level", "r"), names(x))]), ]
+  list(full = key(full$cellResults), sub = key(sub$cellResults),
+       rfull = if (!is.null(full$radiusResults)) key(full$radiusResults), rsub = if (!is.null(sub$radiusResults)) key(sub$radiusResults))
+}
+mc_same <- function(x) {
+  expect_true(nrow(x$full) > 0)
+  expect_identical(names(x$full), names(x$sub))
+  expect_equal(x$full, x$sub, ignore_attr = TRUE)
+  if (!is.null(x$rfull)) expect_equal(x$rfull, x$rsub, ignore_attr = TRUE)
 }
 
-test_that("images with a missing condition are left out of the unadjusted test", {
-    d <- mc_data(); keep <- !is.na(d$im$cond)
-    for (effect in c("count", "allocation")) {
-        x <- mc_pair(d, keep, condition = "cond", effect = effect)
-        cols <- c("excess_ref", "excess_comp", "excess_difference", "se", "df", "p_value", "tau2")
-        expect_equal(x$full[, cols], x$sub[, cols])
-    }
+test_that("images with a missing condition are left out of every step, as if removed", {
+  d <- mc_data(); keep <- !is.na(d$im$cond)
+  for (effect in c("count", "allocation")) {
+    mc_same(mc_pair(d, keep, condition = "cond", effect = effect))
+    mc_same(mc_pair(d, keep, condition = "cond", subject = "patient", effect = effect))
+    mc_same(mc_pair(d, keep, condition = "cond", subject = "patient", r = c(10, 20, 30), combine = "davies",
+                    effect = effect))
+  }
 })
 
-test_that("images with a missing condition are left out of the covariate design and of its unadjusted test", {
-    d <- mc_data(); keep <- !is.na(d$im$cond)
-    for (effect in c("count", "allocation")) {
-        x <- mc_pair(d, keep, condition = "cond", covariates = "cv", effect = effect)
-        expect_true(all(x$full$adjusted_for == "covariates"))
-        cols <- c("excess_difference", "se", "df", "p_value", "cv_effect", "unadjusted_difference", "unadjusted_se",
-                  "unadjusted_df", "unadjusted_p_value")
-        expect_equal(x$full[, cols], x$sub[, cols])
-    }
+test_that("images with a missing condition are left out of the adjusted design, several images per patient", {
+  d <- mc_data(); keep <- !is.na(d$im$cond)
+  for (effect in c("count", "allocation")) {
+    x <- mc_pair(d, keep, condition = "cond", subject = "patient", covariates = "cv", effect = effect)
+    expect_true(any(x$full$adjusted_for == "covariates"))
+    mc_same(x)
+    x <- mc_pair(d, keep, condition = "cond", subject = "patient", adjustAbundance = TRUE, effect = effect)
+    expect_true(any(x$full$adjusted_for == "abundance"))
+    mc_same(x)
+    mc_same(mc_pair(d, keep, condition = "cond", subject = "patient", adjustAbundance = TRUE, covariates = "cv",
+                    r = c(10, 20, 30), combine = "maxT", effect = effect))
+  }
 })
 
 test_that("images with a missing condition are left out of the test of three conditions", {
-    d <- mc_data(); keep <- !is.na(d$im$cond3)
-    for (effect in c("count", "allocation")) {
-        x <- mc_pair(d, keep, condition = "cond3", effect = effect)
-        expect_true(nrow(x$full) > 0)
-        cols <- c("level", "excess_ref", "excess_difference", "se", "df", "p_value", "tau2")
-        expect_equal(x$full[, cols], x$sub[, cols])
-    }
+  d <- mc_data(); keep <- !is.na(d$im$cond3)
+  for (effect in c("count", "allocation")) {
+    mc_same(mc_pair(d, keep, condition = "cond3", subject = "patient", effect = effect))
+    mc_same(mc_pair(d, keep, condition = "cond3", subject = "patient", covariates = "cv", effect = effect))
+  }
 })
 
 ## tumour -> T with no variation at two radii: no T cell has a tumour cell within 2 (B cells do), and every T cell has
@@ -537,7 +550,7 @@ test_that("a radius where a condition has no informative patient is not tested",
   expect_identical(attr(rows, "side"), "avoid")
   expect_true(all(rows$O[rows$group == 0L] == -1))
   expect_identical(spicyR:::stats_informative_units(rows, rows$unit, rows$group, 2L), c(0L, 8L))
-  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2")
+  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2", TRUE)
   expect_true(u$ok && u$se > 0 && u$coef_ref == -1)
   # one radius: not tested, unadjusted and adjusted
   x <- run(4)$cellResults
@@ -561,12 +574,12 @@ test_that("a radius where a condition has no informative patient is not tested",
     expect_identical(a$cellResults$r, b$cellResults$r)
     if (adj) expect_identical(a$cellResults$unadjusted_p_value, b$cellResults$unadjusted_p_value)
   }
-  # the count effect has no bound and is tested as before (here O = 0 gives -E / n, which varies)
+  # the count effect has no bound, so no patient is at it (here O = 0 gives -E / n, which varies): tested
   for (r in c(4, 4.8)) {
     gc <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE, effect = "count")
     gc$image_heterogeneity <- TRUE
     rc <- spicyR:::.cell_rows(ctx, gc, "tumour", "T")
-    uc <- spicyR:::stats_excess_test(rc, rc$unit, rc$group, length(ctx$unit_labels), TRUE, "cr2")
+    uc <- spicyR:::stats_excess_test(rc, rc$unit, rc$group, length(ctx$unit_labels), TRUE, "cr2", TRUE)
     x <- run(r, effect = "count")$cellResults
     expect_identical(x$p_value, uc$p); expect_false(is.na(x$p_value))
   }
@@ -578,4 +591,121 @@ test_that("a radius where a condition has no informative patient is not tested",
     o <- spicyR:::.cell_pair_test(ctx3, g3, "tumour", "T", TRUE, "cr2", FALSE)
     if (r == 4) { expect_false(o$ok); expect_identical(o$reason, "no_information") } else expect_true(o$ok)
   }
+})
+
+## One patient per image; image 1 (condition A) has 30 times the cells of the others at the same density, so at radii
+## where the patients do not differ (tau2 = 0) it carries nearly all of A's weight. In every image a patient-specific
+## fraction of the T cells sits 8-10 units from a tumour cell: from r = 10 the patients differ, tau2 > 0 caps each
+## patient's weight, and A has about 7 effective patients.
+ne_cells <- function(seed = 4, n_img = 16, big = 30, n0 = 300, levels = c("A", "B")) {
+  set.seed(seed)
+  do.call(rbind, lapply(seq_len(n_img), function(i) {
+    m <- if (i == 1) big * n0 else n0; side <- 200 * sqrt(m / n0)
+    z <- data.frame(x = runif(m, 0, side), y = runif(m, 0, side),
+                    cellType = sample(c("tumour", "T", "other"), m, TRUE, c(.3, .2, .5)))
+    tum <- which(z$cellType == "tumour"); tc <- which(z$cellType == "T"); f <- runif(1, 0, 0.6)
+    mv <- tc[runif(length(tc)) < f]; h <- sample(tum, length(mv), TRUE)
+    a <- runif(length(mv), 0, 2 * pi); dd <- runif(length(mv), 8, 10)
+    z$x[mv] <- z$x[h] + dd * cos(a); z$y[mv] <- z$y[h] + dd * sin(a)
+    z$imageID <- sprintf("img%02d", i); z$condition <- levels[(i - 1) %% length(levels) + 1]; z$age <- 40 + (i * 7) %% 13
+    z }))
+}
+ne_rows <- function(ctx, r, effect = "allocation") {
+  g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE, effect = effect)
+  g$image_heterogeneity <- TRUE
+  spicyR:::.cell_rows(ctx, g, "tumour", "T")
+}
+## Kish's effective number of patients per condition, by hand from the image rows
+ne_kish <- function(rows, tau2) {
+  J <- tapply(rows$n^2 / rows$v, rows$unit, sum); gu <- tapply(rows$group, rows$unit, `[`, 1)
+  vapply(0:1, function(g) { w <- J[gu == g] / (1 + tau2 * J[gu == g]); sum(w)^2 / sum(w^2) }, 0)
+}
+
+test_that("a radius where a condition has fewer than 3 effective patients is not tested", {
+  d <- ne_cells()
+  run <- function(r, ...) suppressMessages(spicy(d, "condition", r = r, from = "tumour", to = "T", ...))
+  ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
+  m <- length(ctx$unit_labels)
+  rules <- spicyR:::stats_test_rules(TRUE)
+  expect_true(rules$pooled_dispersion && rules$min_effective_units); expect_identical(rules$min_n_eff, 3)
+  for (r in c(5, 12)) {
+    rows <- ne_rows(ctx, r)
+    u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", TRUE)
+    expect_equal(u$n_eff, ne_kish(rows, u$tau2), tolerance = 1e-12)
+    expect_equal(spicyR:::stats_effective_units(rows, rows$unit, rows$group, 2L, u$tau2), u$n_eff, tolerance = 1e-12)
+    few <- min(u$n_eff) < 3
+    expect_identical(few, r == 5)
+    x <- run(r)$cellResults
+    expect_identical(is.na(x$p_value), few); expect_equal(x$se, u$se, tolerance = 1e-12)
+    x <- run(r, covariates = "age")$cellResults
+    if (few) {
+      expect_identical(x$adjusted_for, "none (few_effective_units)")
+      expect_true(is.na(x$p_value)); expect_true(is.na(x$unadjusted_p_value))
+      g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE); g$image_heterogeneity <- TRUE
+      o <- spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", FALSE)
+      expect_true(o$ok); expect_true(is.nan(o$test$p))
+      Z <- matrix(d$age[ctx$first] - mean(d$age[ctx$first]), dimnames = list(NULL, "age"))
+      o <- spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", TRUE, Z)
+      expect_identical(o$adjusted_for, "none (few_effective_units)"); expect_true(is.nan(o$test$p))
+    } else expect_identical(x$adjusted_for, "covariates")
+  }
+  # several radii: r = 5 is left out of the combination
+  for (cmb in c("davies", "maxT", "cauchy")) for (adj in c(FALSE, TRUE)) {
+    a <- run(c(5, 12, 15), combine = cmb, adjustAbundance = adj)
+    b <- run(c(12, 15), combine = cmb, adjustAbundance = adj)
+    rr <- a$radiusResults
+    expect_true(is.na(rr$p_value[rr$r == 5])); expect_false(anyNA(rr$p_value[rr$r != 5]))
+    if (adj) expect_identical(rr$adjusted_for[rr$r == 5], "none (few_effective_units)")
+    expect_identical(a$cellResults$p_value, b$cellResults$p_value)
+    expect_identical(a$cellResults$r, b$cellResults$r)
+    if (adj) expect_identical(a$cellResults$unadjusted_p_value, b$cellResults$unadjusted_p_value)
+  }
+  # the count effect and Kontextual have the same rules
+  rc <- spicyR:::stats_test_rules(FALSE)
+  expect_true(rc$pooled_dispersion && rc$min_effective_units)
+  rows <- ne_rows(ctx, 5, "count")
+  uc <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", rc$pooled_dispersion)
+  x <- run(5, effect = "count")$cellResults
+  expect_identical(is.na(x$p_value), rc$min_effective_units && min(uc$n_eff) < 3)
+  expect_equal(x$se, uc$se, tolerance = 1e-12)
+  # more than two conditions: a pair where any condition has fewer than 3 effective patients is not tested
+  d3 <- ne_cells(seed = 5, n_img = 24, levels = c("A", "B", "C"))
+  ctx3 <- spicyR:::.cell_context(d3, "condition", NULL, "imageID", "cellType", c("x", "y"))
+  for (r in c(5, 12)) {
+    g3 <- spicyR:::.cell_graph(ctx3, list(c("tumour", "T")), r = r, label_clustering = FALSE); g3$image_heterogeneity <- TRUE
+    o <- spicyR:::.cell_pair_test(ctx3, g3, "tumour", "T", TRUE, "cr2", FALSE)
+    if (r == 5) { expect_false(o$ok); expect_identical(o$reason, "few_effective_units") } else expect_true(o$ok)
+  }
+})
+
+test_that("the allocation test pools the dispersion of the conditions (hand calculation)", {
+  d <- ne_cells()
+  ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
+  m <- length(ctx$unit_labels); rows <- ne_rows(ctx, 12)
+  u0 <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", FALSE)   # CR2: tau2 and df
+  # per condition: the frailty fit, its CR2 variance and model variance 1 / B
+  J <- tapply(rows$n^2 / rows$v, rows$unit, sum); s <- tapply(rows$n * (rows$O - rows$E) / rows$v, rows$unit, sum)
+  gu <- tapply(rows$group, rows$unit, `[`, 1)
+  per <- vapply(0:1, function(g) { i <- gu == g; a <- 1 / (1 + u0$tau2 * J[i]); B <- sum(a * J[i])
+    beta <- sum(a * s[i]) / B; r <- s[i] - beta * J[i]; h <- a * J[i] / B
+    c(beta = beta, V = sum(a^2 * r^2 / (B^2 * (1 - h))), EV = 1 / B, m = sum(i)) }, numeric(4))
+  expect_equal(u0$se^2, sum(per["V", ]), tolerance = 1e-10)
+  phi <- sum(per["m", ] * per["V", ] / per["EV", ]) / sum(per["m", ])
+  se <- sqrt(phi * sum(per["EV", ])); dif <- per["beta", 2] - per["beta", 1]
+  x <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T"))$cellResults
+  expect_equal(c(x$excess_difference, x$se, x$df, x$p_value),
+               unname(c(dif, se, u0$df, 2 * pt(-abs(dif / se), u0$df))), tolerance = 1e-10)
+  # Hartung-Knapp keeps its own variance
+  hk <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T", variance = "hartung_knapp"))$cellResults
+  uh <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "hartung_knapp", FALSE)
+  expect_equal(c(hk$se, hk$df, hk$p_value), c(uh$se, uh$df, uh$p), tolerance = 1e-12)
+  # adjusted: the ratio of each condition's coefficient, pooled the same way, scales every contrast's variance
+  xa <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T", covariates = "age"))$cellResults
+  age <- d$age[match(ctx$image_labels[rows$img + 1L], d$imageID)]
+  Z <- cbind(rows$group == 0, rows$group == 1, age - mean(age))
+  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), xa$tau2, n_groups = 2)
+  e <- ref_design(rows, rows$unit, Z, c(0, 0, 1), xa$tau2, n_groups = 2)
+  expect_equal(c(xa$excess_difference, xa$se, xa$df, xa$p_value), unname(b), tolerance = 1e-8)
+  expect_equal(c(xa$age_effect, xa$age_p_value), unname(e[c("estimate", "p")]), tolerance = 1e-8)
+  expect_equal(xa$unadjusted_p_value, x$p_value, tolerance = 1e-12)
 })

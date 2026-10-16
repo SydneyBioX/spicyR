@@ -2,8 +2,8 @@
 
 skip_if_not_installed("Rarr")
 
-store_cells <- function(seed = 2) {
-  d <- sim_cells(seed, n_pat = 4, n_cells = 250)
+store_cells <- function(seed = 2, n_pat = 4) {
+  d <- sim_cells(seed, n_pat = n_pat, n_cells = 250)
   d$imageID <- factor(d$imageID, levels = rev(unique(d$imageID)))   # categories not in sorted order
   d$cellType <- factor(d$cellType)
   d$patient <- factor(d$patient)
@@ -57,7 +57,7 @@ test_that("blocks of rows, batches of images, scattered images, strings and obs 
 })
 
 test_that("three conditions and a Zarr v2 store", {
-  d <- store_cells(5)
+  d <- store_cells(5, n_pat = 8)
   pat <- levels(d$patient); d$condition <- factor(c("x", "y", "z")[(match(d$patient, pat) - 1) %% 3 + 1])
   path <- write_cell_store(d, tempfile(fileext = ".zarr"), zarr_version = 2L)
   expect_same_spicy(d, path, condition = "condition", subject = "patient", imageID = "imageID", r = 30, ref = "z")

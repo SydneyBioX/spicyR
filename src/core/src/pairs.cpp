@@ -62,7 +62,8 @@ Combined combine_radii(const std::vector<RadiusTest>& tests, const std::vector<i
 
 PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                             int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
-                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit) {
+                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit,
+                            bool pooled_dispersion) {
   PairDesign out;
   const std::size_t N = rows.O.size();
   std::vector<char> keep(N);
@@ -144,7 +145,8 @@ PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit,
   std::vector<double> C(static_cast<std::size_t>(q - 1) * q, 0.0);
   C[0] = -1; C[1] = 1;
   for (int j = 1; j <= qx; ++j) C[static_cast<std::size_t>(j) * q + 1 + j] = 1;
-  out.tests = design_tests(subset_rows(rows, idx), unit_k, n_units, Z, q, C, q - 1, tau2_d, hartung_knapp);
+  out.tests = design_tests(subset_rows(rows, idx), unit_k, n_units, Z, q, C, q - 1, tau2_d, hartung_knapp,
+                           pooled_dispersion ? 2 : 0);
   out.design = out.tests[0].ok ? 1 : 2;
   return out;
 }
@@ -154,6 +156,7 @@ PairTests pair_tests(const PairTestInput& in) {
   const int P = static_cast<int>(in.from.size()), K = static_cast<int>(in.a.size()), nz = in.n_z, ne = 1 + nz;
   const std::size_t PK = static_cast<std::size_t>(P) * K;
   const bool adjusting = in.adjust || nz > 0, several = K > 1 && in.combine != Combine::None;
+  const TestRules rules = test_rules(in.allocation);
   res.n_pairs = P; res.n_radii = K; res.n_z = nz;
   res.ok.assign(PK, 0); res.side.assign(PK, 0); res.n_rows.assign(PK, 0); res.tau2_image.assign(PK, kNaN);
   for (auto* v : {&res.coef_ref, &res.coef_comp, &res.difference, &res.se, &res.df, &res.p, &res.tau2, &res.u_difference,
@@ -170,9 +173,10 @@ PairTests pair_tests(const PairTestInput& in) {
     std::vector<int> at;
     for (int k = 0; k < K; ++k) {
       const std::size_t o = static_cast<std::size_t>(pr) * K + k;
+      // images with a missing condition give no row (no part in the side, tau2_image or the tests)
       ImageRows r = in.allocation
-        ? allocation_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.psi)
-        : excess_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.knn, in.psi);
+        ? allocation_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.psi, in.image_group)
+        : excess_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.knn, in.psi, in.image_group);
       const std::size_t N = r.O.size();
       std::vector<int> unit(N), group(N);
       for (std::size_t i = 0; i < N; ++i) { unit[i] = in.image_unit[r.image[i]]; group[i] = in.image_group[r.image[i]]; }
@@ -188,7 +192,7 @@ PairTests pair_tests(const PairTestInput& in) {
         res.tau2_image[o] = tau2_image;
       }
       res.n_rows[o] = static_cast<int>(N);
-      ExcessResult u = excess_test(r, unit, group, in.n_units, in.frailty, in.variance);
+      ExcessResult u = excess_test(r, unit, group, in.n_units, in.frailty, in.variance, rules.pooled_dispersion);
       if (k == in.keep_radius) { res.rows[pr] = r; res.image_weight[pr] = u.image_weight; }
       if (!u.ok) continue;
       res.ok[o] = 1;
@@ -198,20 +202,27 @@ PairTests pair_tests(const PairTestInput& in) {
       const std::vector<double>* influence = &u.influence;
       // allocation: a condition with no informative unit (every image of every one of its patients at -1 or +1, the
       // bounds of the fraction) has a CR2 variance of exactly 0, so the test's se would come from the other condition
-      // alone. The radius is not tested: no design is fitted, p stays NaN (main and unadjusted), and nothing of it
-      // enters the combination over radii. (A radius with no variation at all is "no_variation" below.)
+      // alone ("no_information"). Then (TestRules): a condition with fewer than kMinEffectiveUnits effective units,
+      // whose mean rests on one or two patients ("few_effective_units"). Such a radius is not tested: no design is
+      // fitted, p stays NaN (main and unadjusted), and nothing of it enters the combination over radii. (A radius with
+      // no variation at all is "no_variation" below.)
+      const char* not_tested = nullptr;
       if (in.allocation && u.se > 0) {
         const std::vector<int> inf = informative_units(r, unit, group, 2);
-        if (inf[0] == 0 || inf[1] == 0) {
-          res.p[o] = kNaN; res.u_p[o] = kNaN;
-          if (adjusting) { res.design[o] = 2; res.design_reason[o] = "no_information"; }
-          if (several) {
-            at.push_back(k);
-            main.push_back({kNaN, res.df[o], kNaN, u.influence});
-            if (adjusting) unadj.push_back({kNaN, u.df, kNaN, u.influence});
-          }
-          continue;
+        if (inf[0] == 0 || inf[1] == 0) not_tested = "no_information";
+      }
+      if (!not_tested && rules.min_effective_units && u.se > 0 &&
+          std::min(u.n_eff[0], u.n_eff[1]) < kMinEffectiveUnits)
+        not_tested = "few_effective_units";
+      if (not_tested) {
+        res.p[o] = kNaN; res.u_p[o] = kNaN;
+        if (adjusting) { res.design[o] = 2; res.design_reason[o] = not_tested; }
+        if (several) {
+          at.push_back(k);
+          main.push_back({kNaN, res.df[o], kNaN, u.influence});
+          if (adjusting) unadj.push_back({kNaN, u.df, kNaN, u.influence});
         }
+        continue;
       }
       PairDesign d;
       if (adjusting) {
@@ -220,7 +231,7 @@ PairTests pair_tests(const PairTestInput& in) {
         // not tested: t and p stay NaN, so nothing of it enters the combination over radii.
         const bool fit = u.se > 0;
         d = pair_design_test(r, unit, group, in.n_units, in.counts, in.n_types, f, in.adjust, in.z, nz, in.frailty,
-                             u.tau2, in.variance == Variance::HartungKnapp, fit);
+                             u.tau2, in.variance == Variance::HartungKnapp, fit, rules.pooled_dispersion);
         if (d.design == 2 && !fit) res.p[o] = kNaN;
         res.design[o] = d.design; res.abundance[o] = d.abundance;
         if (d.design == 2) res.design_reason[o] = d.tests[0].reason;

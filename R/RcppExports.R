@@ -165,12 +165,12 @@ stats_norm_quantile <- function(p) {
     .Call(`_spicyR_stats_norm_quantile`, p)
 }
 
-stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn, psi) {
-    .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi)
+stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn, psi, image_group = NULL) {
+    .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi, image_group)
 }
 
-stats_allocation_image_rows <- function(any_totals, self_expected, counts, from, to, psi) {
-    .Call(`_spicyR_stats_allocation_image_rows`, any_totals, self_expected, counts, from, to, psi)
+stats_allocation_image_rows <- function(any_totals, self_expected, counts, from, to, psi, image_group = NULL) {
+    .Call(`_spicyR_stats_allocation_image_rows`, any_totals, self_expected, counts, from, to, psi, image_group)
 }
 
 stats_kontextual_image_rows <- function(sums, counts, from, to, psi) {
@@ -185,6 +185,14 @@ stats_informative_units <- function(rows, unit, group, n_groups) {
     .Call(`_spicyR_stats_informative_units`, rows, unit, group, n_groups)
 }
 
+stats_effective_units <- function(rows, unit, group, n_groups, tau2) {
+    .Call(`_spicyR_stats_effective_units`, rows, unit, group, n_groups, tau2)
+}
+
+stats_test_rules <- function(allocation) {
+    .Call(`_spicyR_stats_test_rules`, allocation)
+}
+
 stats_kontextual_clustering <- function(ptr, from, to, raw, counts, h) {
     .Call(`_spicyR_stats_kontextual_clustering`, ptr, from, to, raw, counts, h)
 }
@@ -193,16 +201,16 @@ stats_label_clustering <- function(ptr, from, to, counts, knn, h, allocation = F
     .Call(`_spicyR_stats_label_clustering`, ptr, from, to, counts, knn, h, allocation)
 }
 
-stats_excess_test <- function(rows, unit, group, n_units, frailty, variance) {
-    .Call(`_spicyR_stats_excess_test`, rows, unit, group, n_units, frailty, variance)
+stats_excess_test <- function(rows, unit, group, n_units, frailty, variance, pooled_dispersion = FALSE) {
+    .Call(`_spicyR_stats_excess_test`, rows, unit, group, n_units, frailty, variance, pooled_dispersion)
 }
 
 stats_design_test <- function(rows, unit, n_units, Z, contrast, tau2) {
     .Call(`_spicyR_stats_design_test`, rows, unit, n_units, Z, contrast, tau2)
 }
 
-stats_design_tests <- function(rows, unit, n_units, Z, contrasts, tau2, hartung_knapp) {
-    .Call(`_spicyR_stats_design_tests`, rows, unit, n_units, Z, contrasts, tau2, hartung_knapp)
+stats_design_tests <- function(rows, unit, n_units, Z, contrasts, tau2, hartung_knapp, n_groups = 0L) {
+    .Call(`_spicyR_stats_design_tests`, rows, unit, n_units, Z, contrasts, tau2, hartung_knapp, n_groups)
 }
 
 stats_availability_test <- function(rows, unit, group, n_units, x, tau2) {

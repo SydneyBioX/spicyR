@@ -35,14 +35,14 @@ struct ImageRows {
 // empty for psi = 1. knn: the k-nearest-neighbour graph (no self-loops), else the radius graph.
 ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector<double>& out_sq_totals,
                             const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                            bool knn, const std::vector<double>& psi);
+                            bool knn, const std::vector<double>& psi, const std::vector<int>& image_group = {});
 
 // The allocation effect: the fraction of TARGET cells moved next to (or away from) REF cells. `any_totals` is
 // Dataset::pair_neighbour_any_totals, `self_expected` Dataset::self_any_expected. Every candidate (a non-REF cell;
 // for a self-pair every cell) has the binary score g_b = 1{b has a REF cell among its neighbours}; O = sum of g over
 // the TARGET cells, E = p L with L = sum of g over the candidates (self-pair: the exact expectation `self_expected`),
 // q = E / n_to the null share of TARGET cells next to REF, and v = p (1 - p) M / (M - 1) (L - L^2 / M) psi (g^2 = g).
-// The side is chosen once per pair from the sum of O - E over all images (no group labels):
+// The side is chosen once per pair from the sum of O - E over the images (no group labels):
 //   attraction (sum >= 0): n = n_to - E, so (O - E) / n = (share - q) / (1 - q); a fraction f of TARGET cells moved
 //     next to REF cells gives f;
 //   avoidance (sum < 0): n = E, so (O - E) / n = (share - q) / q; a fraction f of the TARGET cells with a REF
@@ -50,13 +50,17 @@ ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector
 // in both cases however many REF cells there are and however densely they are packed.
 ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                                const std::vector<double>& psi);
+                                const std::vector<double>& psi, const std::vector<int>& image_group = {});
 
-// The two above on the caller's arrays, without copies (psi: nullptr for psi = 1).
+// The two above on the caller's arrays, without copies (psi: nullptr for psi = 1). image_group (per image; empty or
+// nullptr: every image): an image with a negative group (a missing condition) gives no row, so it plays no part in
+// the choice of the side either.
 ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, const double* counts, int n_types,
-                            int n_images, int from, int to, bool knn, const double* psi);
+                            int n_images, int from, int to, bool knn, const double* psi,
+                            const int* image_group = nullptr);
 ImageRows allocation_image_rows(const double* any_totals, const double* self_expected, const double* counts,
-                                int n_types, int n_images, int from, int to, const double* psi);
+                                int n_types, int n_images, int from, int to, const double* psi,
+                                const int* image_group = nullptr);
 
 // Label-clustering factor (Supplementary, "Label Clustering"): per (TARGET type, image) the median
 // over the requested REF types of HAC / (sigma^2 R), floored at 1. Returns type-major n_types x
@@ -100,6 +104,27 @@ ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>
 std::vector<int> informative_units(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                                    int n_groups);
 
+// The effective number of units (patients) of each group: Kish's (sum w)^2 / sum w^2 over the group's units, with a
+// unit's weight w = a J in the frailty model at tau2 (J = sum over its rows of n^2 / v, a = 1 / (1 + tau2 J)). It is
+// the number of units when they weigh the same, and near 1 when one unit carries the group's weight. Per group
+// 0 .. n_groups - 1 (`unit` and `group` per row; rows with a negative group are left out; 0 for a group with no unit).
+std::vector<double> effective_units(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
+                                    int n_groups, double tau2);
+
+// A condition test is not done when a condition has fewer effective units than this (TestRules).
+constexpr double kMinEffectiveUnits = 3;
+
+// The rules of the condition test, per effect (allocation: true; the count effect and Kontextual: false); every
+// effect has both.
+//   pooled_dispersion: the variance of the difference is the model variance 1 / B_0 + 1 / B_1 times
+//     phi = sum_g m_g (V_g / EV_g) / sum_g m_g, the ratio of each condition's CR2 variance V_g to its model variance
+//     EV_g = 1 / B_g, pooled over the conditions by their numbers of units m_g; the df are those of CR2. With
+//     variance = Hartung-Knapp the variance is that of Hartung-Knapp.
+//   min_effective_units: a radius where a condition has fewer than kMinEffectiveUnits effective units
+//     (effective_units, at the test's tau2) is not tested.
+struct TestRules { bool pooled_dispersion = false, min_effective_units = false; };
+TestRules test_rules(bool allocation);
+
 // ------------------------------------------------------ the two-group test ---
 
 enum class Variance { CR2, HartungKnapp };
@@ -113,12 +138,14 @@ struct ExcessResult {
   std::vector<double> unit_summary; // the patient summary delta~_i
   std::vector<double> unit_info;    // I_i
   std::vector<double> image_weight; // per image row: its share of its group's information (sums to 1 in each group)
+  std::vector<double> n_eff;        // per group (0, 1): its effective number of units at tau2 (effective_units)
 };
 
 // unit: unit code of every image (0 .. n_units - 1); group: 0 or 1 per image, or negative for a missing condition
-// (R's NA_integer_, Python's -1): those rows are left out (influence and image weight 0).
+// (R's NA_integer_, Python's -1): those rows are left out (influence and image weight 0). pooled_dispersion: the
+// variance of the difference pools the dispersion of the two groups (TestRules); the influences stay those of CR2.
 ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
-                         int n_units, bool frailty, Variance variance);
+                         int n_units, bool frailty, Variance variance, bool pooled_dispersion = false);
 
 // Paule-Mandel tau^2 of the two-group model (exposed for the tests).
 double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
@@ -140,9 +167,14 @@ struct DesignResult {
 DesignResult design_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                          const std::vector<double>& Z, int q, const std::vector<double>& contrast, double tau2);
 // Several contrasts of one fit: `contrasts` is row-major k x q. All results share theta and tau2.
+// n_groups > 0 (the first n_groups columns of Z are the condition indicators): the pooled dispersion of TestRules,
+// in the design. For each condition g, V_g is the CR2 variance and EV_g = (Z' V^-1 Z)^-1_gg the model variance of
+// its coefficient, m_g its number of units; phi = sum_g m_g (V_g / EV_g) / sum_g m_g, and every contrast c has
+// variance phi c' (Z' V^-1 Z)^-1 c, with its CR2 df. With only the indicators this is excess_test's pooled
+// dispersion. Not with hartung_knapp. The influences stay those of CR2.
 std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                                        const std::vector<double>& Z, int q, const std::vector<double>& contrasts,
-                                       int k, double tau2, bool hartung_knapp = false);
+                                       int k, double tau2, bool hartung_knapp = false, int n_groups = 0);
 
 // Option 2 (Supplementary Methods, Section 2): the two-group test with a slope on the centred covariate x
 // (the log share of the REF type), tau2 held at the unadjusted value. Rows with a negative group are left out.
@@ -278,13 +310,17 @@ struct PairDesign {
 };
 PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                             int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
-                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit = true);
+                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit = true,
+                            bool pooled_dispersion = false);
 
 // Results, per pair and radius at index p * K + k (K radii); the main test is the adjusted one when design == 1,
 // else the unadjusted one. Where the unadjusted test has no variation (se 0: 0 / 0) no design is fitted: design 2,
 // reason "no_variation", p NaN. Allocation: where a condition has no informative unit (informative_units) the radius
 // is not tested either: p and the unadjusted p NaN, and, when there is something to adjust for, design 2 with reason
-// "no_information"; it does not enter the combination over radii.
+// "no_information"; it does not enter the combination over radii. Likewise, where the effect's TestRules ask for it,
+// a radius where a condition has fewer than kMinEffectiveUnits effective units in the unadjusted test: reason
+// "few_effective_units". The tests use the effect's pooled dispersion (TestRules), unadjusted and adjusted. Images
+// with a missing condition give no row: they are left out of the side, of tau2_image and of every test.
 struct PairTests {
   int n_pairs = 0, n_radii = 0, n_z = 0;
   std::vector<int> ok;                // the unadjusted test was done

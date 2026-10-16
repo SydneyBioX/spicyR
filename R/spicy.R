@@ -555,7 +555,8 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     adj <- if (is.null(tab$adjusted_for)) character(0) else unique(tab$adjusted_for)
     novar <- sum(tab$adjusted_for %||% character(0) == "none (no_variation)")
     noinfo <- sum(tab$adjusted_for %||% character(0) == "none (no_information)")
-    fallback <- sum(startsWith(tab$adjusted_for %||% character(0), "none (")) - novar - noinfo
+    few <- sum(tab$adjusted_for %||% character(0) == "none (few_effective_units)")
+    fallback <- sum(startsWith(tab$adjusted_for %||% character(0), "none (")) - novar - noinfo - few
     adj <- adj[!startsWith(adj, "none")]
     if (length(adj)) cat("Adjusted for: ", paste(unique(unlist(strsplit(adj, "+", fixed = TRUE))), collapse = ", "),
                          if (!is.null(tab$unadjusted_p_adj)) " (unadjusted test in the unadjusted_* columns)", "\n", sep = "")
@@ -563,9 +564,11 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     if (novar) cat(novar, " pairs have no variation (adjusted_for \"none (no_variation)\") and are not tested\n", sep = "")
     if (noinfo) cat(noinfo, " pairs have a condition with no informative patient (adjusted_for \"none (no_information)\") and ",
                     "are not tested\n", sep = "")
+    if (few) cat(few, " pairs have a condition with fewer than 3 effective patients (adjusted_for ",
+                 "\"none (few_effective_units)\") and are not tested\n", sep = "")
     untested <- if (is.null(tab$adjusted_for) && is.null(df$survivalOutcome)) sum(is.na(tab$p_value)) else 0
-    if (untested) cat(untested, " pairs are not tested (p_value NA: no variation, or a condition with no informative ",
-                      "patient)\n", sep = "")
+    if (untested) cat(untested, " pairs are not tested (p_value NA: no variation, a condition with no informative ",
+                      "patient, or one with fewer than 3 effective patients)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
     cat("\nSee topPairs() and $cellResults.\n")

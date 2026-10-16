@@ -118,7 +118,7 @@ double design_tau2(const ImageRows& d, const Units& U, const MatrixXd& D) {
 
 std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                                        const std::vector<double>& Z, int q, const std::vector<double>& contrasts,
-                                       int k, double tau2, bool hartung_knapp) {
+                                       int k, double tau2, bool hartung_knapp, int n_groups) {
   std::vector<DesignResult> out(k);
   const int N = static_cast<int>(rows.O.size());
   MatrixXd D(N, q);
@@ -152,6 +152,25 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
     const double tol = 64 * std::numeric_limits<double>::epsilon() * N;
     if (rss <= tol * tol * yss) { for (auto& r : out) r.reason = "no_variation"; return out; }
   }
+  // the pooled dispersion: each condition's CR2 / model variance ratio of its coefficient, pooled by units
+  const bool pooled = n_groups > 0 && !hartung_knapp;
+  double phi = 1;
+  if (pooled) {
+    double num = 0, den = 0;
+    for (int g = 0; g < n_groups; ++g) {
+      const VectorXd bg = f.B.col(g);
+      double Vg = 0, mg = 0;
+      for (std::size_t u = 0; u < U.rows.size(); ++u) {
+        const double s = (A[u] * (f.X[u] * bg)).dot(E[u]);
+        Vg += s * s;
+        bool in_g = false;
+        for (int i : U.rows[u]) if (Z[static_cast<std::size_t>(i) * q + g] != 0) { in_g = true; break; }
+        if (in_g) ++mg;
+      }
+      num += mg * Vg / f.B(g, g); den += mg;
+    }
+    phi = num / den;
+  }
   double X_hk = 0;
   for (int c = 0; c < k; ++c) {
     DesignResult& res = out[c];
@@ -180,6 +199,8 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
       // the model-based variance, scaled by the Pearson statistic and floored at CR2, on m - q df
       if (c == 0) X_hk = pearson(rows, U, D, tau2);
       V = std::max(V, cv.dot(f.B * cv) * std::max(1.0, X_hk / nu)); res.df = nu;
+    } else if (pooled) {
+      V = phi * cv.dot(f.B * cv);
     }
     res.se = std::sqrt(V);
     res.p = pt_two_sided(res.estimate / res.se, res.df);

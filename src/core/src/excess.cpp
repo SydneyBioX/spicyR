@@ -121,13 +121,13 @@ int distinct(const std::vector<int>& idx, const std::vector<int>& unit) {
 
 ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector<double>& out_sq_totals,
                             const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                            bool knn, const std::vector<double>& psi) {
+                            bool knn, const std::vector<double>& psi, const std::vector<int>& image_group) {
   return excess_image_rows(totals.data(), out_sq_totals.data(), counts.data(), n_types, n_images, from, to, knn,
-                           psi.empty() ? nullptr : psi.data());
+                           psi.empty() ? nullptr : psi.data(), image_group.empty() ? nullptr : image_group.data());
 }
 
 ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, const double* counts, int n_types,
-                            int n_images, int from, int to, bool knn, const double* psi) {
+                            int n_images, int from, int to, bool knn, const double* psi, const int* image_group) {
   // totals[(img * T + b) * T + a] = sum over the image's b cells of their a neighbours (R: tot[a, b, img])
   const int T = n_types;
   const bool self = from == to;
@@ -135,6 +135,7 @@ ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, c
   auto sq = [&](int a, int b, int img) { return out_sq_totals[(static_cast<std::size_t>(img) * T + b) * T + a]; };
   ImageRows out;
   for (int img = 0; img < n_images; ++img) {
+    if (image_group && image_group[img] < 0) continue;   // a missing condition
     double nA = counts[static_cast<std::size_t>(img) * T + from], nB = counts[static_cast<std::size_t>(img) * T + to], N = 0;
     for (int t = 0; t < T; ++t) N += counts[static_cast<std::size_t>(img) * T + t];
     double O = tot(from, to, img), L = 0, Q = 0;
@@ -157,19 +158,21 @@ ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, c
 
 ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                                const std::vector<double>& psi) {
+                                const std::vector<double>& psi, const std::vector<int>& image_group) {
   return allocation_image_rows(any_totals.data(), self_expected.data(), counts.data(), n_types, n_images, from, to,
-                               psi.empty() ? nullptr : psi.data());
+                               psi.empty() ? nullptr : psi.data(), image_group.empty() ? nullptr : image_group.data());
 }
 
 ImageRows allocation_image_rows(const double* any_totals, const double* self_expected, const double* counts,
-                                int n_types, int n_images, int from, int to, const double* psi) {
+                                int n_types, int n_images, int from, int to, const double* psi,
+                                const int* image_group) {
   // any_totals[(img * T + a) * T + b] = the number of the image's b cells with an a cell among their neighbours
   const int T = n_types;
   const bool self = from == to;
   auto any = [&](int a, int b, int img) { return any_totals[(static_cast<std::size_t>(img) * T + a) * T + b]; };
   ImageRows out;
   for (int img = 0; img < n_images; ++img) {
+    if (image_group && image_group[img] < 0) continue;   // a missing condition: no row, and no say in the side
     const double* cnt = counts + static_cast<std::size_t>(img) * T;
     double nA = cnt[from], nB = cnt[to], N = 0;
     for (int t = 0; t < T; ++t) N += cnt[t];
@@ -184,7 +187,7 @@ ImageRows allocation_image_rows(const double* any_totals, const double* self_exp
       out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(nB); out.v.push_back(v);
     }
   }
-  // The side, once per pair from the pooled images (no group labels): attraction (sum O - E >= 0) scales by the
+  // The side, once per pair from the pooled images with a condition (no group labels): attraction (sum O - E >= 0) scales by the
   // TARGET cells without a REF neighbour under the null, n = n_to - E; avoidance by those with one, n = E.
   double pooled = 0;
   for (std::size_t i = 0; i < out.O.size(); ++i) pooled += out.O[i] - out.E[i];
@@ -361,6 +364,32 @@ std::vector<int> informative_units(const ImageRows& rows, const std::vector<int>
   return out;
 }
 
+std::vector<double> effective_units(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
+                                    int n_groups, double tau2) {
+  const std::size_t N = rows.O.size();
+  if (unit.size() != N || group.size() != N) throw std::invalid_argument("effective_units: one unit and group per row");
+  std::vector<double> out(n_groups, 0.0);
+  for (int g = 0; g < n_groups; ++g) {
+    std::vector<int> idx;
+    for (std::size_t i = 0; i < N; ++i) if (group[i] == g) idx.push_back(static_cast<int>(i));
+    if (idx.empty()) continue;
+    GroupFit f = fit_group(rows, idx, unit, tau2);
+    double sw = 0, sw2 = 0;
+    for (std::size_t u = 0; u < f.units.size(); ++u) { const double w = f.a[u] * f.J[u]; sw += w; sw2 += w * w; }
+    out[g] = sw * sw / sw2;
+  }
+  return out;
+}
+
+TestRules test_rules(bool allocation) {
+  // The allocation effect has both rules; so do the count effect and Kontextual (kCount*).
+  constexpr bool kCountPooledDispersion = true, kCountMinEffectiveUnits = true;
+  TestRules r;
+  r.pooled_dispersion = allocation || kCountPooledDispersion;
+  r.min_effective_units = allocation || kCountMinEffectiveUnits;
+  return r;
+}
+
 double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group, int) {
   std::vector<int> g0, g1; split_groups(group, g0, g1);
   int m = distinct(g0, unit) + distinct(g1, unit);
@@ -373,7 +402,7 @@ double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const st
 }
 
 ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
-                         int n_units, bool frailty, Variance variance) {
+                         int n_units, bool frailty, Variance variance, bool pooled_dispersion) {
   ExcessResult res;
   std::vector<int> g0, g1; split_groups(group, g0, g1);
   int m0 = distinct(g0, unit), m1 = distinct(g1, unit);
@@ -386,12 +415,24 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
   if (variance == Variance::HartungKnapp && nu >= 1) {
     double Vm = 1 / f0.B + 1 / f1.B, X = pearson_group(f0) + pearson_group(f1);
     v = std::max(v, Vm * std::max(1.0, X / nu)); df = nu;
+  } else if (variance == Variance::CR2 && pooled_dispersion) {
+    // each group's CR2 / model variance ratio, pooled by units, times the model variance (Student- rather than
+    // Welch-type: the groups share one dispersion); the df stay those of CR2
+    const double phi = (m0 * c0.V / c0.EV + m1 * c1.V / c1.EV) / (m0 + m1);
+    v = phi * (c0.EV + c1.EV);
   }
   res.ok = true; res.tau2 = tau2;
   res.coef_ref = f0.beta; res.coef_comp = f1.beta; res.difference = f1.beta - f0.beta;
   res.se = std::sqrt(v); res.df = df; res.p = pt_two_sided(res.difference / res.se, df);
   res.influence.assign(n_units, 0); res.unit_summary.assign(n_units, kNaN); res.unit_info.assign(n_units, 0);
   res.image_weight.assign(rows.O.size(), 0.0);
+  res.n_eff.assign(2, 0.0);
+  for (int g = 0; g < 2; ++g) {
+    const GroupFit& f = g == 0 ? f0 : f1;
+    double sw = 0, sw2 = 0;
+    for (std::size_t u = 0; u < f.units.size(); ++u) { const double w = f.a[u] * f.J[u]; sw += w; sw2 += w * w; }
+    res.n_eff[g] = sw * sw / sw2;
+  }
   for (int g = 0; g < 2; ++g) {
     const GroupFit& f = g == 0 ? f0 : f1;
     const std::vector<int>& idx = g == 0 ? g0 : g1;

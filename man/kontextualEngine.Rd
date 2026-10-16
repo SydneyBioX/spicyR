@@ -46,11 +46,13 @@ A \link[=SpicyResults-class]{SpicyResults} object with one row per triple (\code
 The computation behind \code{Statial::kontextualTest()}; use that function, whose help page describes the method.
 For each triple of \code{parentDf} it compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the \code{to} cells are a random choice among the parent's cells, and combines the
-images as \code{\link[=spicy]{spicy()}} does (frailty GEE, CR2 variance, label-clustering factor, abundance adjustment).
+images as \code{\link[=spicy]{spicy()}} does (frailty GEE, CR2 variance with the dispersion shared by the conditions, at least 3
+effective patients per condition, label-clustering factor, abundance adjustment).
 }
 \examples{
 data("diabetesData")
-parentDf <- data.frame(from = "alpha", to = c("Tc", "Th"), parent_name = "tcells")
+# with 4 patients per stage, few triples have 3 effective patients in every stage
+parentDf <- data.frame(from = "delta", to = c("Tc", "Th"), parent_name = "tcells")
 parentDf$parent <- list(c("Tc", "Th"), c("Tc", "Th"))
 res <- kontextualEngine(diabetesData, parentDf, condition = "stage", subject = "case", r = 50)
 

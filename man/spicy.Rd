@@ -74,9 +74,9 @@ radii); the same inputs always give the same value.}
 (default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}
 cells from more densely packed ones, and it removes real effects when the share tracks the condition.}
 
-\item{variance}{Cell method: \code{"cr2"} (the default: CR2 on Satterthwaite df) or \code{"hartung_knapp"} (the
-model-based variance, scaled by the Pearson statistic when that exceeds its df and never below CR2, on m - 2
-df).}
+\item{variance}{Cell method: \code{"cr2"} (the default: CR2 on Satterthwaite df, with the dispersion shared by the
+conditions, see Details) or \code{"hartung_knapp"} (the model-based variance, scaled by
+the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).}
 
 \item{ref}{Cell method: the reference level of \code{condition}.}
 
@@ -119,8 +119,8 @@ among the cells that are not \code{from} cells. The effect (\code{effect = "allo
 if a fraction f of the \code{to} cells were moved next to \code{from} cells, the effect is f. For a pair that avoids
 it is (observed share - q) / q: if a fraction f of the \code{to} cells that would have a \code{from} cell nearby were
 moved away, the effect is -f. Either way it does not depend on how many \code{from} cells there are or how
-densely they are packed. The side is chosen once per pair from all images, without the conditions, and is
-reported in the \code{side} column. \code{effect = "count"} gives the number of extra \code{from}
+densely they are packed. The side is chosen once per pair from all images with a condition, without the
+conditions, and is reported in the \code{side} column. \code{effect = "count"} gives the number of extra \code{from}
 cells within \code{r} of each \code{to} cell instead; it also reflects how many \code{from} cells surround a \code{to} cell
 (depth of infiltration), but it grows with how densely the \code{from} cells are packed, so a change in
 packing alone can appear as a change in co-localisation. Images are combined within patients and
@@ -142,6 +142,23 @@ patient is not tested: that condition's patients all have the same effect, so it
 standard error would rest on the other condition alone. Its p-value is \code{NA} (with adjustment, \code{adjusted_for} is
 \code{"none (no_information)"}), and it is left out of the combination over radii. With more than two conditions, a
 pair where any condition has no informative patient is not tested.
+
+The conditions share one dispersion. Each condition's CR2 variance is divided by its
+model-based variance, the ratios are averaged over the conditions with their numbers of patients as weights,
+and the model-based variance of the difference is multiplied by this average. The degrees of freedom are those
+of CR2. A small condition's own spread does not set the standard error alone, which matters when the conditions
+are of unequal size and the patients' effects are skewed. With adjustment, the ratios are those of the
+coefficient of each condition in the adjusted design, and every coefficient's variance is scaled the same way.
+\code{variance = "hartung_knapp"} keeps its own variance.
+
+A patient's weight within its condition grows with the information of its images, so one or two patients can
+carry nearly all of a condition's weight. A radius where a condition has fewer than
+3 effective patients (Kish's (sum w)^2 / sum w^2 of the patients' weights w) is not tested: its p-value is \code{NA}
+(with adjustment, \code{adjusted_for} is \code{"none (few_effective_units)"}), and it is left out of the combination over
+radii. With more than two conditions, a pair where any condition has fewer than 3 is not tested.
+
+Images with a missing condition are left out of every step: the choice of the side, the between-image
+variance and the tests.
 
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given
