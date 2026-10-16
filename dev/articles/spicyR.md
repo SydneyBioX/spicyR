@@ -756,7 +756,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.22) to
+A methods sentence might read: “We used spicyR (version 1.99.23) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -978,7 +978,7 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.22              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.23              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
@@ -1012,8 +1012,8 @@ sessionInfo()
 #>  [85] R.methodsS3_1.8.2    sass_0.4.10          digest_0.6.39       
 #>  [88] classInt_0.4-11      SparseArray_1.13.4   ZarrArray_1.1.7     
 #>  [91] rjson_0.2.23         htmlwidgets_1.6.4    farver_2.1.2        
-#>  [94] R.oo_1.27.1          memoise_2.0.1        htmltools_0.5.9     
-#>  [97] pkgdown_2.2.1        lifecycle_1.0.5      httr_1.4.9          
+#>  [94] memoise_2.0.1        htmltools_0.5.9      pkgdown_2.2.1       
+#>  [97] R.oo_1.27.1          lifecycle_1.0.5      httr_1.4.9          
 #> [100] bit64_4.8.6          MASS_7.3-65
 ```
 

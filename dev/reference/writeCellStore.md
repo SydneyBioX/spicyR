@@ -1,13 +1,16 @@
 # Write cells as a SpatialData Zarr store
 
 Writes a `data.frame` of cells as the cell table of a SpatialData Zarr
-store (an AnnData table under `tables/`, written with anndataR), which
+store (an AnnData table under `tables/`, in Zarr v3), which
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
 reads a block of rows at a time and spatialdataR's `readSpatialData()`
 reads as a `SpatialData` object. The coordinates become the `obsm` array
 `"spatial"`, the other columns the table's `obs` (factors as categorical
 columns), and the image column the table's region key. A table with one
-row per image can be added as a second table.
+row per image can be added as a second table. Each column is written in
+chunks of 2^20 rows compressed with zstd, one chunk at a time, so
+writing needs little memory beyond that of `cells`, however many cells
+it has.
 
 ## Usage
 
@@ -27,7 +30,8 @@ writeCellStore(
 
 - cells:
 
-  A `data.frame` with one row per cell.
+  A `data.frame` with one row per cell. Its columns are factors,
+  character, integer, double or logical vectors.
 
 - path:
 
@@ -59,7 +63,7 @@ writeCellStore(
 ``` r
 cells <- data.frame(imageID = factor(rep(c("a", "b"), each = 50)), cellType = factor(rep(c("T", "B"), 50)),
                     x = runif(100, 0, 100), y = runif(100, 0, 100))
-if (requireNamespace("anndataR", quietly = TRUE) && requireNamespace("Rarr", quietly = TRUE)) {
+if (requireNamespace("Rarr", quietly = TRUE)) {
   path <- writeCellStore(cells, tempfile(fileext = ".zarr"))
   list.files(file.path(path, "tables"))
 }
