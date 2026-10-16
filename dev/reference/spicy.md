@@ -211,6 +211,18 @@ When nearly every cell has a `from` cell within `r` (q close to 1),
 there is little room for attraction and an attracting pair's images
 carry little information; a smaller `r` is more informative.
 
+The allocation effect is bounded: an image of an avoiding pair with no
+`to` cell next to a `from` cell has the effect -1, and an image of an
+attracting pair with every `to` cell next to one has +1. A patient is
+informative at a radius when at least one of its images is not at -1 or
++1. A radius where one condition has no informative patient is not
+tested: that condition's patients all have the same effect, so its
+spread is exactly 0 and the standard error would rest on the other
+condition alone. Its p-value is `NA` (with adjustment, `adjusted_for` is
+`"none (no_information)"`), and it is left out of the combination over
+radii. With more than two conditions, a pair where any condition has no
+informative patient is not tested.
+
 **`method = "image"` (the original spicyR test).** A per-image
 L-function summary of each pair is compared between conditions with a
 weighted linear model, or a mixed model when `subject` is given (Canete

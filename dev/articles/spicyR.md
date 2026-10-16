@@ -231,7 +231,7 @@ The full results are in `res$cellResults`, with one row per pair:
 |----|----|
 | `excess_ref`, `excess_comp` | average effect in the reference group (ER−) and the comparison group (ER+) |
 | `excess_difference`, `se`, `df` | their difference, its standard error and degrees of freedom |
-| `p_value`, `p_adj` | p-value, and Benjamini–Hochberg adjusted p-value across all pairs |
+| `p_value`, `p_adj` | p-value (NA where the pair is not tested), and Benjamini–Hochberg adjusted p-value across all pairs |
 | `tau2` | how much the effect varies between patients within a group |
 | `adjusted_for`, `<covariate>_effect` | with covariates, what the test was adjusted for and the effect of each covariate |
 | `unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj` | with covariates, the same test without them |
@@ -462,6 +462,7 @@ resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
 resDonors
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 8 patients with 80 images
+#> 11 pairs are not tested (p_value NA: no variation, or a condition with no informative patient)
 #> BH-adjusted p < 0.05: 0 pairs
 #> See topPairs() and $cellResults.
 ```
@@ -475,6 +476,7 @@ resImages <- spicy(diabetes, condition = "stage", r = 50)
 resImages
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 80 images (no subject given: each image is a patient)
+#> 11 pairs are not tested (p_value NA: no variation, or a condition with no informative patient)
 #> BH-adjusted p < 0.05: 6 pairs
 #> See topPairs() and $cellResults.
 ```
@@ -673,8 +675,8 @@ shuffles <- do.call(rbind, lapply(1:10, function(i) {
 calibration <- aggregate(percent ~ threshold, shuffles, mean)
 calibration
 #>   threshold  percent
-#> 1  p < 0.01 1.446281
-#> 2  p < 0.05 6.074380
+#> 1  p < 0.01 1.136364
+#> 2  p < 0.05 6.818182
 ```
 
 ``` r
@@ -690,7 +692,7 @@ ggplot(shuffles, aes(threshold, percent)) +
 
 ![](spicyR_files/figure-html/shuffle-plot-1.png)
 
-On average 6.1% of pairs have p \< 0.05 and 1.4% have p \< 0.01, close
+On average 6.8% of pairs have p \< 0.05 and 1.1% have p \< 0.01, close
 to the expected 5% and 1%. Pairs share cells, so the percentage moves by
 a few points from one shuffle to the next.
 
@@ -756,7 +758,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.26) to
+A methods sentence might read: “We used spicyR (version 1.99.27) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -978,7 +980,7 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.26              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.27              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         

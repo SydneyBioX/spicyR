@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.26</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.27</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -212,6 +212,13 @@ log share of the <code>from</code> type in each image; the unadjusted test is th
 (<code>unadjusted_*</code> columns).</p>
 <p>When nearly every cell has a <code>from</code> cell within <code>r</code> (q close to 1), there is little room for attraction and
 an attracting pair's images carry little information; a smaller <code>r</code> is more informative.</p>
+<p>The allocation effect is bounded: an image of an avoiding pair with no <code>to</code> cell next to a <code>from</code> cell has the
+effect -1, and an image of an attracting pair with every <code>to</code> cell next to one has +1. A patient is informative at
+a radius when at least one of its images is not at -1 or +1. A radius where one condition has no informative
+patient is not tested: that condition's patients all have the same effect, so its spread is exactly 0 and the
+standard error would rest on the other condition alone. Its p-value is <code>NA</code> (with adjustment, <code>adjusted_for</code> is
+<code>"none (no_information)"</code>), and it is left out of the combination over radii. With more than two conditions, a
+pair where any condition has no informative patient is not tested.</p>
 <p><strong><code>method = "image"</code> (the original spicyR test).</strong> A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when <code>subject</code> is given
 (Canete et al. 2022).</p>
