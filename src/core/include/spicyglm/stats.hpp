@@ -91,6 +91,15 @@ std::vector<double> kontextual_clustering_factor(const Dataset& data, const std:
 // With one row per unit the rows are an exact rescaling of the input and every test gives the same result.
 ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>& unit, double* tau2_image = nullptr);
 
+// The allocation effect is bounded: an image with no TARGET cell next to a REF cell on the avoid side, or every one on
+// the attract side, has y = (O - E) / n = -1 or +1 exactly. A unit (patient) is informative when at least one of its
+// image rows has y other than -1 and +1. Returns, per group 0 .. n_groups - 1, the number of informative units
+// (`unit` and `group` per row; rows with a negative group are left out). In a group with none whose units are all at
+// the same bound (the side's floor or ceiling), every unit's score is exactly its information times the group's
+// estimate, so its CR2 variance is exactly 0. A group with no informative unit is not tested (pair_tests).
+std::vector<int> informative_units(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
+                                   int n_groups);
+
 // ------------------------------------------------------ the two-group test ---
 
 enum class Variance { CR2, HartungKnapp };
@@ -272,7 +281,9 @@ PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit,
 
 // Results, per pair and radius at index p * K + k (K radii); the main test is the adjusted one when design == 1,
 // else the unadjusted one. Where the unadjusted test has no variation (se 0: 0 / 0) no design is fitted: design 2,
-// reason "no_variation", p NaN.
+// reason "no_variation", p NaN. Allocation: where a condition has no informative unit (informative_units) the radius
+// is not tested either: p and the unadjusted p NaN, and, when there is something to adjust for, design 2 with reason
+// "no_information"; it does not enter the combination over radii.
 struct PairTests {
   int n_pairs = 0, n_radii = 0, n_z = 0;
   std::vector<int> ok;                // the unadjusted test was done

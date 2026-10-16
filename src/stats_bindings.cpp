@@ -124,6 +124,13 @@ List stats_image_heterogeneity_rows(List rows, IntegerVector unit) {
 }
 
 // [[Rcpp::export]]
+IntegerVector stats_informative_units(List rows, IntegerVector unit, IntegerVector group, int n_groups) {
+  // group: 0 .. n_groups - 1 per row (NA: left out)
+  std::vector<int> r = informative_units(rows_from(rows), ivec(unit), ivec(group), n_groups);
+  return IntegerVector(r.begin(), r.end());
+}
+
+// [[Rcpp::export]]
 NumericMatrix stats_kontextual_clustering(SEXP ptr, IntegerVector from, IntegerVector to, NumericMatrix raw,
                                           NumericMatrix counts, double h) {
   // raw: pairs x images (unweighted REF-TARGET pairs within r); returns types x images

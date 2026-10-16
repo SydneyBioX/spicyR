@@ -481,3 +481,75 @@ test_that("more than two conditions and survival do not test a pair with no vari
   g$image_heterogeneity <- TRUE
   expect_true(spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", TRUE)$ok)
 })
+
+## tumour -> T avoids, and at r = 4 no T cell of condition A has a tumour cell within r (every A image at -1): A has no
+## informative patient there. Condition B has some T cells within 4; at r = 4.8 and 5.2 some A T cells are within r.
+ni_cells <- function(n_img = 16, seed = 5, levels = c("A", "B")) {
+  set.seed(seed)
+  do.call(rbind, lapply(seq_len(n_img), function(i) {
+    g <- expand.grid(x = seq(10, 190, 20), y = seq(10, 190, 20)); nt <- sample(15:25, 1)
+    g <- g[sample(nrow(g), nt), ]; tx <- g$x; ty <- g$y
+    near <- function(n, lo, hi) { k <- sample(nt, n, TRUE); a <- runif(n, 0, 2 * pi); d <- runif(n, lo, hi)
+      cbind(tx[k] + d * cos(a), ty[k] + d * sin(a)) }
+    grp <- levels[(i - 1) %% length(levels) + 1]
+    nT <- sample(30:50, 1); nc <- if (grp == "A") 0 else round(nT * runif(1, 0.05, 0.3))
+    nB <- sample(40:60, 1); nF <- sample(30:50, 1)
+    xy <- rbind(cbind(tx, ty), near(nc, 2.5, 3.5), near(nT - nc, 4.5, 5.5), near(nB, 0.2, 1),
+                cbind(runif(nF, 300, 400), runif(nF, 300, 400)))
+    data.frame(imageID = sprintf("img%02d", i), condition = grp, x = xy[, 1], y = xy[, 2],
+               cellType = rep(c("tumour", "T", "B", "far"), c(nt, nT, nB, nF)), age = 40 + (i * 7) %% 13)
+  }))
+}
+
+test_that("a radius where a condition has no informative patient is not tested", {
+  d <- ni_cells()
+  run <- function(r, ...) suppressMessages(spicy(d, "condition", r = r, from = "tumour", to = "T", ...))
+  # the rows at r = 4: every image of A at -1, so A has no informative patient (B has all 8)
+  ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
+  g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = 4, label_clustering = FALSE); g$image_heterogeneity <- TRUE
+  rows <- spicyR:::.cell_rows(ctx, g, "tumour", "T")
+  expect_identical(attr(rows, "side"), "avoid")
+  expect_true(all(rows$O[rows$group == 0L] == -1))
+  expect_identical(spicyR:::stats_informative_units(rows, rows$unit, rows$group, 2L), c(0L, 8L))
+  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2")
+  expect_true(u$ok && u$se > 0 && u$coef_ref == -1)
+  # one radius: not tested, unadjusted and adjusted
+  x <- run(4)$cellResults
+  expect_true(is.na(x$p_value)); expect_identical(x$excess_ref, -1); expect_identical(x$se, u$se)
+  x <- run(4, covariates = "age", adjustAbundance = TRUE)$cellResults
+  expect_identical(x$adjusted_for, "none (no_information)")
+  expect_true(is.na(x$p_value)); expect_true(is.na(x$unadjusted_p_value))
+  o <- spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", FALSE)
+  expect_true(o$ok); expect_true(is.nan(o$test$p))
+  Z <- matrix(d$age[ctx$first] - mean(d$age[ctx$first]), dimnames = list(NULL, "age"))
+  o <- spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", TRUE, Z)
+  expect_identical(o$adjusted_for, "none (no_information)"); expect_true(is.nan(o$test$p))
+  # several radii: r = 4 is left out of the combination
+  for (cmb in c("davies", "maxT", "cauchy")) for (adj in c(FALSE, TRUE)) {
+    a <- run(c(4, 4.8, 5.2), combine = cmb, adjustAbundance = adj)
+    b <- run(c(4.8, 5.2), combine = cmb, adjustAbundance = adj)
+    rr <- a$radiusResults
+    expect_true(is.na(rr$p_value[rr$r == 4])); expect_false(anyNA(rr$p_value[rr$r != 4]))
+    if (adj) expect_identical(rr$adjusted_for[rr$r == 4], "none (no_information)")
+    expect_identical(a$cellResults$p_value, b$cellResults$p_value)
+    expect_identical(a$cellResults$r, b$cellResults$r)
+    if (adj) expect_identical(a$cellResults$unadjusted_p_value, b$cellResults$unadjusted_p_value)
+  }
+  # the count effect has no bound and is tested as before (here O = 0 gives -E / n, which varies)
+  for (r in c(4, 4.8)) {
+    gc <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE, effect = "count")
+    gc$image_heterogeneity <- TRUE
+    rc <- spicyR:::.cell_rows(ctx, gc, "tumour", "T")
+    uc <- spicyR:::stats_excess_test(rc, rc$unit, rc$group, length(ctx$unit_labels), TRUE, "cr2")
+    x <- run(r, effect = "count")$cellResults
+    expect_identical(x$p_value, uc$p); expect_false(is.na(x$p_value))
+  }
+  # more than two conditions: a pair where any condition has no informative patient is not tested
+  d3 <- ni_cells(24, levels = c("A", "B", "C"))
+  ctx3 <- spicyR:::.cell_context(d3, "condition", NULL, "imageID", "cellType", c("x", "y"))
+  for (r in c(4, 4.8)) {
+    g3 <- spicyR:::.cell_graph(ctx3, list(c("tumour", "T")), r = r, label_clustering = FALSE); g3$image_heterogeneity <- TRUE
+    o <- spicyR:::.cell_pair_test(ctx3, g3, "tumour", "T", TRUE, "cr2", FALSE)
+    if (r == 4) { expect_false(o$ok); expect_identical(o$reason, "no_information") } else expect_true(o$ok)
+  }
+})

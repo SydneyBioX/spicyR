@@ -196,6 +196,23 @@ PairTests pair_tests(const PairTestInput& in) {
       res.coef_ref[o] = u.coef_ref; res.coef_comp[o] = u.coef_comp; res.difference[o] = u.difference;
       res.se[o] = u.se; res.df[o] = u.df; res.p[o] = u.p; res.tau2[o] = u.tau2;
       const std::vector<double>* influence = &u.influence;
+      // allocation: a condition with no informative unit (every image of every one of its patients at -1 or +1, the
+      // bounds of the fraction) has a CR2 variance of exactly 0, so the test's se would come from the other condition
+      // alone. The radius is not tested: no design is fitted, p stays NaN (main and unadjusted), and nothing of it
+      // enters the combination over radii. (A radius with no variation at all is "no_variation" below.)
+      if (in.allocation && u.se > 0) {
+        const std::vector<int> inf = informative_units(r, unit, group, 2);
+        if (inf[0] == 0 || inf[1] == 0) {
+          res.p[o] = kNaN; res.u_p[o] = kNaN;
+          if (adjusting) { res.design[o] = 2; res.design_reason[o] = "no_information"; }
+          if (several) {
+            at.push_back(k);
+            main.push_back({kNaN, res.df[o], kNaN, u.influence});
+            if (adjusting) unadj.push_back({kNaN, u.df, kNaN, u.influence});
+          }
+          continue;
+        }
+      }
       PairDesign d;
       if (adjusting) {
         // no variation (e.g. no `to` cell has a `from` neighbour, or every one has): the unadjusted test is 0 / 0, and

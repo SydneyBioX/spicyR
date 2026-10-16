@@ -135,6 +135,14 @@ log share of the \code{from} type in each image; the unadjusted test is then rep
 When nearly every cell has a \code{from} cell within \code{r} (q close to 1), there is little room for attraction and
 an attracting pair's images carry little information; a smaller \code{r} is more informative.
 
+The allocation effect is bounded: an image of an avoiding pair with no \code{to} cell next to a \code{from} cell has the
+effect -1, and an image of an attracting pair with every \code{to} cell next to one has +1. A patient is informative at
+a radius when at least one of its images is not at -1 or +1. A radius where one condition has no informative
+patient is not tested: that condition's patients all have the same effect, so its spread is exactly 0 and the
+standard error would rest on the other condition alone. Its p-value is \code{NA} (with adjustment, \code{adjusted_for} is
+\code{"none (no_information)"}), and it is left out of the combination over radii. With more than two conditions, a
+pair where any condition has no informative patient is not tested.
+
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given
 (Canete et al. 2022).

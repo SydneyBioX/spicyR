@@ -1,3 +1,29 @@
+CHANGES IN VERSION 1.99.27
+--------------------------
+
+    o spicy() (method = "cell", effect = "allocation") no longer tests a radius where one condition has no
+      informative patient. The allocation effect is bounded: an image of an avoiding pair with no `to` cell next to a
+      `from` cell has the effect -1 exactly, and an image of an attracting pair with every `to` cell next to one has
+      +1. A patient is informative at a radius when at least one of its images is not at -1 or +1. When every patient
+      of a condition is at the bound, that condition's CR2 variance is exactly 0, the standard error rests on the few
+      informative patients of the other condition, and the Satterthwaite df stay at 9-14: on relabelled real data such
+      tests reached t of -44 to -63. Such a radius now has p-value NA (and the unadjusted one; with adjustment,
+      adjusted_for is "none (no_information)"), and it is left out of the combination over radii (davies, maxT,
+      cauchy). The rule is the same for one radius, for adjusted and unadjusted tests, and with more than two
+      conditions, where a pair with any condition without an informative patient is not tested. The printed summary
+      counts the pairs not tested.
+    o Calibration, on the 80 real-data analyses of the paper with 30 relabellings of the conditions between
+      patients each: the share of relabellings with any BH-significant pair falls from 9.8% to 3.4% for the
+      combination over 25 radii (davies) and from 3.5% to 2.8% for one radius; the rate of combined null p-values
+      below 1e-6 falls from 1.5e-5 to 2.5e-7. With the true labels, BH-significant pairs fall from 781 to 711. On 162
+      synthetic data sets with known truth, power is unchanged and the false-positive rate is lower.
+    o Results change only at such radii and in the combined p-values that included them. Of the reference
+      configurations, the 25-radius synthetic data with 40 types change at 156 of 40000 radius tests (all at the
+      smallest radius, avoiding pairs) and in the combined p-value of 131 of 1600 pairs, and diabetesData with its
+      three stages (r = 50) no longer tests 14 of 193 pairs; every other configuration, every count-effect result
+      (the count effect has no bound) and Kontextual are identical() to 1.99.26's. Survival is unchanged: its score
+      test has no condition groups, and a response with no variation at all is already not tested.
+
 CHANGES IN VERSION 1.99.26
 --------------------------
 

@@ -174,7 +174,7 @@ The full results are in `res$cellResults`, with one row per pair:
 |---|---|
 | `excess_ref`, `excess_comp` | average effect in the reference group (ER−) and the comparison group (ER+) |
 | `excess_difference`, `se`, `df` | their difference, its standard error and degrees of freedom |
-| `p_value`, `p_adj` | p-value, and Benjamini–Hochberg adjusted p-value across all pairs |
+| `p_value`, `p_adj` | p-value (NA where the pair is not tested), and Benjamini–Hochberg adjusted p-value across all pairs |
 | `tau2` | how much the effect varies between patients within a group |
 | `adjusted_for`, `<covariate>_effect` | with covariates, what the test was adjusted for and the effect of each covariate |
 | `unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj` | with covariates, the same test without them |
@@ -356,12 +356,12 @@ resImages
 ```
 
 ```{r check-several-images, include = FALSE}
-stopifnot(sum(resDonors$cellResults$p_adj < 0.05) == 0, sum(resImages$cellResults$p_adj < 0.05) > 0)
+stopifnot(sum(resDonors$cellResults$p_adj < 0.05, na.rm = TRUE) == 0, sum(resImages$cellResults$p_adj < 0.05, na.rm = TRUE) > 0)
 ```
 
 ::: {.callout .callout-important}
 Treating every image as an independent patient overstates the evidence: images from one donor are alike, and here
-it turns up `r sum(resImages$cellResults$p_adj < 0.05)` pairs that the donors do not support. Always give `subject` when patients have several images.
+it turns up `r sum(resImages$cellResults$p_adj < 0.05, na.rm = TRUE)` pairs that the donors do not support. Always give `subject` when patients have several images.
 :::
 
 # Adjusting for clinical covariates

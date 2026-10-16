@@ -181,6 +181,10 @@ stats_image_heterogeneity_rows <- function(rows, unit) {
     .Call(`_spicyR_stats_image_heterogeneity_rows`, rows, unit)
 }
 
+stats_informative_units <- function(rows, unit, group, n_groups) {
+    .Call(`_spicyR_stats_informative_units`, rows, unit, group, n_groups)
+}
+
 stats_kontextual_clustering <- function(ptr, from, to, raw, counts, h) {
     .Call(`_spicyR_stats_kontextual_clustering`, ptr, from, to, raw, counts, h)
 }

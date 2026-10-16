@@ -308,8 +308,13 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   r <- stats_excess_test(rows, rows$unit, rows$group, m, frailty, variance)
   out <- list(from = f, to = t, ok = r$ok, reason = r$reason, rows = rows, test = r, unadjusted = r, adjusted_for = "none")
   if (!r$ok) return(out)
+  # allocation: a condition with no informative patient (every image at -1 or +1, the bounds of the fraction) has a
+  # CR2 variance of exactly 0; the radius is not tested (as the core's pair_tests)
+  noinfo <- r$se > 0 && .cell_no_information(rows, 2L)
+  if (noinfo) { out$test$p <- NaN; out$unadjusted$p <- NaN }
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
+  if (noinfo) { out$adjusted_for <- "none (no_information)"; return(out) }
   # no variation (the unadjusted test is 0 / 0): an adjusted design would only fit rounding noise; not tested
   if (!(r$se > 0)) {
     out$test$p <- NaN; out$adjusted_for <- "none (no_variation)"
@@ -327,6 +332,13 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out
 }
 
+## Allocation (image rows with a side): TRUE when a condition (of G) has no informative patient, one with at least one
+## image whose effect (O - E) / n is not exactly -1 or +1, the bounds of the fraction.
+.cell_no_information <- function(rows, G) {
+  if (is.null(attr(rows, "side")) || is.null(rows$group)) return(FALSE)
+  any(stats_informative_units(rows, rows$unit, rows$group, as.integer(G)) == 0L)
+}
+
 ## More than two conditions: one design with an indicator per level, each level tested against the
 ## reference (the first level), with the same adjustments as for two conditions.
 .cell_pair_test_levels <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra) {
@@ -339,6 +351,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   # not of full rank, or no variation (the condition means fit the response exactly; the design test checks it, so no
   # adjusted design is fitted then either)
   if (!u[[1]]$ok) { out$reason <- if (u[[1]]$reason == "no_variation") "no_variation" else "design_not_full_rank"; return(out) }
+  if (.cell_no_information(rows, G)) { out$reason <- "no_information"; return(out) }
   names(u) <- ctx$levels[-1]
   out$ok <- TRUE; out$levels_test <- out$unadjusted_levels <- u
   out$test <- list(coef_ref = u[[1]]$theta[1], tau2 = u[[1]]$tau2)

@@ -339,6 +339,25 @@ ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>
   return out;
 }
 
+std::vector<int> informative_units(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
+                                   int n_groups) {
+  const std::size_t N = rows.O.size();
+  if (unit.size() != N || group.size() != N) throw std::invalid_argument("informative_units: one unit and group per row");
+  int n_units = 0;
+  for (int u : unit) n_units = std::max(n_units, u + 1);
+  std::vector<int> unit_group(n_units, -1);
+  std::vector<char> informative(n_units, 0);
+  for (std::size_t i = 0; i < N; ++i) {
+    if (group[i] < 0 || group[i] >= n_groups) continue;
+    unit_group[unit[i]] = group[i];
+    const double y = (rows.O[i] - rows.E[i]) / rows.n[i];
+    if (std::fabs(y) != 1) informative[unit[i]] = 1;
+  }
+  std::vector<int> out(n_groups, 0);
+  for (int u = 0; u < n_units; ++u) if (unit_group[u] >= 0 && informative[u]) ++out[unit_group[u]];
+  return out;
+}
+
 double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group, int) {
   std::vector<int> g0, g1; split_groups(group, g0, g1);
   int m = distinct(g0, unit) + distinct(g1, unit);
