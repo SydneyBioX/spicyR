@@ -1,3 +1,17 @@
+CHANGES IN VERSION 1.99.23
+--------------------------
+
+    o writeCellStore() writes the store itself, a chunk of 2^20 rows at a time, in place of one anndataR call that
+      wrote every array as a single chunk. It failed at 100 million cells (on the row index), and reading any slice
+      of a store it wrote decompressed the whole column. Every column, the row index and obsm "spatial" (float64,
+      as the cells give it) are now in chunks of 2^20 rows compressed with zstd, so spicy() reads a store a block at
+      a time. The layout is the AnnData encoding as before, with the same arrays, data types and attributes, and
+      spicy() results are identical to those from the old stores and from the cells in memory. Writing 100 million
+      cells takes 81 s and about 0.4 GB beyond the data.frame, and spicy(r = 25) from that store peaks at 1.8 GB on
+      one core and 5.2 GB on 8 (8.8 GB and 15.6 GB from the store written as single chunks). The region and instance keys in uns are now string
+      scalars and the per-image table carries the SpatialData table attributes, so Python's spatialdata reads the
+      store. anndataR is no longer suggested.
+
 CHANGES IN VERSION 1.99.22
 --------------------------
 

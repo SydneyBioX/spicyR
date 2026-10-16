@@ -175,7 +175,7 @@ test_that("a survival outcome from imageInfo, for a data.frame and for a store",
 })
 
 test_that("writeCellStore() writes a store that spicy() and spatialdataR read", {
-  skip_if_not_installed("anndataR")
+  old <- options(spicyR.store_write_chunk = 700L); on.exit(options(old))   # several chunks, the last one partial
   d <- store_cells(9)
   info <- unique(d[, c("imageID", "condition", "patient")]); rownames(info) <- as.character(info$imageID)
   info$imageID <- NULL

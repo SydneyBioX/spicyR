@@ -339,13 +339,15 @@
 
 #' Write cells as a SpatialData Zarr store
 #'
-#' Writes a `data.frame` of cells as the cell table of a SpatialData Zarr store (an AnnData table under `tables/`,
-#' written with anndataR), which [spicy()] reads a block of rows at a time and spatialdataR's `readSpatialData()`
-#' reads as a `SpatialData` object. The coordinates become the `obsm` array `"spatial"`, the other columns the
-#' table's `obs` (factors as categorical columns), and the image column the table's region key. A table with one
-#' row per image can be added as a second table.
+#' Writes a `data.frame` of cells as the cell table of a SpatialData Zarr store (an AnnData table under `tables/`, in
+#' Zarr v3), which [spicy()] reads a block of rows at a time and spatialdataR's `readSpatialData()` reads as a
+#' `SpatialData` object. The coordinates become the `obsm` array `"spatial"`, the other columns the table's `obs`
+#' (factors as categorical columns), and the image column the table's region key. A table with one row per image can
+#' be added as a second table. Each column is written in chunks of 2^20 rows compressed with zstd, one chunk at a
+#' time, so writing needs little memory beyond that of `cells`, however many cells it has.
 #'
-#' @param cells A `data.frame` with one row per cell.
+#' @param cells A `data.frame` with one row per cell. Its columns are factors, character, integer, double or
+#'   logical vectors.
 #' @param path The directory of the store (replaced if it exists).
 #' @param imageID,spatialCoords The column of the image and the two columns of the coordinates.
 #' @param tableKey The name of the cell table.
@@ -356,37 +358,247 @@
 #' @examples
 #' cells <- data.frame(imageID = factor(rep(c("a", "b"), each = 50)), cellType = factor(rep(c("T", "B"), 50)),
 #'                     x = runif(100, 0, 100), y = runif(100, 0, 100))
-#' if (requireNamespace("anndataR", quietly = TRUE) && requireNamespace("Rarr", quietly = TRUE)) {
+#' if (requireNamespace("Rarr", quietly = TRUE)) {
 #'   path <- writeCellStore(cells, tempfile(fileext = ".zarr"))
 #'   list.files(file.path(path, "tables"))
 #' }
 #' @export
 writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("x", "y"), tableKey = "table",
                            imageInfo = NULL, infoKey = "images") {
-  .need("anndataR", "to write a SpatialData store")
   .need("Rarr", "to write a SpatialData store")
   cells <- as.data.frame(cells)
   miss <- setdiff(c(imageID, spatialCoords), names(cells))
   if (length(miss)) stop("columns not found in `cells`: ", paste(miss, collapse = ", "), call. = FALSE)
+  obs <- cells[setdiff(names(cells), spatialCoords)]
+  .zarr_check_columns(obs, "cells")
+  if (!is.null(imageInfo)) { imageInfo <- as.data.frame(imageInfo); .zarr_check_columns(imageInfo, "imageInfo") }
   unlink(path, recursive = TRUE); dir.create(file.path(path, "tables"), recursive = TRUE)
   path <- normalizePath(path)
   Rarr::write_zarr_group(path, "", zarr_version = 3L)
   Rarr::write_zarr_group(path, "tables", zarr_version = 3L)
   Rarr::write_zarr_attributes(path, new.zattrs = list(spatialdata_attrs = list(version = "0.2")))
-  regions <- unique(as.character(cells[[imageID]]))
-  obs <- cells[setdiff(names(cells), spatialCoords)]
-  obs$instance_id <- seq_len(nrow(obs)) - 1L
-  rownames(obs) <- as.character(seq_len(nrow(obs)) - 1L)
-  xy <- cbind(as.numeric(cells[[spatialCoords[1]]]), as.numeric(cells[[spatialCoords[2]]]))
+  n <- nrow(cells)
+  img <- cells[[imageID]]
+  regions <- if (is.factor(img)) integer(0) else character(0)   # in order of first appearance, a chunk at a time
+  for (r in .zarr_chunks(n)) {
+    u <- unique(if (is.factor(img)) .subset(img, r[1]:r[2]) else as.character(img[r[1]:r[2]]))
+    regions <- c(regions, u[!u %in% regions])
+    .zarr_free()
+  }
+  if (is.factor(img)) regions <- levels(img)[regions]
   attrs <- list(region = regions, region_key = imageID, instance_key = "instance_id")
-  tab <- file.path(path, "tables", tableKey)
-  anndataR::write_zarr(anndataR::AnnData(obs = obs, var = data.frame(row.names = character(0)),
-                                         obsm = list(spatial = xy), uns = list(spatialdata_attrs = attrs)), tab)
-  Rarr::write_zarr_attributes(tab, new.zattrs = c(list(`spatialdata-encoding-type` = "ngff:regions_table",
-                                                       version = "0.2"), attrs))
-  if (!is.null(imageInfo))
-    anndataR::write_zarr(anndataR::AnnData(obs = as.data.frame(imageInfo), var = data.frame(row.names = character(0))),
-                         file.path(path, "tables", infoKey))
+  cx <- cells[[spatialCoords[1]]]; cy <- cells[[spatialCoords[2]]]
+  .zarr_write_anndata(file.path(path, "tables", tableKey), obs, n,
+                      index = function(a, b) .vlen_ids((a:b) - 1L),
+                      instance = TRUE,
+                      spatial = function(a, b) as.vector(rbind(as.numeric(cx[a:b]), as.numeric(cy[a:b]))),
+                      spatialdata_attrs = attrs,
+                      attrs = c(list(`spatialdata-encoding-type` = "ngff:regions_table", version = "0.2"), attrs))
+  if (!is.null(imageInfo)) {
+    ids <- rownames(imageInfo)
+    .zarr_write_anndata(file.path(path, "tables", infoKey), imageInfo, nrow(imageInfo),
+                        index = function(a, b) ids[a:b],
+                        attrs = list(`spatialdata-encoding-type` = "ngff:regions_table", version = "0.2"))
+  }
   Rarr::zarr_consolidate_metadata(path)
   invisible(path)
+}
+
+## ---- writing a store ---------------------------------------------------------------------------------------------
+## writeCellStore() writes each AnnData table in the encoding anndata gives it in a Zarr v3 store. Every array of the
+## length of the table is cut into chunks of .store_write_chunk() rows; each chunk is taken from the input, encoded
+## (little-endian numbers, or vlen-utf8 strings), compressed with zstd and written before the next is made, so no
+## whole column is ever copied.
+
+.store_write_chunk <- function() as.integer(getOption("spicyR.store_write_chunk", 2^20))
+
+## Frees the last chunk's temporary vectors (a collection of the youngest generation): without it they would pile
+## up until R's next full collection, whose threshold grows with the size of `cells`.
+.zarr_free <- function() invisible(gc(verbose = FALSE, full = FALSE))
+
+## The first and last rows of each chunk of n rows.
+.zarr_chunks <- function(n, ch = .store_write_chunk()) {
+  if (n < 1) return(list())
+  a <- seq.int(1L, n, by = ch)
+  .mapply(c, list(a, pmin(a + ch - 1L, n)), NULL)
+}
+
+## Columns of a type that can be written.
+.zarr_check_columns <- function(d, what) {
+  ok <- vapply(d, function(v) is.factor(v) || is.character(v) || is.logical(v) || is.numeric(v), TRUE)
+  if (!all(ok)) stop("columns of `", what, "` that are not factors, character, numbers or logical: ",
+                     paste(names(d)[!ok], collapse = ", "), call. = FALSE)
+  invisible(TRUE)
+}
+
+## The smallest integer type holding lo..hi (as anndata writes integers).
+.zarr_int_type <- function(lo, hi) {
+  if (lo < 0) return(if (lo >= -128 && hi <= 127) "int8" else if (lo >= -32768 && hi <= 32767) "int16" else "int32")
+  if (hi <= 255) "uint8" else if (hi <= 65535) "uint16" else "uint32"
+}
+
+## A Zarr v3 group, with attributes.
+.zarr_group <- function(p, attrs = NULL) {
+  Rarr::write_zarr_group(dirname(p), basename(p), zarr_version = 3L)
+  if (length(attrs)) Rarr::write_zarr_attributes(p, new.zattrs = attrs, zarr_version = 3L)
+  invisible(p)
+}
+
+## A Zarr v3 array of n rows (and `ncol` columns) of type `type`, written a chunk of rows at a time: get(a, b) gives
+## rows a..b as a vector (in row-major order when there are columns), or strings already in the vlen-utf8 encoding.
+## `encoding`: its anndata encoding-type and -version, or NULL for none.
+.zarr_write_rows <- function(p, n, type, get, ncol = NULL, encoding = c("array", "0.2.0")) {
+  dir.create(p, recursive = TRUE, showWarnings = FALSE)
+  ch <- max(1L, min(.store_write_chunk(), n))
+  num <- function(x) paste(sprintf("%.0f", as.double(x)), collapse = ",")
+  string <- type == "string"
+  meta <- paste0(
+    '{"zarr_format":3,"node_type":"array","shape":[', num(c(n, ncol)), '],"data_type":"', type, '",',
+    '"chunk_grid":{"name":"regular","configuration":{"chunk_shape":[', num(c(ch, ncol)), ']}},',
+    '"chunk_key_encoding":{"name":"default","configuration":{"separator":"/"}},',
+    '"fill_value":', if (string) '""' else if (type == "bool") "false" else "0", ',',
+    '"codecs":[', if (string) '{"name":"vlen-utf8"}' else '{"name":"bytes","configuration":{"endian":"little"}}',
+    ',{"name":"zstd","configuration":{"level":0,"checksum":false}}]',
+    if (!is.null(encoding)) paste0(',"attributes":{"encoding-type":"', encoding[1], '","encoding-version":"',
+                                   encoding[2], '"}'), '}')
+  writeLines(meta, file.path(p, "zarr.json"))
+  size <- switch(type, bool = , int8 = , uint8 = 1L, int16 = , uint16 = 2L, int32 = , uint32 = 4L, float64 = 8L,
+                 string = NA_integer_)
+  per <- if (is.null(ncol)) 1L else as.integer(ncol)
+  for (k in seq_along(rows <- .zarr_chunks(n, ch))) {
+    v <- get(rows[[k]][1], rows[[k]][2])
+    m <- length(v)
+    if (is.raw(v)) {   # strings already encoded (.vlen_ids()): pad with empty strings to a full chunk
+      m <- rows[[k]][2] - rows[[k]][1] + 1L
+      bytes <- c(v, raw(4L * (ch - m)))
+      bytes[1:4] <- writeBin(ch, raw(), size = 4L, endian = "little")
+    } else {
+      if (m < ch * per) v[(m + 1L):(ch * per)] <- vector(typeof(v), 1L)   # a full chunk: the fill value after the rows
+      bytes <- if (string) .vlen_utf8(v) else
+        writeBin(if (is.logical(v)) as.integer(v) else v, raw(), size = size, endian = "little")
+    }
+    f <- file.path(p, "c", if (is.null(ncol)) k - 1L else file.path(k - 1L, 0L))
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    writeBin(memCompress(bytes, "zstd"), f)
+    rm(v, bytes); .zarr_free()
+  }
+  invisible(p)
+}
+
+## A string scalar: a zero-dimensional string array (anndata's encoding of a string in uns).
+.zarr_write_string <- function(p, s) {
+  dir.create(p, recursive = TRUE, showWarnings = FALSE)
+  writeLines(paste0('{"zarr_format":3,"node_type":"array","shape":[],"data_type":"string",',
+                    '"chunk_grid":{"name":"regular","configuration":{"chunk_shape":[]}},',
+                    '"chunk_key_encoding":{"name":"default","configuration":{"separator":"/"}},"fill_value":"",',
+                    '"codecs":[{"name":"vlen-utf8"},{"name":"zstd","configuration":{"level":0,"checksum":false}}],',
+                    '"attributes":{"encoding-type":"string","encoding-version":"0.2.0"}}'), file.path(p, "zarr.json"))
+  writeBin(memCompress(.vlen_utf8(s), "zstd"), file.path(p, "c"))
+  invisible(p)
+}
+
+## Strings in the vlen-utf8 encoding: their number, then each string's length in bytes and its bytes. writeBin()
+## gives the bytes of each string followed by a NUL; each byte moves 3 bytes further on per earlier string (whose
+## 4-byte length replaces its 1-byte NUL), and the NUL before each string's bytes becomes the first of its length.
+.vlen_utf8 <- function(s) {
+  s <- enc2utf8(s)
+  n <- length(s)
+  len <- nchar(s, type = "bytes")
+  w <- writeBin(s, raw())
+  out <- raw(4L + 4L * n + length(w) - n)
+  if (n) {
+    k <- seq_len(length(w) - 1L)   # the NUL after the last string has no place
+    out[k + 3L * rep.int(seq_len(n), len + 1L)[k] + 5L] <- w[k]
+    at <- 4L + 4L * seq_len(n) - 3L + c(0L, cumsum(len)[-n])   # where each string's length goes
+    out[rep(at, each = 4L) + 0:3] <- writeBin(len, raw(), size = 4L, endian = "little")
+  }
+  out[1:4] <- writeBin(n, raw(), size = 4L, endian = "little")
+  out
+}
+
+## The vlen-utf8 encoding of the decimal strings of the integers `i` (>= 0), as .vlen_utf8(as.character(i)) gives
+## it, made from the digits without making the strings (the row index of a table: 0, 1, ...).
+.vlen_ids <- function(i) {
+  n <- length(i)
+  nd <- rep.int(1L, n)
+  for (k in 1:9) nd <- nd + (i >= 10L^k)   # the number of digits
+  at <- 4L + 4L * seq_len(n) - 3L + c(0L, cumsum(nd)[-n])   # where each string's length goes
+  out <- raw(4L + 4L * n + sum(nd))
+  out[1:4] <- writeBin(n, raw(), size = 4L, endian = "little")
+  if (!n) return(out)
+  out[rep(at, each = 4L) + 0:3] <- writeBin(nd, raw(), size = 4L, endian = "little")
+  last <- at + 3L + nd   # the last digit's byte
+  for (k in 0:9) {
+    if (all(w <- nd > k)) w <- TRUE else if (!any(w)) break
+    out[last[w] - k] <- as.raw(48L + (i[w] %/% as.integer(10^k)) %% 10L)
+  }
+  out
+}
+
+## One obs column, as anndata encodes it: a factor as a categorical (codes and categories), a vector with missing
+## values as a nullable array (values and mask), any other vector as an array.
+.zarr_write_column <- function(p, x, n) {
+  if (is.factor(x)) {
+    .zarr_group(p, list(`encoding-type` = "categorical", `encoding-version` = "0.2.0", ordered = is.ordered(x)))
+    lev <- levels(x)
+    .zarr_write_rows(file.path(p, "categories"), length(lev), "string", function(a, b) lev[a:b],
+                     encoding = c("string-array", "0.2.0"))
+    type <- .zarr_int_type(if (anyNA(x)) -1 else 0, length(lev) - 1)
+    .zarr_write_rows(file.path(p, "codes"), n, type, function(a, b) {
+      v <- .subset(x, a:b) - 1L; v[is.na(v)] <- -1L; v
+    })
+    return(invisible(p))
+  }
+  if (is.character(x)) {
+    type <- "string"; fill <- ""; enc <- c("string-array", "0.2.0"); nullable <- "nullable-string-array"
+  } else if (is.logical(x)) {
+    type <- "bool"; fill <- FALSE; enc <- c("array", "0.2.0"); nullable <- "nullable-boolean"
+  } else if (is.integer(x)) {
+    na <- anyNA(x)
+    rng <- if (n && !all(is.na(x))) c(min(x, na.rm = TRUE), max(x, na.rm = TRUE)) else c(0L, 0L)
+    type <- .zarr_int_type(if (na) min(rng[1], -1L) else rng[1], rng[2])
+    fill <- -1L; enc <- c("array", "0.2.0"); nullable <- "nullable-integer"
+  } else {
+    .zarr_write_rows(p, n, "float64", function(a, b) as.double(x[a:b]))
+    return(invisible(p))
+  }
+  if (!anyNA(x)) return(invisible(.zarr_write_rows(p, n, type, function(a, b) x[a:b], encoding = enc)))
+  .zarr_group(p, c(list(`encoding-type` = nullable, `encoding-version` = "0.1.0"),
+                   if (is.character(x)) list(`na-value` = "NA")))
+  .zarr_write_rows(file.path(p, "values"), n, type, function(a, b) { v <- x[a:b]; v[is.na(v)] <- fill; v },
+                   encoding = if (is.character(x)) enc)
+  .zarr_write_rows(file.path(p, "mask"), n, "bool", function(a, b) is.na(x[a:b]), encoding = NULL)
+  invisible(p)
+}
+
+## An AnnData table of n rows at `tab`: obs holds the columns of `obs` (and, with `instance`, 0-based instance IDs as
+## "instance_id"), its index given a chunk at a time by index(a, b); obsm "spatial" by spatial(a, b) (row-major x
+## and y); uns "spatialdata_attrs" from `spatialdata_attrs`; `attrs` added to the table's attributes.
+.zarr_write_anndata <- function(tab, obs, n, index, instance = FALSE, spatial = NULL, spatialdata_attrs = NULL,
+                                attrs = list()) {
+  .zarr_group(tab, c(list(`encoding-type` = "anndata", `encoding-version` = "0.1.0"), attrs))
+  cols <- c(names(obs), if (instance) "instance_id")
+  op <- file.path(tab, "obs")
+  .zarr_group(op, list(`encoding-type` = "dataframe", `encoding-version` = "0.2.0", `_index` = "_index",
+                       `column-order` = as.list(cols)))
+  .zarr_write_rows(file.path(op, "_index"), n, "string", index, encoding = c("string-array", "0.2.0"))
+  for (cn in names(obs)) .zarr_write_column(file.path(op, cn), obs[[cn]], n)
+  if (instance) .zarr_write_rows(file.path(op, "instance_id"), n, .zarr_int_type(0, n - 1),
+                                 function(a, b) (a:b) - 1L)
+  vp <- file.path(tab, "var")
+  .zarr_group(vp, list(`encoding-type` = "dataframe", `encoding-version` = "0.2.0", `_index` = "_index",
+                       `column-order` = list()))
+  .zarr_write_rows(file.path(vp, "_index"), 0L, "string", NULL, encoding = c("string-array", "0.2.0"))
+  dict <- list(`encoding-type` = "dict", `encoding-version` = "0.1.0")
+  for (g in c("layers", "obsm", "obsp", "uns", "varm", "varp")) .zarr_group(file.path(tab, g), dict)
+  if (!is.null(spatial)) .zarr_write_rows(file.path(tab, "obsm", "spatial"), n, "float64", spatial, ncol = 2L)
+  if (!is.null(spatialdata_attrs)) {
+    sp <- file.path(tab, "uns", "spatialdata_attrs")
+    .zarr_group(sp, dict)
+    reg <- spatialdata_attrs$region
+    .zarr_write_rows(file.path(sp, "region"), length(reg), "string", function(a, b) reg[a:b],
+                     encoding = c("string-array", "0.2.0"))
+    for (k in c("region_key", "instance_key")) .zarr_write_string(file.path(sp, k), spatialdata_attrs[[k]])
+  }
+  invisible(tab)
 }
