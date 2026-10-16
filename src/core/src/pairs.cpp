@@ -62,7 +62,7 @@ Combined combine_radii(const std::vector<RadiusTest>& tests, const std::vector<i
 
 PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                             int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
-                            int n_z, bool frailty, double tau2, bool hartung_knapp) {
+                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit) {
   PairDesign out;
   const std::size_t N = rows.O.size();
   std::vector<char> keep(N);
@@ -86,6 +86,10 @@ PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit,
   }
   const int qx = (out.abundance ? 1 : 0) + n_z;
   if (qx == 0) return out;
+  if (!fit) {
+    out.design = 2; out.tests.assign(1, DesignResult()); out.tests[0].reason = "no_variation";
+    return out;
+  }
   if (n_z > 0)   // rows with a missing covariate are left out
     for (std::size_t i = 0; i < N; ++i) {
       if (!keep[i]) continue;
@@ -194,8 +198,13 @@ PairTests pair_tests(const PairTestInput& in) {
       const std::vector<double>* influence = &u.influence;
       PairDesign d;
       if (adjusting) {
+        // no variation (e.g. no `to` cell has a `from` neighbour, or every one has): the unadjusted test is 0 / 0, and
+        // an adjusted design would only turn its exact zeros into rounding noise. It is not fitted and the radius is
+        // not tested: t and p stay NaN, so nothing of it enters the combination over radii.
+        const bool fit = u.se > 0;
         d = pair_design_test(r, unit, group, in.n_units, in.counts, in.n_types, f, in.adjust, in.z, nz, in.frailty,
-                             u.tau2, in.variance == Variance::HartungKnapp);
+                             u.tau2, in.variance == Variance::HartungKnapp, fit);
+        if (d.design == 2 && !fit) res.p[o] = kNaN;
         res.design[o] = d.design; res.abundance[o] = d.abundance;
         if (d.design == 2) res.design_reason[o] = d.tests[0].reason;
         if (d.design == 1) {

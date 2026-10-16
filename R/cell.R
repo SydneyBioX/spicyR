@@ -310,6 +310,11 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (!r$ok) return(out)
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
+  # no variation (the unadjusted test is 0 / 0): an adjusted design would only fit rounding noise; not tested
+  if (!(r$se > 0)) {
+    out$test$p <- NaN; out$adjusted_for <- "none (no_variation)"
+    return(out)
+  }
   a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(2L, ncol(d$Z)), .cell_design_tau2(d, 2L, frailty, r$tau2),
                           variance == "hartung_knapp")
   # a design that is not of full rank (e.g. a covariate confounded with the condition): the unadjusted test
@@ -331,7 +336,9 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (any(is.na(per_level) | per_level < 2L)) { out$reason <- "one_patient_per_group"; return(out) }
   Zg <- outer(rows$group, seq_len(G) - 1L, `==`) * 1
   u <- stats_design_tests(rows, rows$unit, m, Zg, .cell_contrasts(G, G), if (frailty) -1 else 0, hk)
-  if (!u[[1]]$ok) { out$reason <- "design_not_full_rank"; return(out) }
+  # not of full rank, or no variation (the condition means fit the response exactly; the design test checks it, so no
+  # adjusted design is fitted then either)
+  if (!u[[1]]$ok) { out$reason <- if (u[[1]]$reason == "no_variation") "no_variation" else "design_not_full_rank"; return(out) }
   names(u) <- ctx$levels[-1]
   out$ok <- TRUE; out$levels_test <- out$unadjusted_levels <- u
   out$test <- list(coef_ref = u[[1]]$theta[1], tau2 = u[[1]]$tau2)

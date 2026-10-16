@@ -387,3 +387,97 @@ test_that("images with a missing condition are left out of the covariate design,
     expect_equal(a$p_value, b$p_value)
     expect_equal(a$excess_difference, b$excess_difference)
 })
+
+## tumour -> T with no variation at two radii: no T cell has a tumour cell within 2 (B cells do), and every T cell has
+## one within 10 (the far cells do not); at r = 4 the fraction differs by condition.
+nv_cells <- function(n_img = 16, seed = 3) {
+  set.seed(seed)
+  do.call(rbind, lapply(seq_len(n_img), function(i) {
+    g <- expand.grid(x = seq(10, 90, 20), y = seq(10, 90, 20)); nt <- sample(12:25, 1)
+    g <- g[sample(nrow(g), nt), ]; tx <- g$x; ty <- g$y
+    near <- function(n, lo, hi) { k <- sample(nt, n, TRUE); a <- runif(n, 0, 2 * pi); d <- runif(n, lo, hi)
+      cbind(tx[k] + d * cos(a), ty[k] + d * sin(a)) }
+    grp <- if (i <= n_img / 2) "A" else "B"
+    nT <- sample(30:50, 1); nc <- round(nT * if (grp == "A") runif(1, 0.2, 0.5) else runif(1, 0.5, 0.8))
+    nB <- sample(20:40, 1); nF <- sample(30:50, 1)
+    xy <- rbind(cbind(tx, ty), near(nc, 2.5, 3.5), near(nT - nc, 4.5, 5.5), near(nB, 0.2, 1),
+                cbind(runif(nF, 300, 400), runif(nF, 300, 400)))
+    data.frame(imageID = sprintf("img%02d", i), condition = grp, x = xy[, 1], y = xy[, 2],
+               cellType = rep(c("tumour", "T", "B", "far"), c(nt, nT, nB, nF)), age = 40 + (i * 7) %% 13)
+  }))
+}
+
+test_that("an adjusted design is not fitted at a radius with no variation (empty or saturated)", {
+  d <- nv_cells()
+  run <- function(cells, r, combine = "davies", ...) suppressMessages(spicy(cells, "condition", r = r, from = "tumour", to = "T",
+    covariates = "age", adjustAbundance = TRUE, combine = combine, ...))
+  for (cmb in c("davies", "maxT", "cauchy")) {
+    res <- run(d, c(2, 4, 10), cmb)
+    rr <- res$radiusResults
+    # the unadjusted test is 0/0 at r = 2 (no T cell has a tumour neighbour) and r = 10 (every one has)
+    expect_identical(rr$adjusted_for[rr$r != 4], rep("none (no_variation)", 2))
+    expect_true(all(is.na(rr$p_value[rr$r != 4])))
+    expect_identical(rr$adjusted_for[rr$r == 4], "abundance+covariates")
+    # nothing of those radii enters the combination: as if only r = 4 were tested
+    expect_identical(res$cellResults$r, 4)
+    expect_identical(res$cellResults$p_value_best_radius, rr$p_value[rr$r == 4])
+  }
+  # the combination equals that over the radii with variation
+  res <- run(d, c(2, 3, 4, 10))
+  expect_identical(res$radiusResults$adjusted_for, c("none (no_variation)", rep("abundance+covariates", 2), "none (no_variation)"))
+  ok <- run(d, c(3, 4))
+  expect_identical(res$cellResults$p_value, ok$cellResults$p_value)
+  expect_identical(res$cellResults$unadjusted_p_value, ok$cellResults$unadjusted_p_value)
+  # a covariate perturbed in its last bits leaves the no-variation radii untested and the combination where it was
+  for (s in 1:3) {
+    set.seed(s); dp <- d; img <- unique(d$imageID)
+    a <- setNames((40 + (seq_along(img) * 7) %% 13) * (1 + 1e-10 * rnorm(length(img))), img); dp$age <- unname(a[dp$imageID])
+    rp <- run(dp, c(2, 3, 4, 10))
+    expect_identical(rp$radiusResults$adjusted_for, res$radiusResults$adjusted_for)
+    expect_equal(rp$cellResults$p_value, res$cellResults$p_value, tolerance = 1e-8)
+  }
+  # one radius, and the per-pair path (.cell_rows_test, as Kontextual uses it)
+  for (r in c(2, 10)) {
+    x <- run(d, r)$cellResults
+    expect_identical(x$adjusted_for, "none (no_variation)")
+    expect_true(is.na(x$p_value))
+    ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
+    g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE)
+    g$image_heterogeneity <- TRUE
+    Z <- matrix(d$age[ctx$first] - mean(d$age[ctx$first]), dimnames = list(NULL, "age"))
+    o <- spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", TRUE, Z)
+    expect_identical(o$adjusted_for, "none (no_variation)")
+    expect_true(is.nan(o$test$p))
+  }
+})
+
+test_that("the design test reports no variation when the response is fitted exactly", {
+  set.seed(1)
+  n <- 12; rows <- list(img = 0:(n - 1), O = rep(0, n), E = runif(n, 1, 3), n = runif(n, 1, 3), v = runif(n, 0.5, 1))
+  rows$O <- rows$E - rows$n   # (O - E) / n = -1 in every image: the condition means fit it exactly
+  g <- rep(0:1, each = n / 2); Z <- cbind(g == 0, g == 1, rnorm(n)) * 1
+  a <- spicyR:::stats_design_tests(rows, 0:(n - 1), n, Z, rbind(c(-1, 1, 0)), 0, FALSE)
+  expect_false(a[[1]]$ok); expect_identical(a[[1]]$reason, "no_variation")
+  rows$O <- rows$O + rnorm(n, 0, 1e-6)   # a little variation is tested
+  expect_true(spicyR:::stats_design_tests(rows, 0:(n - 1), n, Z, rbind(c(-1, 1, 0)), 0, FALSE)[[1]]$ok)
+})
+
+test_that("more than two conditions and survival do not test a pair with no variation", {
+  d <- nv_cells(24)
+  d$c3 <- c("A", "B", "C")[(as.integer(factor(d$imageID)) %% 3) + 1]
+  ctx <- spicyR:::.cell_context(d, "c3", NULL, "imageID", "cellType", c("x", "y"))
+  for (r in c(2, 10)) {
+    g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE)
+    g$image_heterogeneity <- TRUE
+    o <- spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", TRUE)
+    expect_false(o$ok); expect_identical(o$reason, "no_variation")
+    rows <- spicyR:::.cell_rows(ctx, g, "tumour", "T")
+    set.seed(2); m <- length(ctx$image_labels)
+    s <- spicyR:::stats_survival_test(rows, rows$unit, m, rnorm(m), rexp(m), rbinom(m, 1, 0.7), numeric(0))
+    expect_false(s$ok); expect_identical(s$reason, "no_variation")
+  }
+  # at r = 4 the pair varies and is tested
+  g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = 4, label_clustering = FALSE)
+  g$image_heterogeneity <- TRUE
+  expect_true(spicyR:::.cell_pair_test(ctx, g, "tumour", "T", TRUE, "cr2", TRUE)$ok)
+})

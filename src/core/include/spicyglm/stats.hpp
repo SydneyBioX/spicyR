@@ -259,7 +259,8 @@ struct PairTestInput {
 // type (adjust; when not constant) and the centred covariates; tau2 re-estimated (-1) when every added column is
 // constant within units, else held at `tau2` (frailty; 0 without). design = 0: nothing to adjust for (no column
 // added); 1: adjusted, `tests` = the condition contrast, then one per added column (abundance first); 2: the design
-// failed (`tests[0].reason`).
+// failed (`tests[0].reason`). fit = false: the design is not fitted (the response has no variation); design 2 with
+// reason "no_variation" when there is something to adjust for, else 0.
 struct PairDesign {
   int design = 0;
   bool abundance = false;             // the abundance column entered the design
@@ -267,10 +268,11 @@ struct PairDesign {
 };
 PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                             int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
-                            int n_z, bool frailty, double tau2, bool hartung_knapp);
+                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit = true);
 
 // Results, per pair and radius at index p * K + k (K radii); the main test is the adjusted one when design == 1,
-// else the unadjusted one.
+// else the unadjusted one. Where the unadjusted test has no variation (se 0: 0 / 0) no design is fitted: design 2,
+// reason "no_variation", p NaN.
 struct PairTests {
   int n_pairs = 0, n_radii = 0, n_z = 0;
   std::vector<int> ok;                // the unadjusted test was done

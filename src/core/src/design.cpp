@@ -139,6 +139,19 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
     A[u] = es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
     E[u] = f.y[u] - Xk * f.theta;
   }
+  // No variation: the design fits the response exactly (e.g. the same fraction in every image, as at a radius where
+  // no `to` cell has a `from` neighbour, or every one has), so the residuals are rounding error and every test is 0 / 0
+  // computed from noise. Fitting such a response in double precision leaves a residual of the order of n eps |y| (the
+  // n rows are summed into F and g, then theta is subtracted back out of each), so a weighted residual sum of squares
+  // at most (64 eps n)^2 times the weighted sum of squares of y about zero is taken as none; the factor 64 is room for
+  // the q-dimensional solve. It is scale-free, and far below any response with real variation (for n = 1000 it asks
+  // the residuals to be under 1.4e-11 of |y|).
+  {
+    double rss = 0, yss = 0;
+    for (std::size_t u = 0; u < U.rows.size(); ++u) { rss += E[u].squaredNorm(); yss += f.y[u].squaredNorm(); }
+    const double tol = 64 * std::numeric_limits<double>::epsilon() * N;
+    if (rss <= tol * tol * yss) { for (auto& r : out) r.reason = "no_variation"; return out; }
+  }
   double X_hk = 0;
   for (int c = 0; c < k; ++c) {
     DesignResult& res = out[c];

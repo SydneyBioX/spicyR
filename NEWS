@@ -1,3 +1,27 @@
+CHANGES IN VERSION 1.99.26
+--------------------------
+
+    o spicy() (method = "cell") with adjustAbundance or covariates no longer fits the adjusted design at a radius
+      where the pair's response has no variation, as where no `to` cell has a `from` neighbour (small r) or every
+      one has (saturated, large r). There the unadjusted test is exactly 0 / 0 and its radius is left out; the
+      adjusted design turned those exact zeros into rounding noise (estimates and standard errors of about 1e-16),
+      so the radius was kept with an arbitrary t and influence vector. That noise moved the combined p-values
+      (davies, maxT, cauchy) arbitrarily: with age perturbed by a relative 1e-10, 21-28% of the adjusted combined
+      p-values on the Jackson, Keren and Schurch data moved by more than 0.01, and single-radius adjusted tests at
+      such radii gave noise p-values. Such a radius is now not tested: adjusted_for is "none (no_variation)", its
+      p-value is NA, and nothing of it enters the combination, which equals that with the radius left out. The same
+      perturbation now moves no combined p-value by more than 4e-9. Adjusted p-values at no-variation radii, and the
+      combined p-values that included them, change: 162 of 576 pairs on Jackson (25 radii), 55 of 256 on Keren and 85
+      of 324 on Schurch, none crossing 0.05; for t04 -> t05 of the 10-type synthetic data (r = 5, 10, ..., 125, age
+      and abundance, davies) the combined p is 0.772 (0.967 before). Unadjusted results, and adjusted ones at radii
+      with variation, are identical() to 1.99.25's.
+    o The core's design test (design_tests()) reports reason "no_variation" when the design fits the response
+      exactly: a weighted residual sum of squares at most (64 eps n)^2 times the weighted sum of squares of the
+      response. This covers the paths that do not go through the unadjusted test first (more than two conditions,
+      survival, Hartung-Knapp). A survival test is adjusted for abundance only where the unadjusted one was done.
+    o With several radii and something to adjust for, a radius where no pair's design was fitted has the same effect
+      columns as the others (NA); before, combining the radii stopped with an error.
+
 CHANGES IN VERSION 1.99.25
 --------------------------
 

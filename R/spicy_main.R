@@ -277,7 +277,12 @@ spicy <- function(cells,
                         if (is.null(Z_extra)) matrix(0, 0, 0) else Z_extra, keep, if (K > 1L) combine else "none",
                         as.integer(n_threads))
   adjusted <- adjust || !is.null(Z_extra)
-  tabs <- lapply(seq_len(K), function(k) .cell_pairs_table(x, k, from, to, allocation, adjust, colnames(Z_extra)))
+  # the effect columns of a radius where no pair's design was fitted (e.g. none with variation): those of the first
+  # radius where one was, so that every radius has the same columns
+  en <- lapply(seq_len(K), function(k) .cell_pairs_enames(x, k, adjust, colnames(Z_extra)))
+  en0 <- Find(Negate(is.null), en)
+  tabs <- lapply(seq_len(K), function(k) .cell_pairs_table(x, k, from, to, allocation, adjust, colnames(Z_extra),
+                                                         if (is.null(en[[k]])) en0 else en[[k]]))
   fits <- lapply(seq_along(pairs), function(i) list(from = from[i], to = to[i], rows = x$rows[[i]],
                                                     unadjusted = list(image_weight = x$image_weight[[i]])))
   if (K == 1L) return(list(table = tabs[[1]], fits = fits))
@@ -297,8 +302,17 @@ spicy <- function(cells,
   list(table = .cell_order_columns(tab), fits = fits, radius_table = long)
 }
 
+## The added columns (abundance first, then the covariates) of the pairs adjusted at radius k, as named in their fits;
+## NULL when none was.
+.cell_pairs_enames <- function(x, k, adjust, zn) {
+  s <- which(x$ok[k, ] == 1L)
+  if (!length(s) || !(adjust || !is.null(zn))) return(NULL)
+  d <- x$design[k, s]; ab <- x$abundance[k, s] == 1L; dk <- which(d == 1L)
+  if (length(dk)) unique(c(if (ab[dk[1]]) "abundance", zn, if (any(ab[dk])) "abundance"))
+}
+
 ## The table of one radius from stats_pair_tests() (the columns and rows .cell_table() gives for the same fits).
-.cell_pairs_table <- function(x, k, from, to, allocation, adjust, zn) {
+.cell_pairs_table <- function(x, k, from, to, allocation, adjust, zn, enames = .cell_pairs_enames(x, k, adjust, zn)) {
   s <- which(x$ok[k, ] == 1L)
   if (!length(s)) return(NULL)
   at <- function(m) m[k, s]
@@ -313,8 +327,6 @@ spicy <- function(cells,
     lab <- if (is.null(zn)) ifelse(with_ab, "abundance", "") else ifelse(with_ab, "abundance+covariates", "covariates")
     tab$adjusted_for <- ifelse(d == 1L, lab, ifelse(d == 2L, paste0("none (", at(x$design_reason), ")"), "none"))
     # the effect of each added column (abundance first, then the covariates), as named in the fits adjusted
-    dk <- which(d == 1L)
-    enames <- if (length(dk)) unique(c(if (ab[dk[1]]) "abundance", zn, if (any(ab[dk])) "abundance"))
     for (nm in enames) {
       j <- if (nm == "abundance") ifelse(ab, 1L, 1L + match(nm, zn)) else rep(1L + match(nm, zn), length(s))
       e <- d == 1L & !is.na(j)
@@ -365,7 +377,8 @@ spicy <- function(cells,
   m <- length(ctx$unit_labels)
   u <- stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, numeric(0))
   x <- if (adjust) .cell_share(ctx, rows, f) else numeric(0)
-  s <- if (length(x) && stats::var(x) > 0) stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, x) else u
+  # the adjusted test only where the unadjusted one was done (not where the excess has no variation: no_variation)
+  s <- if (u$ok && length(x) && stats::var(x) > 0) stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, x) else u
   list(from = f, to = t, ok = s$ok, reason = s$reason, rows = rows, surv = s, unadjusted_surv = u,
        adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(covariates)) "covariates"), collapse = "+"))
 }
