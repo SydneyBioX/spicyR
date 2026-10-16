@@ -115,7 +115,8 @@ struct ExcessResult {
   std::vector<double> image_weight; // per image row: its share of its group's information (sums to 1 in each group)
 };
 
-// unit: unit code of every image (0 .. n_units - 1); group: 0 or 1 per image.
+// unit: unit code of every image (0 .. n_units - 1); group: 0 or 1 per image, or negative for a missing condition
+// (R's NA_integer_, Python's -1): those rows are left out (influence and image weight 0).
 ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                          int n_units, bool frailty, Variance variance);
 
@@ -144,7 +145,7 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
                                        int k, double tau2, bool hartung_knapp = false);
 
 // Option 2 (Supplementary Methods, Section 2): the two-group test with a slope on the centred covariate x
-// (the log share of the REF type), tau2 held at the unadjusted value.
+// (the log share of the REF type), tau2 held at the unadjusted value. Rows with a negative group are left out.
 DesignResult availability_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                                int n_units, const std::vector<double>& x, double tau2);
 

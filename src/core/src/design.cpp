@@ -194,11 +194,21 @@ DesignResult design_test(const ImageRows& rows, const std::vector<int>& unit, in
 
 DesignResult availability_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                                int n_units, const std::vector<double>& x, double tau2) {
-  const std::size_t N = rows.O.size();
-  double mx = 0; for (double v : x) mx += v; mx /= static_cast<double>(N);
+  // rows with a missing condition (a negative group) are left out
+  ImageRows r;
+  std::vector<int> u;
+  std::vector<double> xk;
+  std::vector<int> gk;
+  for (std::size_t i = 0; i < rows.O.size(); ++i) {
+    if (group[i] < 0) continue;
+    r.image.push_back(rows.image[i]); r.O.push_back(rows.O[i]); r.E.push_back(rows.E[i]); r.n.push_back(rows.n[i]);
+    r.v.push_back(rows.v[i]); u.push_back(unit[i]); xk.push_back(x[i]); gk.push_back(group[i]);
+  }
+  const std::size_t N = r.O.size();
+  double mx = 0; for (double v : xk) mx += v; mx /= static_cast<double>(N);
   std::vector<double> Z(3 * N);
-  for (std::size_t i = 0; i < N; ++i) { Z[3 * i] = group[i] == 0; Z[3 * i + 1] = group[i] == 1; Z[3 * i + 2] = x[i] - mx; }
-  return design_test(rows, unit, n_units, Z, 3, {-1, 1, 0}, tau2);
+  for (std::size_t i = 0; i < N; ++i) { Z[3 * i] = gk[i] == 0; Z[3 * i + 1] = gk[i] == 1; Z[3 * i + 2] = xk[i] - mx; }
+  return design_test(r, u, n_units, Z, 3, {-1, 1, 0}, tau2);
 }
 
 }  // namespace spicyglm

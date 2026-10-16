@@ -105,8 +105,11 @@ GroupCR2 cr2_group(const GroupFit& f) {
   return c;
 }
 
+// The rows of each condition; a row with a missing condition (a negative group: R's NA_integer_, Python's -1) is in
+// neither, so it is left out of the test.
 void split_groups(const std::vector<int>& group, std::vector<int>& g0, std::vector<int>& g1) {
-  for (std::size_t i = 0; i < group.size(); ++i) (group[i] == 0 ? g0 : g1).push_back(static_cast<int>(i));
+  for (std::size_t i = 0; i < group.size(); ++i)
+    if (group[i] >= 0) (group[i] == 0 ? g0 : g1).push_back(static_cast<int>(i));
 }
 
 int distinct(const std::vector<int>& idx, const std::vector<int>& unit) {

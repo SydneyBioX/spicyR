@@ -1,3 +1,20 @@
+CHANGES IN VERSION 1.99.28
+--------------------------
+
+    o spicy() (method = "cell") leaves images whose condition is missing out of the unadjusted test. Before, the test
+      of two conditions counted them in the second condition: its excess, the difference, the standard error, the df,
+      the p-value and the frailty variance all included them. This affected the test without adjustment and the
+      unadjusted_* columns of an adjusted test. The adjusted design already left these images out, so its results are
+      unchanged, except where its frailty variance is held at the unadjusted value (an added column that varies
+      between the images of a patient, such as adjustAbundance with several images per patient). There the held
+      variance is now that of the images with a condition, and the adjusted test changes with it (#83).
+    o With more than two conditions, an image with a missing condition stopped every pair from being tested ("no pair
+      could be tested"). These images are now left out of the test, as with two conditions.
+    o The test now equals the one with these images removed, except for two steps that use every image: the side of
+      an allocation pair (attraction or avoidance), and the between-image variance (tau2_image) when patients have
+      several images.
+    o Results with no missing condition are unchanged: every reference configuration is identical() to 1.99.27's.
+
 CHANGES IN VERSION 1.99.27
 --------------------------
 

@@ -346,8 +346,9 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   per_level <- tapply(rows$unit, factor(rows$group, levels = seq_len(G) - 1L), function(u) length(unique(u)))
   out <- list(from = f, to = t, ok = FALSE, rows = rows, levels = ctx$levels, adjusted_for = "none")
   if (any(is.na(per_level) | per_level < 2L)) { out$reason <- "one_patient_per_group"; return(out) }
-  Zg <- outer(rows$group, seq_len(G) - 1L, `==`) * 1
-  u <- stats_design_tests(rows, rows$unit, m, Zg, .cell_contrasts(G, G), if (frailty) -1 else 0, hk)
+  rg <- rows[!is.na(rows$group), , drop = FALSE]   # images with a missing condition are left out
+  Zg <- outer(rg$group, seq_len(G) - 1L, `==`) * 1
+  u <- stats_design_tests(rg, rg$unit, m, Zg, .cell_contrasts(G, G), if (frailty) -1 else 0, hk)
   # not of full rank, or no variation (the condition means fit the response exactly; the design test checks it, so no
   # adjusted design is fitted then either)
   if (!u[[1]]$ok) { out$reason <- if (u[[1]]$reason == "no_variation") "no_variation" else "design_not_full_rank"; return(out) }

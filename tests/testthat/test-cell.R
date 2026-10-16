@@ -365,27 +365,53 @@ test_that("variance is CR2 by default, whatever the number of patients; Hartung-
   expect_error(spicy(small, "condition", subject = "patient", variance = "auto"))
 })
 
-test_that("images with a missing condition are left out of the covariate design, as of the unadjusted test", {
-    set.seed(2)
-    n <- 20
-    im <- data.frame(imageID = sprintf("i%02d", 1:n), cond = factor(rep(c("a", "b"), n / 2)), cv = rnorm(n))
-    im$cond[1:2] <- NA
-    cells <- do.call(rbind, lapply(1:n, function(i) data.frame(imageID = im$imageID[i],
-        cellType = sample(c("A", "B"), 500, TRUE), x = runif(500, 0, 500), y = runif(500, 0, 500))))
+## Images with a missing condition are left out of every test: with one image per patient, the result equals that with
+## those images removed.
+mc_data <- function(n = 20) {
+  set.seed(2)
+  im <- data.frame(imageID = sprintf("i%02d", 1:n), cond = factor(rep(c("a", "b"), n / 2)), cv = rnorm(n),
+                   cond3 = factor(rep(c("x", "y", "z"), length.out = n)))
+  im$cond[1:2] <- NA; im$cond3[1:2] <- NA
+  cells <- do.call(rbind, lapply(1:n, function(i) data.frame(imageID = im$imageID[i],
+      cellType = sample(c("A", "B"), 500, TRUE), x = runif(500, 0, 500), y = runif(500, 0, 500))))
+  list(cells = cells, im = im)
+}
+mc_pair <- function(d, keep, ...) {
+  run <- function(cells, im) suppressMessages(spicy(cells, imageInfo = im, cellType = "cellType", r = 50, ...))
+  full <- run(d$cells, d$im)
+  sub <- run(d$cells[d$cells$imageID %in% d$im$imageID[keep], ], d$im[keep, ])
+  key <- function(x) x$cellResults[do.call(order, x$cellResults[intersect(c("from", "to", "level"), names(x$cellResults))]), ]
+  list(full = key(full), sub = key(sub))
+}
+
+test_that("images with a missing condition are left out of the unadjusted test", {
+    d <- mc_data(); keep <- !is.na(d$im$cond)
     for (effect in c("count", "allocation")) {
-        r <- spicy(cells, condition = "cond", covariates = "cv", imageInfo = im, cellType = "cellType", r = 50,
-                   effect = effect)
-        expect_true(all(r$cellResults$adjusted_for == "covariates"))
+        x <- mc_pair(d, keep, condition = "cond", effect = effect)
+        cols <- c("excess_ref", "excess_comp", "excess_difference", "se", "df", "p_value", "tau2")
+        expect_equal(x$full[, cols], x$sub[, cols])
     }
-    keep <- !is.na(im$cond)
-    full <- spicy(cells, condition = "cond", covariates = "cv", imageInfo = im, cellType = "cellType", r = 50,
-                  effect = "count")
-    sub <- spicy(cells[cells$imageID %in% im$imageID[keep], ], condition = "cond", covariates = "cv",
-                 imageInfo = im[keep, ], cellType = "cellType", r = 50, effect = "count")
-    a <- full$cellResults[order(full$cellResults$from, full$cellResults$to), ]
-    b <- sub$cellResults[order(sub$cellResults$from, sub$cellResults$to), ]
-    expect_equal(a$p_value, b$p_value)
-    expect_equal(a$excess_difference, b$excess_difference)
+})
+
+test_that("images with a missing condition are left out of the covariate design and of its unadjusted test", {
+    d <- mc_data(); keep <- !is.na(d$im$cond)
+    for (effect in c("count", "allocation")) {
+        x <- mc_pair(d, keep, condition = "cond", covariates = "cv", effect = effect)
+        expect_true(all(x$full$adjusted_for == "covariates"))
+        cols <- c("excess_difference", "se", "df", "p_value", "cv_effect", "unadjusted_difference", "unadjusted_se",
+                  "unadjusted_df", "unadjusted_p_value")
+        expect_equal(x$full[, cols], x$sub[, cols])
+    }
+})
+
+test_that("images with a missing condition are left out of the test of three conditions", {
+    d <- mc_data(); keep <- !is.na(d$im$cond3)
+    for (effect in c("count", "allocation")) {
+        x <- mc_pair(d, keep, condition = "cond3", effect = effect)
+        expect_true(nrow(x$full) > 0)
+        cols <- c("level", "excess_ref", "excess_difference", "se", "df", "p_value", "tau2")
+        expect_equal(x$full[, cols], x$sub[, cols])
+    }
 })
 
 ## tumour -> T with no variation at two radii: no T cell has a tumour cell within 2 (B cells do), and every T cell has
