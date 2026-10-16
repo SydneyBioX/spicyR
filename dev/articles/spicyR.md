@@ -554,8 +554,8 @@ resR <- spicy(spe, condition = "ER", subject = "metabricId", r = c(10, 25, 50, 7
               imageID = "file_id", cellType = "description")
 resR$cellResults[c("T cells__HR- Ki67+", "B cells__HR- Ki67+"), c("r", "excess_difference", "p_value")]
 #>                     r excess_difference     p_value
-#> T cells__HR- Ki67+ 25        0.11126824 0.002810088
-#> B cells__HR- Ki67+ 25        0.05391739 0.017986567
+#> T cells__HR- Ki67+ 25        0.11126824 0.002815021
+#> B cells__HR- Ki67+ 25        0.05391739 0.017990468
 ```
 
 `r` is the radius with the strongest evidence, and `p_value` the
@@ -756,7 +756,7 @@ so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.24) to
+A methods sentence might read: “We used spicyR (version 1.99.25) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -978,12 +978,12 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.24              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.25              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
 #>   [4] anndataR_1.3.2       rlang_1.3.0          magrittr_2.0.5      
-#>   [7] Rarr_2.1.46          otel_0.2.0           e1071_1.7-17        
+#>   [7] Rarr_2.1.47          otel_0.2.0           e1071_1.7-17        
 #>  [10] compiler_4.6.1       RSQLite_3.53.3       paws.storage_0.11.0 
 #>  [13] png_0.1-9            systemfonts_1.3.2    vctrs_0.7.3         
 #>  [16] pkgconfig_2.0.3      crayon_1.5.3         fastmap_1.2.0       
