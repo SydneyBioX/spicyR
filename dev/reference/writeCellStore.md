@@ -6,11 +6,12 @@ store (an AnnData table under `tables/`, in Zarr v3), which
 reads a block of rows at a time and spatialdataR's `readSpatialData()`
 reads as a `SpatialData` object. The coordinates become the `obsm` array
 `"spatial"`, the other columns the table's `obs` (factors as categorical
-columns), and the image column the table's region key. A table with one
-row per image can be added as a second table. Each column is written in
-chunks of 2^20 rows compressed with zstd, one chunk at a time, so
-writing needs little memory beyond that of `cells`, however many cells
-it has.
+columns), and the image column the table's region key (always a
+categorical column, its categories the levels of a factor, else the
+images in order of first appearance). A table with one row per image can
+be added as a second table. Each column is written in chunks of 2^20
+rows compressed with zstd, one chunk at a time, so writing needs little
+memory beyond that of `cells`, however many cells it has.
 
 ## Usage
 
