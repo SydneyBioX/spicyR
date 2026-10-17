@@ -238,12 +238,14 @@ way. `variance = "hartung_knapp"` keeps its own variance.
 
 A patient's weight within its condition grows with the information of
 its images, so one or two patients can carry nearly all of a condition's
-weight. A radius where a condition has fewer than 3 effective patients
-(Kish's (sum w)^2 / sum w^2 of the patients' weights w) is not tested:
-its p-value is `NA` (with adjustment, `adjusted_for` is
+weight. A radius where a condition's effective patients (Kish's (sum
+w)^2 / sum w^2 of the patients' weights w) fall below the smaller of 3
+and half the number of its patients that contribute at that radius is
+not tested: its p-value is `NA` (with adjustment, `adjusted_for` is
 `"none (few_effective_units)"`), and it is left out of the combination
-over radii. With more than two conditions, a pair where any condition
-has fewer than 3 is not tested.
+over radii. A condition of 3 patients with equal weights can therefore
+be tested. With more than two conditions, a pair where any condition
+falls below this is not tested.
 
 Images with a missing condition are left out of every step: the choice
 of the side, the between-image variance and the tests.
@@ -318,5 +320,5 @@ resImage <- spicy(diabetesData, condition = "stage", subject = "case",
 #> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
 topPairs(resImage)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th  1.622671    5.961812 0.6122508  0.6122508   Tc Th
+#> Tc__Th  1.622672    5.961811 0.6122509  0.6122509   Tc Th
 ```

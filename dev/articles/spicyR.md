@@ -177,7 +177,7 @@ res <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
 res
 #> spicyR (cell-level test): 484 pairs, ER+ vs ER-, r = 25
 #> Units: 456 patients with 456 images
-#> 15 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with fewer than 3 effective patients)
+#> 15 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
 #> BH-adjusted p < 0.05: 35 pairs
 #> See topPairs() and $cellResults.
 ```
@@ -456,7 +456,7 @@ resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
 resDonors
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 8 patients with 80 images
-#> 89 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with fewer than 3 effective patients)
+#> 27 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
 #> BH-adjusted p < 0.05: 0 pairs
 #> See topPairs() and $cellResults.
 ```
@@ -470,7 +470,7 @@ resImages <- spicy(diabetes, condition = "stage", r = 50)
 resImages
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 80 images (no subject given: each image is a patient)
-#> 46 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with fewer than 3 effective patients)
+#> 24 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
 #> BH-adjusted p < 0.05: 4 pairs
 #> See topPairs() and $cellResults.
 ```
@@ -497,7 +497,7 @@ resCov
 #> Units: 456 patients with 456 images
 #> Adjusted for: covariates (unadjusted test in the unadjusted_* columns)
 #> 1 pairs could not be adjusted and are reported unadjusted (see adjusted_for)
-#> 15 pairs have a condition with fewer than 3 effective patients (adjusted_for "none (few_effective_units)") and are not tested
+#> 15 pairs have a condition with too few effective patients (adjusted_for "none (few_effective_units)") and are not tested
 #> BH-adjusted p < 0.05: 22 pairs (35 without adjustment)
 #> See topPairs() and $cellResults.
 ```
@@ -738,11 +738,11 @@ variance (Bell and McCaffrey 2002; Pustejovsky and Tipton 2018). The
 groups share one dispersion: the model-based variance is scaled by the
 ratio of each group’s CR2 variance to its model-based variance, averaged
 over the groups, so a small group’s own spread does not set the standard
-error alone. A radius where a group has fewer than three effective
-patients, because one or two patients carry nearly all of its weight, is
-not tested. This is designed to keep false positives near the nominal
-rate even with modest numbers of patients. A paper describing the method
-is in preparation.
+error alone. A radius where a group’s effective patients fall below the
+smaller of three and half its patients at that radius, because a few
+patients carry nearly all of its weight, is not tested. This is designed
+to keep false positives near the nominal rate even with modest numbers
+of patients. A paper describing the method is in preparation.
 
 ## Small studies
 
@@ -759,7 +759,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.29) to
+A methods sentence might read: “We used spicyR (version 1.99.30) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -981,7 +981,7 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.29              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.30              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
@@ -993,7 +993,7 @@ sessionInfo()
 #>  [19] magick_2.9.1         XVector_0.53.0       paws.common_0.9.0   
 #>  [22] labeling_0.4.3       rmarkdown_2.32       graph_1.91.0        
 #>  [25] ragg_1.5.2           purrr_1.2.2          bit_4.6.0           
-#>  [28] xfun_0.61            cachem_1.1.0         grumpy_0.1.1        
+#>  [28] xfun_0.62            cachem_1.1.0         grumpy_0.1.1        
 #>  [31] jsonlite_2.0.0       blob_1.3.0           DelayedArray_0.39.8 
 #>  [34] R6_2.6.1             bslib_0.12.0         RColorBrewer_1.1-3  
 #>  [37] reticulate_1.47.0    jquerylib_0.1.4      Rcpp_1.1.2          
