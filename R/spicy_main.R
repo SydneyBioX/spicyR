@@ -45,10 +45,12 @@
 #' `variance = "hartung_knapp"` keeps its own variance.
 #'
 #' A patient's weight within its condition grows with the information of its images, so one or two patients can
-#' carry nearly all of a condition's weight. A radius where a condition has fewer than
-#' 3 effective patients (Kish's (sum w)^2 / sum w^2 of the patients' weights w) is not tested: its p-value is `NA`
-#' (with adjustment, `adjusted_for` is `"none (few_effective_units)"`), and it is left out of the combination over
-#' radii. With more than two conditions, a pair where any condition has fewer than 3 is not tested.
+#' carry nearly all of a condition's weight. A radius where a condition's effective patients (Kish's
+#' (sum w)^2 / sum w^2 of the patients' weights w) fall below the smaller of 3 and half the number of its patients
+#' that contribute at that radius is not tested: its p-value is `NA` (with adjustment, `adjusted_for` is
+#' `"none (few_effective_units)"`), and it is left out of the combination over radii. A condition of 3 patients with
+#' equal weights can therefore be tested. With more than two conditions, a pair where any condition falls below this
+#' is not tested.
 #'
 #' Images with a missing condition are left out of every step: the choice of the side, the between-image
 #' variance and the tests.
@@ -435,7 +437,7 @@ spicy <- function(cells,
   tab <- res$table
   num <- vapply(tab, is.double, TRUE); tab[num] <- lapply(tab[num], function(z) { z[is.nan(z)] <- NA_real_; z })
   if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types, ",
-                         "and at least 3 effective patients).",
+                         "and enough effective patients).",
                          call. = FALSE)
   out <- list(method = "cell", cellResults = tab)
   if (!survival && length(ctx$levels) > 2L) {

@@ -156,7 +156,7 @@ ref_n_eff <- function(f) vapply(1:2, function(g) {
   sum(w)^2 / sum(w^2) }, 0)
 
 ## One pair: the test of delta_2 = delta_1 (Section 4.4), and the Hartung-Knapp option (Section 4.5); the pooled
-## dispersion (with CR2), and no test when a group has fewer than 3 effective units.
+## dispersion (with CR2), and no test when a group's effective units fall below min(3, m_g / 2), m_g its units.
 ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp"), effect = "count") {
   variance <- match.arg(variance)
   tau2 <- ref_tau2(d, unit, group); f <- ref_gee_fit(d, unit, group, tau2); cr <- ref_cr2(f)
@@ -166,7 +166,7 @@ ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")
     V <- max(V, Vm * max(1, X / (m - 2))); df <- m - 2
   } else V <- ref_phi(f, 2, as.vector(table(factor(f$g_u, 0:1)))) * (f$B[1, 1] + f$B[2, 2])
   p <- 2 * stats::pt(-abs(est / sqrt(V)), df)
-  if (cr$V > 0 && min(ref_n_eff(f)) < 3) p <- NA_real_
+  if (cr$V > 0 && any(ref_n_eff(f) < pmin(3, as.vector(table(factor(f$g_u, 0:1))) / 2))) p <- NA_real_
   c(delta_ref = f$beta[1], delta_comp = f$beta[2], excess_difference = est, tau2 = tau2, se = sqrt(V), df = df,
     p_value = p)
 }

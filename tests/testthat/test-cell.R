@@ -621,7 +621,7 @@ ne_kish <- function(rows, tau2) {
   vapply(0:1, function(g) { w <- J[gu == g] / (1 + tau2 * J[gu == g]); sum(w)^2 / sum(w^2) }, 0)
 }
 
-test_that("a radius where a condition has fewer than 3 effective patients is not tested", {
+test_that("a radius where a condition has fewer than min(3, m_g / 2) effective patients is not tested", {
   d <- ne_cells()
   run <- function(r, ...) suppressMessages(spicy(d, "condition", r = r, from = "tumour", to = "T", ...))
   ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
@@ -633,7 +633,8 @@ test_that("a radius where a condition has fewer than 3 effective patients is not
     u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", TRUE)
     expect_equal(u$n_eff, ne_kish(rows, u$tau2), tolerance = 1e-12)
     expect_equal(spicyR:::stats_effective_units(rows, rows$unit, rows$group, 2L, u$tau2), u$n_eff, tolerance = 1e-12)
-    few <- min(u$n_eff) < 3
+    expect_identical(u$n_units, c(8, 8))
+    few <- any(u$n_eff < pmin(3, u$n_units / 2))
     expect_identical(few, r == 5)
     x <- run(r)$cellResults
     expect_identical(is.na(x$p_value), few); expect_equal(x$se, u$se, tolerance = 1e-12)
@@ -666,9 +667,9 @@ test_that("a radius where a condition has fewer than 3 effective patients is not
   rows <- ne_rows(ctx, 5, "count")
   uc <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", rc$pooled_dispersion)
   x <- run(5, effect = "count")$cellResults
-  expect_identical(is.na(x$p_value), rc$min_effective_units && min(uc$n_eff) < 3)
+  expect_identical(is.na(x$p_value), rc$min_effective_units && any(uc$n_eff < pmin(3, uc$n_units / 2)))
   expect_equal(x$se, uc$se, tolerance = 1e-12)
-  # more than two conditions: a pair where any condition has fewer than 3 effective patients is not tested
+  # more than two conditions: a pair where any condition has too few effective patients is not tested
   d3 <- ne_cells(seed = 5, n_img = 24, levels = c("A", "B", "C"))
   ctx3 <- spicyR:::.cell_context(d3, "condition", NULL, "imageID", "cellType", c("x", "y"))
   for (r in c(5, 12)) {
@@ -676,6 +677,20 @@ test_that("a radius where a condition has fewer than 3 effective patients is not
     o <- spicyR:::.cell_pair_test(ctx3, g3, "tumour", "T", TRUE, "cr2", FALSE)
     if (r == 5) { expect_false(o$ok); expect_identical(o$reason, "few_effective_units") } else expect_true(o$ok)
   }
+})
+
+test_that("a condition of 3 patients is tested when its effective patients reach 1.5", {
+  rules <- spicyR:::stats_test_rules(TRUE)
+  few <- function(n_eff, m) spicyR:::.cell_few_effective(n_eff, m, rules)
+  expect_false(few(c(1.5, 3), c(3, 8))); expect_true(few(c(1.49, 3), c(3, 8)))
+  expect_false(few(c(2.5, 3), c(5, 6))); expect_true(few(c(2.9, 3), c(6, 6))); expect_true(few(c(3, 2.9), c(8, 9)))
+  d <- ne_cells(n_img = 6, big = 1)
+  ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
+  rows <- ne_rows(ctx, 12)
+  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2", TRUE)
+  expect_identical(u$n_units, c(3, 3)); expect_true(all(u$n_eff >= 1.5 & u$n_eff < 3))
+  x <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T"))$cellResults
+  expect_false(is.na(x$p_value)); expect_equal(x$se, u$se, tolerance = 1e-12)
 })
 
 test_that("the allocation test pools the dispersion of the conditions (hand calculation)", {

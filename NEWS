@@ -1,3 +1,16 @@
+CHANGES IN VERSION 1.99.30
+--------------------------
+
+    o A radius is now not tested when a condition's effective patients fall below min(3, m_g / 2), where m_g is the
+      number of that condition's patients that contribute at that radius; before, the bound was 3. For conditions of
+      6 or more patients nothing changes. The rule applies wherever the old one did: spicy() (method = "cell", both
+      effects, with or without adjustment, Hartung-Knapp, and each level with more than two conditions) and
+      kontextualEngine(). The label stays "few_effective_units".
+    o Small studies get most of their tests back. Over the small real-data analyses, the radii of the grid that are
+      tested rise from 78% to 95%, and a condition of 3 patients can now be tested (none could before). In
+      diabetesData (4 patients per stage), 167 pairs are tested for the allocation effect (110 before) and 167 for the
+      count effect (133 before). The kontextualEngine() example uses alpha cells again.
+
 CHANGES IN VERSION 1.99.29
 --------------------------
 

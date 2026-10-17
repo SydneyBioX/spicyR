@@ -202,8 +202,9 @@ PairTests pair_tests(const PairTestInput& in) {
       const std::vector<double>* influence = &u.influence;
       // allocation: a condition with no informative unit (every image of every one of its patients at -1 or +1, the
       // bounds of the fraction) has a CR2 variance of exactly 0, so the test's se would come from the other condition
-      // alone ("no_information"). Then (TestRules): a condition with fewer than kMinEffectiveUnits effective units,
-      // whose mean rests on one or two patients ("few_effective_units"). Such a radius is not tested: no design is
+      // alone ("no_information"). Then (TestRules): a condition whose effective units fall below
+      // min(kMinEffectiveUnits, m_g / 2), m_g its units with rows, so that its mean rests on a few of its patients
+      // ("few_effective_units"). Such a radius is not tested: no design is
       // fitted, p stays NaN (main and unadjusted), and nothing of it enters the combination over radii. (A radius with
       // no variation at all is "no_variation" below.)
       const char* not_tested = nullptr;
@@ -212,7 +213,7 @@ PairTests pair_tests(const PairTestInput& in) {
         if (inf[0] == 0 || inf[1] == 0) not_tested = "no_information";
       }
       if (!not_tested && rules.min_effective_units && u.se > 0 &&
-          std::min(u.n_eff[0], u.n_eff[1]) < kMinEffectiveUnits)
+          few_effective_units(u.n_eff, u.n_units))
         not_tested = "few_effective_units";
       if (not_tested) {
         res.p[o] = kNaN; res.u_p[o] = kNaN;

@@ -312,10 +312,10 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out <- list(from = f, to = t, ok = r$ok, reason = r$reason, rows = rows, test = r, unadjusted = r, adjusted_for = "none")
   if (!r$ok) return(out)
   # not tested (as the core's pair_tests): allocation, a condition with no informative patient (every image at -1 or
-  # +1, the bounds of the fraction; its CR2 variance is exactly 0); then a condition with fewer than 3 effective
-  # patients (its mean rests on one or two of them)
+  # +1, the bounds of the fraction; its CR2 variance is exactly 0); then a condition whose effective patients fall
+  # below min(3, m_g / 2), m_g its patients with rows (its mean rests on a few of them)
   skip <- if (r$se > 0 && .cell_no_information(rows, 2L)) "no_information"
-          else if (rules$min_effective_units && r$se > 0 && min(r$n_eff) < rules$min_n_eff) "few_effective_units"
+          else if (rules$min_effective_units && r$se > 0 && .cell_few_effective(r$n_eff, r$n_units, rules)) "few_effective_units"
   if (!is.null(skip)) { out$test$p <- NaN; out$unadjusted$p <- NaN }
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
@@ -341,6 +341,10 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## the count effect and Kontextual): the pooled dispersion, and the minimum effective number of patients per condition.
 .cell_rules <- function(rows) stats_test_rules(!is.null(attr(rows, "side")))
 
+## TRUE when a condition's effective patients n_eff fall below min(3, m_g / 2), m_g its patients with rows (the core's
+## few_effective_units).
+.cell_few_effective <- function(n_eff, m, rules) any(n_eff < pmin(rules$min_n_eff, as.numeric(m) / 2))
+
 ## Allocation (image rows with a side): TRUE when a condition (of G) has no informative patient, one with at least one
 ## image whose effect (O - E) / n is not exactly -1 or +1, the bounds of the fraction.
 .cell_no_information <- function(rows, G) {
@@ -363,7 +367,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   # adjusted design is fitted then either)
   if (!u[[1]]$ok) { out$reason <- if (u[[1]]$reason == "no_variation") "no_variation" else "design_not_full_rank"; return(out) }
   if (.cell_no_information(rows, G)) { out$reason <- "no_information"; return(out) }
-  if (rules$min_effective_units && any(stats_effective_units(rg, rg$unit, rg$group, G, u[[1]]$tau2) < rules$min_n_eff)) {
+  if (rules$min_effective_units &&
+      .cell_few_effective(stats_effective_units(rg, rg$unit, rg$group, G, u[[1]]$tau2), per_level, rules)) {
     out$reason <- "few_effective_units"; return(out)
   }
   names(u) <- ctx$levels[-1]

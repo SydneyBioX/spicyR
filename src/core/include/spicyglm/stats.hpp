@@ -111,8 +111,19 @@ std::vector<int> informative_units(const ImageRows& rows, const std::vector<int>
 std::vector<double> effective_units(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                                     int n_groups, double tau2);
 
-// A condition test is not done when a condition has fewer effective units than this (TestRules).
+// A condition test is not done when a condition's effective units n_eff fall below min(kMinEffectiveUnits, m / 2),
+// where m is the number of its units with rows (TestRules).
 constexpr double kMinEffectiveUnits = 3;
+
+// The least n_eff a condition with m units with rows may have: min(kMinEffectiveUnits, m / 2).
+inline double min_effective_units(double m) { return m / 2 < kMinEffectiveUnits ? m / 2 : kMinEffectiveUnits; }
+
+// TRUE when a condition g has n_eff[g] < min_effective_units(n_units[g]).
+inline bool few_effective_units(const std::vector<double>& n_eff, const std::vector<double>& n_units) {
+  for (std::size_t g = 0; g < n_eff.size(); ++g)
+    if (n_eff[g] < min_effective_units(n_units[g])) return true;
+  return false;
+}
 
 // The rules of the condition test, per effect (allocation: true; the count effect and Kontextual: false); every
 // effect has both.
@@ -120,8 +131,8 @@ constexpr double kMinEffectiveUnits = 3;
 //     phi = sum_g m_g (V_g / EV_g) / sum_g m_g, the ratio of each condition's CR2 variance V_g to its model variance
 //     EV_g = 1 / B_g, pooled over the conditions by their numbers of units m_g; the df are those of CR2. With
 //     variance = Hartung-Knapp the variance is that of Hartung-Knapp.
-//   min_effective_units: a radius where a condition has fewer than kMinEffectiveUnits effective units
-//     (effective_units, at the test's tau2) is not tested.
+//   min_effective_units: a radius where a condition's effective units (effective_units, at the test's tau2) fall
+//     below min(kMinEffectiveUnits, m_g / 2), m_g its number of units with rows at the radius, is not tested.
 struct TestRules { bool pooled_dispersion = false, min_effective_units = false; };
 TestRules test_rules(bool allocation);
 
@@ -139,6 +150,7 @@ struct ExcessResult {
   std::vector<double> unit_info;    // I_i
   std::vector<double> image_weight; // per image row: its share of its group's information (sums to 1 in each group)
   std::vector<double> n_eff;        // per group (0, 1): its effective number of units at tau2 (effective_units)
+  std::vector<double> n_units;      // per group (0, 1): its number of units with rows
 };
 
 // unit: unit code of every image (0 .. n_units - 1); group: 0 or 1 per image, or negative for a missing condition
@@ -318,7 +330,8 @@ PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit,
 // reason "no_variation", p NaN. Allocation: where a condition has no informative unit (informative_units) the radius
 // is not tested either: p and the unadjusted p NaN, and, when there is something to adjust for, design 2 with reason
 // "no_information"; it does not enter the combination over radii. Likewise, where the effect's TestRules ask for it,
-// a radius where a condition has fewer than kMinEffectiveUnits effective units in the unadjusted test: reason
+// a radius where a condition's effective units in the unadjusted test fall below min(kMinEffectiveUnits, m_g / 2),
+// m_g its number of units with rows (few_effective_units): reason
 // "few_effective_units". The tests use the effect's pooled dispersion (TestRules), unadjusted and adjusted. Images
 // with a missing condition give no row: they are left out of the side, of tau2_image and of every test.
 struct PairTests {

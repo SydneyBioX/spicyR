@@ -189,7 +189,7 @@ List stats_excess_test(List rows, IntegerVector unit, IntegerVector group, int n
                       _["difference"] = r.difference, _["se"] = r.se, _["df"] = r.df, _["p"] = r.p, _["tau2"] = r.tau2,
                       _["influence"] = nv(r.influence), _["unit_summary"] = nv(r.unit_summary),
                       _["unit_info"] = nv(r.unit_info), _["image_weight"] = nv(r.image_weight),
-                      _["n_eff"] = nv(r.n_eff));
+                      _["n_eff"] = nv(r.n_eff), _["n_units"] = nv(r.n_units));
 }
 
 // [[Rcpp::export]]

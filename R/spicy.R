@@ -564,11 +564,11 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     if (novar) cat(novar, " pairs have no variation (adjusted_for \"none (no_variation)\") and are not tested\n", sep = "")
     if (noinfo) cat(noinfo, " pairs have a condition with no informative patient (adjusted_for \"none (no_information)\") and ",
                     "are not tested\n", sep = "")
-    if (few) cat(few, " pairs have a condition with fewer than 3 effective patients (adjusted_for ",
+    if (few) cat(few, " pairs have a condition with too few effective patients (adjusted_for ",
                  "\"none (few_effective_units)\") and are not tested\n", sep = "")
     untested <- if (is.null(tab$adjusted_for) && is.null(df$survivalOutcome)) sum(is.na(tab$p_value)) else 0
     if (untested) cat(untested, " pairs are not tested (p_value NA: no variation, a condition with no informative ",
-                      "patient, or one with fewer than 3 effective patients)\n", sep = "")
+                      "patient, or one with too few effective patients)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
     cat("\nSee topPairs() and $cellResults.\n")
