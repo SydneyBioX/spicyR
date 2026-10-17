@@ -1,3 +1,15 @@
+CHANGES IN VERSION 1.99.31
+--------------------------
+
+    o kontextualEngine() (the engine of Statial::kontextualTest()) now has labelClustering = FALSE by default: the
+      image variances are no longer multiplied by the label-clustering factor. The option is kept. This matches
+      spicy(), where the factor has been off since 1.99.8.
+    o Why: with the factor, most of the weight goes to a few images. When the conditions were shuffled between
+      patients (5 cohorts, 30 shuffles each), a few triples came up far more often than chance with the factor on;
+      without it every cohort stayed at or below the nominal level (3.0-4.4% of p-values below 0.05) and gave
+      no shuffle with a BH discovery (1 of 150 with the factor). It also gives more discoveries on the real labels
+      (Cords 83 -> 94, Vannan 121 -> 161 triples).
+
 CHANGES IN VERSION 1.99.30
 --------------------------
 

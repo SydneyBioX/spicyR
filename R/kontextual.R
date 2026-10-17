@@ -7,14 +7,17 @@
 #' For each triple of `parentDf` it compares Statial's Kontextual statistic in each image with its exact
 #' expectation and variance when the `to` cells are a random choice among the parent's cells, and combines the
 #' images as [spicy()] does (frailty GEE, CR2 variance with the dispersion shared by the conditions, enough
-#' effective patients per condition, label-clustering factor, abundance adjustment).
+#' effective patients per condition, abundance adjustment).
 #'
 #' @param cells A SingleCellExperiment, SpatialExperiment or data frame with a row per cell.
 #' @param parentDf A data frame of triples with columns `from`, `to`, `parent` (a list column of cell types
 #'   containing `to`) and optionally `parent_name`, as made by `Statial::parentCombinations()`.
 #' @param condition The column with each image's condition, or a `Surv` column of survival outcomes.
-#' @param subject,covariates,r,from,to,imageID,cellType,spatialCoords,adjustAbundance,variance,frailty,labelClustering,ref
+#' @param subject,covariates,r,from,to,imageID,cellType,spatialCoords,adjustAbundance,variance,frailty,ref
 #'   As for [spicy()]; `r` is one radius.
+#' @param labelClustering Whether to multiply each image's variance by a factor for clustering of the `to` labels.
+#'   Off by default: the factor puts most of the weight on a few images, and without it the test stays at or below
+#'   its nominal level when the conditions are shuffled between patients.
 #' @param edgeCorrect Correct the parent densities for the part of each disc outside the image's window.
 #' @param window The window of each image for the edge correction: `"convex"` or `"rectangle"`.
 #'
@@ -42,7 +45,7 @@ kontextualEngine <- function(cells,
                              adjustAbundance = TRUE,
                              variance = c("cr2", "hartung_knapp"),
                              frailty = TRUE,
-                             labelClustering = TRUE,
+                             labelClustering = FALSE,
                              edgeCorrect = TRUE,
                              window = c("convex", "rectangle"),
                              ref = NULL) {

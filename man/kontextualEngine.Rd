@@ -19,7 +19,7 @@ kontextualEngine(
   adjustAbundance = TRUE,
   variance = c("cr2", "hartung_knapp"),
   frailty = TRUE,
-  labelClustering = TRUE,
+  labelClustering = FALSE,
   edgeCorrect = TRUE,
   window = c("convex", "rectangle"),
   ref = NULL
@@ -33,7 +33,11 @@ containing \code{to}) and optionally \code{parent_name}, as made by \code{Statia
 
 \item{condition}{The column with each image's condition, or a \code{Surv} column of survival outcomes.}
 
-\item{subject, covariates, r, from, to, imageID, cellType, spatialCoords, adjustAbundance, variance, frailty, labelClustering, ref}{As for \code{\link[=spicy]{spicy()}}; \code{r} is one radius.}
+\item{subject, covariates, r, from, to, imageID, cellType, spatialCoords, adjustAbundance, variance, frailty, ref}{As for \code{\link[=spicy]{spicy()}}; \code{r} is one radius.}
+
+\item{labelClustering}{Whether to multiply each image's variance by a factor for clustering of the \code{to} labels.
+Off by default: the factor puts most of the weight on a few images, and without it the test stays at or below
+its nominal level when the conditions are shuffled between patients.}
 
 \item{edgeCorrect}{Correct the parent densities for the part of each disc outside the image's window.}
 
@@ -47,7 +51,7 @@ The computation behind \code{Statial::kontextualTest()}; use that function, whos
 For each triple of \code{parentDf} it compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the \code{to} cells are a random choice among the parent's cells, and combines the
 images as \code{\link[=spicy]{spicy()}} does (frailty GEE, CR2 variance with the dispersion shared by the conditions, enough
-effective patients per condition, label-clustering factor, abundance adjustment).
+effective patients per condition, abundance adjustment).
 }
 \examples{
 data("diabetesData")

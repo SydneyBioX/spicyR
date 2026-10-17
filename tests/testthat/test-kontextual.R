@@ -112,9 +112,11 @@ test_that("signifPlot draws survival results of the cell method", {
                                             subject = "patient", r = 30)), "ggplot")
 })
 
-test_that("a triple's result does not depend on the other triples requested (psi over every from type)", {
-  full <- kontextualEngine(cells, pdf[pdf$from != pdf$to, ], condition = "condition", subject = "patient", r = 30)$cellResults
-  one <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient", r = 30, from = "tumour", to = "T")$cellResults
+test_that("with labelClustering, a triple's result does not depend on the other triples requested (psi over every from type)", {
+  full <- kontextualEngine(cells, pdf[pdf$from != pdf$to, ], condition = "condition", subject = "patient", r = 30,
+                           labelClustering = TRUE)$cellResults
+  one <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient", r = 30, from = "tumour", to = "T",
+                          labelClustering = TRUE)$cellResults
   expect_equal(one["tumour__T__lymphoid", "p_value"], full["tumour__T__lymphoid", "p_value"], tolerance = 1e-12)
   expect_equal(one["tumour__T__lymphoid", "excess_difference"], full["tumour__T__lymphoid", "excess_difference"], tolerance = 1e-12)
 })
