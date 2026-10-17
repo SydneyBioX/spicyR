@@ -120,9 +120,10 @@ spicy(
 
 - variance:
 
-  Cell method: `"cr2"` (the default: CR2 on Satterthwaite df) or
-  `"hartung_knapp"` (the model-based variance, scaled by the Pearson
-  statistic when that exceeds its df and never below CR2, on m - 2 df).
+  Cell method: `"cr2"` (the default: CR2 on Satterthwaite df, with the
+  dispersion shared by the conditions, see Details) or `"hartung_knapp"`
+  (the model-based variance, scaled by the Pearson statistic when that
+  exceeds its df and never below CR2, on m - 2 df).
 
 - ref:
 
@@ -190,22 +191,23 @@ to `from` cells, the effect is f. For a pair that avoids it is (observed
 share - q) / q: if a fraction f of the `to` cells that would have a
 `from` cell nearby were moved away, the effect is -f. Either way it does
 not depend on how many `from` cells there are or how densely they are
-packed. The side is chosen once per pair from all images, without the
-conditions, and is reported in the `side` column. `effect = "count"`
-gives the number of extra `from` cells within `r` of each `to` cell
-instead; it also reflects how many `from` cells surround a `to` cell
-(depth of infiltration), but it grows with how densely the `from` cells
-are packed, so a change in packing alone can appear as a change in
-co-localisation. Images are combined within patients and patients within
-conditions by a frailty GEE with a second random effect for the images
-of a patient (each image is weighted by 1 / (its sampling variance + the
-between-image variance), so one large image cannot outweigh the
-patient's other images), and the difference between conditions is tested
-with a CR2 cluster-robust variance on Satterthwaite degrees of freedom,
-with **patients (`subject`) as the units**. The difference is adjusted
-for any `covariates`, and, with `adjustAbundance = TRUE`, for the log
-share of the `from` type in each image; the unadjusted test is then
-reported alongside (`unadjusted_*` columns).
+packed. The side is chosen once per pair from all images with a
+condition, without the conditions, and is reported in the `side` column.
+`effect = "count"` gives the number of extra `from` cells within `r` of
+each `to` cell instead; it also reflects how many `from` cells surround
+a `to` cell (depth of infiltration), but it grows with how densely the
+`from` cells are packed, so a change in packing alone can appear as a
+change in co-localisation. Images are combined within patients and
+patients within conditions by a frailty GEE with a second random effect
+for the images of a patient (each image is weighted by 1 / (its sampling
+variance + the between-image variance), so one large image cannot
+outweigh the patient's other images), and the difference between
+conditions is tested with a CR2 cluster-robust variance on Satterthwaite
+degrees of freedom, with **patients (`subject`) as the units**. The
+difference is adjusted for any `covariates`, and, with
+`adjustAbundance = TRUE`, for the log share of the `from` type in each
+image; the unadjusted test is then reported alongside (`unadjusted_*`
+columns).
 
 When nearly every cell has a `from` cell within `r` (q close to 1),
 there is little room for attraction and an attracting pair's images
@@ -222,6 +224,29 @@ condition alone. Its p-value is `NA` (with adjustment, `adjusted_for` is
 `"none (no_information)"`), and it is left out of the combination over
 radii. With more than two conditions, a pair where any condition has no
 informative patient is not tested.
+
+The conditions share one dispersion. Each condition's CR2 variance is
+divided by its model-based variance, the ratios are averaged over the
+conditions with their numbers of patients as weights, and the
+model-based variance of the difference is multiplied by this average.
+The degrees of freedom are those of CR2. A small condition's own spread
+does not set the standard error alone, which matters when the conditions
+are of unequal size and the patients' effects are skewed. With
+adjustment, the ratios are those of the coefficient of each condition in
+the adjusted design, and every coefficient's variance is scaled the same
+way. `variance = "hartung_knapp"` keeps its own variance.
+
+A patient's weight within its condition grows with the information of
+its images, so one or two patients can carry nearly all of a condition's
+weight. A radius where a condition has fewer than 3 effective patients
+(Kish's (sum w)^2 / sum w^2 of the patients' weights w) is not tested:
+its p-value is `NA` (with adjustment, `adjusted_for` is
+`"none (few_effective_units)"`), and it is left out of the combination
+over radii. With more than two conditions, a pair where any condition
+has fewer than 3 is not tested.
+
+Images with a missing condition are left out of every step: the choice
+of the side, the between-image variance and the tests.
 
 **`method = "image"` (the original spicyR test).** A per-image
 L-function summary of each pair is compared between conditions with a
@@ -271,14 +296,14 @@ res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
 #>        intercept coefficient   p.value adj.pvalue from to
-#> Tc__Th  0.272768   0.1023755 0.4489368  0.4489368   Tc Th
+#> Tc__Th  0.272768   0.1023755 0.4114593  0.4114593   Tc Th
 res$cellResults
 #>                       from to         level    side excess_ref
 #> Tc__Th__Onset           Tc Th         Onset attract   0.272768
 #> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768
 #>                       excess_difference        se       df   p_value     p_adj
-#> Tc__Th__Onset                 0.1023755 0.1249849 5.153215 0.4489368 0.4489368
-#> Tc__Th__Long-duration         0.0398330 0.0857751 5.231229 0.6610582 0.6610582
+#> Tc__Th__Onset                 0.1023755 0.1146014 5.153215 0.4114593 0.4114593
+#> Tc__Th__Long-duration         0.0398330 0.1117464 5.231229 0.7354259 0.7354259
 #>                              tau2 tau2_image
 #> Tc__Th__Onset         0.001709649 0.05857091
 #> Tc__Th__Long-duration 0.001709649 0.05857091

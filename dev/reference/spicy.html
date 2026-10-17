@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.28</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.29</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -145,9 +145,9 @@ cells from more densely packed ones, and it removes real effects when the share 
 
 
 <dt id="arg-variance">variance<a class="anchor" aria-label="anchor" href="#arg-variance"></a></dt>
-<dd><p>Cell method: <code>"cr2"</code> (the default: CR2 on Satterthwaite df) or <code>"hartung_knapp"</code> (the
-model-based variance, scaled by the Pearson statistic when that exceeds its df and never below CR2, on m - 2
-df).</p></dd>
+<dd><p>Cell method: <code>"cr2"</code> (the default: CR2 on Satterthwaite df, with the dispersion shared by the
+conditions, see Details) or <code>"hartung_knapp"</code> (the model-based variance, scaled by
+the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).</p></dd>
 
 
 <dt id="arg-ref">ref<a class="anchor" aria-label="anchor" href="#arg-ref"></a></dt>
@@ -198,8 +198,8 @@ among the cells that are not <code>from</code> cells. The effect (<code>effect =
 if a fraction f of the <code>to</code> cells were moved next to <code>from</code> cells, the effect is f. For a pair that avoids
 it is (observed share - q) / q: if a fraction f of the <code>to</code> cells that would have a <code>from</code> cell nearby were
 moved away, the effect is -f. Either way it does not depend on how many <code>from</code> cells there are or how
-densely they are packed. The side is chosen once per pair from all images, without the conditions, and is
-reported in the <code>side</code> column. <code>effect = "count"</code> gives the number of extra <code>from</code>
+densely they are packed. The side is chosen once per pair from all images with a condition, without the
+conditions, and is reported in the <code>side</code> column. <code>effect = "count"</code> gives the number of extra <code>from</code>
 cells within <code>r</code> of each <code>to</code> cell instead; it also reflects how many <code>from</code> cells surround a <code>to</code> cell
 (depth of infiltration), but it grows with how densely the <code>from</code> cells are packed, so a change in
 packing alone can appear as a change in co-localisation. Images are combined within patients and
@@ -219,6 +219,20 @@ patient is not tested: that condition's patients all have the same effect, so it
 standard error would rest on the other condition alone. Its p-value is <code>NA</code> (with adjustment, <code>adjusted_for</code> is
 <code>"none (no_information)"</code>), and it is left out of the combination over radii. With more than two conditions, a
 pair where any condition has no informative patient is not tested.</p>
+<p>The conditions share one dispersion. Each condition's CR2 variance is divided by its
+model-based variance, the ratios are averaged over the conditions with their numbers of patients as weights,
+and the model-based variance of the difference is multiplied by this average. The degrees of freedom are those
+of CR2. A small condition's own spread does not set the standard error alone, which matters when the conditions
+are of unequal size and the patients' effects are skewed. With adjustment, the ratios are those of the
+coefficient of each condition in the adjusted design, and every coefficient's variance is scaled the same way.
+<code>variance = "hartung_knapp"</code> keeps its own variance.</p>
+<p>A patient's weight within its condition grows with the information of its images, so one or two patients can
+carry nearly all of a condition's weight. A radius where a condition has fewer than
+3 effective patients (Kish's (sum w)^2 / sum w^2 of the patients' weights w) is not tested: its p-value is <code>NA</code>
+(with adjustment, <code>adjusted_for</code> is <code>"none (few_effective_units)"</code>), and it is left out of the combination over
+radii. With more than two conditions, a pair where any condition has fewer than 3 is not tested.</p>
+<p>Images with a missing condition are left out of every step: the choice of the side, the between-image
+variance and the tests.</p>
 <p><strong><code>method = "image"</code> (the original spicyR test).</strong> A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when <code>subject</code> is given
 (Canete et al. 2022).</p>
@@ -252,14 +266,14 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        intercept coefficient   p.value adj.pvalue from to</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th  0.272768   0.1023755 0.4489368  0.4489368   Tc Th</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th  0.272768   0.1023755 0.4114593  0.4114593   Tc Th</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level    side excess_ref</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset attract   0.272768</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference        se       df   p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1023755 0.1249849 5.153215 0.4489368 0.4489368</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.0398330 0.0857751 5.231229 0.6610582 0.6610582</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1023755 0.1146014 5.153215 0.4114593 0.4114593</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.0398330 0.1117464 5.231229 0.7354259 0.7354259</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                              tau2 tau2_image</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.001709649 0.05857091</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.001709649 0.05857091</span>

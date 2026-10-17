@@ -6,8 +6,9 @@ compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the `to` cells are a random choice among
 the parent's cells, and combines the images as
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-does (frailty GEE, CR2 variance, label-clustering factor, abundance
-adjustment).
+does (frailty GEE, CR2 variance with the dispersion shared by the
+conditions, at least 3 effective patients per condition,
+label-clustering factor, abundance adjustment).
 
 ## Usage
 
@@ -79,7 +80,8 @@ object with one row per triple (`from`, `to`, `parent`).
 
 ``` r
 data("diabetesData")
-parentDf <- data.frame(from = "alpha", to = c("Tc", "Th"), parent_name = "tcells")
+# with 4 patients per stage, few triples have 3 effective patients in every stage
+parentDf <- data.frame(from = "delta", to = c("Tc", "Th"), parent_name = "tcells")
 parentDf$parent <- list(c("Tc", "Th"), c("Tc", "Th"))
 res <- kontextualEngine(diabetesData, parentDf, condition = "stage", subject = "case", r = 50)
 ```
