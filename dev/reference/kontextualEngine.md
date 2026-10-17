@@ -7,8 +7,8 @@ expectation and variance when the `to` cells are a random choice among
 the parent's cells, and combines the images as
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
 does (frailty GEE, CR2 variance with the dispersion shared by the
-conditions, enough effective patients per condition, label-clustering
-factor, abundance adjustment).
+conditions, enough effective patients per condition, abundance
+adjustment).
 
 ## Usage
 
@@ -28,7 +28,7 @@ kontextualEngine(
   adjustAbundance = TRUE,
   variance = c("cr2", "hartung_knapp"),
   frailty = TRUE,
-  labelClustering = TRUE,
+  labelClustering = FALSE,
   edgeCorrect = TRUE,
   window = c("convex", "rectangle"),
   ref = NULL
@@ -54,11 +54,18 @@ kontextualEngine(
   outcomes.
 
 - subject, covariates, r, from, to, imageID, cellType, spatialCoords,
-  adjustAbundance, variance, frailty, labelClustering, ref:
+  adjustAbundance, variance, frailty, ref:
 
   As for
   [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md);
   `r` is one radius.
+
+- labelClustering:
+
+  Whether to multiply each image's variance by a factor for clustering
+  of the `to` labels. Off by default: the factor puts most of the weight
+  on a few images, and without it the test stays at or below its nominal
+  level when the conditions are shuffled between patients.
 
 - edgeCorrect:
 

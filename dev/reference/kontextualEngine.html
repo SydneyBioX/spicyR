@@ -3,11 +3,11 @@
 For each triple of parentDf it compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the to cells are a random choice among the parent's cells, and combines the
 images as spicy() does (frailty GEE, CR2 variance with the dispersion shared by the conditions, enough
-effective patients per condition, label-clustering factor, abundance adjustment)."><meta property="og:description" content="The computation behind Statial::kontextualTest(); use that function, whose help page describes the method.
+effective patients per condition, abundance adjustment)."><meta property="og:description" content="The computation behind Statial::kontextualTest(); use that function, whose help page describes the method.
 For each triple of parentDf it compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the to cells are a random choice among the parent's cells, and combines the
 images as spicy() does (frailty GEE, CR2 variance with the dispersion shared by the conditions, enough
-effective patients per condition, label-clustering factor, abundance adjustment)."><meta name="robots" content="noindex"></head><body>
+effective patients per condition, abundance adjustment)."><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +15,7 @@ effective patients per condition, label-clustering factor, abundance adjustment)
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.30</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.31</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,7 +47,7 @@ effective patients per condition, label-clustering factor, abundance adjustment)
 For each triple of <code>parentDf</code> it compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the <code>to</code> cells are a random choice among the parent's cells, and combines the
 images as <code><a href="spicy.html">spicy()</a></code> does (frailty GEE, CR2 variance with the dispersion shared by the conditions, enough
-effective patients per condition, label-clustering factor, abundance adjustment).</p>
+effective patients per condition, abundance adjustment).</p>
     </div>
 
     <div class="section level2">
@@ -67,7 +67,7 @@ effective patients per condition, label-clustering factor, abundance adjustment)
 <span>  adjustAbundance <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
 <span>  frailty <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  labelClustering <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  labelClustering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  edgeCorrect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  window <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"convex"</span>, <span class="st">"rectangle"</span><span class="op">)</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -91,8 +91,14 @@ containing <code>to</code>) and optionally <code>parent_name</code>, as made by 
 <dd><p>The column with each image's condition, or a <code>Surv</code> column of survival outcomes.</p></dd>
 
 
-<dt id="arg-subject-covariates-r-from-to-imageid-celltype-spatialcoords-adjustabundance-variance-frailty-labelclustering-ref">subject, covariates, r, from, to, imageID, cellType, spatialCoords, adjustAbundance, variance, frailty, labelClustering, ref<a class="anchor" aria-label="anchor" href="#arg-subject-covariates-r-from-to-imageid-celltype-spatialcoords-adjustabundance-variance-frailty-labelclustering-ref"></a></dt>
+<dt id="arg-subject-covariates-r-from-to-imageid-celltype-spatialcoords-adjustabundance-variance-frailty-ref">subject, covariates, r, from, to, imageID, cellType, spatialCoords, adjustAbundance, variance, frailty, ref<a class="anchor" aria-label="anchor" href="#arg-subject-covariates-r-from-to-imageid-celltype-spatialcoords-adjustabundance-variance-frailty-ref"></a></dt>
 <dd><p>As for <code><a href="spicy.html">spicy()</a></code>; <code>r</code> is one radius.</p></dd>
+
+
+<dt id="arg-labelclustering">labelClustering<a class="anchor" aria-label="anchor" href="#arg-labelclustering"></a></dt>
+<dd><p>Whether to multiply each image's variance by a factor for clustering of the <code>to</code> labels.
+Off by default: the factor puts most of the weight on a few images, and without it the test stays at or below
+its nominal level when the conditions are shuffled between patients.</p></dd>
 
 
 <dt id="arg-edgecorrect">edgeCorrect<a class="anchor" aria-label="anchor" href="#arg-edgecorrect"></a></dt>
