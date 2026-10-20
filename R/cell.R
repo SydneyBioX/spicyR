@@ -153,6 +153,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                     type_map = type_map)   # the columns themselves, not copies
   if (dataset) {
     ord <- order(image_map[as.integer(fi)], method = "radix")   # cells sorted (stably) by image
+    ctx$ord <- ord   # the dataset's rows, as rows of `cells`
     tc <- as.integer(ft)[ord]; tc[is.na(tc)] <- length(lt) + 1L
     ctx$data <- dataset_create(as.numeric(cells[[x_col]][ord]), as.numeric(cells[[y_col]][ord]), type_map[tc],
                                as.integer(c(0L, cumsum(rowSums(ctx$counts)))), length(ctx$type_labels))
@@ -249,6 +250,47 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   rows
 }
 
+## spicy() with soft cell type membership (cellWeights): for each `from` label, one neighbour pass gives the
+## weighted random-labelling sums of every `to` label (Dataset::weighted_excess_sums); each pair's image rows then go
+## through the side, the image random effect and the test as .cell_pair_test() takes them for cell types. With 0/1
+## weights the results are those of the cell types. Self-pairs are not tested.
+.cell_weighted <- function(ctx, memb, pairs, r, effect, variance, adjust, Z_extra, survival = FALSE, sv = NULL,
+                           covariates = NULL) {
+  allocation <- effect == "allocation"
+  dataset_build_radius_index(ctx$data, r)
+  csr <- .membership_rows(memb, ctx$ord)
+  K <- length(memb$labels)
+  pairs <- Filter(function(p) p[1] != p[2], pairs)
+  if (!length(pairs)) stop("with `cellWeights`, `from` and `to` must give at least one pair of different labels.",
+                           call. = FALSE)
+  from <- vapply(pairs, `[`, "", 1L); to <- vapply(pairs, `[`, "", 2L)
+  fits <- vector("list", length(pairs))
+  wctx <- .weighted_context(ctx, memb)
+  for (f in unique(from)) {
+    jf <- match(f, memb$labels)
+    a <- numeric(memb$nCells); sel <- memb$j == jf; a[memb$i[sel]] <- memb$x[sel]
+    sums <- dataset_weighted_excess_sums(ctx$data, a[ctx$ord], csr$ptr, csr$lab, csr$w, K, allocation)
+    for (k in which(from == f)) {
+      t <- to[k]
+      rows <- stats_weighted_image_rows(sums, K, match(t, memb$labels) - 1L, allocation, ctx$image_group)
+      rows$unit <- ctx$image_unit[rows$img + 1L]
+      if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
+      side <- if (allocation) { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
+      if (nrow(rows)) {
+        h <- stats_image_heterogeneity_rows(rows, rows$unit)
+        h$unit <- rows$unit; h$group <- rows$group
+        rows <- h
+      }
+      attr(rows, "side") <- side
+      fits[[k]] <- if (survival) .cell_survival_test(wctx, rows, f, t, sv, adjust, covariates)
+                   else .cell_rows_test(wctx, rows, f, t, TRUE, variance, adjust, Z_extra)
+    }
+  }
+  tab <- if (survival) .cell_survival_table(fits, adjust, covariates)
+         else .cell_table(fits, ctx, adjust || !is.null(Z_extra))
+  list(table = tab, fits = fits)
+}
+
 ## Add the allocation side and the between-image variance of a fit to its table row(s).
 .cell_add_side <- function(row, o) {
   s <- attr(o$rows, "side")
@@ -263,7 +305,22 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## The log share of the counted type in each image row (the abundance covariate).
 .cell_share <- function(ctx, rows, f) {
   i <- rows$img + 1L
-  log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / rowSums(ctx$counts)[i])
+  total <- if (is.null(ctx$cells_per_image)) rowSums(ctx$counts) else ctx$cells_per_image
+  log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / total[i])
+}
+
+## The context of the tests with soft membership: counts are each label's summed weight per image (for the abundance
+## share), over the image's number of cells (labels may overlap).
+.weighted_context <- function(ctx, memb) {
+  img <- ctx$cells$image_map[as.integer(ctx$cells$image)][memb$i] + 1L
+  counts <- matrix(0, ctx$n_images, length(memb$labels))
+  s <- rowsum(memb$x, (img - 1L) * length(memb$labels) + memb$j)
+  key <- as.integer(rownames(s)) - 1L
+  counts[cbind(key %/% length(memb$labels) + 1L, key %% length(memb$labels) + 1L)] <- s[, 1]
+  ctx$cells_per_image <- rowSums(ctx$counts)
+  ctx$counts <- counts
+  ctx$type_labels <- memb$labels
+  ctx
 }
 
 ## The design of the main test: one indicator per condition, then the centred log share of the counted

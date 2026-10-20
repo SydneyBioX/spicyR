@@ -110,6 +110,21 @@ List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_ex
 }
 
 // [[Rcpp::export]]
+List stats_weighted_image_rows(NumericMatrix sums, int n_labels, int to, bool allocation,
+                               Nullable<IntegerVector> image_group = R_NilValue) {
+  // sums: (3 + 4 n_labels) x images (dataset_weighted_excess_sums); to: 0-based label
+  std::vector<int> ig;
+  if (image_group.isNotNull()) ig = ivec(IntegerVector(image_group));
+  return rows_to(weighted_image_rows(sums.begin(), sums.ncol(), n_labels, to, allocation, ig.empty() ? nullptr : ig.data()));
+}
+
+// [[Rcpp::export]]
+List stats_kontextual_image_rows_weighted(NumericMatrix sums) {
+  // sums: 10 x images (dataset_kontextual_sums_weighted)
+  return rows_to(kontextual_image_rows_weighted(std::vector<double>(sums.begin(), sums.end()), sums.ncol()));
+}
+
+// [[Rcpp::export]]
 List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi) {
   // sums: 7 x images (dataset_kontextual_sums); counts: images x types; psi: types x images, or 0 x 0
   const int n_images = counts.nrow(), T = counts.ncol();

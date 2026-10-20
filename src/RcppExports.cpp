@@ -373,6 +373,37 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_weighted_excess_sums
+NumericMatrix dataset_weighted_excess_sums(SEXP ptr, NumericVector a, IntegerVector mPtr, IntegerVector mLab, NumericVector mW, int n_labels, bool allocation);
+RcppExport SEXP _spicyR_dataset_weighted_excess_sums(SEXP ptrSEXP, SEXP aSEXP, SEXP mPtrSEXP, SEXP mLabSEXP, SEXP mWSEXP, SEXP n_labelsSEXP, SEXP allocationSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type mPtr(mPtrSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type mLab(mLabSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mW(mWSEXP);
+    Rcpp::traits::input_parameter< int >::type n_labels(n_labelsSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_weighted_excess_sums(ptr, a, mPtr, mLab, mW, n_labels, allocation));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_kontextual_sums_weighted
+NumericMatrix dataset_kontextual_sums_weighted(SEXP ptr, NumericVector a, NumericVector b, bool self);
+RcppExport SEXP _spicyR_dataset_kontextual_sums_weighted(SEXP ptrSEXP, SEXP aSEXP, SEXP bSEXP, SEXP selfSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type self(selfSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_kontextual_sums_weighted(ptr, a, b, self));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_hac_phi_sums_ref
 NumericMatrix dataset_hac_phi_sums_ref(SEXP ptr, int from, int design, double h, int n_types);
 RcppExport SEXP _spicyR_dataset_hac_phi_sums_ref(SEXP ptrSEXP, SEXP fromSEXP, SEXP designSEXP, SEXP hSEXP, SEXP n_typesSEXP) {
@@ -539,8 +570,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // getPairwiseCpp
-Rcpp::NumericMatrix getPairwiseCpp(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::IntegerVector type, Rcpp::IntegerVector offset, int nTypes, Rcpp::NumericVector Rs, bool square, Rcpp::LogicalVector isFrom, Rcpp::LogicalVector isTo, Rcpp::IntegerVector labI, Rcpp::IntegerVector labJ, bool edgeCorrect, bool includeZeroCells, int nThreads);
-RcppExport SEXP _spicyR_getPairwiseCpp(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP offsetSEXP, SEXP nTypesSEXP, SEXP RsSEXP, SEXP squareSEXP, SEXP isFromSEXP, SEXP isToSEXP, SEXP labISEXP, SEXP labJSEXP, SEXP edgeCorrectSEXP, SEXP includeZeroCellsSEXP, SEXP nThreadsSEXP) {
+Rcpp::NumericMatrix getPairwiseCpp(Rcpp::NumericVector x, Rcpp::NumericVector y, Rcpp::IntegerVector type, Rcpp::IntegerVector offset, int nTypes, Rcpp::NumericVector Rs, bool square, Rcpp::LogicalVector isFrom, Rcpp::LogicalVector isTo, Rcpp::IntegerVector labI, Rcpp::IntegerVector labJ, bool edgeCorrect, bool includeZeroCells, int nThreads, Rcpp::Nullable<Rcpp::IntegerVector> mPtr, Rcpp::Nullable<Rcpp::IntegerVector> mLab, Rcpp::Nullable<Rcpp::NumericVector> mW);
+RcppExport SEXP _spicyR_getPairwiseCpp(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP offsetSEXP, SEXP nTypesSEXP, SEXP RsSEXP, SEXP squareSEXP, SEXP isFromSEXP, SEXP isToSEXP, SEXP labISEXP, SEXP labJSEXP, SEXP edgeCorrectSEXP, SEXP includeZeroCellsSEXP, SEXP nThreadsSEXP, SEXP mPtrSEXP, SEXP mLabSEXP, SEXP mWSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -558,7 +589,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type edgeCorrect(edgeCorrectSEXP);
     Rcpp::traits::input_parameter< bool >::type includeZeroCells(includeZeroCellsSEXP);
     Rcpp::traits::input_parameter< int >::type nThreads(nThreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(getPairwiseCpp(x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type mPtr(mPtrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::IntegerVector> >::type mLab(mLabSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type mW(mWSEXP);
+    rcpp_result_gen = Rcpp::wrap(getPairwiseCpp(x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads, mPtr, mLab, mW));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -656,6 +690,32 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
     Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type image_group(image_groupSEXP);
     rcpp_result_gen = Rcpp::wrap(stats_allocation_image_rows(any_totals, self_expected, counts, from, to, psi, image_group));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stats_weighted_image_rows
+List stats_weighted_image_rows(NumericMatrix sums, int n_labels, int to, bool allocation, Nullable<IntegerVector> image_group);
+RcppExport SEXP _spicyR_stats_weighted_image_rows(SEXP sumsSEXP, SEXP n_labelsSEXP, SEXP toSEXP, SEXP allocationSEXP, SEXP image_groupSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type sums(sumsSEXP);
+    Rcpp::traits::input_parameter< int >::type n_labels(n_labelsSEXP);
+    Rcpp::traits::input_parameter< int >::type to(toSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    Rcpp::traits::input_parameter< Nullable<IntegerVector> >::type image_group(image_groupSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_weighted_image_rows(sums, n_labels, to, allocation, image_group));
+    return rcpp_result_gen;
+END_RCPP
+}
+// stats_kontextual_image_rows_weighted
+List stats_kontextual_image_rows_weighted(NumericMatrix sums);
+RcppExport SEXP _spicyR_stats_kontextual_image_rows_weighted(SEXP sumsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type sums(sumsSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_kontextual_image_rows_weighted(sums));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -991,6 +1051,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_rl_model_data", (DL_FUNC) &_spicyR_dataset_rl_model_data, 3},
     {"_spicyR_dataset_weighted_phi_sums", (DL_FUNC) &_spicyR_dataset_weighted_phi_sums, 5},
     {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
+    {"_spicyR_dataset_weighted_excess_sums", (DL_FUNC) &_spicyR_dataset_weighted_excess_sums, 7},
+    {"_spicyR_dataset_kontextual_sums_weighted", (DL_FUNC) &_spicyR_dataset_kontextual_sums_weighted, 4},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
     {"_spicyR_dataset_hac_phi_sums", (DL_FUNC) &_spicyR_dataset_hac_phi_sums, 5},
     {"_spicyR_cell_block_scan", (DL_FUNC) &_spicyR_cell_block_scan, 8},
@@ -1001,13 +1063,15 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_first_appearance_factor", (DL_FUNC) &_spicyR_first_appearance_factor, 1},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},
     {"_spicyR_lmerRandomIntercept", (DL_FUNC) &_spicyR_lmerRandomIntercept, 5},
-    {"_spicyR_getPairwiseCpp", (DL_FUNC) &_spicyR_getPairwiseCpp, 14},
+    {"_spicyR_getPairwiseCpp", (DL_FUNC) &_spicyR_getPairwiseCpp, 17},
     {"_spicyR_getPairwisePropCpp", (DL_FUNC) &_spicyR_getPairwisePropCpp, 10},
     {"_spicyR_scamMonoFit", (DL_FUNC) &_spicyR_scamMonoFit, 9},
     {"_spicyR_stats_pt_two_sided", (DL_FUNC) &_spicyR_stats_pt_two_sided, 2},
     {"_spicyR_stats_norm_quantile", (DL_FUNC) &_spicyR_stats_norm_quantile, 1},
     {"_spicyR_stats_excess_image_rows", (DL_FUNC) &_spicyR_stats_excess_image_rows, 8},
     {"_spicyR_stats_allocation_image_rows", (DL_FUNC) &_spicyR_stats_allocation_image_rows, 7},
+    {"_spicyR_stats_weighted_image_rows", (DL_FUNC) &_spicyR_stats_weighted_image_rows, 5},
+    {"_spicyR_stats_kontextual_image_rows_weighted", (DL_FUNC) &_spicyR_stats_kontextual_image_rows_weighted, 1},
     {"_spicyR_stats_kontextual_image_rows", (DL_FUNC) &_spicyR_stats_kontextual_image_rows, 5},
     {"_spicyR_stats_image_heterogeneity_rows", (DL_FUNC) &_spicyR_stats_image_heterogeneity_rows, 2},
     {"_spicyR_stats_informative_units", (DL_FUNC) &_spicyR_stats_informative_units, 4},

@@ -23,11 +23,16 @@
 // edge: n x (length(Rs) - 1) edge-correction weights, one column per radius.
 // Writes a K x K matrix of statistics to out, NaN where the combination has
 // no value (the caller then fills in its defaults).
-void spicy::inhomLCore(const double* x, const double* y, const int* type, int n, int K,
-                       const std::vector<double>& Rs, const std::vector<double>& labelVal,
-                       const std::vector<char>& isFrom, const std::vector<char>& isTo,
-                       const double* wt, const std::vector<double>& lam, double area,
-                       const double* edge, bool edgeCorrect, double* out) {
+namespace {
+
+// The body of inhomLCore() and weightedLCore(). fromM(c, f) and toM(c, f) call f(label, weight) for each label
+// of cell c (in input order) as the reference cell and as the neighbour of a pair.
+template <class FromM, class ToM>
+void lCore(const double* x, const double* y, int n, int K, FromM fromM, ToM toM,
+           const std::vector<double>& Rs, const std::vector<double>& labelVal,
+           const std::vector<char>& isFrom, const std::vector<char>& isTo,
+           const std::vector<double>& lam, double area,
+           const double* edge, bool edgeCorrect, double* out) {
   const int nb = static_cast<int>(Rs.size()) - 1;  // number of distance bins / radii
   std::fill(out, out + K * K, std::numeric_limits<double>::quiet_NaN());
   if (n == 0 || nb < 1 || Rs[nb] <= 0) return;
@@ -64,11 +69,10 @@ void spicy::inhomLCore(const double* x, const double* y, const int* type, int n,
     std::vector<int> fill(start.begin(), start.end() - 1);
     for (int i = 0; i < n; ++i) orig[fill[cellOf[i]]++] = i;
   }
-  std::vector<double> sx(n), sy(n), sw(n);
-  std::vector<int> st(n);
+  std::vector<double> sx(n), sy(n);
   for (int s = 0; s < n; ++s) {
     const int i = orig[s];
-    sx[s] = x[i]; sy[s] = y[i]; sw[s] = wt[i]; st[s] = type[i];
+    sx[s] = x[i]; sy[s] = y[i];
   }
 
   const std::vector<char>& from = isFrom;
@@ -84,23 +88,27 @@ void spicy::inhomLCore(const double* x, const double* y, const int* type, int n,
     for (int s = 0; s < n; ++s)
       for (int r = 0; r < nb; ++r) ie[static_cast<std::size_t>(s) * nb + r] = 1.0 / edge[orig[s] + static_cast<std::size_t>(r) * n];
 
-  // Count the pair from reference cell a (type I) to neighbour b (type J).
+  // Count the pair from reference cell a (label I) to neighbour b (label J).
   auto add = [&](int a, int b, int k) {
-    const int I = st[a], J = st[b];
-    if (!from[I] || !to[J]) return;
-    if (!edgeCorrect) {
-      S[(static_cast<std::size_t>(k) * K + I) * K + J] += sw[b];
-      seenBin[k] = 1;
-      seenI[I] = 1;
-      seenJ[J] = 1;
-    } else {
-      for (int r = firstR[k]; r < nb; ++r) {
-        S[(static_cast<std::size_t>(r) * K + I) * K + J] +=
-            sw[b] * ie[static_cast<std::size_t>(a) * nb + r];
-        seenI[r * K + I] = 1;
-        seenJ[r * K + J] = 1;
-      }
-    }
+    fromM(orig[a], [&](int I, double wI) {
+      if (!from[I]) return;
+      toM(orig[b], [&](int J, double wJ) {
+        if (!to[J]) return;
+        const double w = wI * wJ;
+        if (!edgeCorrect) {
+          S[(static_cast<std::size_t>(k) * K + I) * K + J] += w;
+          seenBin[k] = 1;
+          seenI[I] = 1;
+          seenJ[J] = 1;
+        } else {
+          for (int r = firstR[k]; r < nb; ++r) {
+            S[(static_cast<std::size_t>(r) * K + I) * K + J] += w * ie[static_cast<std::size_t>(a) * nb + r];
+            seenI[r * K + I] = 1;
+            seenJ[r * K + J] = 1;
+          }
+        }
+      });
+    });
   };
   // Visit each unordered pair once and count it in both directions.
   auto visit = [&](int si, int from_, int to_) {
@@ -165,6 +173,29 @@ void spicy::inhomLCore(const double* x, const double* y, const int* type, int n,
       }
     }
   }
+}
+
+}  // namespace
+
+void spicy::inhomLCore(const double* x, const double* y, const int* type, int n, int K,
+                       const std::vector<double>& Rs, const std::vector<double>& labelVal,
+                       const std::vector<char>& isFrom, const std::vector<char>& isTo,
+                       const double* wt, const std::vector<double>& lam, double area,
+                       const double* edge, bool edgeCorrect, double* out) {
+  // one label per cell, the density weight wt on the neighbour
+  lCore(x, y, n, K, [&](int c, auto&& f) { f(type[c], 1.0); }, [&](int c, auto&& f) { f(type[c], wt[c]); }, Rs,
+        labelVal, isFrom, isTo, lam, area, edge, edgeCorrect, out);
+}
+
+void spicy::weightedLCore(const double* x, const double* y, int n, int K, const int* ptr, const int* memLab,
+                          const double* memW, const std::vector<double>& Rs, const std::vector<double>& labelVal,
+                          const std::vector<char>& isFrom, const std::vector<char>& isTo,
+                          const std::vector<double>& lam, double area, const double* edge, bool edgeCorrect,
+                          double* out) {
+  auto members = [&](int c, auto&& f) {
+    for (int m = ptr[c]; m < ptr[c + 1]; ++m) f(memLab[m], memW[m]);
+  };
+  lCore(x, y, n, K, members, members, Rs, labelVal, isFrom, isTo, lam, area, edge, edgeCorrect, out);
 }
 
 // [[Rcpp::export]]

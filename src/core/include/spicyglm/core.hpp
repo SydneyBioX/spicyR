@@ -195,6 +195,26 @@ class Dataset {
   // labelling gives E O = p L and Var O = p (1 - p) M / (M - 1) (Q - L^2 / M). Needs build_context after
   // build_radius_index.
   std::vector<double> kontextual_sums(int from, int to) const;
+  // kontextual_sums() with soft membership: a[row] and b[row] are each cell's REF and TARGET weights, and
+  // `self` says the two are one label. A REF cell a adds a_a e_a lambda_c(a) / lambda_c(b) to s_b, the
+  // candidates are the context cells other than a whose REF weight is below 1 (every context cell for a
+  // self-pair), and O = sum over candidates of b s. Per image, 10 values: O, L, Q, M, D (sum of
+  // a lambda_c(a)), the REF-TARGET weight within r (sum a_a b_b), n_context, and sum b, sum b^2 over the
+  // candidates and sum b over the image. With 0/1 weights the first 7 are those of kontextual_sums().
+  std::vector<double> kontextual_sums_weighted(const std::vector<double>& a, const std::vector<double>& b,
+                                               bool self) const;
+  // The random-labelling sums of spicy's excess with soft membership, for one REF weight vector a[row] and the
+  // TARGET labels of the membership (cell `row` has labels lab[ptr[row]..ptr[row + 1]) with weights w). Each cell b
+  // has the score h_b over the cells a within r (a != b): allocation, 1 - prod(1 - a_a), the chance that b has a REF
+  // neighbour if labels were drawn from the weights; count, sum a_a. The candidates are the cells whose REF weight
+  // is below 1. Per image, 3 + 4 n_labels values: L, Q (sum of h, h^2 over the candidates) and M (their number),
+  // then for each label O = sum of b h, sum b and sum b^2 over the candidates, and sum b over the image. With the
+  // TARGET weights b shuffled over the candidates, E O = (sum b / M) L and
+  // Var O = (sum b^2 - (sum b)^2 / M) / (M - 1) (Q - L^2 / M); with 0/1 weights these are random labelling.
+  // Needs build_radius_index.
+  std::vector<double> weighted_excess_sums(const std::vector<double>& a, const std::vector<int>& ptr,
+                                           const std::vector<int>& lab, const std::vector<double>& w, int n_labels,
+                                           bool allocation) const;
 
  private:
   struct Grid {

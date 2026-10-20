@@ -30,6 +30,7 @@
                   spatialCoordCols = spatialCoords,
                   nCores = cores,
                   Rs = r,
+                  cellWeights = NULL,
                   ...) {
   
   user_args = as.list(match.call())[-1]
@@ -51,18 +52,29 @@
   # backward compatibility and converted to a worker count).
   cores <- .n_workers(cores, BPPARAM)
 
+  # soft cell type membership: the labels are the weight matrix's columns, and a label's count in an image is its
+  # summed weight. The weights follow the input order of the cells, so they are read before the cells are sorted.
+  cellsIn <- cells
+  if (!is.null(cellWeights)) {
+    unsorted <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE, sort = FALSE)
+    memb <- .membership(cellWeights, nrow(unsorted), unsorted$cellType)
+    weightedCounts <- .membership_counts(memb, unsorted$imageID)
+    rm(unsorted)
+  }
+
   if (.is_class(cells, "SummarizedExperiment") || is.data.frame(cells)) {
     cells <- .format_data(
       cells, imageID, cellType, spatialCoords, verbose
     )
   }
+  labelsOf <- function() if (is.null(cellWeights)) as.character(unique(getCellType(cells))) else memb$labels
 
   if (is.null(from) || is.null(to)) {
     if (is.null(from)) {
-      from <- as.character(unique(getCellType(cells)))
+      from <- labelsOf()
     }
     if (is.null(to)) {
-      to <- as.character(unique(getCellType(cells)))
+      to <- labelsOf()
     }
 
     m1 <- rep(from, times = length(to))
@@ -79,11 +91,12 @@
   }
 
 
-  if (any((!to %in% getCellType(cells)) | (!from %in% getCellType(cells)))) {
-    stop("to and from need to be cell type in your data")
+  if (any((!to %in% labelsOf()) | (!from %in% labelsOf()))) {
+    stop(if (is.null(cellWeights)) "to and from need to be cell type in your data"
+         else "to and from need to be columns of `cellWeights`")
   }
 
-  nCells <- table(getImageID(cells), getCellType(cells))
+  nCells <- if (is.null(cellWeights)) table(getImageID(cells), getCellType(cells)) else weightedCounts
   
   
   if (!is.null(condition)) {
@@ -141,7 +154,11 @@
   ## Find pairwise associations
 
   if (is.null(alternateResult)) {
-    pairwiseAssoc <- getPairwise(cells,
+    pairwiseAssoc <- getPairwise(if (is.null(cellWeights)) cells else cellsIn,
+        imageID = if (is.null(cellWeights)) "imageID" else imageID,
+        cellType = if (is.null(cellWeights)) "cellType" else cellType,
+        spatialCoords = if (is.null(cellWeights)) c("x", "y") else spatialCoords,
+        cellWeights = cellWeights,
         r = r,
         sigma = sigma,
         from = from,
@@ -226,7 +243,7 @@
         cells = cells,
         condition = condition,
         covariates = covariates,
-        cellCounts = table(getImageID(cells), getCellType(cells)),
+        cellCounts = nCells,
         pheno = as.data.frame(getImagePheno(cells))
       )
 
@@ -260,7 +277,7 @@
         subject = subject,
         condition = condition,
         covariates = covariates,
-        cellCounts = table(getImageID(cells), getCellType(cells)),
+        cellCounts = nCells,
         pheno = as.data.frame(getImagePheno(cells))
       )
 
@@ -391,7 +408,13 @@ cleanMEM <- function(mixed.lmer, BPPARAM = NULL) {
 #' @param spatialCoordCols \{DEPRECATED\} The names of the spatialCoords column if using a SingleCellExperiment.
 #' @param nCores \{DEPRECATED\} Number of cores to use for parallel processing or a BiocParallel MulticoreParam or SerialParam object.
 #' @param Rs \{DEPRECATED\} A vector of the radii that the measures of association should be calculated over.
-#' calculation.
+#' @param cellWeights Optional cell weights in \\[0, 1\\], in the order of `cells`: a numeric vector with one weight
+#'   per cell for its own cell type (for example a quality score), or a numeric matrix (or sparse `Matrix`) of soft
+#'   cell type membership with one row per cell and one named column per label, holding each cell's weight for that
+#'   label (for example a classifier's confidence). With a matrix, `from` and `to` name its columns, and labels may
+#'   overlap, for example a group and its subtypes. Each cell contributes to a label in proportion to its weight; a
+#'   label's density is its summed weight per unit area. Weights of 1 give the values of the cell types. Needs a
+#'   `"square"` or `"convex"` window and no `sigma`.
 #' @return Statistic from pairwise L-curve of a single image.
 #' @examples
 #' data("diabetesData")
@@ -421,7 +444,8 @@ getPairwise <- function(
     cellTypeCol = cellType,
     spatialCoordCols = spatialCoords,
     nCores = cores,
-    Rs = r
+    Rs = r,
+    cellWeights = NULL
     ) {
     
     
@@ -446,6 +470,13 @@ getPairwise <- function(
   }
 
   nThreads <- .n_workers(cores, BPPARAM)
+
+  if (!is.null(cellWeights)) {
+    if (!is.null(sigma) || !window %in% c("square", "convex"))
+      stop("`cellWeights` needs window = \"square\" or \"convex\" and no `sigma`.", call. = FALSE)
+    return(getPairwiseWeighted(cells, cellWeights, imageID, cellType, spatialCoords, Rs, from, to, window,
+                               edgeCorrect, includeZeroCells, nThreads))
+  }
 
   # Square and convex windows without density weighting: one threaded C++
   # call for all images, with `cores` threads.
@@ -507,6 +538,91 @@ getPairwiseThreaded <- function(cells, Rs, from, to, window, edgeCorrect,
   )
   dimnames(res) <- list(levels(img), paste(m1, m2, sep = "__"))
   res
+}
+
+
+# getPairwiseThreaded() with soft cell type membership (getPairwise(cellWeights =)): the labels are the
+# columns of the weight matrix, and each cell enters a label with its weight.
+getPairwiseWeighted <- function(cells, cellWeights, imageID, cellType, spatialCoords, Rs, from, to, window,
+                                edgeCorrect, includeZeroCells, nThreads) {
+  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, ids = FALSE, sort = FALSE)
+  memb <- .membership(cellWeights, nrow(cells), cells$cellType)
+  lev <- memb$labels
+  if (is.null(Rs)) Rs <- c(20, 50, 100)
+  if (is.null(from)) from <- lev
+  if (is.null(to)) to <- lev
+  bad <- setdiff(c(from, to), lev)
+  if (length(bad)) stop("`from` and `to` must be columns of `cellWeights`; not found: ",
+                        paste(bad, collapse = ", "), call. = FALSE)
+  img <- droplevels(as.factor(cells$imageID))
+  o <- order(as.integer(img))
+  m1 <- rep(from, times = length(to))
+  m2 <- rep(to, each = length(from))
+  csr <- .membership_rows(memb, o)
+  res <- getPairwiseCpp(
+    as.numeric(cells$x[o]), as.numeric(cells$y[o]), integer(length(o)),
+    c(0L, cumsum(tabulate(as.integer(img), nlevels(img)))), length(lev), as.numeric(Rs),
+    window == "square", lev %in% from, lev %in% to, match(m1, lev), match(m2, lev),
+    edgeCorrect, includeZeroCells, as.integer(nThreads), csr$ptr, csr$lab, csr$w
+  )
+  dimnames(res) <- list(levels(img), paste(m1, m2, sep = "__"))
+  res
+}
+
+# Soft cell type membership as triplets: the non-zero weights of a cells x labels matrix (base or sparse Matrix),
+# checked against the number of cells. A vector gives each cell's weight for its own cell type.
+.membership <- function(w, nCells, cellType = NULL) {
+  if (is.numeric(w) && is.null(dim(w))) {
+    if (length(w) != nCells)
+      stop("`cellWeights` has ", length(w), " values but there are ", nCells, " cells (one per cell, in the order of ",
+           "`cells`).", call. = FALSE)
+    lab <- if (is.factor(cellType)) levels(droplevels(cellType)) else sort(unique(as.character(cellType)))
+    j <- match(as.character(cellType), lab)
+    if (anyNA(w) || any(!is.finite(w)) || any(w < 0) || any(w > 1))
+      stop("`cellWeights` must be between 0 and 1, with no missing values.", call. = FALSE)
+    keep <- w != 0 & !is.na(j)
+    return(list(i = which(keep), j = j[keep], x = w[keep], labels = lab, nCells = nCells))
+  }
+  if (is.data.frame(w)) w <- as.matrix(w)
+  if (is.null(colnames(w)) || anyDuplicated(colnames(w)) || any(colnames(w) == ""))
+    stop("`cellWeights` needs unique column names (the labels).", call. = FALSE)
+  if (nrow(w) != nCells)
+    stop("`cellWeights` has ", nrow(w), " rows but there are ", nCells, " cells (one row per cell, in the order of ",
+         "`cells`).", call. = FALSE)
+  if (is.matrix(w)) {
+    if (!is.numeric(w)) stop("`cellWeights` must be numeric.", call. = FALSE)
+    nz <- which(w != 0, arr.ind = TRUE)
+    trip <- list(i = unname(nz[, 1]), j = unname(nz[, 2]), x = w[nz])
+  } else if (.is_class(w, "sparseMatrix")) {
+    .need("Matrix", "for a sparse `cellWeights`")
+    s <- Matrix::summary(w)
+    keep <- s$x != 0
+    trip <- list(i = s$i[keep], j = s$j[keep], x = as.numeric(s$x[keep]))
+  } else {
+    stop("`cellWeights` must be a numeric matrix, data.frame or sparse Matrix.", call. = FALSE)
+  }
+  if (anyNA(trip$x) || any(!is.finite(trip$x)) || any(trip$x < 0) || any(trip$x > 1))
+    stop("`cellWeights` must be between 0 and 1, with no missing values.", call. = FALSE)
+  c(trip, list(labels = colnames(w), nCells = nCells))
+}
+
+# The membership triplets of the cells in the order `o`, as compressed rows: cell k's labels (1-based) are
+# lab[ptr[k] + 1 .. ptr[k + 1]] with weights w.
+.membership_rows <- function(memb, o) {
+  pos <- match(memb$i, o)
+  ord <- order(pos, memb$j)
+  list(ptr = c(0L, cumsum(tabulate(pos, length(o)))), lab = as.integer(memb$j[ord]), w = memb$x[ord])
+}
+
+# The summed membership weight of each label in each image (images x labels), the soft counterpart of
+# table(imageID, cellType).
+.membership_counts <- function(memb, imageID) {
+  img <- as.factor(imageID)
+  tab <- matrix(0, nlevels(img), length(memb$labels), dimnames = list(levels(img), memb$labels))
+  s <- rowsum(memb$x, paste(as.integer(img)[memb$i], memb$j, sep = "_"))
+  key <- do.call(rbind, strsplit(rownames(s), "_", fixed = TRUE))
+  tab[cbind(as.integer(key[, 1]), as.integer(key[, 2]))] <- s[, 1]
+  as.table(tab)
 }
 
 

@@ -25,6 +25,7 @@ spicy(
   cores = 1,
   tableKey = NULL,
   imageInfo = NULL,
+  cellWeights = NULL,
   ...
 )
 }
@@ -90,6 +91,18 @@ survival outcome that are not columns of the cell table: a \code{data.frame} who
 row names, gives the image IDs, or the name of a table of the SpatialData store or object. Every image of the
 cells needs a row, and every row an image. A \code{survival::Surv} column given as \code{condition} makes a survival
 analysis, also from a store.}
+
+\item{cellWeights}{Optional cell weights in [0, 1], in the order of \code{cells}: a numeric vector with one weight
+per cell for its own cell type (for example a quality score), or a matrix (or sparse \code{Matrix}) of soft cell type
+membership with one row per cell and one named column per label (for example a classifier's confidence). With
+a matrix, \code{from} and \code{to} name its columns, and labels may overlap (a group and its subtypes). Cell method: a
+\code{to} cell counts with its weight, and its score is the chance that it has a \code{from} neighbour within \code{r} if each
+cell were a \code{from} cell with probability its \code{from} weight (allocation), or the summed \code{from} weight of its
+neighbours (count). The null shuffles the \code{to} weights over the cells whose \code{from} weight is below 1 (so a cell
+of the \code{from} type with weight 0.6 is a candidate with the remaining 0.4), and its exact mean and variance
+replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
+\code{from} label's summed weight over the image's cells. One radius and cells in memory; pairs of a label with
+itself are not tested. Image method: see \code{\link[=getPairwise]{getPairwise()}}.}
 
 \item{...}{Arguments of the image method: \code{sigma}, \code{alternateResult}, \code{minLambda}, \code{weights},
 \code{weightsByPair}, \code{weightFactor}, \code{weightZThreshold}, \code{window}, \code{window.length}, \code{edgeCorrect},
@@ -164,7 +177,8 @@ variance and the tests.
 
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given
-(Canete et al. 2022).
+(Canete et al. 2022). With \code{cellWeights} (see \code{\link[=getPairwise]{getPairwise()}}), cells enter each label with a weight,
+for example the confidence of a classifier, instead of through a single cell type.
 }
 \examples{
 data("diabetesData")

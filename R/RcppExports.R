@@ -105,6 +105,14 @@ dataset_kontextual_sums <- function(ptr, from, to) {
     .Call(`_spicyR_dataset_kontextual_sums`, ptr, from, to)
 }
 
+dataset_weighted_excess_sums <- function(ptr, a, mPtr, mLab, mW, n_labels, allocation) {
+    .Call(`_spicyR_dataset_weighted_excess_sums`, ptr, a, mPtr, mLab, mW, n_labels, allocation)
+}
+
+dataset_kontextual_sums_weighted <- function(ptr, a, b, self) {
+    .Call(`_spicyR_dataset_kontextual_sums_weighted`, ptr, a, b, self)
+}
+
 dataset_hac_phi_sums_ref <- function(ptr, from, design, h, n_types) {
     .Call(`_spicyR_dataset_hac_phi_sums_ref`, ptr, from, design, h, n_types)
 }
@@ -145,8 +153,8 @@ lmerRandomIntercept <- function(X, y, w, group, G) {
     .Call(`_spicyR_lmerRandomIntercept`, X, y, w, group, G)
 }
 
-getPairwiseCpp <- function(x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads) {
-    .Call(`_spicyR_getPairwiseCpp`, x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads)
+getPairwiseCpp <- function(x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads, mPtr = NULL, mLab = NULL, mW = NULL) {
+    .Call(`_spicyR_getPairwiseCpp`, x, y, type, offset, nTypes, Rs, square, isFrom, isTo, labI, labJ, edgeCorrect, includeZeroCells, nThreads, mPtr, mLab, mW)
 }
 
 getPairwisePropCpp <- function(x, y, type, offset, nTypes, k, labI, labJ, includeZeroCells, nThreads) {
@@ -171,6 +179,14 @@ stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn
 
 stats_allocation_image_rows <- function(any_totals, self_expected, counts, from, to, psi, image_group = NULL) {
     .Call(`_spicyR_stats_allocation_image_rows`, any_totals, self_expected, counts, from, to, psi, image_group)
+}
+
+stats_weighted_image_rows <- function(sums, n_labels, to, allocation, image_group = NULL) {
+    .Call(`_spicyR_stats_weighted_image_rows`, sums, n_labels, to, allocation, image_group)
+}
+
+stats_kontextual_image_rows_weighted <- function(sums) {
+    .Call(`_spicyR_stats_kontextual_image_rows_weighted`, sums)
 }
 
 stats_kontextual_image_rows <- function(sums, counts, from, to, psi) {

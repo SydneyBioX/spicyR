@@ -20,6 +20,10 @@
 #'   its nominal level when the conditions are shuffled between patients.
 #' @param edgeCorrect Correct the parent densities for the part of each disc outside the image's window.
 #' @param window The window of each image for the edge correction: `"convex"` or `"rectangle"`.
+#' @param cellWeights Optional cell weights, a vector or a soft membership matrix as for [spicy()]: with a matrix,
+#'   `from` and `to` (and the `from`, `to` of `parentDf`) name its columns, while `parent` still lists cell types. A `from` cell enters with its
+#'   weight, the score of a candidate counts with its `to` weight, and the null shuffles the `to` weights over the
+#'   candidates. Pairs of a label with itself are not tested, and `labelClustering` is not available.
 #'
 #' @return A [SpicyResults][SpicyResults-class] object with one row per triple (`from`, `to`, `parent`).
 #'
@@ -48,14 +52,20 @@ kontextualEngine <- function(cells,
                              labelClustering = FALSE,
                              edgeCorrect = TRUE,
                              window = c("convex", "rectangle"),
-                             ref = NULL) {
+                             ref = NULL,
+                             cellWeights = NULL) {
   variance <- match.arg(variance); window <- match.arg(window)
   if (length(r) != 1L) stop("give one radius `r`.", call. = FALSE)
-  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE)
+  weighted <- !is.null(cellWeights)
+  if (weighted && labelClustering) stop("`labelClustering` is not available with `cellWeights`.", call. = FALSE)
+  # the weights follow the input order of the cells
+  cells <- .format_data(cells, imageID, cellType, spatialCoords, FALSE, sort = !weighted)
+  if (weighted) memb <- .membership(cellWeights, nrow(cells), cells$cellType)
   if (!is.null(subject) && !subject %in% names(cells)) stop("`subject` column not found.", call. = FALSE)
   survival <- inherits(cells[[condition]], "Surv")
   types <- unique(as.character(cells$cellType))
-  trip <- .kontextual_triples(parentDf, types, from, to)
+  trip <- if (weighted) .kontextual_triples_weighted(parentDf, types, memb$labels, from, to)
+          else .kontextual_triples(parentDf, types, from, to)
   if (survival) {
     sv <- cells[[condition]]; cells$.time <- sv[, 1]; cells$.event <- sv[, 2]; cells[[condition]] <- NULL
   }
@@ -73,6 +83,9 @@ kontextualEngine <- function(cells,
 
   sv <- if (survival) .cell_survival_setup(ctx, pheno, covariates)
   dataset_build_radius_index(ctx$data, r)
+  if (weighted)
+    return(.kontextual_weighted(ctx, memb, trip, r, window, edgeCorrect, condition, subject, survival, sv,
+                                frailty, variance, adjustAbundance, Z_extra, covariates, pheno))
   code <- function(z) match(z, ctx$type_labels) - 1L
   fits <- list()
   for (pn in unique(trip$parent_name)) {
@@ -123,4 +136,52 @@ kontextualEngine <- function(cells,
   d <- d[keep, , drop = FALSE]
   if (!nrow(d)) stop("no triple to test: each `to` must be a cell type of the data in its parent.", call. = FALSE)
   d
+}
+
+## The triples of a parentDf with soft membership: `from` and `to` are labels (columns of the weights), `parent` lists
+## cell types (restricted to those present); pairs of a label with itself are left out.
+.kontextual_triples_weighted <- function(parentDf, types, labels, from, to) {
+  need <- c("from", "to", "parent")
+  if (!all(need %in% names(parentDf))) stop("`parentDf` needs columns from, to and parent.", call. = FALSE)
+  d <- data.frame(from = as.character(parentDf$from), to = as.character(parentDf$to), stringsAsFactors = FALSE)
+  d$parent <- lapply(parentDf$parent, function(p) intersect(as.character(unlist(p)), types))
+  d$parent_name <- if (!is.null(parentDf$parent_name)) as.character(parentDf$parent_name)
+                   else vapply(d$parent, function(p) paste(sort(p), collapse = "+"), "")
+  bad <- setdiff(c(d$from, d$to), labels)
+  if (length(bad)) stop("not a column of `cellWeights`: ", paste(unique(bad), collapse = ", "), call. = FALSE)
+  keep <- d$from != d$to & lengths(d$parent) > 0
+  if (!is.null(from)) keep <- keep & d$from %in% from
+  if (!is.null(to)) keep <- keep & d$to %in% to
+  d <- d[keep, , drop = FALSE]
+  if (!nrow(d)) stop("no triple to test.", call. = FALSE)
+  d
+}
+
+## kontextualEngine() with soft membership: per parent, the context, then each triple's weighted Kontextual sums
+## (Dataset::kontextual_sums_weighted), its image rows and the test, as for cell types.
+.kontextual_weighted <- function(ctx, memb, trip, r, window, edgeCorrect, condition, subject, survival, sv, frailty,
+                                 variance, adjustAbundance, Z_extra, covariates, pheno) {
+  code <- function(z) match(z, ctx$type_labels) - 1L
+  wctx <- .weighted_context(ctx, memb)
+  col <- function(l) { a <- numeric(memb$nCells); sel <- memb$j == match(l, memb$labels); a[memb$i[sel]] <- memb$x[sel]; a[ctx$ord] }
+  fits <- list()
+  for (pn in unique(trip$parent_name)) {
+    tr <- trip[trip$parent_name == pn, , drop = FALSE]
+    dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
+    fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
+      s <- dataset_kontextual_sums_weighted(ctx$data, col(tr$from[i]), col(tr$to[i]), FALSE)
+      rows <- stats_kontextual_image_rows_weighted(s)
+      rows$unit <- ctx$image_unit[rows$img + 1L]
+      if (!survival) rows$group <- ctx$image_group[rows$img + 1L]
+      o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
+           else .cell_rows_test(wctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
+      o$parent <- pn
+      o }))
+  }
+  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, covariates)
+         else .cell_table(fits, ctx, adjustAbundance || !is.null(covariates))
+  out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
+  out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
+    trip$parent[[match(pn, trip$parent_name)]]), unique(trip$parent_name)), edgeCorrect = edgeCorrect, window = window)
+  out
 }

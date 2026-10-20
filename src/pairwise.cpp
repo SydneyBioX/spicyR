@@ -76,6 +76,11 @@ struct Input {
   bool square, edgeCorrect, includeZeroCells;
   std::vector<char> isFrom, isTo;
   std::vector<int> labI, labJ;  // 0-based type of each output column
+  // soft membership (getPairwise(cellTypeWeights =)): cell i's labels are mLab[mPtr[i]..mPtr[i + 1]) with
+  // weights mW, and K counts the labels; `type` is unused
+  bool weighted = false;
+  std::vector<int> mPtr, mLab;
+  std::vector<double> mW;
 };
 
 void image(const Input& in, int img, double* row, std::size_t stride, double na) {
@@ -113,11 +118,26 @@ void image(const Input& in, int img, double* row, std::size_t stride, double na)
   std::vector<double> labelVal(nb);
   for (int k = 0; k < nb; ++k) labelVal[k] = roundTrip15(Rs[k + 1]);
 
-  // cells whose type is in from or to
+  // cells whose type is in from or to; with soft membership, cells with a weight on a from or to label, and
+  // count holds each label's summed weight
   std::vector<double> x, y;
-  std::vector<int> t;
-  std::vector<double> count(in.K, 0.0);
+  std::vector<int> t, ptr(1, 0), lab;
+  std::vector<double> wt, count(in.K, 0.0);
   for (int i = s; i < e; ++i) {
+    if (in.weighted) {
+      bool use = false;
+      for (int m = in.mPtr[i]; m < in.mPtr[i + 1]; ++m) {
+        const int l = in.mLab[m];
+        if (!in.isFrom[l] && !in.isTo[l]) continue;
+        use = true;
+        lab.push_back(l); wt.push_back(in.mW[m]);
+        count[l] += in.mW[m];
+      }
+      if (!use) continue;
+      ptr.push_back(static_cast<int>(lab.size()));
+      x.push_back(in.x[i]); y.push_back(in.y[i]);
+      continue;
+    }
     const int ti = in.type[i];
     if (!in.isFrom[ti] && !in.isTo[ti]) continue;
     x.push_back(in.x[i]); y.push_back(in.y[i]); t.push_back(ti);
@@ -159,9 +179,14 @@ void image(const Input& in, int img, double* row, std::size_t stride, double na)
   }
 
   std::vector<double> L(static_cast<std::size_t>(in.K) * in.K);
-  const std::vector<double> wt(n, 1.0);
-  spicy::inhomLCore(x.data(), y.data(), t.data(), n, in.K, Rs, labelVal, in.isFrom, in.isTo,
-                    wt.data(), lam, area, edge.data(), in.edgeCorrect, L.data());
+  if (in.weighted) {
+    spicy::weightedLCore(x.data(), y.data(), n, in.K, ptr.data(), lab.data(), wt.data(), Rs, labelVal, in.isFrom,
+                         in.isTo, lam, area, edge.data(), in.edgeCorrect, L.data());
+  } else {
+    const std::vector<double> one(n, 1.0);
+    spicy::inhomLCore(x.data(), y.data(), t.data(), n, in.K, Rs, labelVal, in.isFrom, in.isTo,
+                      one.data(), lam, area, edge.data(), in.edgeCorrect, L.data());
+  }
 
   double sumRs = 0;
   for (double v : Rs) sumRs += v;
@@ -178,7 +203,8 @@ void image(const Input& in, int img, double* row, std::size_t stride, double na)
 }  // namespace
 
 // offset: 0-based start of each image's cells (cells sorted by image), plus
-// the total. labI/labJ: 1-based types of each output column. Returns the
+// the total. mPtr (0-based, length n + 1), mLab (1-based) and mW: soft membership of each cell in the
+// nTypes labels, used instead of `type` when given. labI/labJ: 1-based types of each output column. Returns the
 // images x labels matrix getPairwise() returns.
 // [[Rcpp::export]]
 Rcpp::NumericMatrix getPairwiseCpp(Rcpp::NumericVector x, Rcpp::NumericVector y,
@@ -186,7 +212,10 @@ Rcpp::NumericMatrix getPairwiseCpp(Rcpp::NumericVector x, Rcpp::NumericVector y,
                                    int nTypes, Rcpp::NumericVector Rs, bool square,
                                    Rcpp::LogicalVector isFrom, Rcpp::LogicalVector isTo,
                                    Rcpp::IntegerVector labI, Rcpp::IntegerVector labJ,
-                                   bool edgeCorrect, bool includeZeroCells, int nThreads) {
+                                   bool edgeCorrect, bool includeZeroCells, int nThreads,
+                                   Rcpp::Nullable<Rcpp::IntegerVector> mPtr = R_NilValue,
+                                   Rcpp::Nullable<Rcpp::IntegerVector> mLab = R_NilValue,
+                                   Rcpp::Nullable<Rcpp::NumericVector> mW = R_NilValue) {
   Input in;
   in.x = x.begin();
   in.y = y.begin();
@@ -200,6 +229,15 @@ Rcpp::NumericMatrix getPairwiseCpp(Rcpp::NumericVector x, Rcpp::NumericVector y,
   in.square = square;
   in.edgeCorrect = edgeCorrect;
   in.includeZeroCells = includeZeroCells;
+  if (mPtr.isNotNull()) {
+    Rcpp::IntegerVector p(mPtr), l(mLab);
+    Rcpp::NumericVector w(mW);
+    in.weighted = true;
+    in.mPtr.assign(p.begin(), p.end());
+    in.mLab.resize(l.size());
+    for (R_xlen_t m = 0; m < l.size(); ++m) in.mLab[m] = l[m] - 1;
+    in.mW.assign(w.begin(), w.end());
+  }
   in.isFrom.assign(isFrom.begin(), isFrom.end());
   in.isTo.assign(isTo.begin(), isTo.end());
   for (R_xlen_t l = 0; l < labI.size(); ++l) { in.labI.push_back(labI[l] - 1); in.labJ.push_back(labJ[l] - 1); }

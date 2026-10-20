@@ -297,6 +297,31 @@ NumericMatrix dataset_kontextual_sums(SEXP ptr, int from, int to) {
 }
 
 // [[Rcpp::export]]
+NumericMatrix dataset_weighted_excess_sums(SEXP ptr, NumericVector a, IntegerVector mPtr, IntegerVector mLab,
+                                           NumericVector mW, int n_labels, bool allocation) {
+  XPtr<Dataset> d(ptr);
+  std::vector<int> lab(mLab.size());
+  for (R_xlen_t m = 0; m < mLab.size(); ++m) lab[m] = mLab[m] - 1;   // 1-based labels from R
+  std::vector<double> v = d->weighted_excess_sums(std::vector<double>(a.begin(), a.end()),
+                                                  std::vector<int>(mPtr.begin(), mPtr.end()), lab,
+                                                  std::vector<double>(mW.begin(), mW.end()), n_labels, allocation);
+  const int width = 3 + 4 * n_labels;
+  NumericMatrix out(width, static_cast<int>(v.size() / width));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: L, Q, M, then per label O, sum b, sum b^2 (candidates), sum b (image); one column per image
+}
+
+// [[Rcpp::export]]
+NumericMatrix dataset_kontextual_sums_weighted(SEXP ptr, NumericVector a, NumericVector b, bool self) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->kontextual_sums_weighted(std::vector<double>(a.begin(), a.end()),
+                                                      std::vector<double>(b.begin(), b.end()), self);
+  NumericMatrix out(10, static_cast<int>(v.size() / 10));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: O, L, Q, M, D, REF-TARGET weight, context cells, sum b, sum b^2 (candidates), sum b; per image
+}
+
+// [[Rcpp::export]]
 NumericMatrix dataset_hac_phi_sums_ref(SEXP ptr, int from, int design, double h, int n_types) {
   XPtr<Dataset> d(ptr);
   std::vector<double> v = d->hac_phi_sums_ref(from, design, h);

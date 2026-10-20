@@ -57,7 +57,8 @@
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
-#' (Canete et al. 2022).
+#' (Canete et al. 2022). With `cellWeights` (see [getPairwise()]), cells enter each label with a weight,
+#' for example the confidence of a classifier, instead of through a single cell type.
 #'
 #' @param cells A `data.frame`, `SingleCellExperiment` or `SpatialExperiment` with one row (column) per
 #'   cell, or (cell method) the path of a SpatialData or AnnData Zarr store (read with the Rarr package). From a
@@ -104,6 +105,17 @@
 #'   row names, gives the image IDs, or the name of a table of the SpatialData store or object. Every image of the
 #'   cells needs a row, and every row an image. A `survival::Surv` column given as `condition` makes a survival
 #'   analysis, also from a store.
+#' @param cellWeights Optional cell weights in \[0, 1\], in the order of `cells`: a numeric vector with one weight
+#'   per cell for its own cell type (for example a quality score), or a matrix (or sparse `Matrix`) of soft cell type
+#'   membership with one row per cell and one named column per label (for example a classifier's confidence). With
+#'   a matrix, `from` and `to` name its columns, and labels may overlap (a group and its subtypes). Cell method: a
+#'   `to` cell counts with its weight, and its score is the chance that it has a `from` neighbour within `r` if each
+#'   cell were a `from` cell with probability its `from` weight (allocation), or the summed `from` weight of its
+#'   neighbours (count). The null shuffles the `to` weights over the cells whose `from` weight is below 1 (so a cell
+#'   of the `from` type with weight 0.6 is a candidate with the remaining 0.4), and its exact mean and variance
+#'   replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
+#'   `from` label's summed weight over the image's cells. One radius and cells in memory; pairs of a label with
+#'   itself are not tested. Image method: see [getPairwise()].
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
@@ -176,6 +188,7 @@ spicy <- function(cells,
                   cores = 1,
                   tableKey = NULL,
                   imageInfo = NULL,
+                  cellWeights = NULL,
                   ...) {
   dots <- list(...)
   if (.is_class(cells, "SpatialData")) {   # spatialdataR: its table's store, or the table in memory
@@ -198,7 +211,8 @@ spicy <- function(cells,
   if (method == "image") {
     return(do.call(.spicyImage, c(list(cells = cells, condition = condition, subject = subject, covariates = covariates,
                                        imageID = imageID, cellType = cellType, spatialCoords = spatialCoords,
-                                       r = r, from = from, to = to, cores = cores), dots)))
+                                       r = r, from = from, to = to, cores = cores,
+                                       cellWeights = cellWeights), dots)))
   }
   gone <- intersect(names(dots), c("frailty", "labelClustering", "imageHeterogeneity"))
   if (length(gone)) stop("`", gone[1], "` is not an argument of spicy(): the cell method always uses the patient ",
@@ -207,6 +221,10 @@ spicy <- function(cells,
                          ". They belong to method = \"image\".", call. = FALSE)
   combine <- match.arg(combine); variance <- match.arg(variance); effect <- match.arg(effect)
   if (is.null(r) && is.null(k)) r <- 50
+  weighted <- !is.null(cellWeights)
+  if (weighted && (from_store || !is.null(k) || length(r) != 1L))
+    stop("`cellWeights` needs the cells as a data.frame or SingleCellExperiment, and one radius `r` (no `k`).",
+         call. = FALSE)
   if (!is.null(k) && length(r)) { message("`k` given: using the k nearest neighbours; `r` is ignored."); r <- NULL }
 
   # image-level columns that are not columns of the cell table come from imageInfo (one row per image)
@@ -240,15 +258,17 @@ spicy <- function(cells,
     }
     ctx <- .cell_context(cells, if (!survival && !condition %in% info_cols) condition,
                          if (!is.null(subject) && !subject %in% info_cols) subject, "imageID", "cellType", c("x", "y"),
-                         ref = ref, survival = survival, by_image = TRUE)
+                         ref = ref, survival = survival, by_image = TRUE, dataset = weighted)
+    if (weighted) memb <- .membership(cellWeights, nrow(cells), cells$cellType)
   }
   if (!is.null(imageInfo))
     ctx <- .cell_image_info(ctx, .image_info_table(imageInfo, ctx$image_labels, imageID), info_cols, condition,
                             subject, ref, survival)
   pheno <- ctx$pheno
-  types <- ctx$type_labels
+  types <- if (weighted) memb$labels else ctx$type_labels
   bad <- setdiff(c(from, to), types)
-  if (length(bad)) stop("cell type not found: ", paste(bad, collapse = ", "), call. = FALSE)
+  if (length(bad)) stop(if (weighted) "not a column of `cellWeights`: " else "cell type not found: ",
+                        paste(bad, collapse = ", "), call. = FALSE)
   # from -> to: are `to` cells placed next to `from` cells (allocation: the extra fraction of `to` cells with a `from`
   # cell within r; count: extra `from` cells within r of each `to` cell), beyond the `to` cells being a random subset
   # of the cells that are not `from` cells. This is the core's own (counted, centre) order, so pairs pass through.
@@ -269,7 +289,10 @@ spicy <- function(cells,
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (combine == "maxT" && length(radii) > 6L && !survival)
     stop("combine = \"maxT\" supports up to 6 radii; use combine = \"davies\" for more.", call. = FALSE)
-  if (survival) {
+  if (weighted) {
+    res <- .cell_weighted(ctx, memb, pairs, radii, effect, variance, adjustAbundance, Z_extra, survival,
+                          if (survival) .cell_survival_setup(ctx, pheno, covariates), covariates)
+  } else if (survival) {
     res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, cores, adjustAbundance, effect)
   } else {
     # several radii: one neighbour search at the largest radius gives every radius's graph

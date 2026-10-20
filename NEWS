@@ -1,3 +1,22 @@
+CHANGES IN VERSION 1.99.32
+--------------------------
+
+    o Cell weights: spicy(), kontextualEngine() and getPairwise() take cellWeights, either a vector with one weight
+      in [0, 1] per cell for its own cell type (for example a quality score) or a cells x labels matrix (base or
+      sparse) of soft cell type membership, for example a classifier's confidence. With a matrix, from and to name
+      its columns, and labels may overlap (a group and its subtypes).
+    o Cell method: a to cell counts with its weight; its score is the chance that it has a from neighbour within r
+      if the labels were drawn from the weights (allocation), or the summed from weight of its neighbours (count).
+      The null shuffles the to weights over the cells whose from weight is below 1; its exact mean and variance
+      replace those of random labelling, and with 0/1 weights the results are those of the cell types (to 1e-14).
+      One radius, cells in memory; pairs of a label with itself are not tested.
+    o Kontextual: the from weights enter the parent-density scores and the to weights the observed sum, with the
+      same null; the parent is still a set of cell types. 0/1 weights give the cell-type results (to 1e-14).
+    o Image method: the per-image L function counts each pair with the product of the two cells' weights, and a
+      label's density is its summed weight; 0/1 weights give getPairwise()'s values exactly.
+    o New core functions (shared with spicyr): Dataset::weighted_excess_sums(),
+      Dataset::kontextual_sums_weighted(), weighted_image_rows() and kontextual_image_rows_weighted().
+
 CHANGES IN VERSION 1.99.31
 --------------------------
 

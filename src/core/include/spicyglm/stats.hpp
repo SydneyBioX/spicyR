@@ -76,6 +76,19 @@ std::vector<double> label_clustering_factor(const Dataset& data, const std::vect
 // n_context / n_to, Q times its square): image rows O, E = p L,
 // v = p (1 - p) M / (M - 1) (Q - L^2 / M) psi, n = D (the REF cells' context exposure), p = n_to / M
 // (self-pair: (n_to - 1) / (M - 1)). Images without TARGET cells, exposure or variance give no row.
+// The image rows of spicy's excess with soft membership, for TARGET label `to`, from Dataset::weighted_excess_sums
+// (sums: images x (3 + 4 n_labels), image-major): O, E = (sum b / M) L, the variance of O when the TARGET weights
+// are shuffled over the candidates, and n = sum b over the candidates (count), or for the allocation the TARGET
+// weight without (attraction) or with (avoidance) a REF neighbour under the null, the side chosen as in
+// allocation_image_rows. With 0/1 weights these are the rows of excess_image_rows and allocation_image_rows.
+ImageRows weighted_image_rows(const double* sums, int n_images, int n_labels, int to, bool allocation,
+                              const int* image_group);
+
+// kontextual_image_rows() with soft membership, from Dataset::kontextual_sums_weighted (10 values per image): O, L, Q
+// scaled by n_context / sum b (Statial's weights), E = (sum b / M) L and the variance of O when the TARGET weights
+// are shuffled over the candidates, n = D. With 0/1 weights (not a self-pair) the rows of kontextual_image_rows().
+ImageRows kontextual_image_rows_weighted(const std::vector<double>& sums, int n_images);
+
 ImageRows kontextual_image_rows(const std::vector<double>& sums, const std::vector<double>& counts, int n_types,
                                 int n_images, int from, int to, const std::vector<double>& psi);
 

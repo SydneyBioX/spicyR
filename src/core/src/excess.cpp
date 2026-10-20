@@ -156,6 +156,39 @@ ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, c
   return out;
 }
 
+ImageRows weighted_image_rows(const double* sums, int n_images, int n_labels, int to, bool allocation,
+                              const int* image_group) {
+  const std::size_t width = 3 + 4 * static_cast<std::size_t>(n_labels);
+  ImageRows out;
+  for (int img = 0; img < n_images; ++img) {
+    if (image_group && image_group[img] < 0) continue;   // a missing condition
+    const double* s = sums + static_cast<std::size_t>(img) * width;
+    const double* l = s + 3 + 4 * static_cast<std::size_t>(to);
+    const double L = s[0], Q = s[1], M = s[2], O = l[0], nB = l[1], B2 = l[2];
+    // the variance of the TARGET weights over the candidates (p (1 - p) M / (M - 1) for 0/1 weights), times the
+    // spread of the scores
+    const double sb = std::max(B2 - nB * nB / std::max(M, 1.0), 0.0) / std::max(M - 1, 1.0);
+    const double v = sb * std::max(Q - L * L / std::max(M, 1.0), 0.0);
+    const double E = nB / std::max(M, 1.0) * L;
+    if (nB > 0 && v > 0) {
+      out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(nB); out.v.push_back(v);
+    }
+  }
+  if (!allocation) return out;
+  double pooled = 0;
+  for (std::size_t i = 0; i < out.O.size(); ++i) pooled += out.O[i] - out.E[i];
+  const bool avoid = pooled < 0;
+  ImageRows kept;
+  for (std::size_t i = 0; i < out.O.size(); ++i) {
+    double n = avoid ? out.E[i] : out.n[i] - out.E[i];
+    if (n > 0) {
+      kept.image.push_back(out.image[i]); kept.O.push_back(out.O[i]); kept.E.push_back(out.E[i]);
+      kept.n.push_back(n); kept.v.push_back(out.v[i]);
+    }
+  }
+  return kept;
+}
+
 ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
                                 const std::vector<double>& psi, const std::vector<int>& image_group) {
@@ -246,6 +279,23 @@ std::vector<double> label_clustering_factor(const Dataset& data, const std::vect
       std::vector<double> z;
       for (std::size_t k = 0; k < to.size(); ++k) if (to[k] == t && std::isfinite(ratio[k][i])) z.push_back(ratio[k][i]);
       out[static_cast<std::size_t>(t) * n_images + i] = z.empty() ? 1.0 : std::max(1.0, median_of(z));
+    }
+  }
+  return out;
+}
+
+ImageRows kontextual_image_rows_weighted(const std::vector<double>& sums, int n_images) {
+  ImageRows out;
+  for (int img = 0; img < n_images; ++img) {
+    const double* s = sums.data() + static_cast<std::size_t>(img) * 10;
+    const double nT = s[9];
+    const double f = nT > 0 ? s[6] / nT : 0.0;
+    const double O = s[0] * f, L = s[1] * f, Q = s[2] * f * f, M = s[3], D = s[4], Sb = s[7], B2 = s[8];
+    const double sb = std::max(B2 - Sb * Sb / std::max(M, 1.0), 0.0) / std::max(M - 1, 1.0);
+    const double v = sb * std::max(Q - L * L / std::max(M, 1.0), 0.0);
+    if (nT > 0 && D > 0 && v > 0) {
+      out.image.push_back(img); out.O.push_back(O); out.E.push_back(Sb / std::max(M, 1.0) * L); out.n.push_back(D);
+      out.v.push_back(v);
     }
   }
   return out;

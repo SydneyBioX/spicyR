@@ -551,6 +551,116 @@ std::vector<double> Dataset::kontextual_sums(int from, int to) const {
   return out;
 }
 
+std::vector<double> Dataset::kontextual_sums_weighted(const std::vector<double>& a, const std::vector<double>& b,
+                                                      bool self) const {
+  const double pi = 3.141592653589793238462643383279502884;
+  const double r2 = r_ * r_, disc = pi * r_ * r_;
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  if (is_context_.empty() || (context_count_.empty() && n_images() > 0))
+    throw std::logic_error("call build_context after build_radius_index");
+  if (a.size() != x_.size() || b.size() != x_.size())
+    throw std::invalid_argument("Kontextual: one REF and one TARGET weight per cell");
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * 10, 0.0), c;
+  const double s1 = self ? 1.0 : 0.0;
+  auto is_cand = [&](int row) { return is_context_[type_[row]] && (self || a[row] < 1.0); };
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], end = image_offsets_[img + 1];
+    double* o = out.data() + static_cast<std::size_t>(img) * 10;
+    c.assign(static_cast<std::size_t>(end - start), 0.0);
+    double D = 0.0, raw = 0.0;
+    const Grid& g = grids_[img];
+    // REF cells in the order kontextual_sums() visits them (by type, then row), so 0/1 weights add up alike
+    for (int t = 0; t < n_types_; ++t) {
+      for (int i = type_start_[img * n_types_ + t]; i < type_start_[img * n_types_ + t + 1]; ++i) {
+        const int row = type_rows_[i];
+        const double wa = a[row];
+        if (!(wa > 0)) continue;
+        const double la = (context_count_[row] - s1) / context_area_[row];
+        if (!(la > 0)) continue;
+        D += wa * la;
+        const double ea = disc / context_area_[row];
+        const double px = x_[row], py = y_[row];
+        long long bx = static_cast<long long>((px - g.xmin) / g.side);
+        long long by = static_cast<long long>((py - g.ymin) / g.side);
+        for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+          for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+            std::size_t bin = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+            for (std::size_t p = bin_start_[bin]; p < static_cast<std::size_t>(bin_start_[bin + 1]); ++p) {
+              const int j = grow_[p];
+              if (j == row || !is_cand(j)) continue;
+              double dx = gx_[p] - px, dy = gy_[p] - py;
+              if (dx * dx + dy * dy > r2) continue;
+              const double lb = (context_count_[j] - s1) / context_area_[j];
+              if (!(lb > 0)) continue;
+              c[j - start] += wa * (ea * la / lb);
+              raw += wa * b[j];
+            }
+          }
+      }
+    }
+    double O = 0.0, L = 0.0, Q = 0.0, M = 0.0, nP = 0.0, Sb = 0.0, Sb2 = 0.0, St = 0.0;
+    for (int row = start; row < end; ++row) {
+      St += b[row];
+      if (is_context_[type_[row]]) nP += 1.0;
+      if (!is_cand(row)) continue;
+      const double s = c[row - start];
+      L += s; Q += s * s; M += 1.0;
+      O += b[row] * s;
+      Sb += b[row]; Sb2 += b[row] * b[row];
+    }
+    o[0] = O; o[1] = L; o[2] = Q; o[3] = M; o[4] = D; o[5] = raw; o[6] = nP; o[7] = Sb; o[8] = Sb2; o[9] = St;
+  }
+  return out;
+}
+
+std::vector<double> Dataset::weighted_excess_sums(const std::vector<double>& a, const std::vector<int>& ptr,
+                                                  const std::vector<int>& lab, const std::vector<double>& w,
+                                                  int n_labels, bool allocation) const {
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t N = x_.size();
+  if (a.size() != N || ptr.size() != N + 1 || lab.size() != w.size() || static_cast<std::size_t>(ptr[N]) != lab.size())
+    throw std::invalid_argument("weighted_excess_sums: one REF weight and one membership row per cell");
+  const double r2 = r_ * r_;
+  const std::size_t K = static_cast<std::size_t>(n_labels), width = 3 + 4 * K;
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * width, 0.0);
+  for (int img = 0; img < n_images(); ++img) {
+    double* o = out.data() + static_cast<std::size_t>(img) * width;
+    const Grid& g = grids_[img];
+    for (int row = image_offsets_[img]; row < image_offsets_[img + 1]; ++row) {
+      // the cell's score: over its neighbours a (itself excluded), prod(1 - a) or sum a
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      double prod = 1.0, sum = 0.0;
+      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+          std::size_t bin = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[bin]; p < static_cast<std::size_t>(bin_start_[bin + 1]); ++p) {
+            const int j = grow_[p];
+            if (j == row) continue;
+            const double wa = a[j];
+            if (!(wa > 0)) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py;
+            if (dx * dx + dy * dy > r2) continue;
+            prod *= 1.0 - wa;
+            sum += wa;
+          }
+        }
+      const double h = allocation ? 1.0 - prod : sum;
+      const bool cand = a[row] < 1.0;
+      if (cand) { o[0] += h; o[1] += h * h; o[2] += 1.0; }
+      for (int m = ptr[row]; m < ptr[row + 1]; ++m) {
+        double* ol = o + 3 + 4 * static_cast<std::size_t>(lab[m]);
+        const double wb = w[m];
+        ol[3] += wb;
+        if (!cand) continue;
+        ol[0] += wb * h; ol[1] += wb; ol[2] += wb * wb;
+      }
+    }
+  }
+  return out;
+}
+
 std::vector<double> Dataset::hac_phi_sums(int from, int to, int design, double h) const {
   const bool self = from == to;
   const double pi = 3.141592653589793238462643383279502884;

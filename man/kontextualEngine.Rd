@@ -22,7 +22,8 @@ kontextualEngine(
   labelClustering = FALSE,
   edgeCorrect = TRUE,
   window = c("convex", "rectangle"),
-  ref = NULL
+  ref = NULL,
+  cellWeights = NULL
 )
 }
 \arguments{
@@ -42,6 +43,11 @@ its nominal level when the conditions are shuffled between patients.}
 \item{edgeCorrect}{Correct the parent densities for the part of each disc outside the image's window.}
 
 \item{window}{The window of each image for the edge correction: \code{"convex"} or \code{"rectangle"}.}
+
+\item{cellWeights}{Optional cell weights, a vector or a soft membership matrix as for \code{\link[=spicy]{spicy()}}: with a matrix,
+\code{from} and \code{to} (and the \code{from}, \code{to} of \code{parentDf}) name its columns, while \code{parent} still lists cell types. A \code{from} cell enters with its
+weight, the score of a candidate counts with its \code{to} weight, and the null shuffles the \code{to} weights over the
+candidates. Pairs of a label with itself are not tested, and \code{labelClustering} is not available.}
 }
 \value{
 A \link[=SpicyResults-class]{SpicyResults} object with one row per triple (\code{from}, \code{to}, \code{parent}).
