@@ -1,3 +1,15 @@
+CHANGES IN VERSION 1.99.33
+--------------------------
+
+    o writeCellStore() takes a SpatialExperiment or SingleCellExperiment as well as a data.frame: the colData columns
+      become the cell table's obs and a SpatialExperiment's spatialCoords() its obsm "spatial" (assays are not
+      written). The store is byte for byte the one written from the same cells as a data.frame. imageInfo may give
+      the image IDs in its imageID column, as spicy() accepts, or else in its row names.
+    o plotImage() without `from` and `to` shows every cell of the image, coloured by its cell type, with the same
+      colour for a cell type in every image of the object.
+    o The vignette's store section works on the SpatialExperiment instead of a data.frame, and its first figure uses
+      plotImage().
+
 CHANGES IN VERSION 1.99.32
 --------------------------
 

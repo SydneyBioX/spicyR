@@ -15,17 +15,19 @@ writeCellStore(
 )
 }
 \arguments{
-\item{cells}{A \code{data.frame} with one row per cell. Its columns are factors, character, integer, double or
-logical vectors.}
+\item{cells}{A \code{SpatialExperiment} or \code{SingleCellExperiment} (its \code{colData}, and the \code{spatialCoords()} of a
+\code{SpatialExperiment}; assays are not written), or a \code{data.frame} with one row per cell. The columns are factors,
+character, integer, double or logical vectors.}
 
 \item{path}{The directory of the store (replaced if it exists).}
 
-\item{imageID, spatialCoords}{The column of the image and the two columns of the coordinates.}
+\item{imageID, spatialCoords}{The column of the image and the two columns of the coordinates. A
+\code{SpatialExperiment}'s own \code{spatialCoords()} are used unless \code{spatialCoords} names two \code{colData} columns.}
 
 \item{tableKey}{The name of the cell table.}
 
-\item{imageInfo}{Optional: a \code{data.frame} with one row per image (row names: the image IDs), written as the table
-\code{infoKey}.}
+\item{imageInfo}{Optional: a \code{data.frame} with one row per image, written as the table \code{infoKey}. The image IDs are
+its \code{imageID} column, or else its row names.}
 
 \item{infoKey}{The name of the per-image table.}
 }
@@ -33,13 +35,14 @@ logical vectors.}
 \code{path}, invisibly.
 }
 \description{
-Writes a \code{data.frame} of cells as the cell table of a SpatialData Zarr store (an AnnData table under \verb{tables/}, in
-Zarr v3), which \code{\link[=spicy]{spicy()}} reads a block of rows at a time and spatialdataR's \code{readSpatialData()} reads as a
-\code{SpatialData} object. The coordinates become the \code{obsm} array \code{"spatial"}, the other columns the table's \code{obs}
-(factors as categorical columns), and the image column the table's region key (always a categorical column, its
-categories the levels of a factor, else the images in order of first appearance). A table with one row per image can
-be added as a second table. Each column is written in chunks of 2^20 rows compressed with zstd, one chunk at a
-time, so writing needs little memory beyond that of \code{cells}, however many cells it has.
+Writes the cells of a \code{SpatialExperiment}, \code{SingleCellExperiment} or \code{data.frame} as the cell table of a SpatialData
+Zarr store (an AnnData table under \verb{tables/}, in Zarr v3), which \code{\link[=spicy]{spicy()}} reads a block of rows at a time and
+spatialdataR's \code{readSpatialData()} reads as a \code{SpatialData} object. The coordinates become the \code{obsm} array
+\code{"spatial"}, the other columns the table's \code{obs} (factors as categorical columns), and the image column the table's
+region key (always a categorical column, its categories the levels of a factor, else the images in order of first
+appearance). A table with one row per image can be added as a second table. Each column is written in chunks of
+2^20 rows compressed with zstd, one chunk at a time, so writing needs little memory beyond that of \code{cells}, however
+many cells it has.
 }
 \examples{
 cells <- data.frame(imageID = factor(rep(c("a", "b"), each = 50)), cellType = factor(rep(c("T", "B"), 50)),

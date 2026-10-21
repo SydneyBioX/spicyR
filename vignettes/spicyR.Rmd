@@ -115,20 +115,12 @@ table(unique(as.data.frame(SummarizedExperiment::colData(spe))[, c("metabricId",
 sort(table(spe$description), decreasing = TRUE)
 ```
 
-```{r data-plot, fig.width = 9, fig.height = 4.5}
-cells <- data.frame(SummarizedExperiment::colData(spe), SpatialExperiment::spatialCoords(spe))
-size <- table(cells$file_id)                                  # show the largest core of each group
-twoCores <- sapply(c("ER-", "ER+"), function(g) { k <- unique(cells$file_id[cells$ER == g]); k[which.max(size[k])] })
-oneEach <- cells[cells$file_id %in% twoCores, ]
-oneEach$core <- paste0(oneEach$file_id, " (", oneEach$ER, ")")
-ggplot(oneEach, aes(Location_Center_X, Location_Center_Y, colour = description)) +
-  geom_point(size = 0.5) +
-  facet_wrap(~ core) +
-  coord_equal() +
-  labs(colour = NULL) +
-  theme_void() +
-  theme(legend.text = element_text(size = 7)) +
-  guides(colour = guide_legend(override.aes = list(size = 2)))
+```{r data-plot, fig.width = 6.5, fig.height = 4.5, fig.show = "hold", out.width = "50%"}
+size <- table(spe$file_id)                                    # show the largest core of each group
+twoCores <- sapply(levels(spe$ER), function(g) { k <- unique(spe$file_id[spe$ER == g]); k[which.max(size[k])] })
+for (g in names(twoCores))
+  print(plotImage(spe, twoCores[[g]], imageID = "file_id", cellType = "description") +
+          labs(x = NULL, y = NULL, colour = NULL, title = paste0(twoCores[[g]], " (", g, ")")))
 ```
 
 # Testing every pair of cell types
@@ -625,23 +617,22 @@ table's image and cell-type columns a block of rows at a time, and the coordinat
 time. Memory then depends on the size of an image and on the number of `cores`, not on the size of the study, and
 the results are the same as for the same cells in memory.
 
-To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It needs a `data.frame` with one
-row per cell; the image column becomes the table's region key and the coordinates its `obsm` array `"spatial"`. A
-second table holds one row per core, with the patient and ER status.
+To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It takes a `SpatialExperiment`
+(or a `SingleCellExperiment` or `data.frame`) with one column per cell: the image column becomes the table's region
+key, the other `colData` columns its `obs`, and `spatialCoords()` its `obsm` array `"spatial"`. A second table holds
+one row per core, with the patient and ER status, so the cell table needs only the image and the cell type.
 
 ```{r store-write}
-someCores <- unlist(lapply(c("ER-", "ER+"), function(g) head(sort(unique(cells$file_id[cells$ER == g])), 20)))
-small <- cells[cells$file_id %in% someCores, ]
-small <- small[order(small$file_id), ]                         # the rows of each core together
-coreInfo <- unique(small[, c("file_id", "metabricId", "ER")])
-rownames(coreInfo) <- coreInfo$file_id
+someCores <- unlist(lapply(levels(spe$ER), function(g) head(sort(unique(spe$file_id[spe$ER == g])), 20)))
+small <- spe[, spe$file_id %in% someCores]
+small <- small[, order(small$file_id)]                         # the cells of each core together
+coreInfo <- unique(as.data.frame(SummarizedExperiment::colData(small))[, c("file_id", "metabricId", "ER")])
+SummarizedExperiment::colData(small) <- SummarizedExperiment::colData(small)[, c("file_id", "description")]
 path <- file.path(tempdir(), "metabric.zarr")
-writeCellStore(small[, c("file_id", "description", "Location_Center_X", "Location_Center_Y")], path,
-               imageID = "file_id", spatialCoords = c("Location_Center_X", "Location_Center_Y"),
-               imageInfo = coreInfo[, c("metabricId", "ER")])
+writeCellStore(small, path, imageID = "file_id", imageInfo = coreInfo)
 ```
 
-The store holds the `r nrow(small)` cells of `r length(someCores)` cores in a cell table, and a table of the cores
+The store holds the `r ncol(small)` cells of `r length(someCores)` cores in a cell table, and a table of the cores
 called `"images"`.
 
 `spicy()` reads the store with the arguments used above. The image column defaults to the table's region key
@@ -664,11 +655,11 @@ resObject <- spicy(sdata, condition = "ER", subject = "metabricId", r = 25, cell
                    imageInfo = "images")
 ```
 
-Both results are those of the same cells as a `data.frame`:
+Both results are those of the same cells in memory:
 
 ```{r store-same}
 resMemory <- spicy(small, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id",
-                   cellType = "description", spatialCoords = c("Location_Center_X", "Location_Center_Y"))
+                   cellType = "description", imageInfo = coreInfo)
 c(store = identical(resStore, resMemory), object = identical(resObject, resMemory))
 ```
 

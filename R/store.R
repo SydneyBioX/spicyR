@@ -339,21 +339,24 @@
 
 #' Write cells as a SpatialData Zarr store
 #'
-#' Writes a `data.frame` of cells as the cell table of a SpatialData Zarr store (an AnnData table under `tables/`, in
-#' Zarr v3), which [spicy()] reads a block of rows at a time and spatialdataR's `readSpatialData()` reads as a
-#' `SpatialData` object. The coordinates become the `obsm` array `"spatial"`, the other columns the table's `obs`
-#' (factors as categorical columns), and the image column the table's region key (always a categorical column, its
-#' categories the levels of a factor, else the images in order of first appearance). A table with one row per image can
-#' be added as a second table. Each column is written in chunks of 2^20 rows compressed with zstd, one chunk at a
-#' time, so writing needs little memory beyond that of `cells`, however many cells it has.
+#' Writes the cells of a `SpatialExperiment`, `SingleCellExperiment` or `data.frame` as the cell table of a SpatialData
+#' Zarr store (an AnnData table under `tables/`, in Zarr v3), which [spicy()] reads a block of rows at a time and
+#' spatialdataR's `readSpatialData()` reads as a `SpatialData` object. The coordinates become the `obsm` array
+#' `"spatial"`, the other columns the table's `obs` (factors as categorical columns), and the image column the table's
+#' region key (always a categorical column, its categories the levels of a factor, else the images in order of first
+#' appearance). A table with one row per image can be added as a second table. Each column is written in chunks of
+#' 2^20 rows compressed with zstd, one chunk at a time, so writing needs little memory beyond that of `cells`, however
+#' many cells it has.
 #'
-#' @param cells A `data.frame` with one row per cell. Its columns are factors, character, integer, double or
-#'   logical vectors.
+#' @param cells A `SpatialExperiment` or `SingleCellExperiment` (its `colData`, and the `spatialCoords()` of a
+#'   `SpatialExperiment`; assays are not written), or a `data.frame` with one row per cell. The columns are factors,
+#'   character, integer, double or logical vectors.
 #' @param path The directory of the store (replaced if it exists).
-#' @param imageID,spatialCoords The column of the image and the two columns of the coordinates.
+#' @param imageID,spatialCoords The column of the image and the two columns of the coordinates. A
+#'   `SpatialExperiment`'s own `spatialCoords()` are used unless `spatialCoords` names two `colData` columns.
 #' @param tableKey The name of the cell table.
-#' @param imageInfo Optional: a `data.frame` with one row per image (row names: the image IDs), written as the table
-#'   `infoKey`.
+#' @param imageInfo Optional: a `data.frame` with one row per image, written as the table `infoKey`. The image IDs are
+#'   its `imageID` column, or else its row names.
 #' @param infoKey The name of the per-image table.
 #' @return `path`, invisibly.
 #' @examples
@@ -367,12 +370,25 @@
 writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("x", "y"), tableKey = "table",
                            imageInfo = NULL, infoKey = "images") {
   .need("Rarr", "to write a SpatialData store")
+  if (.is_class(cells, "SpatialExperiment")) {
+    cd <- .col_data(cells)
+    sc <- as.data.frame(SpatialExperiment::spatialCoords(cells))
+    if (!all(spatialCoords %in% names(cd))) {   # the object's own coordinates
+      spatialCoords <- names(sc)[1:2]
+      cells <- cbind(cd[setdiff(names(cd), spatialCoords)], sc[spatialCoords])
+    } else cells <- cd
+  } else if (.is_class(cells, "SummarizedExperiment")) cells <- .col_data(cells)
   cells <- as.data.frame(cells)
   miss <- setdiff(c(imageID, spatialCoords), names(cells))
   if (length(miss)) stop("columns not found in `cells`: ", paste(miss, collapse = ", "), call. = FALSE)
   obs <- cells[setdiff(names(cells), spatialCoords)]
   .zarr_check_columns(obs, "cells")
-  if (!is.null(imageInfo)) { imageInfo <- as.data.frame(imageInfo); .zarr_check_columns(imageInfo, "imageInfo") }
+  if (!is.null(imageInfo)) {
+    imageInfo <- as.data.frame(imageInfo)
+    infoIDs <- if (imageID %in% names(imageInfo)) as.character(imageInfo[[imageID]]) else rownames(imageInfo)
+    imageInfo[[imageID]] <- NULL                  # the image IDs are the table's index
+    .zarr_check_columns(imageInfo, "imageInfo")
+  }
   unlink(path, recursive = TRUE); dir.create(file.path(path, "tables"), recursive = TRUE)
   path <- normalizePath(path)
   Rarr::write_zarr_group(path, "", zarr_version = 3L)
@@ -399,9 +415,8 @@ writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("
                       spatialdata_attrs = attrs,
                       attrs = c(list(`spatialdata-encoding-type` = "ngff:regions_table", version = "0.2"), attrs))
   if (!is.null(imageInfo)) {
-    ids <- rownames(imageInfo)
     .zarr_write_anndata(file.path(path, "tables", infoKey), imageInfo, nrow(imageInfo),
-                        index = function(a, b) ids[a:b],
+                        index = function(a, b) infoIDs[a:b],
                         attrs = list(`spatialdata-encoding-type` = "ngff:regions_table", version = "0.2"))
   }
   Rarr::zarr_consolidate_metadata(path)

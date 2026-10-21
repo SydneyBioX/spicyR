@@ -190,6 +190,24 @@ test_that("writeCellStore() writes a store that spicy() and spatialdataR read", 
   unlink(path, recursive = TRUE)
 })
 
+test_that("writeCellStore() writes a SpatialExperiment as it writes the same cells as a data.frame", {
+  skip_if_not_installed("SpatialExperiment")
+  d <- store_cells(5)
+  info <- unique(d[, c("imageID", "condition", "patient")])           # the image IDs as a column
+  spe <- SpatialExperiment::SpatialExperiment(colData = S4Vectors::DataFrame(d[, c("imageID", "cellType", "age")]),
+                                              spatialCoords = as.matrix(d[, c("x", "y")]))
+  p1 <- writeCellStore(spe, tempfile(fileext = ".zarr"), imageInfo = info)
+  rownames(info) <- as.character(info$imageID); info$imageID <- NULL  # the image IDs as row names
+  d$sample_id <- spe$sample_id                                        # SpatialExperiment's own column is written too
+  p2 <- writeCellStore(d[, c("imageID", "cellType", "x", "y", "age", "sample_id")], tempfile(fileext = ".zarr"),
+                       imageInfo = info)
+  files <- list.files(p2, recursive = TRUE)
+  expect_identical(list.files(p1, recursive = TRUE), files)
+  same <- vapply(files, function(f) identical(readBin(file.path(p1, f), "raw", 1e7), readBin(file.path(p2, f), "raw", 1e7)), TRUE)
+  expect_true(all(same))
+  unlink(c(p1, p2), recursive = TRUE)
+})
+
 test_that("a store with character image IDs and missing values is read by Python's spatialdata", {
   py <- "/dskh/nobackup/ellisp/team-patrick/scratch/venv_spicyr_dev/bin/python"
   skip_if_not(file.exists(py), "the spicyr-py development Python is not available")

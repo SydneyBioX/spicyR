@@ -2,13 +2,13 @@
 % Please edit documentation in R/plotImage.R
 \name{plotImage}
 \alias{plotImage}
-\title{Plot one image, showing the \code{from} and \code{to} cells of a pair}
+\title{Plot one image, showing its cell types or the \code{from} and \code{to} cells of a pair}
 \usage{
 plotImage(
   cells,
   imageToPlot,
-  from,
-  to,
+  from = NULL,
+  to = NULL,
   imageID = "imageID",
   cellType = "cellType",
   spatialCoords = c("x", "y"),
@@ -20,9 +20,9 @@ plotImage(
 
 \item{imageToPlot}{The ID of the image to be plotted.}
 
-\item{from}{The "from" cell type.}
+\item{from}{The "from" cell type. Optional, with \code{to}.}
 
-\item{to}{The "to" cell type.}
+\item{to}{The "to" cell type. Optional, with \code{from}.}
 
 \item{imageID}{The name of the imageID column in the SummarizedExperiment object.}
 
@@ -36,11 +36,13 @@ plotImage(
 A ggplot object.
 }
 \description{
-The density of all cells is shown in blue, with the \code{from} and \code{to} cells on top. With \code{r}, a circle of
-radius \code{r} is drawn around each \code{to} cell: the \code{from} cells inside the circles are those that spicyR counts.
+Without \code{from} and \code{to}, every cell is shown, coloured by its cell type. With them, the density of all cells is
+shown in blue, with the \code{from} and \code{to} cells on top. With \code{r}, a circle of radius \code{r} is drawn around each \code{to}
+cell: the \code{from} cells inside the circles are those that spicyR counts.
 }
 \examples{
 data("diabetesData")
+plotImage(diabetesData, "A09")
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
 

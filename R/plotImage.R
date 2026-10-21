@@ -1,12 +1,13 @@
-#' Plot one image, showing the `from` and `to` cells of a pair
+#' Plot one image, showing its cell types or the `from` and `to` cells of a pair
 #'
-#' The density of all cells is shown in blue, with the `from` and `to` cells on top. With `r`, a circle of
-#' radius `r` is drawn around each `to` cell: the `from` cells inside the circles are those that spicyR counts.
+#' Without `from` and `to`, every cell is shown, coloured by its cell type. With them, the density of all cells is
+#' shown in blue, with the `from` and `to` cells on top. With `r`, a circle of radius `r` is drawn around each `to`
+#' cell: the `from` cells inside the circles are those that spicyR counts.
 #'
 #' @param cells A SummarizedExperiment object.
 #' @param imageToPlot The ID of the image to be plotted.
-#' @param from The "from" cell type.
-#' @param to The "to" cell type.
+#' @param from The "from" cell type. Optional, with `to`.
+#' @param to The "to" cell type. Optional, with `from`.
 #' @param imageID The name of the imageID column in the SummarizedExperiment object.
 #' @param cellType The name of the cellType column in the SummarizedExperiment object. 
 #' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
@@ -16,6 +17,7 @@
 #' 
 #' @examples
 #' data("diabetesData")
+#' plotImage(diabetesData, "A09")
 #' plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
 #' plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
 #' 
@@ -24,8 +26,8 @@
 #' @importFrom stats density
 plotImage = function(cells, 
                      imageToPlot, 
-                     from,
-                     to,
+                     from = NULL,
+                     to = NULL,
                      imageID = "imageID", 
                      cellType = "cellType",
                      spatialCoords = c("x", "y"),
@@ -64,6 +66,8 @@ plotImage = function(cells,
     coords <- cd[, spatialCoords, drop = FALSE]
   }
   
+  if (is.null(from) != is.null(to)) stop("give both `from` and `to`, or neither.")
+  if (is.null(from) && !is.null(r)) stop("`r` draws circles around the `to` cells: give `from` and `to`.")
   if (!all(c(from, to) %in% unique(cd[[cellType]]))) {
     stop("from and/or to cell types not found in data.")
   }
@@ -73,6 +77,18 @@ plotImage = function(cells,
   cData = data.frame(x = coords[keep, 1],
                      y = coords[keep, 2],
                      cellType = as.character(cd[[cellType]][keep]))
+  if (is.null(from)) {   # every cell, coloured by its cell type: a type has the same colour in every image
+    types <- if (is.factor(cd[[cellType]])) levels(cd[[cellType]]) else sort(unique(as.character(cd[[cellType]])))
+    hues <- seq(15, 375, length.out = length(types) + 1)[seq_along(types)]   # ggplot2's default hue palette
+    pal <- setNames(grDevices::hcl(h = hues, c = 100, l = 65), types)
+    return(ggplot(cData, aes(x = .data$x, y = .data$y, colour = .data$cellType)) +
+             geom_point(size = 0.5) +
+             scale_colour_manual(values = pal, breaks = intersect(types, cData$cellType)) +
+             coord_equal() +
+             theme_classic() +
+             labs(title = paste0(imageID, ": ", imageToPlot), colour = cellType) +
+             guides(colour = guide_legend(override.aes = list(size = 2))))
+  }
   cData$cellTypeNew <- ifelse(cData$cellType %in% c(from, to), cData$cellType, "Other")
   
   
