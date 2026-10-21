@@ -1,3 +1,15 @@
+CHANGES IN VERSION 1.99.35
+--------------------------
+
+    o writeCellStore() writes the cells of each image as a points element named after the image (x, y and the
+      instance ID that links each point to its row of the table), so the table annotates elements of the store and
+      Python's spatialdata no longer warns that they are missing. A SpatialExperiment's points are in the coordinate
+      system of their sample, with its images; a data.frame's in the image's own. Each chunk of rows is written as a
+      parquet file with duckdb and one duckdb pass splits them into one file per image, so memory stays that of a
+      chunk however the cells are ordered (spatialdataR reads only the first parquet file of a points element).
+      Image IDs that are not valid SpatialData element names give a warning and no points; `points = FALSE` skips
+      them. duckdb and DBI are suggested.
+
 CHANGES IN VERSION 1.99.34
 --------------------------
 

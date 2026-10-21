@@ -350,7 +350,9 @@
 #' * `var`: the `rowData`, with the row names as its index.
 #' * `obsm`: the coordinates as `"spatial"`, and the `reducedDims`.
 #'
-#' The images of a `SpatialExperiment` (`imgData()`) become image elements named `<sample_id>_<image_id>`, each in
+#' The cells of each image also become a points element named after the image, with their coordinates and their
+#' `"instance_id"`, so that the table annotates elements of the store (image IDs must then be valid element names:
+#' letters, digits, `_`, `-` and `.`). The images of a `SpatialExperiment` (`imgData()`) become image elements named `<sample_id>_<image_id>`, each in
 #' the coordinate system of its sample and scaled to the coordinates of the cells. A table with one row per image can
 #' be added. Every array is written in chunks (of 2^20 rows for a column) compressed with zstd, one chunk at a time,
 #' so writing needs little memory beyond that of `cells`, however many cells it has. `metadata()`, `altExps()` and
@@ -366,6 +368,7 @@
 #' @param imageInfo Optional: a `data.frame` with one row per image, written as the table `infoKey`. The image IDs are
 #'   its `imageID` column, or else its row names.
 #' @param infoKey The name of the per-image table.
+#' @param points Whether to write the cells as points too, one points element per image (needs duckdb).
 #' @return `path`, invisibly.
 #' @examples
 #' cells <- data.frame(imageID = factor(rep(c("a", "b"), each = 50)), cellType = factor(rep(c("T", "B"), 50)),
@@ -376,7 +379,7 @@
 #' }
 #' @export
 writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("x", "y"), tableKey = "table",
-                           imageInfo = NULL, infoKey = "images") {
+                           imageInfo = NULL, infoKey = "images", points = TRUE) {
   .need("Rarr", "to write a SpatialData store")
   if (!.is_class(cells, "SummarizedExperiment")) cells <- as.data.frame(cells)
   cn <- if (is.data.frame(cells)) names(cells) else names(SummarizedExperiment::colData(cells))
@@ -392,7 +395,8 @@ writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("
     .zarr_check_columns(imageInfo, "imageInfo")
   }
   path <- .create_store(path)
-  .writeTable(cells, tableKey, path, region_key = imageID, spatialCoords = spatialCoords)
+  tab <- .writeTable(cells, tableKey, path, region_key = imageID, spatialCoords = spatialCoords)
+  if (points && !is.null(tab$coords)) .writePoints(path, tab$key, tab$coords, .points_cs(cells, tab$key))
   if (!is.null(imageInfo)) .writeTable(imageInfo, infoKey, path)
   if (.is_class(cells, "SpatialExperiment")) .writeImages(cells, path)
   Rarr::zarr_consolidate_metadata(path)

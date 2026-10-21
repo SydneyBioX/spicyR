@@ -240,7 +240,8 @@
 ## 0-based instance IDs as `instance_key`; X the first assay and layers the others; var the rowData; obsm "spatial"
 ## the coordinates (a SpatialExperiment's spatialCoords(), or the two `spatialCoords` columns) and the reducedDims.
 ## With `region_key`, the table annotates the regions named in that column (as a categorical), as SpatialData
-## requires; without it, its index is the row names of `x` (a table of images, say).
+## requires; without it, its index is the row names of `x` (a table of images, say). Returns the region of each row
+## and a function giving the coordinates of rows a..b, for .writePoints().
 .writeTable <- function(x, name, path, region_key=NULL, instance_key="instance_id", spatialCoords=NULL) {
     tab <- file.path(path, "tables", name)
     sce <- .is_class(x, "SummarizedExperiment")
@@ -316,7 +317,8 @@
             encoding=c("string-array", "0.2.0"))
         for (k in c("region_key", "instance_key")) .zarr_write_string(file.path(sp, k), sdattrs[[k]])
     }
-    invisible(tab)
+    # for the points: the region of each row and its coordinates
+    invisible(list(path=tab, key=if (!is.null(region_key)) obs[[region_key]], coords=if (!is.null(xy)) spatial))
 }
 
 ## An image: an OME-NGFF image element `name` under `path`/images, from a SpatialImage (imgData() of a
@@ -361,6 +363,80 @@
     for (i in seq_len(nrow(img)))
         .writeImage(img$data[[i]], nms[i], path, cs=as.character(img$sample_id[i]), scale=1 / img$scaleFactor[i])
     invisible(nms)
+}
+
+## Names spatialdata accepts for an element: letters, digits, "_", "-" and ".", not "." or "..", nor starting "__".
+.valid_name <- \(x) grepl("^[A-Za-z0-9_.-]+$", x) & !x %in% c(".", "..") & !startsWith(x, "__")
+
+## The coordinate system of each region's points: the sample of a SpatialExperiment's cells when all the cells of
+## the region are from one sample (the system of the sample's images), else the region's own.
+.points_cs <- function(x, key) {
+    regions <- levels(key)
+    cs <- setNames(regions, regions)
+    if (!.is_class(x, "SpatialExperiment")) return(cs)
+    smp <- x$sample_id
+    pairs <- NULL
+    for (r in .zarr_chunks(length(key))) {
+        pairs <- unique(rbind(pairs, unique(data.frame(k=.subset(key, r[1]:r[2]), s=smp[r[1]:r[2]]))))
+        .zarr_free()
+    }
+    one <- pairs[!pairs$k %in% pairs$k[duplicated(pairs$k)], ]
+    cs[one$k] <- as.character(one$s)
+    cs
+}
+
+## The cells as points: one points element per region (image), with x, y and the instance ID that links each point
+## to its row of the table, in the coordinate system cs[region] (identity). `key` is the region of each row and
+## coords(a, b) the coordinates of rows a..b. Each chunk of rows is written as a parquet file with duckdb, and one
+## pass of duckdb then splits them by region into one file per element (spatialdataR reads part.0.parquet of a
+## points element only), so memory stays that of a chunk.
+.writePoints <- function(path, key, coords, cs) {
+    .need("duckdb", "to write the cells as points"); .need("DBI", "to write the cells as points")
+    regions <- levels(key)
+    if (!all(ok <- .valid_name(regions))) {
+        warning("no points written: images whose IDs are not valid SpatialData element names: ",
+            paste(utils::head(regions[!ok], 5), collapse=", "), call.=FALSE)
+        return(invisible(character(0)))
+    }
+    drv <- if ("shared_home" %in% names(formals(duckdb::duckdb))) duckdb::duckdb(shared_home=FALSE) else duckdb::duckdb()
+    con <- DBI::dbConnect(drv)
+    on.exit(DBI::dbDisconnect(con, shutdown=TRUE))
+    tmp <- file.path(path, "points", ".tmp")
+    dir.create(file.path(tmp, "chunks"), recursive=TRUE)
+    DBI::dbExecute(con, sprintf("SET temp_directory='%s'; SET threads=2; SET memory_limit='2GB'",
+        gsub("'", "''", tmp)))
+    sql <- \(f) paste0("'", gsub("'", "''", f), "'")
+    for (r in .zarr_chunks(length(key))) {
+        xy <- coords(r[1], r[2])
+        d <- data.frame(region=.subset(key, r[1]:r[2]), x=xy[, 1], y=xy[, 2], instance_id=(r[1]:r[2]) - 1L)
+        duckdb::duckdb_register(con, "chunk", d)
+        DBI::dbExecute(con, paste0("COPY (SELECT region, x, y, CAST(instance_id AS BIGINT) AS instance_id ",
+            "FROM chunk) TO ", sql(file.path(tmp, "chunks", sprintf("%09d.parquet", r[1]))), " (FORMAT parquet)"))
+        duckdb::duckdb_unregister(con, "chunk")
+        rm(xy, d); .zarr_free()
+    }
+    DBI::dbExecute(con, paste0("COPY (SELECT * FROM read_parquet(", sql(file.path(tmp, "chunks", "*.parquet")),
+        ") WHERE region IS NOT NULL) TO ", sql(file.path(tmp, "split")), " (FORMAT parquet, PARTITION_BY (region))"))
+    .zarr_group(file.path(path, "points"))
+    sys <- \(nm) list(name=nm, axes=list(list(name="x", type="space", unit="unit"),
+        list(name="y", type="space", unit="unit")))
+    written <- character(0)
+    for (g in seq_along(regions)) {
+        files <- list.files(file.path(tmp, "split", paste0("region=", g)), full.names=TRUE)
+        if (!length(files)) next   # no cells
+        p <- file.path(path, "points", regions[g])
+        .zarr_group(p, list(`encoding-type`="ngff:points", axes=c("x", "y"),
+            coordinateTransformations=list(list(type="identity", input=sys("xy"), output=sys(cs[[g]]))),
+            spatialdata_attrs=list(instance_key="instance_id", version="0.2")))
+        dir.create(file.path(p, "points.parquet"))
+        out <- file.path(p, "points.parquet", "part.0.parquet")
+        if (length(files) == 1L) file.rename(files, out)
+        else DBI::dbExecute(con, paste0("COPY (SELECT * FROM read_parquet([", paste(sql(files), collapse=", "),
+            "])) TO ", sql(out), " (FORMAT parquet)"))
+        written <- c(written, regions[g])
+    }
+    unlink(tmp, recursive=TRUE)
+    invisible(written)
 }
 
 ## A new, empty SpatialData store at `path` (replaced if it exists): its root group and tables group.

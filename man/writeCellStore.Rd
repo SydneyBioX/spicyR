@@ -11,7 +11,8 @@ writeCellStore(
   spatialCoords = c("x", "y"),
   tableKey = "table",
   imageInfo = NULL,
-  infoKey = "images"
+  infoKey = "images",
+  points = TRUE
 )
 }
 \arguments{
@@ -30,6 +31,8 @@ every assay has a name.}
 its \code{imageID} column, or else its row names.}
 
 \item{infoKey}{The name of the per-image table.}
+
+\item{points}{Whether to write the cells as points too, one points element per image (needs duckdb).}
 }
 \value{
 \code{path}, invisibly.
@@ -49,7 +52,9 @@ else the images in order of first appearance), and the cells are numbered 0, 1, 
 \item \code{obsm}: the coordinates as \code{"spatial"}, and the \code{reducedDims}.
 }
 
-The images of a \code{SpatialExperiment} (\code{imgData()}) become image elements named \verb{<sample_id>_<image_id>}, each in
+The cells of each image also become a points element named after the image, with their coordinates and their
+\code{"instance_id"}, so that the table annotates elements of the store (image IDs must then be valid element names:
+letters, digits, \verb{_}, \code{-} and \code{.}). The images of a \code{SpatialExperiment} (\code{imgData()}) become image elements named \verb{<sample_id>_<image_id>}, each in
 the coordinate system of its sample and scaled to the coordinates of the cells. A table with one row per image can
 be added. Every array is written in chunks (of 2^20 rows for a column) compressed with zstd, one chunk at a time,
 so writing needs little memory beyond that of \code{cells}, however many cells it has. \code{metadata()}, \code{altExps()} and

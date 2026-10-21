@@ -58,6 +58,15 @@ test_that("a SpatialExperiment is written whole, and spatialdataR reads it back"
     a <- as.array(spatialdataR::data(spatialdataR::image(sd, paste0(s, "_lowres"))))   # channel, y, x
     expect_identical(as.vector(aperm(a, c(2, 3, 1))), as.vector(rgb_of(spe, s)))
   }
+  # the cells of each image as points, in the coordinate system of their sample
+  xy <- SpatialExperiment::spatialCoords(spe)
+  for (im in unique(spe$imageID)) {
+    pt <- as.data.frame(spatialdataR::point(sd, im))
+    pt <- pt[order(pt$instance_id), ]
+    rows <- which(spe$imageID == im)
+    expect_identical(as.integer(pt$instance_id), rows - 1L)
+    expect_equal(unname(sf::st_coordinates(pt$geometry)), unname(xy[rows, ]))
+  }
   # spicy() reads the store as it reads the object
   a <- suppressMessages(spicy(spe, condition = "group", cellType = "cellType", r = 40))
   b <- suppressMessages(spicy(path, condition = "group", cellType = "cellType", r = 40))
@@ -74,7 +83,8 @@ test_that("Python's spatialdata reads a whole SpatialExperiment", {
   code <- paste0(
     "import json, warnings, numpy as np, anndata, spatialdata as sd\n",
     "from spatialdata.transformations import get_transformation\n",
-    "warnings.simplefilter('ignore', UserWarning)\n",
+    "warnings.simplefilter('error', UserWarning)\n",   # e.g. a table annotating an element that is not there
+
     "warnings.simplefilter('error', anndata._warnings.OldFormatWarning)\n",
     "s = sd.read_zarr('", path, "'); t = s.tables['table']\n",
     "out = dict(X=t.X.toarray().tolist(), logcounts=t.layers['logcounts'].tolist(),\n",
@@ -84,6 +94,10 @@ test_that("Python's spatialdata reads a whole SpatialExperiment", {
     "    im = s.images[k + '_lowres']\n",
     "    out[k] = np.moveaxis(im.values, 0, -1).ravel(order='F').tolist()\n",
     "    out[k + '_scale'] = list(get_transformation(im, to_coordinate_system=k).scale)\n",
+    "for k in sorted(s.points):\n",
+    "    p = s.points[k].compute().sort_values('instance_id')\n",
+    "    out['pt_' + k] = dict(x=p['x'].tolist(), id=p['instance_id'].tolist(),\n",
+    "                         cs=list(get_transformation(s.points[k], get_all=True)))\n",
     "print(json.dumps(out))\n")
   f <- tempfile(fileext = ".py"); writeLines(code, f)
   res <- system2(py, c("-I", f), stdout = TRUE, stderr = FALSE)
@@ -97,8 +111,36 @@ test_that("Python's spatialdata reads a whole SpatialExperiment", {
   expect_identical(got$var, rownames(spe))
   expect_identical(got$symbol, SummarizedExperiment::rowData(spe)$symbol)
   expect_identical(got$na, sum(is.na(spe$score)))
+  for (im in unique(spe$imageID)) {
+    rows <- which(spe$imageID == im)
+    expect_equal(got[[paste0("pt_", im)]]$x, unname(SpatialExperiment::spatialCoords(spe)[rows, 1]))
+    expect_identical(as.integer(got[[paste0("pt_", im)]]$id), rows - 1L)
+    expect_identical(got[[paste0("pt_", im)]]$cs, spe$sample_id[rows[1]])
+  }
   for (s in c("s1", "s2")) {
     expect_identical(as.integer(got[[s]]), as.integer(as.vector(rgb_of(spe, s))))
     expect_equal(got[[paste0(s, "_scale")]], c(1, 20, 20))
   }
+})
+
+test_that("unsorted cells over many chunks give one points file per image", {
+  skip_if_not_installed("spatialdataR")
+  old <- options(spicyR.store_write_chunk = 50L); on.exit(options(old))
+  set.seed(3)
+  d <- data.frame(imageID = sample(c("a", "b", "c"), 1000, TRUE), x = runif(1000), y = runif(1000))
+  path <- writeCellStore(d, tempfile(fileext = ".zarr"))
+  on.exit(unlink(path, recursive = TRUE), add = TRUE)
+  for (im in c("a", "b", "c")) {
+    expect_identical(list.files(file.path(path, "points", im, "points.parquet")), "part.0.parquet")
+    pt <- as.data.frame(spatialdataR::readPoint(file.path(path, "points", im)))
+    pt <- pt[order(pt$instance_id), ]
+    expect_identical(as.integer(pt$instance_id), which(d$imageID == im) - 1L)
+    expect_equal(unname(sf::st_coordinates(pt$geometry)[, 2]), d$y[d$imageID == im])
+  }
+  expect_false(dir.exists(file.path(path, "points", ".tmp")))
+  # image IDs that are not element names: no points, with a warning
+  d$imageID <- sub("a", "a b", d$imageID)
+  expect_warning(p2 <- writeCellStore(d, tempfile(fileext = ".zarr")), "valid SpatialData element names")
+  expect_false(dir.exists(file.path(p2, "points")))
+  unlink(p2, recursive = TRUE)
 })

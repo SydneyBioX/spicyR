@@ -620,7 +620,7 @@ the results are the same as for the same cells in memory.
 To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It writes the whole
 `SpatialExperiment` as a SpatialData store: the `colData` as the table's `obs`, with the image column as its region
 key; the assays (here the marker intensities) as `X` and `layers`; the `rowData` as `var`; `spatialCoords()` and any
-`reducedDims` as `obsm`; and the images, if any, as image elements. A second table holds one row per core, with the
+`reducedDims` as `obsm`; the cells of each core as a points element; and the images, if any, as image elements. A second table holds one row per core, with the
 patient and ER status, so the cell table needs only the image and the cell type.
 
 ```{r store-write}

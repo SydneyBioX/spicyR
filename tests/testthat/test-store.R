@@ -204,7 +204,11 @@ test_that("writeCellStore() writes a SpatialExperiment as it writes the same cel
   files <- list.files(p2, recursive = TRUE)
   expect_identical(list.files(p1, recursive = TRUE), files)
   same <- vapply(files, function(f) identical(readBin(file.path(p1, f), "raw", 1e7), readBin(file.path(p2, f), "raw", 1e7)), TRUE)
-  expect_true(all(same))
+  # all the same but the coordinate system of the points: the sample's for a SpatialExperiment, the image's otherwise
+  expect_setequal(names(same)[!same], c(file.path("points", levels(d$imageID), "zarr.json"), "zarr.json"))
+  cs <- function(p, im) jsonlite::read_json(file.path(p, "points", im, "zarr.json"))$attributes$coordinateTransformations[[1]]$output$name
+  expect_identical(cs(p1, levels(d$imageID)[1]), "sample01")
+  expect_identical(cs(p2, levels(d$imageID)[1]), levels(d$imageID)[1])
   unlink(c(p1, p2), recursive = TRUE)
 })
 
