@@ -759,7 +759,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.31) to
+A methods sentence might read: “We used spicyR (version 1.99.32) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -900,10 +900,6 @@ library(spatialdataR)
 sdata <- readSpatialData(path)
 sdata
 #> class: SpatialData
-#> - images(0):
-#> - labels(0):
-#> - points(0):
-#> - shapes(0):
 #> - tables(2):
 #>   - images (0,40) []
 #>   - table (0,43271) [MB0000_1_527,MB0002_1_345,MB0005_1_211,MB0010_1_420,MB0013_1_371,MB0014_1_326,MB0018_1_128,MB0020_1_88,MB0022_1_456,MB0028_1_413,MB0030_1_364,MB0035_1_138,MB0040_1_165,MB0045_1_185,MB0050_1_48,MB0060_1_37,MB0064_1_152,MB0075_1_145,MB0077_1_81,MB0081_1_44,MB0087_1_279,MB0095_1_27,MB0099_1_503,MB0105_1_523,MB0107_1_350,MB0109_1_487,MB0115_1_428,MB0118_1_524,MB0132_1_533,MB0152_1_452,MB0158_1_303,MB0161_1_122,MB0163_1_445,MB0164_1_374,MB0174_1_33,MB0179_1_549,MB0190_1_493,MB0191_1_477,MB0200_1_393,MB0201_1_497]
@@ -971,7 +967,7 @@ sessionInfo()
 #> [8] base     
 #> 
 #> other attached packages:
-#>  [1] spatialdataR_0.99.45        survival_3.8-6             
+#>  [1] spatialdataR_0.99.47        survival_3.8-6             
 #>  [3] ggplot2_4.0.3               SpatialDatasets_1.11.0     
 #>  [5] SpatialExperiment_1.23.0    SingleCellExperiment_1.35.2
 #>  [7] SummarizedExperiment_1.43.0 Biobase_2.73.2             
@@ -981,7 +977,7 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.31              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.32              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         

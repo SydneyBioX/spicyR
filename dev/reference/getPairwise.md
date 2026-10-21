@@ -25,7 +25,8 @@ getPairwise(
   cellTypeCol = cellType,
   spatialCoordCols = spatialCoords,
   nCores = cores,
-  Rs = r
+  Rs = r,
+  cellWeights = NULL
 )
 ```
 
@@ -123,7 +124,21 @@ getPairwise(
 - Rs:
 
   {DEPRECATED} A vector of the radii that the measures of association
-  should be calculated over. calculation.
+  should be calculated over.
+
+- cellWeights:
+
+  Optional cell weights in \\0, 1\\, in the order of `cells`: a numeric
+  vector with one weight per cell for its own cell type (for example a
+  quality score), or a numeric matrix (or sparse `Matrix`) of soft cell
+  type membership with one row per cell and one named column per label,
+  holding each cell's weight for that label (for example a classifier's
+  confidence). With a matrix, `from` and `to` name its columns, and
+  labels may overlap, for example a group and its subtypes. Each cell
+  contributes to a label in proportion to its weight; a label's density
+  is its summed weight per unit area. Weights of 1 give the values of
+  the cell types. Needs a `"square"` or `"convex"` window and no
+  `sigma`.
 
 ## Value
 

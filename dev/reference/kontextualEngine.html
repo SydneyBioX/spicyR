@@ -15,7 +15,7 @@ effective patients per condition, abundance adjustment)."><meta name="robots" co
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.31</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.32</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -70,7 +70,8 @@ effective patients per condition, abundance adjustment).</p>
 <span>  labelClustering <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  edgeCorrect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  window <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"convex"</span>, <span class="st">"rectangle"</span><span class="op">)</span>,</span>
-<span>  ref <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cellWeights <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -107,6 +108,13 @@ its nominal level when the conditions are shuffled between patients.</p></dd>
 
 <dt id="arg-window">window<a class="anchor" aria-label="anchor" href="#arg-window"></a></dt>
 <dd><p>The window of each image for the edge correction: <code>"convex"</code> or <code>"rectangle"</code>.</p></dd>
+
+
+<dt id="arg-cellweights">cellWeights<a class="anchor" aria-label="anchor" href="#arg-cellweights"></a></dt>
+<dd><p>Optional cell weights, a vector or a soft membership matrix as for <code><a href="spicy.html">spicy()</a></code>: with a matrix,
+<code>from</code> and <code>to</code> (and the <code>from</code>, <code>to</code> of <code>parentDf</code>) name its columns, while <code>parent</code> still lists cell types. A <code>from</code> cell enters with its
+weight, the score of a candidate counts with its <code>to</code> weight, and the null shuffles the <code>to</code> weights over the
+candidates. Pairs of a label with itself are not tested, and <code>labelClustering</code> is not available.</p></dd>
 
 </dl></div>
     <div class="section level2">

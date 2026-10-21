@@ -31,7 +31,8 @@ kontextualEngine(
   labelClustering = FALSE,
   edgeCorrect = TRUE,
   window = c("convex", "rectangle"),
-  ref = NULL
+  ref = NULL,
+  cellWeights = NULL
 )
 ```
 
@@ -76,6 +77,17 @@ kontextualEngine(
 
   The window of each image for the edge correction: `"convex"` or
   `"rectangle"`.
+
+- cellWeights:
+
+  Optional cell weights, a vector or a soft membership matrix as for
+  [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md):
+  with a matrix, `from` and `to` (and the `from`, `to` of `parentDf`)
+  name its columns, while `parent` still lists cell types. A `from` cell
+  enters with its weight, the score of a candidate counts with its `to`
+  weight, and the null shuffles the `to` weights over the candidates.
+  Pairs of a label with itself are not tested, and `labelClustering` is
+  not available.
 
 ## Value
 

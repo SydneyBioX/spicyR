@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.31</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.32</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,6 +67,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  tableKey <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  imageInfo <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cellWeights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -171,6 +172,20 @@ cells needs a row, and every row an image. A <code><a href="https://rdrr.io/pkg/
 analysis, also from a store.</p></dd>
 
 
+<dt id="arg-cellweights">cellWeights<a class="anchor" aria-label="anchor" href="#arg-cellweights"></a></dt>
+<dd><p>Optional cell weights in [0, 1], in the order of <code>cells</code>: a numeric vector with one weight
+per cell for its own cell type (for example a quality score), or a matrix (or sparse <code>Matrix</code>) of soft cell type
+membership with one row per cell and one named column per label (for example a classifier's confidence). With
+a matrix, <code>from</code> and <code>to</code> name its columns, and labels may overlap (a group and its subtypes). Cell method: a
+<code>to</code> cell counts with its weight, and its score is the chance that it has a <code>from</code> neighbour within <code>r</code> if each
+cell were a <code>from</code> cell with probability its <code>from</code> weight (allocation), or the summed <code>from</code> weight of its
+neighbours (count). The null shuffles the <code>to</code> weights over the cells whose <code>from</code> weight is below 1 (so a cell
+of the <code>from</code> type with weight 0.6 is a candidate with the remaining 0.4), and its exact mean and variance
+replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
+<code>from</code> label's summed weight over the image's cells. One radius and cells in memory; pairs of a label with
+itself are not tested. Image method: see <code><a href="getPairwise.html">getPairwise()</a></code>.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Arguments of the image method: <code>sigma</code>, <code>alternateResult</code>, <code>minLambda</code>, <code>weights</code>,
 <code>weightsByPair</code>, <code>weightFactor</code>, <code>weightZThreshold</code>, <code>window</code>, <code>window.length</code>, <code>edgeCorrect</code>,
@@ -237,7 +252,8 @@ is not tested.</p>
 variance and the tests.</p>
 <p><strong><code>method = "image"</code> (the original spicyR test).</strong> A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when <code>subject</code> is given
-(Canete et al. 2022).</p>
+(Canete et al. 2022). With <code>cellWeights</code> (see <code><a href="getPairwise.html">getPairwise()</a></code>), cells enter each label with a weight,
+for example the confidence of a classifier, instead of through a single cell type.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

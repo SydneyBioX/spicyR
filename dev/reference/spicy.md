@@ -29,6 +29,7 @@ spicy(
   cores = 1,
   tableKey = NULL,
   imageInfo = NULL,
+  cellWeights = NULL,
   ...
 )
 ```
@@ -150,6 +151,27 @@ spicy(
   [`survival::Surv`](https://rdrr.io/pkg/survival/man/Surv.html) column
   given as `condition` makes a survival analysis, also from a store.
 
+- cellWeights:
+
+  Optional cell weights in \[0, 1\], in the order of `cells`: a numeric
+  vector with one weight per cell for its own cell type (for example a
+  quality score), or a matrix (or sparse `Matrix`) of soft cell type
+  membership with one row per cell and one named column per label (for
+  example a classifier's confidence). With a matrix, `from` and `to`
+  name its columns, and labels may overlap (a group and its subtypes).
+  Cell method: a `to` cell counts with its weight, and its score is the
+  chance that it has a `from` neighbour within `r` if each cell were a
+  `from` cell with probability its `from` weight (allocation), or the
+  summed `from` weight of its neighbours (count). The null shuffles the
+  `to` weights over the cells whose `from` weight is below 1 (so a cell
+  of the `from` type with weight 0.6 is a candidate with the remaining
+  0.4), and its exact mean and variance replace those of random
+  labelling; weights of 1 give the results of the cell types. The
+  abundance share is the `from` label's summed weight over the image's
+  cells. One radius and cells in memory; pairs of a label with itself
+  are not tested. Image method: see
+  [`getPairwise()`](https://sydneybiox.github.io/spicyR/dev/reference/getPairwise.md).
+
 - ...:
 
   Arguments of the image method: `sigma`, `alternateResult`,
@@ -253,7 +275,10 @@ of the side, the between-image variance and the tests.
 **`method = "image"` (the original spicyR test).** A per-image
 L-function summary of each pair is compared between conditions with a
 weighted linear model, or a mixed model when `subject` is given (Canete
-et al. 2022).
+et al. 2022). With `cellWeights` (see
+[`getPairwise()`](https://sydneybiox.github.io/spicyR/dev/reference/getPairwise.md)),
+cells enter each label with a weight, for example the confidence of a
+classifier, instead of through a single cell type.
 
 ## References
 
