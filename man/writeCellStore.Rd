@@ -15,9 +15,9 @@ writeCellStore(
 )
 }
 \arguments{
-\item{cells}{A \code{SpatialExperiment} or \code{SingleCellExperiment} (its \code{colData}, and the \code{spatialCoords()} of a
-\code{SpatialExperiment}; assays are not written), or a \code{data.frame} with one row per cell. The columns are factors,
-character, integer, double or logical vectors.}
+\item{cells}{A \code{SpatialExperiment}, \code{SingleCellExperiment} or \code{data.frame} with one row (column) per cell. The
+\code{colData}, \code{rowData} and \code{data.frame} columns are factors, character, integer, double or logical vectors, and
+every assay has a name.}
 
 \item{path}{The directory of the store (replaced if it exists).}
 
@@ -35,14 +35,25 @@ its \code{imageID} column, or else its row names.}
 \code{path}, invisibly.
 }
 \description{
-Writes the cells of a \code{SpatialExperiment}, \code{SingleCellExperiment} or \code{data.frame} as the cell table of a SpatialData
-Zarr store (an AnnData table under \verb{tables/}, in Zarr v3), which \code{\link[=spicy]{spicy()}} reads a block of rows at a time and
-spatialdataR's \code{readSpatialData()} reads as a \code{SpatialData} object. The coordinates become the \code{obsm} array
-\code{"spatial"}, the other columns the table's \code{obs} (factors as categorical columns), and the image column the table's
-region key (always a categorical column, its categories the levels of a factor, else the images in order of first
-appearance). A table with one row per image can be added as a second table. Each column is written in chunks of
-2^20 rows compressed with zstd, one chunk at a time, so writing needs little memory beyond that of \code{cells}, however
-many cells it has.
+Writes a \code{SpatialExperiment}, \code{SingleCellExperiment} or \code{data.frame} of cells as a SpatialData Zarr store (Zarr v3),
+which \code{\link[=spicy]{spicy()}} reads a block of rows at a time, spatialdataR's \code{readSpatialData()} reads as a \code{SpatialData} object,
+and Python's \code{spatialdata} reads too. The cells become a table (AnnData, under \verb{tables/}):
+}
+\details{
+\itemize{
+\item \code{obs}: the \code{colData} (or the columns of a \code{data.frame}) other than the coordinates, factors as categorical
+columns. The image column is the table's region key (always categorical, its categories the levels of a factor,
+else the images in order of first appearance), and the cells are numbered 0, 1, ... in \code{"instance_id"}.
+\item \code{X} and \code{layers}: the first assay and the others (a sparse assay in compressed sparse row form).
+\item \code{var}: the \code{rowData}, with the row names as its index.
+\item \code{obsm}: the coordinates as \code{"spatial"}, and the \code{reducedDims}.
+}
+
+The images of a \code{SpatialExperiment} (\code{imgData()}) become image elements named \verb{<sample_id>_<image_id>}, each in
+the coordinate system of its sample and scaled to the coordinates of the cells. A table with one row per image can
+be added. Every array is written in chunks (of 2^20 rows for a column) compressed with zstd, one chunk at a time,
+so writing needs little memory beyond that of \code{cells}, however many cells it has. \code{metadata()}, \code{altExps()} and
+column or row pairings are not written.
 }
 \examples{
 cells <- data.frame(imageID = factor(rep(c("a", "b"), each = 50)), cellType = factor(rep(c("T", "B"), 50)),

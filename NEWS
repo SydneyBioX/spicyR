@@ -1,3 +1,18 @@
+CHANGES IN VERSION 1.99.34
+--------------------------
+
+    o writeCellStore() writes a whole SpatialExperiment or SingleCellExperiment as a SpatialData store: the first
+      assay as X and the others as layers (a sparse assay as a csr_matrix), the rowData as var, the column names as
+      the obs index, the reducedDims in obsm with the coordinates, and the images of imgData() as OME-NGFF image
+      elements named <sample_id>_<image_id>, each in its sample's coordinate system and scaled by 1 / scaleFactor.
+      spatialdataR and Python's spatialdata read every part back as written (new tests). metadata(), altExps() and
+      column or row pairings are not written.
+    o The writer is in its own file (R/writeSpatialData.R), written in the idiom of spatialdataR's draft writers so
+      that it can move there. Numbers and logicals are now written with Rarr (create_empty_zarr_array() and
+      update_zarr_array(), a chunk at a time); strings are still written by spicyR, in the vlen-utf8 encoding that
+      Rarr does not write. Writing 20 million cells takes 16.6 s (13.2 s before) with the same memory and the same
+      store size, and spicy() results from the stores are unchanged.
+
 CHANGES IN VERSION 1.99.33
 --------------------------
 

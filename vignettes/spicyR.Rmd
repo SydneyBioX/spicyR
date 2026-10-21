@@ -617,10 +617,11 @@ table's image and cell-type columns a block of rows at a time, and the coordinat
 time. Memory then depends on the size of an image and on the number of `cores`, not on the size of the study, and
 the results are the same as for the same cells in memory.
 
-To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It takes a `SpatialExperiment`
-(or a `SingleCellExperiment` or `data.frame`) with one column per cell: the image column becomes the table's region
-key, the other `colData` columns its `obs`, and `spatialCoords()` its `obsm` array `"spatial"`. A second table holds
-one row per core, with the patient and ER status, so the cell table needs only the image and the cell type.
+To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It writes the whole
+`SpatialExperiment` as a SpatialData store: the `colData` as the table's `obs`, with the image column as its region
+key; the assays (here the marker intensities) as `X` and `layers`; the `rowData` as `var`; `spatialCoords()` and any
+`reducedDims` as `obsm`; and the images, if any, as image elements. A second table holds one row per core, with the
+patient and ER status, so the cell table needs only the image and the cell type.
 
 ```{r store-write}
 someCores <- unlist(lapply(levels(spe$ER), function(g) head(sort(unique(spe$file_id[spe$ER == g])), 20)))
