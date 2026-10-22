@@ -137,22 +137,14 @@ sort(table(spe$description), decreasing = TRUE)
 
 ``` r
 
-cells <- data.frame(SummarizedExperiment::colData(spe), SpatialExperiment::spatialCoords(spe))
-size <- table(cells$file_id)                                  # show the largest core of each group
-twoCores <- sapply(c("ER-", "ER+"), function(g) { k <- unique(cells$file_id[cells$ER == g]); k[which.max(size[k])] })
-oneEach <- cells[cells$file_id %in% twoCores, ]
-oneEach$core <- paste0(oneEach$file_id, " (", oneEach$ER, ")")
-ggplot(oneEach, aes(Location_Center_X, Location_Center_Y, colour = description)) +
-  geom_point(size = 0.5) +
-  facet_wrap(~ core) +
-  coord_equal() +
-  labs(colour = NULL) +
-  theme_void() +
-  theme(legend.text = element_text(size = 7)) +
-  guides(colour = guide_legend(override.aes = list(size = 2)))
+size <- table(spe$file_id)                                    # show the largest core of each group
+twoCores <- sapply(levels(spe$ER), function(g) { k <- unique(spe$file_id[spe$ER == g]); k[which.max(size[k])] })
+for (g in names(twoCores))
+  print(plotImage(spe, twoCores[[g]], imageID = "file_id", cellType = "description") +
+          labs(x = NULL, y = NULL, colour = NULL, title = paste0(twoCores[[g]], " (", g, ")")))
 ```
 
-![](spicyR_files/figure-html/data-plot-1.png)
+![](spicyR_files/figure-html/data-plot-1.png)![](spicyR_files/figure-html/data-plot-2.png)
 
 ## Testing every pair of cell types
 
@@ -759,7 +751,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.32) to
+A methods sentence might read: “We used spicyR (version 1.99.35) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -858,21 +850,25 @@ for the same cells in memory.
 
 To make a small store, we write 20 cores of each ER group with
 [`writeCellStore()`](https://sydneybiox.github.io/spicyR/dev/reference/writeCellStore.md).
-It needs a `data.frame` with one row per cell; the image column becomes
-the table’s region key and the coordinates its `obsm` array `"spatial"`.
-A second table holds one row per core, with the patient and ER status.
+It writes the whole `SpatialExperiment` as a SpatialData store: the
+`colData` as the table’s `obs`, with the image column as its region key;
+the assays (here the marker intensities) as `X` and `layers`; the
+`rowData` as `var`;
+[`spatialCoords()`](https://rdrr.io/pkg/SpatialExperiment/man/SpatialExperiment-methods.html)
+and any `reducedDims` as `obsm`; the cells of each core as a points
+element; and the images, if any, as image elements. A second table holds
+one row per core, with the patient and ER status, so the cell table
+needs only the image and the cell type.
 
 ``` r
 
-someCores <- unlist(lapply(c("ER-", "ER+"), function(g) head(sort(unique(cells$file_id[cells$ER == g])), 20)))
-small <- cells[cells$file_id %in% someCores, ]
-small <- small[order(small$file_id), ]                         # the rows of each core together
-coreInfo <- unique(small[, c("file_id", "metabricId", "ER")])
-rownames(coreInfo) <- coreInfo$file_id
+someCores <- unlist(lapply(levels(spe$ER), function(g) head(sort(unique(spe$file_id[spe$ER == g])), 20)))
+small <- spe[, spe$file_id %in% someCores]
+small <- small[, order(small$file_id)]                         # the cells of each core together
+coreInfo <- unique(as.data.frame(SummarizedExperiment::colData(small))[, c("file_id", "metabricId", "ER")])
+SummarizedExperiment::colData(small) <- SummarizedExperiment::colData(small)[, c("file_id", "description")]
 path <- file.path(tempdir(), "metabric.zarr")
-writeCellStore(small[, c("file_id", "description", "Location_Center_X", "Location_Center_Y")], path,
-               imageID = "file_id", spatialCoords = c("Location_Center_X", "Location_Center_Y"),
-               imageInfo = coreInfo[, c("metabricId", "ER")])
+writeCellStore(small, path, imageID = "file_id", imageInfo = coreInfo)
 ```
 
 The store holds the 43271 cells of 40 cores in a cell table, and a table
@@ -900,20 +896,28 @@ library(spatialdataR)
 sdata <- readSpatialData(path)
 sdata
 #> class: SpatialData
+#> - points(40):
+#>   - MB0000_1_527 (256)
+#>   - MB0002_1_345 (1111)
+#>   - MB0005_1_211 (1088)
+#>   - MB0010_1_420 (1077)
+#>   - MB0013_1_371 (2062)
+#>     ...
 #> - tables(2):
 #>   - images (0,40) []
-#>   - table (0,43271) [MB0000_1_527,MB0002_1_345,MB0005_1_211,MB0010_1_420,MB0013_1_371,MB0014_1_326,MB0018_1_128,MB0020_1_88,MB0022_1_456,MB0028_1_413,MB0030_1_364,MB0035_1_138,MB0040_1_165,MB0045_1_185,MB0050_1_48,MB0060_1_37,MB0064_1_152,MB0075_1_145,MB0077_1_81,MB0081_1_44,MB0087_1_279,MB0095_1_27,MB0099_1_503,MB0105_1_523,MB0107_1_350,MB0109_1_487,MB0115_1_428,MB0118_1_524,MB0132_1_533,MB0152_1_452,MB0158_1_303,MB0161_1_122,MB0163_1_445,MB0164_1_374,MB0174_1_33,MB0179_1_549,MB0190_1_493,MB0191_1_477,MB0200_1_393,MB0201_1_497]
-#> coordinate systems(0):
+#>   - table (39,43271) [MB0000_1_527,MB0002_1_345,MB0005_1_211,MB0010_1_420,MB0013_1_371,MB0014_1_326,MB0018_1_128,MB0020_1_88,MB0022_1_456,MB0028_1_413,MB0030_1_364,MB0035_1_138,MB0040_1_165,MB0045_1_185,MB0050_1_48,MB0060_1_37,MB0064_1_152,MB0075_1_145,MB0077_1_81,MB0081_1_44,MB0087_1_279,MB0095_1_27,MB0099_1_503,MB0105_1_523,MB0107_1_350,MB0109_1_487,MB0115_1_428,MB0118_1_524,MB0132_1_533,MB0152_1_452,MB0158_1_303,MB0161_1_122,MB0163_1_445,MB0164_1_374,MB0174_1_33,MB0179_1_549,MB0190_1_493,MB0191_1_477,MB0200_1_393,MB0201_1_497]
+#> coordinate systems(1):
+#> - sample01(40): MB0000_1_527 MB0002_1_345 ... MB0200_1_393 MB0201_1_497
 resObject <- spicy(sdata, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
                    imageInfo = "images")
 ```
 
-Both results are those of the same cells as a `data.frame`:
+Both results are those of the same cells in memory:
 
 ``` r
 
 resMemory <- spicy(small, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id",
-                   cellType = "description", spatialCoords = c("Location_Center_X", "Location_Center_Y"))
+                   cellType = "description", imageInfo = coreInfo)
 c(store = identical(resStore, resMemory), object = identical(resObject, resMemory))
 #>  store object 
 #>   TRUE   TRUE
@@ -977,7 +981,7 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.32              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.35              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
@@ -985,35 +989,36 @@ sessionInfo()
 #>   [7] Rarr_2.1.48          otel_0.2.0           e1071_1.7-17        
 #>  [10] compiler_4.6.1       RSQLite_3.53.3       paws.storage_0.11.0 
 #>  [13] png_0.1-9            systemfonts_1.3.2    vctrs_0.7.3         
-#>  [16] pkgconfig_2.0.3      crayon_1.5.3         fastmap_1.2.0       
-#>  [19] magick_2.9.1         XVector_0.53.0       paws.common_0.9.0   
-#>  [22] labeling_0.4.3       rmarkdown_2.32       graph_1.91.0        
-#>  [25] ragg_1.5.2           purrr_1.2.2          bit_4.6.0           
-#>  [28] xfun_0.62            cachem_1.1.0         grumpy_0.1.1        
-#>  [31] jsonlite_2.0.0       blob_1.3.0           DelayedArray_0.39.8 
-#>  [34] R6_2.6.1             bslib_0.12.0         RColorBrewer_1.1-3  
-#>  [37] reticulate_1.47.0    jquerylib_0.1.4      Rcpp_1.1.2          
-#>  [40] bookdown_0.48        knitr_1.52           R.utils_2.13.0      
-#>  [43] BiocBaseUtils_1.15.1 Matrix_1.7-5         splines_4.6.1       
-#>  [46] tidyselect_1.2.1     duckspatial_1.3.0    abind_1.4-8         
-#>  [49] yaml_2.3.12          curl_8.1.0           lattice_0.22-9      
-#>  [52] tibble_3.3.1         withr_3.0.3          KEGGREST_1.53.6     
-#>  [55] S7_0.2.2             evaluate_1.0.5       sf_1.1-3            
-#>  [58] desc_1.4.3           units_1.0-1          proxy_0.4-29        
-#>  [61] Biostrings_2.81.9    pillar_1.11.1        BiocManager_1.30.27 
-#>  [64] filelock_1.0.3       KernSmooth_2.23-26   plotly_4.12.1       
-#>  [67] BiocVersion_3.24.0   scales_1.4.0         class_7.3-23        
-#>  [70] glue_1.8.1           tools_4.6.1          data.table_1.18.6.1 
-#>  [73] fs_2.1.0             grid_4.6.1           tidyr_1.3.2         
-#>  [76] crosstalk_1.2.2      AnnotationDbi_1.75.2 cli_3.6.6           
-#>  [79] rappdirs_0.3.4       textshaping_1.0.5    S4Arrays_1.13.2     
-#>  [82] viridisLite_0.4.3    dplyr_1.2.1          gtable_0.3.6        
-#>  [85] R.methodsS3_1.8.2    sass_0.4.10          digest_0.6.39       
-#>  [88] classInt_0.4-11      SparseArray_1.13.4   ZarrArray_1.1.7     
-#>  [91] rjson_0.2.23         htmlwidgets_1.6.4    farver_2.1.2        
-#>  [94] memoise_2.0.1        htmltools_0.5.9      pkgdown_2.2.1       
-#>  [97] R.oo_1.27.1          lifecycle_1.0.5      httr_1.4.9          
-#> [100] bit64_4.8.6          MASS_7.3-65
+#>  [16] wk_0.9.5             pkgconfig_2.0.3      crayon_1.5.3        
+#>  [19] fastmap_1.2.0        magick_2.9.1         XVector_0.53.0      
+#>  [22] paws.common_0.9.0    labeling_0.4.3       rmarkdown_2.32      
+#>  [25] graph_1.91.0         ragg_1.5.2           purrr_1.2.2         
+#>  [28] bit_4.6.0            xfun_0.62            cachem_1.1.0        
+#>  [31] grumpy_0.1.1         jsonlite_2.0.0       blob_1.3.0          
+#>  [34] DelayedArray_0.39.8  uuid_1.2-2           R6_2.6.1            
+#>  [37] bslib_0.12.0         RColorBrewer_1.1-3   reticulate_1.47.0   
+#>  [40] jquerylib_0.1.4      Rcpp_1.1.2           bookdown_0.48       
+#>  [43] knitr_1.52           R.utils_2.13.0       BiocBaseUtils_1.15.1
+#>  [46] Matrix_1.7-5         splines_4.6.1        tidyselect_1.2.1    
+#>  [49] duckspatial_1.3.0    abind_1.4-8          yaml_2.3.12         
+#>  [52] curl_8.1.0           lattice_0.22-9       tibble_3.3.1        
+#>  [55] withr_3.0.3          KEGGREST_1.53.6      S7_0.2.2            
+#>  [58] evaluate_1.0.5       sf_1.1-3             desc_1.4.3          
+#>  [61] units_1.0-1          proxy_0.4-29         Biostrings_2.81.9   
+#>  [64] pillar_1.11.1        BiocManager_1.30.27  filelock_1.0.3      
+#>  [67] KernSmooth_2.23-26   plotly_4.12.1        BiocVersion_3.24.0  
+#>  [70] scales_1.4.0         class_7.3-23         glue_1.8.1          
+#>  [73] tools_4.6.1          data.table_1.18.6.1  fs_2.1.0            
+#>  [76] grid_4.6.1           tidyr_1.3.2          crosstalk_1.2.2     
+#>  [79] AnnotationDbi_1.75.2 duckdb_1.5.6         cli_3.6.6           
+#>  [82] rappdirs_0.3.4       textshaping_1.0.5    S4Arrays_1.13.2     
+#>  [85] viridisLite_0.4.3    dplyr_1.2.1          gtable_0.3.6        
+#>  [88] R.methodsS3_1.8.2    sass_0.4.10          digest_0.6.39       
+#>  [91] classInt_0.4-11      SparseArray_1.13.4   ZarrArray_1.1.7     
+#>  [94] rjson_0.2.23         htmlwidgets_1.6.4    farver_2.1.2        
+#>  [97] memoise_2.0.1        htmltools_0.5.9      pkgdown_2.2.1       
+#> [100] R.oo_1.27.1          lifecycle_1.0.5      httr_1.4.9          
+#> [103] bit64_4.8.6          MASS_7.3-65
 ```
 
 ## References

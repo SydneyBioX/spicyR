@@ -1,17 +1,11 @@
 # Write cells as a SpatialData Zarr store
 
-Writes a `data.frame` of cells as the cell table of a SpatialData Zarr
-store (an AnnData table under `tables/`, in Zarr v3), which
+Writes a `SpatialExperiment`, `SingleCellExperiment` or `data.frame` of
+cells as a SpatialData Zarr store (Zarr v3), which
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-reads a block of rows at a time and spatialdataR's `readSpatialData()`
-reads as a `SpatialData` object. The coordinates become the `obsm` array
-`"spatial"`, the other columns the table's `obs` (factors as categorical
-columns), and the image column the table's region key (always a
-categorical column, its categories the levels of a factor, else the
-images in order of first appearance). A table with one row per image can
-be added as a second table. Each column is written in chunks of 2^20
-rows compressed with zstd, one chunk at a time, so writing needs little
-memory beyond that of `cells`, however many cells it has.
+reads a block of rows at a time, spatialdataR's `readSpatialData()`
+reads as a `SpatialData` object, and Python's `spatialdata` reads too.
+The cells become a table (AnnData, under `tables/`):
 
 ## Usage
 
@@ -23,7 +17,8 @@ writeCellStore(
   spatialCoords = c("x", "y"),
   tableKey = "table",
   imageInfo = NULL,
-  infoKey = "images"
+  infoKey = "images",
+  points = TRUE
 )
 ```
 
@@ -31,8 +26,10 @@ writeCellStore(
 
 - cells:
 
-  A `data.frame` with one row per cell. Its columns are factors,
-  character, integer, double or logical vectors.
+  A `SpatialExperiment`, `SingleCellExperiment` or `data.frame` with one
+  row (column) per cell. The `colData`, `rowData` and `data.frame`
+  columns are factors, character, integer, double or logical vectors,
+  and every assay has a name.
 
 - path:
 
@@ -40,7 +37,9 @@ writeCellStore(
 
 - imageID, spatialCoords:
 
-  The column of the image and the two columns of the coordinates.
+  The column of the image and the two columns of the coordinates. A
+  `SpatialExperiment`'s own `spatialCoords()` are used unless
+  `spatialCoords` names two `colData` columns.
 
 - tableKey:
 
@@ -48,16 +47,49 @@ writeCellStore(
 
 - imageInfo:
 
-  Optional: a `data.frame` with one row per image (row names: the image
-  IDs), written as the table `infoKey`.
+  Optional: a `data.frame` with one row per image, written as the table
+  `infoKey`. The image IDs are its `imageID` column, or else its row
+  names.
 
 - infoKey:
 
   The name of the per-image table.
 
+- points:
+
+  Whether to write the cells as points too, one points element per image
+  (needs duckdb).
+
 ## Value
 
 `path`, invisibly.
+
+## Details
+
+- `obs`: the `colData` (or the columns of a `data.frame`) other than the
+  coordinates, factors as categorical columns. The image column is the
+  table's region key (always categorical, its categories the levels of a
+  factor, else the images in order of first appearance), and the cells
+  are numbered 0, 1, ... in `"instance_id"`.
+
+- `X` and `layers`: the first assay and the others (a sparse assay in
+  compressed sparse row form).
+
+- `var`: the `rowData`, with the row names as its index.
+
+- `obsm`: the coordinates as `"spatial"`, and the `reducedDims`.
+
+The cells of each image also become a points element named after the
+image, with their coordinates and their `"instance_id"`, so that the
+table annotates elements of the store (image IDs must then be valid
+element names: letters, digits, `_`, `-` and `.`). The images of a
+`SpatialExperiment` (`imgData()`) become image elements named
+`<sample_id>_<image_id>`, each in the coordinate system of its sample
+and scaled to the coordinates of the cells. A table with one row per
+image can be added. Every array is written in chunks (of 2^20 rows for a
+column) compressed with zstd, one chunk at a time, so writing needs
+little memory beyond that of `cells`, however many cells it has.
+`metadata()`, `altExps()` and column or row pairings are not written.
 
 ## Examples
 

@@ -1,8 +1,10 @@
-# Plot one image, showing the `from` and `to` cells of a pair
+# Plot one image, showing its cell types or the `from` and `to` cells of a pair
 
-The density of all cells is shown in blue, with the `from` and `to`
-cells on top. With `r`, a circle of radius `r` is drawn around each `to`
-cell: the `from` cells inside the circles are those that spicyR counts.
+Without `from` and `to`, every cell is shown, coloured by its cell type.
+With them, the density of all cells is shown in blue, with the `from`
+and `to` cells on top. With `r`, a circle of radius `r` is drawn around
+each `to` cell: the `from` cells inside the circles are those that
+spicyR counts.
 
 ## Usage
 
@@ -10,8 +12,8 @@ cell: the `from` cells inside the circles are those that spicyR counts.
 plotImage(
   cells,
   imageToPlot,
-  from,
-  to,
+  from = NULL,
+  to = NULL,
   imageID = "imageID",
   cellType = "cellType",
   spatialCoords = c("x", "y"),
@@ -31,11 +33,11 @@ plotImage(
 
 - from:
 
-  The "from" cell type.
+  The "from" cell type. Optional, with `to`.
 
 - to:
 
-  The "to" cell type.
+  The "to" cell type. Optional, with `from`.
 
 - imageID:
 
@@ -61,6 +63,8 @@ A ggplot object.
 
 ``` r
 data("diabetesData")
+plotImage(diabetesData, "A09")
+
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
 
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
