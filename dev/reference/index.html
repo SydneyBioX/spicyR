@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.38</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.39</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,24 +44,10 @@
 
       <dl><dt>
 
-          <code><a href="spicy.html">spicy()</a></code>
-
-        </dt>
-        <dd>Test for changes in the co-localisation of cell types between conditions</dd>
-
-        <dt>
-
           <code><a href="SpicyResults-class.html">SpicyResults-class</a></code> <code><a href="SpicyResults-class.html">SpicyResults</a></code>
 
         </dt>
         <dd>The results of spicy()</dd>
-
-        <dt>
-
-          <code><a href="topPairs.html">topPairs()</a></code>
-
-        </dt>
-        <dd>A table of the significant results from spicy tests</dd>
 
         <dt>
 
@@ -76,6 +62,20 @@
 
         </dt>
         <dd>Check that spicy() is calibrated on your data by shuffling the condition</dd>
+
+        <dt>
+
+          <code><a href="spicy.html">spicy()</a></code>
+
+        </dt>
+        <dd>Test for changes in the co-localisation of cell types between conditions</dd>
+
+        <dt>
+
+          <code><a href="topPairs.html">topPairs()</a></code>
+
+        </dt>
+        <dd>A table of the significant results from spicy tests</dd>
       </dl></div><div class="section level2">
       <h2 id="plot">Plot<a class="anchor" aria-label="anchor" href="#plot"></a></h2>
 
@@ -88,6 +88,20 @@
 
       <dl><dt>
 
+          <code><a href="imageCrossPlot.html">imageCrossPlot()</a></code>
+
+        </dt>
+        <dd>Pairwise cross-plot of spatial associations</dd>
+
+        <dt>
+
+          <code><a href="plotImage.html">plotImage()</a></code>
+
+        </dt>
+        <dd>Plot one image, showing its cell types or the <code>from</code> and <code>to</code> cells of a pair</dd>
+
+        <dt>
+
           <code><a href="signifPlot.html">signifPlot()</a></code>
 
         </dt>
@@ -99,20 +113,6 @@
 
         </dt>
         <dd>Box plot of one pair, with a point per image</dd>
-
-        <dt>
-
-          <code><a href="plotImage.html">plotImage()</a></code>
-
-        </dt>
-        <dd>Plot one image, showing its cell types or the <code>from</code> and <code>to</code> cells of a pair</dd>
-
-        <dt>
-
-          <code><a href="imageCrossPlot.html">imageCrossPlot()</a></code>
-
-        </dt>
-        <dd>Pairwise cross-plot of spatial associations</dd>
       </dl></div><div class="section level2">
       <h2 id="per-image-statistics-image-method-">Per-image statistics (image method)<a class="anchor" aria-label="anchor" href="#per-image-statistics-image-method-"></a></h2>
 
@@ -124,6 +124,27 @@
 
 
       <dl><dt>
+
+          <code><a href="buildKnnGraph.html">buildKnnGraph()</a></code>
+
+        </dt>
+        <dd>Build a k-nearest-neighbour graph between cells</dd>
+
+        <dt>
+
+          <code><a href="colTest.html">colTest()</a></code>
+
+        </dt>
+        <dd>Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data frame</dd>
+
+        <dt>
+
+          <code><a href="convPairs.html">convPairs()</a></code>
+
+        </dt>
+        <dd>Converts colPairs object into an abundance matrix based on number of nearby interactions for every cell type.</dd>
+
+        <dt>
 
           <code><a href="getPairwise.html">getPairwise()</a></code>
 
@@ -143,27 +164,6 @@
 
         </dt>
         <dd>Get proportions from a SummarizedExperiment.</dd>
-
-        <dt>
-
-          <code><a href="buildKnnGraph.html">buildKnnGraph()</a></code>
-
-        </dt>
-        <dd>Build a k-nearest-neighbour graph between cells</dd>
-
-        <dt>
-
-          <code><a href="convPairs.html">convPairs()</a></code>
-
-        </dt>
-        <dd>Converts colPairs object into an abundance matrix based on number of nearby interactions for every cell type.</dd>
-
-        <dt>
-
-          <code><a href="colTest.html">colTest()</a></code>
-
-        </dt>
-        <dd>Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data frame</dd>
       </dl></div><div class="section level2">
       <h2 id="large-data-sets">Large data sets<a class="anchor" aria-label="anchor" href="#large-data-sets"></a></h2>
 
