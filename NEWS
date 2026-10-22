@@ -1,3 +1,14 @@
+CHANGES IN VERSION 1.99.37
+--------------------------
+
+    o calibrationCheck() shuffles the condition across patients (or images), runs spicy() on each shuffle and
+      reports the percentage of pairs below each p-value threshold, the check the vignette recommends before trusting
+      a discovery. Patients without a condition keep it missing. It replaces the shuffle loop the vignette had.
+    o The vignette is simpler: imageID and cellType are set once (noted as optional), the ER status is used as it is
+      (neg is the reference), the example cores are named rather
+      than computed, droplevels() and plot cosmetics are gone, and the store section writes the whole data set and
+      compares with the results in memory.
+
 CHANGES IN VERSION 1.99.36
 --------------------------
 

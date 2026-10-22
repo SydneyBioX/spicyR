@@ -2,6 +2,7 @@
 
 export(bind)
 export(buildKnnGraph)
+export(calibrationCheck)
 export(colTest)
 export(convPairs)
 export(getPairwise)

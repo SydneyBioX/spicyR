@@ -104,30 +104,34 @@ We use imaging mass cytometry of breast tumours from the METABRIC cohort [@ali20
 patients with known oestrogen receptor (ER) status contributed one tumour core, and the authors assigned each cell
 to one of 22 types. Their labels name tumour cells by marker: HR is hormone receptor, CK cytokeratin, and Ki67+
 marks proliferating cells, so `HR- Ki67+` are proliferating hormone-receptor-negative tumour cells. The data are a
-`SpatialExperiment` in the SpatialDatasets package, with coordinates in micrometres.
+`SpatialExperiment` in the SpatialDatasets package, with coordinates in micrometres. The ER status of each patient is
+in `ER.Status`, `neg` or `pos`; we keep the patients whose ER status is known.
 
 ```{r data}
 spe <- spe_Ali_2020()
-spe <- spe[, spe$ER.Status %in% c("neg", "pos")]
-spe$ER <- factor(ifelse(spe$ER.Status == "pos", "ER+", "ER-"), levels = c("ER-", "ER+"))
+spe <- spe[, !is.na(spe$ER.Status)]   # the 456 patients with known ER status
 
-table(unique(as.data.frame(SummarizedExperiment::colData(spe))[, c("metabricId", "ER")])$ER)
-sort(table(spe$description), decreasing = TRUE)
+# spicyR looks for columns called imageID and cellType by default. Copying the dataset's columns to these names is
+# not needed (you can give imageID = "file_id", cellType = "description" to each call instead); it only keeps the
+# calls below short.
+spe$imageID <- spe$file_id
+spe$cellType <- spe$description
+
+table(spe$ER.Status[!duplicated(spe$metabricId)])   # patients by ER status
+sort(table(spe$cellType), decreasing = TRUE)
 ```
 
+Two of the cores, one ER− and one ER+:
+
 ```{r data-plot, fig.width = 6.5, fig.height = 4.5, fig.show = "hold", out.width = "50%"}
-size <- table(spe$file_id)                                    # show the largest core of each group
-twoCores <- sapply(levels(spe$ER), function(g) { k <- unique(spe$file_id[spe$ER == g]); k[which.max(size[k])] })
-for (g in names(twoCores))
-  print(plotImage(spe, twoCores[[g]], imageID = "file_id", cellType = "description") +
-          labs(x = NULL, y = NULL, colour = NULL, title = paste0(twoCores[[g]], " (", g, ")")))
+for (im in c("MB0869_1_366", "MB0501_1_222")) print(plotImage(spe, im))
 ```
 
 # Testing every pair of cell types
 
 `spicy()` needs the column of the condition, the column of the patient (`subject`) and a radius. It accepts a
 `SpatialExperiment`, a `SingleCellExperiment` or a `data.frame` with one row per cell. By default it looks for
-columns called `imageID` and `cellType`; here we name the dataset's own columns. The coordinates of a
+columns called `imageID` and `cellType`, which we set above. The coordinates of a
 `SpatialExperiment` are taken from `spatialCoords()`.
 
 ::: {.callout .callout-tip}
@@ -137,8 +141,7 @@ cell diameters. If you are unsure, give several radii (see [Which radius?](#whic
 :::
 
 ```{r spicy}
-res <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
-             imageID = "file_id", cellType = "description")
+res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25)
 res
 ```
 
@@ -252,8 +255,7 @@ stopifnot(ex$effect[1] > 0.5, ex$effect[2] < 0, ex$effect[3] == 1, ex$weight[3] 
 
 ```{r example-images-plot, fig.width = 5.5, fig.height = 4.5, fig.show = "hold", out.width = "33%"}
 for (im in examples)
-  print(plotImage(spe, im, from = "T cells", to = "HR- Ki67+", imageID = "file_id", cellType = "description",
-                  r = 25) + labs(x = NULL, y = NULL, color = NULL))
+  print(plotImage(spe, im, from = "T cells", to = "HR- Ki67+", r = 25) + labs(x = NULL, y = NULL, color = NULL))
 ```
 
 In the ER+ image on the left, the T cells run along the band of tumour cells at the bottom: an effect of
@@ -305,8 +307,7 @@ By default spicyR asks whether each `to` cell has a `from` cell nearby. With `ef
 the effect is then the number of extra `from` cells within the radius of each `to` cell.
 
 ```{r count}
-resCount <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
-                  imageID = "file_id", cellType = "description", effect = "count")
+resCount <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25, effect = "count")
 onePairCount <- resCount$cellResults[pair, c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
 onePairCount
 ```
@@ -336,7 +337,6 @@ type 1 diabetes with the 4 non-diabetic donors.
 ```{r several-images}
 data("diabetesData")
 diabetes <- diabetesData[, diabetesData$stage %in% c("Non-diabetic", "Onset")]
-diabetes$stage <- droplevels(diabetes$stage)
 resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
 resDonors
 ```
@@ -365,8 +365,7 @@ age at diagnosis and tumour grade.
 
 ```{r covariates}
 spe$Grade <- factor(spe$Grade)
-resCov <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
-                imageID = "file_id", cellType = "description",
+resCov <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25,
                 covariates = c("Age.At.Diagnosis", "Grade"))
 resCov
 ```
@@ -407,8 +406,7 @@ for the maximum over a smooth range of radii, which stays close to the exact max
 correlated. `combine = "cauchy"`, the Cauchy combination of @liu2020cauchy, is another alternative.
 
 ```{r radii}
-resR <- spicy(spe, condition = "ER", subject = "metabricId", r = c(10, 25, 50, 75),
-              imageID = "file_id", cellType = "description")
+resR <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = c(10, 25, 50, 75))
 resR$cellResults[c("T cells__HR- Ki67+", "B cells__HR- Ki67+"), c("r", "excess_difference", "p_value")]
 ```
 
@@ -422,8 +420,7 @@ the chosen radius is a little optimistic, because that radius was picked for its
 :::
 
 ```{r radii-plot, fig.width = 6, fig.height = 4}
-profile <- resR$radiusResults[resR$radiusResults$to == "HR- Ki67+" &
-                                resR$radiusResults$from %in% c("T cells", "B cells"), ]
+profile <- subset(resR$radiusResults, to == "HR- Ki67+" & from %in% c("T cells", "B cells"))
 ggplot(profile, aes(r, -log10(p_value), colour = from)) +
   geom_line() +
   geom_point() +
@@ -439,8 +436,7 @@ we use relapse-free survival, adjusting for age.
 
 ```{r survival}
 spe$RFS <- Surv(spe$timeRFS, spe$eventRFS)
-resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25,
-              imageID = "file_id", cellType = "description", covariates = "Age.At.Diagnosis")
+resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = "Age.At.Diagnosis")
 resS
 head(resS$cellResults[order(resS$cellResults$p_value),
                       c("from", "to", "p_value", "p_adj", "hazard_ratio_sd")])
@@ -462,8 +458,7 @@ next to `HR+ CK7-` cells relapsed later. These cells are typical of ER+ tumours,
 relapse, so we add it to the covariates.
 
 ```{r survival-er}
-resSER <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25,
-                imageID = "file_id", cellType = "description", covariates = c("Age.At.Diagnosis", "ER"))
+resSER <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = c("Age.At.Diagnosis", "ER.Status"))
 resSER
 ```
 
@@ -477,40 +472,33 @@ No pair remains significant: these pairs say little about relapse beyond the tum
 
 A test should give few significant results when there is nothing to find. Shuffling the ER labels across patients
 removes any real difference, so about 5% of pairs should then have p < 0.05, and about 1% p < 0.01.
+`calibrationCheck()` shuffles the condition and runs `spicy()` with the same arguments, ten times by default.
 
 ```{r shuffle}
 set.seed(2026)
-patients <- unique(as.data.frame(SummarizedExperiment::colData(spe))[, c("metabricId", "ER")])
-shuffles <- do.call(rbind, lapply(1:10, function(i) {
-  label <- setNames(sample(patients$ER), patients$metabricId)
-  spe$shuffled <- label[spe$metabricId]
-  s <- spicy(spe, condition = "shuffled", subject = "metabricId", r = 25,
-             imageID = "file_id", cellType = "description")
-  data.frame(shuffle = i, threshold = c("p < 0.05", "p < 0.01"),
-             percent = 100 * c(mean(s$cellResults$p_value < 0.05, na.rm = TRUE), mean(s$cellResults$p_value < 0.01, na.rm = TRUE)))
-}))
+shuffles <- calibrationCheck(spe, condition = "ER.Status", subject = "metabricId", r = 25)
 calibration <- aggregate(percent ~ threshold, shuffles, mean)
 calibration
 ```
 
 ```{r check-shuffle, include = FALSE}
 # the text below describes the shuffled-label rates as close to the nominal ones
-stopifnot(calibration$percent[calibration$threshold == "p < 0.05"] < 8,
-          calibration$percent[calibration$threshold == "p < 0.01"] < 2.5)
+stopifnot(calibration$percent[calibration$threshold == 0.05] < 8,
+          calibration$percent[calibration$threshold == 0.01] < 2.5)
 ```
 
 ```{r shuffle-plot, fig.width = 5, fig.height = 3.5}
-ggplot(shuffles, aes(threshold, percent)) +
+ggplot(shuffles, aes(factor(threshold), percent)) +
   geom_jitter(width = 0.1, height = 0, size = 2, alpha = 0.7) +
-  geom_point(data = data.frame(threshold = c("p < 0.05", "p < 0.01"), percent = c(5, 1)),
-             shape = 95, size = 14, colour = "#b3261e") +
+  geom_point(aes(y = 100 * threshold), shape = 95, size = 14, colour = "#b3261e") +
   scale_y_continuous(limits = c(0, 15), labels = function(v) paste0(v, "%")) +
-  labs(x = NULL, y = "pairs below the threshold", title = "10 shuffles of the ER labels (red: expected)") +
+  labs(x = "p-value threshold", y = "pairs below the threshold",
+       title = "10 shuffles of the ER labels (red: expected)") +
   theme_classic()
 ```
 
-On average `r round(calibration$percent[calibration$threshold == "p < 0.05"], 1)`% of pairs have p < 0.05 and
-`r round(calibration$percent[calibration$threshold == "p < 0.01"], 1)`% have p < 0.01, close to the expected 5% and 1%.
+On average `r round(calibration$percent[calibration$threshold == 0.05], 1)`% of pairs have p < 0.05 and
+`r round(calibration$percent[calibration$threshold == 0.01], 1)`% have p < 0.01, close to the expected 5% and 1%.
 Pairs share cells, so the percentage moves by a few points from one shuffle to the next.
 
 ::: {.callout .callout-tip}
@@ -583,8 +571,7 @@ also the method to use with your own per-image statistics (`alternateResult`), f
 package. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work with both tests.
 
 ```{r image-method}
-resImage <- spicy(spe, condition = "ER", subject = "metabricId", method = "image",
-                  imageID = "file_id", cellType = "description",
+resImage <- spicy(spe, condition = "ER.Status", subject = "metabricId", method = "image",
                   from = "T cells", to = "HR- Ki67+")
 topPairs(resImage)
 ```
@@ -606,6 +593,7 @@ Python. The names follow Python conventions:
 | `signifPlot(res)`, `spicyBoxPlot(res, from, to)`, `bind(res)` | `res.signif_plot()`, `res.box_plot(from_, to)`, `res.bind()` |
 | `plotImage(spe, image, from, to)`, `res$imageWeights` | `spicyr.plot_image(adata, image, from_, to)`, `res.image_weights` |
 | `spicy("cells.zarr", condition, tableKey =, imageInfo =)` | `spicy("cells.zarr", condition, table_key=, image_info=)` |
+| `calibrationCheck(spe, condition, subject, nShuffles =)` | `spicyr.calibration_check(adata, condition, subject, n_shuffles=)` |
 
 The image-level test is available only in R.
 
@@ -617,55 +605,39 @@ table's image and cell-type columns a block of rows at a time, and the coordinat
 time. Memory then depends on the size of an image and on the number of `cores`, not on the size of the study, and
 the results are the same as for the same cells in memory.
 
-To make a small store, we write 20 cores of each ER group with `writeCellStore()`. It writes the whole
-`SpatialExperiment` as a SpatialData store: the `colData` as the table's `obs`, with the image column as its region
-key; the assays (here the marker intensities) as `X` and `layers`; the `rowData` as `var`; `spatialCoords()` and any
-`reducedDims` as `obsm`; the cells of each core as a points element; and the images, if any, as image elements. A second table holds one row per core, with the
-patient and ER status, so the cell table needs only the image and the cell type.
+`writeCellStore()` writes a `SpatialExperiment` as a SpatialData store: the `colData` as the table's `obs`, with the
+image column as its region key; the assays (here the marker intensities) as `X` and `layers`; the `rowData` as `var`;
+`spatialCoords()` and any `reducedDims` as `obsm`; the cells of each image as a points element; and the images, if
+any, as image elements. We write the whole data set, so that the results can be compared with those above.
 
 ```{r store-write}
-someCores <- unlist(lapply(levels(spe$ER), function(g) head(sort(unique(spe$file_id[spe$ER == g])), 20)))
-small <- spe[, spe$file_id %in% someCores]
-small <- small[, order(small$file_id)]                         # the cells of each core together
-coreInfo <- unique(as.data.frame(SummarizedExperiment::colData(small))[, c("file_id", "metabricId", "ER")])
-SummarizedExperiment::colData(small) <- SummarizedExperiment::colData(small)[, c("file_id", "description")]
 path <- file.path(tempdir(), "metabric.zarr")
-writeCellStore(small, path, imageID = "file_id", imageInfo = coreInfo)
+writeCellStore(spe, path)
 ```
 
-The store holds the `r ncol(small)` cells of `r length(someCores)` cores in a cell table, and a table of the cores
-called `"images"`.
-
-`spicy()` reads the store with the arguments used above. The image column defaults to the table's region key
-and the coordinates to `obsm` `"spatial"`. The condition and the patient are not columns of the cell table, so
-`imageInfo` names the table that holds them.
+`spicy()` reads the store with the same arguments as the object in memory:
 
 ```{r store-spicy}
-resStore <- spicy(path, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
-                  imageInfo = "images")
+resStore <- spicy(path, condition = "ER.Status", subject = "metabricId", r = 25)
 ```
 
-spatialdataR reads the same store as a `SpatialData` object. `spicy()` analyses the object from the store it was
-read from.
+spatialdataR reads the same store as a `SpatialData` object, which `spicy()` also accepts:
 
 ```{r store-sdata}
 library(spatialdataR)
 sdata <- readSpatialData(path)
 sdata
-resObject <- spicy(sdata, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
-                   imageInfo = "images")
+resObject <- spicy(sdata, condition = "ER.Status", subject = "metabricId", r = 25)
 ```
 
-Both results are those of the same cells in memory:
+Both give the results of `spicy()` on `spe` above:
 
 ```{r store-same}
-resMemory <- spicy(small, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id",
-                   cellType = "description", imageInfo = coreInfo)
-c(store = identical(resStore, resMemory), object = identical(resObject, resMemory))
+c(store = identical(resStore, res), object = identical(resObject, res))
 ```
 
 ```{r check-store-same, include = FALSE}
-stopifnot(identical(resStore, resMemory), identical(resObject, resMemory))
+stopifnot(identical(resStore, res), identical(resObject, res))
 ```
 
 Every estimate, standard error and p-value is identical, not just close.
