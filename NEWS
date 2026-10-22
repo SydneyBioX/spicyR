@@ -1,3 +1,15 @@
+CHANGES IN VERSION 1.99.38
+--------------------------
+
+    o colTest() takes `subject`: with a SingleCellExperiment or SpatialExperiment, the proportions are then those of
+      each patient's cells, all images pooled, and each patient is one unit of the test (the same as passing the
+      patient column as `imageID`, which lisaClust's vignette did).
+    o colTest() with type = "wilcox" reports the median in each group ("median in group <level>"), as the t-test
+      reports the means, so group summaries need not be computed separately.
+    o colTest() matches the rows of a matrix or data.frame to a condition whose names (or row names) are row names
+      of `df`, and leaves out rows without a condition; a condition without such names is taken in row order, as
+      before.
+
 CHANGES IN VERSION 1.99.37
 --------------------------
 

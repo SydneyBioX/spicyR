@@ -5,7 +5,14 @@
 \title{Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data
 frame}
 \usage{
-colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
+colTest(
+  df,
+  condition,
+  type = NULL,
+  feature = NULL,
+  imageID = "imageID",
+  subject = NULL
+)
 }
 \arguments{
 \item{df}{A data.frame or SingleCellExperiment, SpatialExperiment}
@@ -17,15 +24,23 @@ colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
 \item{feature}{Can be used to calculate the proportions of this feature for each image}
 
 \item{imageID}{The imageID's if presenting a SingleCellExperiment}
+
+\item{subject}{Optional, with a SingleCellExperiment or SpatialExperiment: the column of the patient. The
+proportions are then those of each patient's cells, all images pooled, and each patient is one unit of the test.}
 }
 \value{
 A data.frame with one row per column of \code{df} (for example per cell type), ordered by p-value:
-the mean in each condition, the test statistic, the p-value (\code{pval}), the Benjamini-Hochberg adjusted
-p-value (\code{adjPval}) and the column name (\code{cluster}).
+the mean (t-test) or median (Wilcoxon test) in each condition, the test statistic, the p-value (\code{pval}),
+the Benjamini-Hochberg adjusted p-value (\code{adjPval}) and the column name (\code{cluster}).
 }
 \description{
 Perform a simple wilcoxon-rank-sum test or t-test on the columns of a data
 frame
+}
+\details{
+With a matrix or data.frame \code{df} and a \code{condition} whose names (a vector, factor or \code{Surv} with names) or
+row names (a matrix or data.frame) are row names of \code{df}, the rows of \code{df} are matched to \code{condition} by name,
+and rows without a condition are left out. Otherwise \code{condition} is taken in the row order of \code{df}.
 }
 \examples{
 # Test for a difference in cell-type proportions between onset and long-duration diabetes
@@ -35,6 +50,10 @@ props <- getProp(diabetesData)
 images <- unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("imageID", "stage")])
 condition <- setNames(as.character(images$stage), images$imageID)
 condition <- condition[condition \%in\% c("Long-duration", "Onset")]
-test <- colTest(props[names(condition), ], condition)
+test <- colTest(props, condition)   # the rows of props are matched to condition by name
 head(test)
+
+# with donors as the units: each donor's cells, all images pooled
+diabetes <- diabetesData[, diabetesData$stage \%in\% c("Long-duration", "Onset")]
+head(colTest(diabetes, condition = "stage", feature = "cellType", subject = "case", type = "wilcox"))
 }

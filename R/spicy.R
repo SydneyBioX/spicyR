@@ -1321,10 +1321,16 @@ prepCellSummary <- function(
 #' @param feature
 #'     Can be used to calculate the proportions of this feature for each image
 #' @param imageID The imageID's if presenting a SingleCellExperiment
+#' @param subject Optional, with a SingleCellExperiment or SpatialExperiment: the column of the patient. The
+#'   proportions are then those of each patient's cells, all images pooled, and each patient is one unit of the test.
+#'
+#' @details With a matrix or data.frame `df` and a `condition` whose names (a vector, factor or `Surv` with names) or
+#'   row names (a matrix or data.frame) are row names of `df`, the rows of `df` are matched to `condition` by name,
+#'   and rows without a condition are left out. Otherwise `condition` is taken in the row order of `df`.
 #'
 #' @return A data.frame with one row per column of \code{df} (for example per cell type), ordered by p-value:
-#'   the mean in each condition, the test statistic, the p-value (\code{pval}), the Benjamini-Hochberg adjusted
-#'   p-value (\code{adjPval}) and the column name (\code{cluster}).
+#'   the mean (t-test) or median (Wilcoxon test) in each condition, the test statistic, the p-value (\code{pval}),
+#'   the Benjamini-Hochberg adjusted p-value (\code{adjPval}) and the column name (\code{cluster}).
 #'
 #' @examples
 #' # Test for a difference in cell-type proportions between onset and long-duration diabetes
@@ -1334,8 +1340,12 @@ prepCellSummary <- function(
 #' images <- unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("imageID", "stage")])
 #' condition <- setNames(as.character(images$stage), images$imageID)
 #' condition <- condition[condition %in% c("Long-duration", "Onset")]
-#' test <- colTest(props[names(condition), ], condition)
+#' test <- colTest(props, condition)   # the rows of props are matched to condition by name
 #' head(test)
+#'
+#' # with donors as the units: each donor's cells, all images pooled
+#' diabetes <- diabetesData[, diabetesData$stage %in% c("Long-duration", "Onset")]
+#' head(colTest(diabetes, condition = "stage", feature = "cellType", subject = "case", type = "wilcox"))
 #' @export
 #' @importFrom stats wilcox.test t.test
 #' @importFrom S4Vectors as.data.frame
@@ -1344,8 +1354,10 @@ colTest <- function(
     condition, 
     type = NULL, 
     feature = NULL, 
-    imageID = "imageID") {
+    imageID = "imageID",
+    subject = NULL) {
   if (.is_class(df, "SingleCellExperiment") || .is_class(df, "SpatialExperiment")) {
+    imageID <- subject %||% imageID   # the unit: the patient, all images pooled, or else the image
     if (is.null(feature)) stop("'feature' is still null")
 
     if (is.null(type) && length(condition) == 1) {
@@ -1365,6 +1377,15 @@ colTest <- function(
     df <- getProp(df, imageID = imageID, feature = feature)
     condition <- condition[rownames(df)]
   } else {
+    # rows matched to a condition whose names (or row names) are row names of `df`; otherwise, as before, the
+    # condition is taken in the row order of `df`
+    table <- is.data.frame(condition) || (is.matrix(condition) && !inherits(condition, "Surv"))
+    ids <- if (table) rownames(condition) else names(condition)
+    if (!is.null(ids) && !is.null(rownames(df)) && any(rownames(df) %in% ids)) {
+      keep <- rownames(df)[rownames(df) %in% ids]
+      df <- df[keep, , drop = FALSE]
+      condition <- if (table) condition[keep, , drop = FALSE] else condition[keep]
+    }
     stopifnot(
       "Number of oberservation does not match between df and outcome" = {
         dim(df)[1] == dim(condition)[1]
@@ -1388,6 +1409,8 @@ colTest <- function(
     test <- apply(df, 2, function(x) {
       if (type == "wilcox") {
         test <- stats::wilcox.test(x ~ condition)
+        g <- factor(condition)
+        test$estimate <- setNames(tapply(x, g, stats::median), paste("median in group", levels(g)))
       } else if (type == "ttest") {
         test <- stats::t.test(x ~ condition)
       }
