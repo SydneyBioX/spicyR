@@ -7,6 +7,17 @@
 ## The code follows the idiom of spatialdataR's draft writers (writeTable(x, name, path, ...), writeImage(...)), so
 ## that it can move there: spatialdataR does not yet write tables in Zarr v3. Numbers and logicals are written with
 ## Rarr; strings are written here, in the vlen-utf8 encoding that anndata and Python's zarr use and Rarr does not.
+##
+## Workarounds, each to remove when its upstream issue is fixed and released:
+## - The table writer as a whole: anndataR::write_zarr() writes each array as one chunk, which fails at 1e8 cells.
+##   Proposed in https://github.com/HelenaLC/spatialdataR/issues/115 (chunked writing in anndataR, then
+##   spatialdataR's writeTable() on top of it).
+## - .zarr_write_strings(), .vlen_utf8(), .vlen_ids(): Rarr's data_type "|O" never records the vlen-utf8 filter
+##   (https://github.com/Huber-group-EMBL/Rarr/issues/261).
+## - The split of the points into one parquet file per element in .writePoints(): spatialdataR's readPoint() reads
+##   part.0.parquet only (https://github.com/HelenaLC/spatialdataR/issues/287).
+## - Not a workaround but a known cost: update_zarr_array() maps every index to its chunk unless the run starts at
+##   1, about 43% slower than encoding the chunks here (https://github.com/Huber-group-EMBL/Rarr/issues/260).
 
 .store_write_chunk <- \() as.integer(getOption("spicyR.store_write_chunk", 2^20))
 
@@ -50,7 +61,8 @@
 ## A Zarr v3 array of n rows (and `ncol` columns) of type `type`, written a chunk of rows at a time: get(a, b) gives
 ## rows a..b as a vector or a matrix, or strings already in the vlen-utf8 encoding. A matrix is cut into chunks of
 ## whole rows, about as many values per chunk as a column has. `encoding`: its anndata encoding-type and -version, or
-## NULL for none.
+## NULL for none. Each chunk is one update_zarr_array() call, slower than it needs to be until
+## https://github.com/Huber-group-EMBL/Rarr/issues/260 is fixed.
 .zarr_write_rows <- function(p, n, type, get, ncol=NULL, encoding=c("array", "0.2.0")) {
     if (type == "string") return(.zarr_write_strings(p, n, get, encoding))
     ch <- .store_write_chunk()
@@ -74,7 +86,9 @@
 }
 
 ## A string array of n rows in the vlen-utf8 encoding, a chunk at a time: get(a, b) gives strings a..b, or their
-## encoding already made (.vlen_ids()).
+## encoding already made (.vlen_ids()). A workaround: once Rarr writes data_type "|O" with its vlen-utf8 filter
+## (https://github.com/Huber-group-EMBL/Rarr/issues/261), strings can go through .zarr_write_rows() like the other
+## types, and this, .zarr_write_string(), .vlen_utf8() and .vlen_ids() can go.
 .zarr_write_strings <- function(p, n, get, encoding) {
     dir.create(p, recursive=TRUE, showWarnings=FALSE)
     ch <- max(1L, min(.store_write_chunk(), n))
@@ -388,8 +402,10 @@
 ## The cells as points: one points element per region (image), with x, y and the instance ID that links each point
 ## to its row of the table, in the coordinate system cs[region] (identity). `key` is the region of each row and
 ## coords(a, b) the coordinates of rows a..b. Each chunk of rows is written as a parquet file with duckdb, and one
-## pass of duckdb then splits them by region into one file per element (spatialdataR reads part.0.parquet of a
-## points element only), so memory stays that of a chunk.
+## pass of duckdb then splits them by region into one file per element, so memory stays that of a chunk. The split
+## is a workaround: spatialdataR's readPoint() reads part.0.parquet only
+## (https://github.com/HelenaLC/spatialdataR/issues/287); once it reads every part, each chunk's rows of an element
+## can be written as that element's next part directly, with no second pass.
 .writePoints <- function(path, key, coords, cs) {
     .need("duckdb", "to write the cells as points"); .need("DBI", "to write the cells as points")
     regions <- levels(key)

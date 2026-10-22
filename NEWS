@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.36
+--------------------------
+
+    o Comments only: R/writeSpatialData.R names the upstream issue behind each workaround in the SpatialData writer
+      (Rarr #260 and #261, spatialdataR #115 and #287), so each can be removed once its fix is released.
+
 CHANGES IN VERSION 1.99.35
 --------------------------
 
