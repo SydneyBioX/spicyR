@@ -34,6 +34,7 @@ reference:
   - SpicyResults-class
   - topPairs
   - bind
+  - calibrationCheck
 - title: "Plot"
   contents:
   - signifPlot
