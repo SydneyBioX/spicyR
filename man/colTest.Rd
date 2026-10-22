@@ -57,3 +57,4 @@ head(test)
 diabetes <- diabetesData[, diabetesData$stage \%in\% c("Long-duration", "Onset")]
 head(colTest(diabetes, condition = "stage", feature = "cellType", subject = "case", type = "wilcox"))
 }
+\concept{image-method}

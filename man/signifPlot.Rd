@@ -56,3 +56,4 @@ p
 signifPlot(spicyTest, type = "heatmap")
 
 }
+\concept{plot}

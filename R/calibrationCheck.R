@@ -22,6 +22,7 @@
 #' set.seed(1)
 #' calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
 #' @export
+#' @concept test
 calibrationCheck <- function(cells, condition, subject = NULL, nShuffles = 10, thresholds = c(0.05, 0.01), ...) {
   if (.is_store(cells) || .is_class(cells, "SpatialData"))
     stop("calibrationCheck() needs the cells in memory: a SpatialExperiment, SingleCellExperiment or data.frame.",

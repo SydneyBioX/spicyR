@@ -37,4 +37,5 @@ table(unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("cas
 Damond N, Engler S, Zanotelli VRT, et al. (2019). A map of human type 1 diabetes progression by
 imaging mass cytometry. \emph{Cell Metabolism} 29(3), 755-768. \doi{10.1016/j.cmet.2018.11.014}
 }
+\concept{data}
 \keyword{datasets}

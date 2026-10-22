@@ -24,6 +24,7 @@
 #' @export
 #' @import ggplot2
 #' @importFrom stats density
+#' @concept plot
 plotImage = function(cells, 
                      imageToPlot, 
                      from = NULL,

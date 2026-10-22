@@ -103,3 +103,4 @@ spicy(diabetesData,
 }
 
 }
+\concept{image-method}

@@ -43,3 +43,4 @@ data("diabetesData")
 set.seed(1)
 calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
 }
+\concept{test}

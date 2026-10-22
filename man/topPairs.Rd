@@ -32,3 +32,4 @@ data(spicyTest)
 topPairs(spicyTest)
 
 }
+\concept{test}

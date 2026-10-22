@@ -1,3 +1,10 @@
+CHANGES IN VERSION 1.99.39
+--------------------------
+
+    o The website's reference index is built from roxygen tags: each exported topic carries an @concept (test, plot,
+      image-method, store or data) and each section of _pkgdown.yml takes has_concept(), so a new function joins its
+      section through its own documentation. The sections hold the same topics as before, in alphabetical order.
+
 CHANGES IN VERSION 1.99.38
 --------------------------
 

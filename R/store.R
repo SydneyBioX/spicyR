@@ -378,6 +378,7 @@
 #'   list.files(file.path(path, "tables"))
 #' }
 #' @export
+#' @concept store
 writeCellStore <- function(cells, path, imageID = "imageID", spatialCoords = c("x", "y"), tableKey = "table",
                            imageInfo = NULL, infoKey = "images", points = TRUE) {
   .need("Rarr", "to write a SpatialData store")

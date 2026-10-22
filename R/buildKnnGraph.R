@@ -23,6 +23,7 @@
 #' data("diabetesData")
 #' diabetesData <- buildKnnGraph(diabetesData, k = 10)
 #' head(SingleCellExperiment::colPair(diabetesData, "knn_interaction_graph"))
+#' @concept image-method
 buildKnnGraph <- function(cells,
                           k = 20,
                           imageID = "imageID",

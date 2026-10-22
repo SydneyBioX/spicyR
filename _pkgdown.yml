@@ -27,37 +27,25 @@ home:
     with patients as the units. In R and Python.
 
 reference:
+# each section takes the topics whose roxygen block has its @concept, so a new function joins its section by its tag
 - title: "Test"
   desc: "Every pair of cell types, between conditions or with survival."
   contents:
-  - spicy
-  - SpicyResults-class
-  - topPairs
-  - bind
-  - calibrationCheck
+  - has_concept("test")
 - title: "Plot"
   contents:
-  - signifPlot
-  - spicyBoxPlot
-  - plotImage
-  - imageCrossPlot
+  - has_concept("plot")
 - title: "Per-image statistics (image method)"
   desc: "Inputs and helpers for `spicy(method = \"image\")`, the original spicyR test."
   contents:
-  - getPairwise
-  - getPairwiseProp
-  - getProp
-  - buildKnnGraph
-  - convPairs
-  - colTest
+  - has_concept("image-method")
 - title: "Large data sets"
   desc: "Cells stored on disk as a SpatialData Zarr store, which `spicy()` reads image by image."
   contents:
-  - writeCellStore
+  - has_concept("store")
 - title: "Data"
   contents:
-  - diabetesData
-  - spicyTest
+  - has_concept("data")
 
 articles:
 - title: "Get started"

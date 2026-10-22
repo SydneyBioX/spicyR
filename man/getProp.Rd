@@ -23,3 +23,4 @@ Get proportions from a SummarizedExperiment.
 data("diabetesData")
 prop <- getProp(diabetesData)
 }
+\concept{image-method}

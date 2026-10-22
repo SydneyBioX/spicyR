@@ -22,4 +22,5 @@ non-diabetic donors. It is used in examples, so that they run quickly.
 data("spicyTest")
 topPairs(spicyTest, n = 5)
 }
+\concept{data}
 \keyword{datasets}

@@ -26,6 +26,7 @@
 #' )
 #'
 #' @export
+#' @concept image-method
 convPairs <- function(cells,
                       colPair,
                       imageID = "imageID",

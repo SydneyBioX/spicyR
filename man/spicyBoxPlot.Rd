@@ -48,3 +48,4 @@ res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
 spicyBoxPlot(res, from = "Tc", to = "Th")
 
 }
+\concept{plot}

@@ -28,6 +28,7 @@
 #'
 #' @export
 #' @importFrom ggplot2 ggplot aes .data
+#' @concept plot
 spicyBoxPlot <- function(results,
                          from = NULL,
                          to = NULL,

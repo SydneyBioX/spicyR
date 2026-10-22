@@ -67,3 +67,4 @@ print(p)
 \seealso{
 \code{\link{getPairwise}}
 }
+\concept{plot}

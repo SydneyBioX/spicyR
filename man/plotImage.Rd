@@ -47,3 +47,4 @@ plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
 
 }
+\concept{plot}

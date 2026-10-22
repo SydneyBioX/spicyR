@@ -424,6 +424,7 @@ cleanMEM <- function(mixed.lmer, BPPARAM = NULL) {
 #' ]
 #' pairAssoc <- getPairwise(selected_cells)
 #' @export
+#' @concept image-method
 getPairwise <- function(
     cells,
     imageID = "imageID",
@@ -639,6 +640,7 @@ getPairwiseWeighted <- function(cells, cellWeights, imageID, cellType, spatialCo
 #' data("diabetesData")
 #' prop <- getProp(diabetesData)
 #' @export
+#' @concept image-method
 getProp <- function(cells, feature = "cellType", imageID = "imageID") {
   if (is.data.frame(cells)) {
     df <- cells[, c(imageID, feature)]
@@ -1349,6 +1351,7 @@ prepCellSummary <- function(
 #' @export
 #' @importFrom stats wilcox.test t.test
 #' @importFrom S4Vectors as.data.frame
+#' @concept image-method
 colTest <- function(
     df, 
     condition, 
@@ -1472,6 +1475,7 @@ colCoxTests <- function(measurements, outcome) {
 #' df <- bind(spicyTest)
 #'
 #' @export
+#' @concept test
 bind <- function(results,
                  pairName = NULL) {
   df <- data.frame(

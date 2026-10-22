@@ -168,6 +168,7 @@
 #' topPairs(resImage)
 #' @aliases spicy
 #' @export
+#' @concept test
 spicy <- function(cells,
                   condition,
                   subject = NULL,

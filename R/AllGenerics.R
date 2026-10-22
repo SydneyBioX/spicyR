@@ -24,6 +24,7 @@
 #' @aliases topPairs,SpicyResults-method topPairs
 #' @rdname topPairs
 #' @export
+#' @concept test
 setGeneric("topPairs", function(x,
                                 coef = NULL,
                                 n = 10,

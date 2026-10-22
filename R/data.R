@@ -24,6 +24,7 @@
 #' data("diabetesData")
 #' table(unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("case", "stage")])$stage)
 #' @aliases diabetesData
+#' @concept data
 "diabetesData"
 
 
@@ -40,4 +41,5 @@
 #' data("spicyTest")
 #' topPairs(spicyTest, n = 5)
 #' @aliases spicyTest
+#' @concept data
 "spicyTest"

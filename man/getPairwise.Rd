@@ -93,3 +93,4 @@ selected_cells <- diabetesData[
 ]
 pairAssoc <- getPairwise(selected_cells)
 }
+\concept{image-method}

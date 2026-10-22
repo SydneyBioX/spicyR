@@ -74,6 +74,7 @@
 #' }
 #'
 #' @export
+#' @concept image-method
 getPairwiseProp <- function(
     cells,
     imageID = "imageID",

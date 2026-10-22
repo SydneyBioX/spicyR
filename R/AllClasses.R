@@ -32,6 +32,7 @@
 #'
 #' @seealso \code{\link{spicy}}, \code{\link{topPairs}}, \code{\link{bind}}
 #' @name SpicyResults-class
+#' @concept test
 #' @aliases SpicyResults
 #' @exportClass SpicyResults
 setClass("SpicyResults", contains = "list")

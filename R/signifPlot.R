@@ -32,6 +32,7 @@
 #'     scale_color_manual theme_classic theme element_text aes guide_legend
 #'     element_blank guide_colourbar waiver .data
 #' @importFrom stats setNames
+#' @concept plot
 signifPlot <- function(results,
                        fdr = FALSE,
                        type = "bubble",

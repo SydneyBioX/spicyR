@@ -40,3 +40,4 @@ For the image method (\code{method = "image"}) the object holds the matrices \co
 \seealso{
 \code{\link{spicy}}, \code{\link{topPairs}}, \code{\link{bind}}
 }
+\concept{test}

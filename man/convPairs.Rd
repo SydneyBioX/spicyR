@@ -38,3 +38,4 @@ pairAbundances <- convPairs(diabetesData,
 )
 
 }
+\concept{image-method}

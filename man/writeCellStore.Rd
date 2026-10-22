@@ -68,3 +68,4 @@ if (requireNamespace("Rarr", quietly = TRUE)) {
   list.files(file.path(path, "tables"))
 }
 }
+\concept{store}

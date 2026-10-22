@@ -222,3 +222,4 @@ Liu Y, Xie J (2020). Cauchy combination test: a powerful test with analytic p-va
 arbitrary dependency structures. Journal of the American Statistical Association 115(529), 393-402.
 \doi{10.1080/01621459.2018.1554485}
 }
+\concept{test}

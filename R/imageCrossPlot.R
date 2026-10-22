@@ -47,6 +47,7 @@
 #' @importFrom ggplot2 ggplot aes geom_point scale_colour_gradient2 labs theme_classic guide_axis guides .data
 #' @seealso \code{\link{getPairwise}}
 #' @export
+#' @concept plot
 imageCrossPlot = function(result,
                           image = NULL,
                           colourGradient = c("#4575B4", "white", "#D73027"),
