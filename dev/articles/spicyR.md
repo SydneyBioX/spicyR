@@ -103,19 +103,25 @@ marker: HR is hormone receptor, CK cytokeratin, and Ki67+ marks
 proliferating cells, so `HR- Ki67+` are proliferating
 hormone-receptor-negative tumour cells. The data are a
 `SpatialExperiment` in the SpatialDatasets package, with coordinates in
-micrometres.
+micrometres. The ER status of each patient is in `ER.Status`, `neg` or
+`pos`; we keep the patients whose ER status is known.
 
 ``` r
 
 spe <- spe_Ali_2020()
-spe <- spe[, spe$ER.Status %in% c("neg", "pos")]
-spe$ER <- factor(ifelse(spe$ER.Status == "pos", "ER+", "ER-"), levels = c("ER-", "ER+"))
+spe <- spe[, !is.na(spe$ER.Status)]   # the 456 patients with known ER status
 
-table(unique(as.data.frame(SummarizedExperiment::colData(spe))[, c("metabricId", "ER")])$ER)
+# spicyR looks for columns called imageID and cellType by default. Copying the dataset's columns to these names is
+# not needed (you can give imageID = "file_id", cellType = "description" to each call instead); it only keeps the
+# calls below short.
+spe$imageID <- spe$file_id
+spe$cellType <- spe$description
+
+table(spe$ER.Status[!duplicated(spe$metabricId)])   # patients by ER status
 #> 
-#> ER- ER+ 
+#> neg pos 
 #>  83 373
-sort(table(spe$description), decreasing = TRUE)
+sort(table(spe$cellType), decreasing = TRUE)
 #> 
 #>                 HR+ CK7-           Myofibroblasts              Fibroblasts 
 #>                   114828                    57295                    49043 
@@ -135,13 +141,11 @@ sort(table(spe$description), decreasing = TRUE)
 #>                     2106
 ```
 
+Two of the cores, one ER− and one ER+:
+
 ``` r
 
-size <- table(spe$file_id)                                    # show the largest core of each group
-twoCores <- sapply(levels(spe$ER), function(g) { k <- unique(spe$file_id[spe$ER == g]); k[which.max(size[k])] })
-for (g in names(twoCores))
-  print(plotImage(spe, twoCores[[g]], imageID = "file_id", cellType = "description") +
-          labs(x = NULL, y = NULL, colour = NULL, title = paste0(twoCores[[g]], " (", g, ")")))
+for (im in c("MB0869_1_366", "MB0501_1_222")) print(plotImage(spe, im))
 ```
 
 ![](spicyR_files/figure-html/data-plot-1.png)![](spicyR_files/figure-html/data-plot-2.png)
@@ -152,8 +156,8 @@ for (g in names(twoCores))
 needs the column of the condition, the column of the patient (`subject`)
 and a radius. It accepts a `SpatialExperiment`, a `SingleCellExperiment`
 or a `data.frame` with one row per cell. By default it looks for columns
-called `imageID` and `cellType`; here we name the dataset’s own columns.
-The coordinates of a `SpatialExperiment` are taken from
+called `imageID` and `cellType`, which we set above. The coordinates of
+a `SpatialExperiment` are taken from
 [`spatialCoords()`](https://rdrr.io/pkg/SpatialExperiment/man/SpatialExperiment-methods.html).
 
 **Choosing the radius.** Choose it before looking at the results, from
@@ -164,10 +168,9 @@ about two to three cell diameters. If you are unsure, give several radii
 
 ``` r
 
-res <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
-             imageID = "file_id", cellType = "description")
+res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25)
 res
-#> spicyR (cell-level test): 484 pairs, ER+ vs ER-, r = 25
+#> spicyR (cell-level test): 484 pairs, pos vs neg, r = 25
 #> Units: 456 patients with 456 images
 #> 15 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
 #> BH-adjusted p < 0.05: 35 pairs
@@ -295,12 +298,12 @@ Images without any `HR- Ki67+` cells carry no information about the pair
 
 head(bind(res, pairName = "T cells__HR- Ki67+"))
 #>        imageID condition subject T cells__HR- Ki67+
-#> 1 MB0000_1_527       ER+ MB-0000                 NA
-#> 2 MB0002_1_345       ER+ MB-0002        -0.01092896
-#> 3 MB0005_1_211       ER+ MB-0005        -0.01305970
-#> 4 MB0010_1_420       ER+ MB-0010         0.25661632
-#> 5 MB0013_1_371       ER+ MB-0013                 NA
-#> 6 MB0014_1_326       ER+ MB-0014         0.48000000
+#> 1 MB0000_1_527       pos MB-0000                 NA
+#> 2 MB0002_1_345       pos MB-0002        -0.01092896
+#> 3 MB0005_1_211       pos MB-0005        -0.01305970
+#> 4 MB0010_1_420       pos MB-0010         0.25661632
+#> 5 MB0013_1_371       pos MB-0013                 NA
+#> 6 MB0014_1_326       pos MB-0014         0.48000000
 ```
 
 ## Looking at the images
@@ -320,16 +323,15 @@ ex <- data.frame(image = examples, ER = res$condition[i], effect = res$pairwiseA
                  weight = res$imageWeights[[pair]][i])
 ex
 #>          image  ER      effect      weight
-#> 1 MB0150_1_155 ER+  0.67741935 0.005465210
-#> 2 MB0132_1_533 ER- -0.07907636 0.017187607
-#> 3 MB0244_1_519 ER+  1.00000000 0.001009923
+#> 1 MB0150_1_155 pos  0.67741935 0.005465210
+#> 2 MB0132_1_533 neg -0.07907636 0.017187607
+#> 3 MB0244_1_519 pos  1.00000000 0.001009923
 ```
 
 ``` r
 
 for (im in examples)
-  print(plotImage(spe, im, from = "T cells", to = "HR- Ki67+", imageID = "file_id", cellType = "description",
-                  r = 25) + labs(x = NULL, y = NULL, color = NULL))
+  print(plotImage(spe, im, from = "T cells", to = "HR- Ki67+", r = 25) + labs(x = NULL, y = NULL, color = NULL))
 ```
 
 ![](spicyR_files/figure-html/example-images-plot-1.png)![](spicyR_files/figure-html/example-images-plot-2.png)![](spicyR_files/figure-html/example-images-plot-3.png)
@@ -402,8 +404,7 @@ of extra `from` cells within the radius of each `to` cell.
 
 ``` r
 
-resCount <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
-                  imageID = "file_id", cellType = "description", effect = "count")
+resCount <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25, effect = "count")
 onePairCount <- resCount$cellResults[pair, c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
 onePairCount
 #>                    excess_ref excess_comp excess_difference      p_value
@@ -443,7 +444,6 @@ with the 4 non-diabetic donors.
 
 data("diabetesData")
 diabetes <- diabetesData[, diabetesData$stage %in% c("Non-diabetic", "Onset")]
-diabetes$stage <- droplevels(diabetes$stage)
 resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
 resDonors
 #> spicyR (cell-level test): 222 pairs, Onset vs Non-diabetic, r = 50
@@ -481,11 +481,10 @@ and tumour grade.
 ``` r
 
 spe$Grade <- factor(spe$Grade)
-resCov <- spicy(spe, condition = "ER", subject = "metabricId", r = 25,
-                imageID = "file_id", cellType = "description",
+resCov <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25,
                 covariates = c("Age.At.Diagnosis", "Grade"))
 resCov
-#> spicyR (cell-level test): 484 pairs, ER+ vs ER-, r = 25
+#> spicyR (cell-level test): 484 pairs, pos vs neg, r = 25
 #> Units: 456 patients with 456 images
 #> Adjusted for: covariates (unadjusted test in the unadjusted_* columns)
 #> 1 pairs could not be adjusted and are reported unadjusted (see adjusted_for)
@@ -539,8 +538,7 @@ Cauchy combination of Liu and Xie (2020), is another alternative.
 
 ``` r
 
-resR <- spicy(spe, condition = "ER", subject = "metabricId", r = c(10, 25, 50, 75),
-              imageID = "file_id", cellType = "description")
+resR <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = c(10, 25, 50, 75))
 resR$cellResults[c("T cells__HR- Ki67+", "B cells__HR- Ki67+"), c("r", "excess_difference", "p_value")]
 #>                     r excess_difference     p_value
 #> T cells__HR- Ki67+ 25        0.11126824 0.002041489
@@ -559,8 +557,7 @@ little optimistic, because that radius was picked for its strength.
 
 ``` r
 
-profile <- resR$radiusResults[resR$radiusResults$to == "HR- Ki67+" &
-                                resR$radiusResults$from %in% c("T cells", "B cells"), ]
+profile <- subset(resR$radiusResults, to == "HR- Ki67+" & from %in% c("T cells", "B cells"))
 ggplot(profile, aes(r, -log10(p_value), colour = from)) +
   geom_line() +
   geom_point() +
@@ -580,8 +577,7 @@ survival, adjusting for age.
 ``` r
 
 spe$RFS <- Surv(spe$timeRFS, spe$eventRFS)
-resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25,
-              imageID = "file_id", cellType = "description", covariates = "Age.At.Diagnosis")
+resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = "Age.At.Diagnosis")
 resS
 #> spicyR (cell-level test): 484 pairs, association with survival, r = 25
 #> Units: 456 patients with 456 images
@@ -627,8 +623,7 @@ itself related to relapse, so we add it to the covariates.
 
 ``` r
 
-resSER <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25,
-                imageID = "file_id", cellType = "description", covariates = c("Age.At.Diagnosis", "ER"))
+resSER <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = c("Age.At.Diagnosis", "ER.Status"))
 resSER
 #> spicyR (cell-level test): 484 pairs, association with survival, r = 25
 #> Units: 456 patients with 456 images
@@ -646,34 +641,30 @@ A test should give few significant results when there is nothing to
 find. Shuffling the ER labels across patients removes any real
 difference, so about 5% of pairs should then have p \< 0.05, and about
 1% p \< 0.01.
+[`calibrationCheck()`](https://sydneybiox.github.io/spicyR/dev/reference/calibrationCheck.md)
+shuffles the condition and runs
+[`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
+with the same arguments, ten times by default.
 
 ``` r
 
 set.seed(2026)
-patients <- unique(as.data.frame(SummarizedExperiment::colData(spe))[, c("metabricId", "ER")])
-shuffles <- do.call(rbind, lapply(1:10, function(i) {
-  label <- setNames(sample(patients$ER), patients$metabricId)
-  spe$shuffled <- label[spe$metabricId]
-  s <- spicy(spe, condition = "shuffled", subject = "metabricId", r = 25,
-             imageID = "file_id", cellType = "description")
-  data.frame(shuffle = i, threshold = c("p < 0.05", "p < 0.01"),
-             percent = 100 * c(mean(s$cellResults$p_value < 0.05, na.rm = TRUE), mean(s$cellResults$p_value < 0.01, na.rm = TRUE)))
-}))
+shuffles <- calibrationCheck(spe, condition = "ER.Status", subject = "metabricId", r = 25)
 calibration <- aggregate(percent ~ threshold, shuffles, mean)
 calibration
 #>   threshold   percent
-#> 1  p < 0.01 0.8415935
-#> 2  p < 0.05 4.3051312
+#> 1      0.01 0.8415935
+#> 2      0.05 4.3051312
 ```
 
 ``` r
 
-ggplot(shuffles, aes(threshold, percent)) +
+ggplot(shuffles, aes(factor(threshold), percent)) +
   geom_jitter(width = 0.1, height = 0, size = 2, alpha = 0.7) +
-  geom_point(data = data.frame(threshold = c("p < 0.05", "p < 0.01"), percent = c(5, 1)),
-             shape = 95, size = 14, colour = "#b3261e") +
+  geom_point(aes(y = 100 * threshold), shape = 95, size = 14, colour = "#b3261e") +
   scale_y_continuous(limits = c(0, 15), labels = function(v) paste0(v, "%")) +
-  labs(x = NULL, y = "pairs below the threshold", title = "10 shuffles of the ER labels (red: expected)") +
+  labs(x = "p-value threshold", y = "pairs below the threshold",
+       title = "10 shuffles of the ER labels (red: expected)") +
   theme_classic()
 ```
 
@@ -751,7 +742,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.36) to
+A methods sentence might read: “We used spicyR (version 1.99.38) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -806,8 +797,7 @@ work with both tests.
 
 ``` r
 
-resImage <- spicy(spe, condition = "ER", subject = "metabricId", method = "image",
-                  imageID = "file_id", cellType = "description",
+resImage <- spicy(spe, condition = "ER.Status", subject = "metabricId", method = "image",
                   from = "T cells", to = "HR- Ki67+")
 topPairs(resImage)
 #>                    intercept coefficient   p.value adj.pvalue    from        to
@@ -833,6 +823,7 @@ vignette in Python. The names follow Python conventions:
 | `signifPlot(res)`, `spicyBoxPlot(res, from, to)`, `bind(res)` | `res.signif_plot()`, `res.box_plot(from_, to)`, `res.bind()` |
 | `plotImage(spe, image, from, to)`, `res$imageWeights` | `spicyr.plot_image(adata, image, from_, to)`, `res.image_weights` |
 | `spicy("cells.zarr", condition, tableKey =, imageInfo =)` | `spicy("cells.zarr", condition, table_key=, image_info=)` |
+| `calibrationCheck(spe, condition, subject, nShuffles =)` | `spicyr.calibration_check(adata, condition, subject, n_shuffles=)` |
 
 The image-level test is available only in R.
 
@@ -848,47 +839,33 @@ Memory then depends on the size of an image and on the number of
 `cores`, not on the size of the study, and the results are the same as
 for the same cells in memory.
 
-To make a small store, we write 20 cores of each ER group with
-[`writeCellStore()`](https://sydneybiox.github.io/spicyR/dev/reference/writeCellStore.md).
-It writes the whole `SpatialExperiment` as a SpatialData store: the
-`colData` as the table’s `obs`, with the image column as its region key;
-the assays (here the marker intensities) as `X` and `layers`; the
-`rowData` as `var`;
+[`writeCellStore()`](https://sydneybiox.github.io/spicyR/dev/reference/writeCellStore.md)
+writes a `SpatialExperiment` as a SpatialData store: the `colData` as
+the table’s `obs`, with the image column as its region key; the assays
+(here the marker intensities) as `X` and `layers`; the `rowData` as
+`var`;
 [`spatialCoords()`](https://rdrr.io/pkg/SpatialExperiment/man/SpatialExperiment-methods.html)
-and any `reducedDims` as `obsm`; the cells of each core as a points
-element; and the images, if any, as image elements. A second table holds
-one row per core, with the patient and ER status, so the cell table
-needs only the image and the cell type.
+and any `reducedDims` as `obsm`; the cells of each image as a points
+element; and the images, if any, as image elements. We write the whole
+data set, so that the results can be compared with those above.
 
 ``` r
 
-someCores <- unlist(lapply(levels(spe$ER), function(g) head(sort(unique(spe$file_id[spe$ER == g])), 20)))
-small <- spe[, spe$file_id %in% someCores]
-small <- small[, order(small$file_id)]                         # the cells of each core together
-coreInfo <- unique(as.data.frame(SummarizedExperiment::colData(small))[, c("file_id", "metabricId", "ER")])
-SummarizedExperiment::colData(small) <- SummarizedExperiment::colData(small)[, c("file_id", "description")]
 path <- file.path(tempdir(), "metabric.zarr")
-writeCellStore(small, path, imageID = "file_id", imageInfo = coreInfo)
+writeCellStore(spe, path)
 ```
 
-The store holds the 43271 cells of 40 cores in a cell table, and a table
-of the cores called `"images"`.
-
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-reads the store with the arguments used above. The image column defaults
-to the table’s region key and the coordinates to `obsm` `"spatial"`. The
-condition and the patient are not columns of the cell table, so
-`imageInfo` names the table that holds them.
+reads the store with the same arguments as the object in memory:
 
 ``` r
 
-resStore <- spicy(path, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
-                  imageInfo = "images")
+resStore <- spicy(path, condition = "ER.Status", subject = "metabricId", r = 25)
 ```
 
-spatialdataR reads the same store as a `SpatialData` object.
+spatialdataR reads the same store as a `SpatialData` object, which
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-analyses the object from the store it was read from.
+also accepts:
 
 ``` r
 
@@ -896,29 +873,28 @@ library(spatialdataR)
 sdata <- readSpatialData(path)
 sdata
 #> class: SpatialData
-#> - points(40):
+#> - points(456):
 #>   - MB0000_1_527 (256)
 #>   - MB0002_1_345 (1111)
 #>   - MB0005_1_211 (1088)
 #>   - MB0010_1_420 (1077)
 #>   - MB0013_1_371 (2062)
 #>     ...
-#> - tables(2):
-#>   - images (0,40) []
-#>   - table (39,43271) [MB0000_1_527,MB0002_1_345,MB0005_1_211,MB0010_1_420,MB0013_1_371,MB0014_1_326,MB0018_1_128,MB0020_1_88,MB0022_1_456,MB0028_1_413,MB0030_1_364,MB0035_1_138,MB0040_1_165,MB0045_1_185,MB0050_1_48,MB0060_1_37,MB0064_1_152,MB0075_1_145,MB0077_1_81,MB0081_1_44,MB0087_1_279,MB0095_1_27,MB0099_1_503,MB0105_1_523,MB0107_1_350,MB0109_1_487,MB0115_1_428,MB0118_1_524,MB0132_1_533,MB0152_1_452,MB0158_1_303,MB0161_1_122,MB0163_1_445,MB0164_1_374,MB0174_1_33,MB0179_1_549,MB0190_1_493,MB0191_1_477,MB0200_1_393,MB0201_1_497]
+#> - tables(1):
+#>   - table (39,422629) [MB0000_1_527,MB0002_1_345,MB0005_1_211,MB0010_1_420,MB0013_1_371,MB0014_1_326,MB0018_1_128,MB0020_1_88,MB0022_1_456,MB0028_1_413,MB0030_1_364,MB0035_1_138,MB0040_1_165,MB0045_1_185,MB0050_1_48,MB0060_1_37,MB0064_1_152,MB0075_1_145,MB0077_1_81,MB0081_1_44,MB0087_1_279,MB0095_1_27,MB0099_1_503,MB0105_1_523,MB0107_1_350,MB0109_1_487,MB0111_1_451,MB0112_1_407,MB0114_1_482,MB0115_1_428,MB0116_1_483,MB0117_1_436,MB0118_1_524,MB0119_1_97,MB0120_1_462,MB0121_1_470,MB0122_1_442,MB0123_1_401,MB0124_1_270,MB0126_1_314,MB0127_1_357,MB0128_1_71,MB0130_1_297,MB0131_1_43,MB0132_1_533,MB0133_1_466,MB0134_1_38,MB0135_1_320,MB0136_1_201,MB0137_1_528,MB0138_1_80,MB0139_1_30,MB0140_1_186,MB0141_1_116,MB0142_1_77,MB0143_1_26,MB0144_1_461,MB0145_1_435,MB0150_1_155,MB0151_1_520,MB0152_1_452,MB0154_1_539,MB0158_1_303,MB0161_1_122,MB0162_1_515,MB0163_1_445,MB0164_1_374,MB0165_1_115,MB0166_1_298,MB0167_1_84,MB0168_1_78,MB0169_1_72,MB0170_1_131,MB0173_1_45,MB0174_1_33,MB0175_1_23,MB0176_1_67,MB0177_1_52,MB0178_1_34,MB0179_1_549,MB0180_1_59,MB0181_1_49,MB0183_1_15,MB0184_1_54,MB0185_1_517,MB0188_1_537,MB0189_1_513,MB0190_1_493,MB0191_1_477,MB0192_1_68,MB0193_1_327,MB0194_1_535,MB0195_1_379,MB0197_1_172,MB0198_1_474,MB0199_1_157,MB0200_1_393,MB0201_1_497,MB0202_1_341,MB0203_1_62,MB0204_1_123,MB0205_1_282,MB0206_1_429,MB0208_1_334,MB0212_1_237,MB0214_1_329,MB0216_1_384,MB0218_1_103,MB0220_1_305,MB0221_1_105,MB0222_1_202,MB0223_1_454,MB0224_1_531,MB0225_1_391,MB0227_1_246,MB0228_1_176,MB0232_1_545,MB0235_1_408,MB0236_1_264,MB0238_1_555,MB0239_1_489,MB0241_1_272,MB0243_1_387,MB0244_1_519,MB0245_1_388,MB0246_1_162,MB0248_1_362,MB0249_1_532,MB0250_1_306,MB0251_1_478,MB0252_1_447,MB0255_1_440,MB0256_1_392,MB0258_1_239,MB0259_1_6,MB0260_1_525,MB0262_1_372,MB0263_1_514,MB0265_1_40,MB0268_1_385,MB0269_1_415,MB0270_1_220,MB0272_1_285,MB0273_1_351,MB0274_1_386,MB0275_1_203,MB0278_1_7,MB0279_1_91,MB0280_1_406,MB0282_1_430,MB0283_1_148,MB0285_1_476,MB0286_1_404,MB0287_1_419,MB0288_1_347,MB0289_1_221,MB0290_1_481,MB0291_1_437,MB0292_1_10,MB0294_1_395,MB0296_1_411,MB0301_1_287,MB0302_1_142,MB0304_1_187,MB0305_1_11,MB0307_1_106,MB0308_1_21,MB0309_1_551,MB0311_1_31,MB0312_1_178,MB0314_1_472,MB0316_1_494,MB0318_1_332,MB0319_1_339,MB0320_1_315,MB0321_1_378,MB0322_1_65,MB0324_1_455,MB0325_1_405,MB0334_1_448,MB0336_1_182,MB0340_1_87,MB0342_1_370,MB0343_1_358,MB0344_1_363,MB0345_1_127,MB0347_1_32,MB0348_1_542,MB0349_1_83,MB0350_1_359,MB0351_1_245,MB0353_1_254,MB0354_1_36,MB0356_1_227,MB0357_1_459,MB0359_1_424,MB0360_1_353,MB0361_1_349,MB0362_1_210,MB0363_1_416,MB0364_1_344,MB0365_1_74,MB0366_1_70,MB0367_1_330,MB0369_1_367,MB0370_1_275,MB0374_1_322,MB0375_1_319,MB0376_1_317,MB0377_1_421,MB0378_1_312,MB0379_1_117,MB0380_1_302,MB0381_1_518,MB0382_1_318,MB0383_1_311,MB0384_1_301,MB0385_1_293,MB0386_1_266,MB0388_1_253,MB0389_1_473,MB0390_1_243,MB0391_1_226,MB0392_1_280,MB0393_1_294,MB0394_1_140,MB0395_1_274,MB0396_1_265,MB0397_1_252,MB0398_1_242,MB0399_1_273,MB0400_1_229,MB0401_1_261,MB0404_1_251,MB0405_1_504,MB0406_1_241,MB0408_1_215,MB0410_1_423,MB0411_1_107,MB0412_1_196,MB0413_1_480,MB0414_1_184,MB0415_1_167,MB0416_1_224,MB0417_1_214,MB0418_1_205,MB0419_1_193,MB0420_1_181,MB0421_1_223,MB0422_1_213,MB0423_1_200,MB0425_1_192,MB0426_1_179,MB0427_1_146,MB0429_1_75,MB0431_1_29,MB0432_1_521,MB0434_1_143,MB0438_1_346,MB0439_1_73,MB0440_1_24,MB0442_1_375,MB0443_1_212,MB0444_1_139,MB0445_1_467,MB0446_1_102,MB0448_1_69,MB0449_1_20,MB0451_1_50,MB0453_1_468,MB0454_1_397,MB0455_1_281,MB0456_1_328,MB0457_1_171,MB0458_1_516,MB0459_1_453,MB0460_1_390,MB0461_1_403,MB0462_1_321,MB0463_1_141,MB0464_1_509,MB0465_1_446,MB0467_1_376,MB0468_1_304,MB0469_1_337,MB0470_1_92,MB0471_1_104,MB0474_1_310,MB0475_1_292,MB0476_1_268,MB0477_1_79,MB0478_1_414,MB0479_1_300,MB0480_1_463,MB0481_1_331,MB0482_1_398,MB0483_1_323,MB0484_1_277,MB0485_1_267,MB0486_1_249,MB0487_1_3,MB0488_1_313,MB0490_1_308,MB0491_1_296,MB0492_1_276,MB0494_1_260,MB0495_1_250,MB0496_1_380,MB0498_1_240,MB0500_1_233,MB0501_1_222,MB0502_1_236,MB0503_1_232,MB0504_1_217,MB0505_1_114,MB0508_1_208,MB0510_1_259,MB0511_1_219,MB0512_1_86,MB0513_1_244,MB0515_1_235,MB0516_1_231,MB0518_1_216,MB0519_1_209,MB0520_1_25,MB0521_1_324,MB0524_1_402,MB0525_1_170,MB0526_1_230,MB0527_1_484,MB0528_1_541,MB0529_1_399,MB0530_1_348,MB0531_1_441,MB0532_1_125,MB0536_1_284,MB0537_1_488,MB0538_1_121,MB0542_1_160,MB0543_1_522,MB0544_1_168,MB0545_1_356,MB0549_1_188,MB0552_1_8,MB0553_1_508,MB0554_1_290,MB0555_1_41,MB0556_1_377,MB0557_1_299,MB0558_1_365,MB0559_1_159,MB0562_1_180,MB0563_1_9,MB0568_1_204,MB0569_1_248,MB0570_1_465,MB0571_1_434,MB0573_1_352,MB0574_1_199,MB0575_1_191,MB0576_1_177,MB0577_1_100,MB0578_1_161,MB0579_1_198,MB0580_1_190,MB0581_1_175,MB0582_1_154,MB0583_1_133,MB0584_1_22,MB0585_1_110,MB0586_1_444,MB0587_1_66,MB0588_1_19,MB0589_1_342,MB0590_1_431,MB0591_1_57,MB0593_1_14,MB0594_1_498,MB0595_1_425,MB0596_1_129,MB0597_1_510,MB0598_1_475,MB0599_1_438,MB0600_1_368,MB0601_1_271,MB0602_1_39,MB0603_1_354,MB0604_1_135,MB0605_1_12,MB0607_1_546,MB0608_1_132,MB0609_1_55,MB0610_1_111,MB0611_1_548,MB0612_1_491,MB0613_1_98,MB0614_1_95,MB0616_1_51,MB0618_1_530,MB0620_1_360,MB0621_1_85,MB0622_1_283,MB0623_1_4,MB0624_1_197,MB0626_1_169,MB0628_1_90,MB0629_1_137,MB0630_1_99,MB0631_1_60,MB0633_1_76,MB0634_1_58,MB0635_1_16,MB0636_1_96,MB0637_1_56,MB0638_1_554,MB0641_1_130,MB0642_1_93,MB0643_1_53,MB0644_1_550,MB0645_1_490,MB0646_1_506,MB0647_1_439,MB0648_1_369,MB0650_1_418,MB0652_1_288,MB0653_1_63,MB0654_1_82,MB0657_1_499,MB0658_1_432,MB0659_1_361,MB0660_1_263,MB0661_1_13,MB0662_1_101,MB0663_1_394,MB0664_1_426,MB0666_1_355,MB0869_1_366,MB0872_1_262,MB0874_1_35,MB0877_1_269,MB0880_1_526,MB0882_1_228,MB0884_1_382,MB0890_1_427,MB0891_1_278,MB0893_1_340,MB0895_1_194,MB0899_1_536,MB0901_1_1,MB0904_1_410,MB0906_1_336,MB0910_1_164,MB0913_1_338,MB0914_1_47,MB0915_1_149,MB0921_1_381]
 #> coordinate systems(1):
-#> - sample01(40): MB0000_1_527 MB0002_1_345 ... MB0200_1_393 MB0201_1_497
-resObject <- spicy(sdata, condition = "ER", subject = "metabricId", r = 25, cellType = "description",
-                   imageInfo = "images")
+#> - sample01(456): MB0000_1_527 MB0002_1_345 ... MB0915_1_149
+#>   MB0921_1_381
+resObject <- spicy(sdata, condition = "ER.Status", subject = "metabricId", r = 25)
 ```
 
-Both results are those of the same cells in memory:
+Both give the results of
+[`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
+on `spe` above:
 
 ``` r
 
-resMemory <- spicy(small, condition = "ER", subject = "metabricId", r = 25, imageID = "file_id",
-                   cellType = "description", imageInfo = coreInfo)
-c(store = identical(resStore, resMemory), object = identical(resObject, resMemory))
+c(store = identical(resStore, res), object = identical(resObject, res))
 #>  store object 
 #>   TRUE   TRUE
 ```
@@ -981,7 +957,7 @@ sessionInfo()
 #> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.36              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.38              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         

@@ -140,6 +140,9 @@ Every pair of cell types, between conditions or with survival.
   : A table of the significant results from spicy tests
 - [`bind()`](https://sydneybiox.github.io/spicyR/dev/reference/bind.md)
   : The per-image values of every pair, as a data frame
+- [`calibrationCheck()`](https://sydneybiox.github.io/spicyR/dev/reference/calibrationCheck.md)
+  : Check that spicy() is calibrated on your data by shuffling the
+  condition
 
 ## Plot
 

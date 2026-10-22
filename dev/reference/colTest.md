@@ -6,7 +6,14 @@ data frame
 ## Usage
 
 ``` r
-colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
+colTest(
+  df,
+  condition,
+  type = NULL,
+  feature = NULL,
+  imageID = "imageID",
+  subject = NULL
+)
 ```
 
 ## Arguments
@@ -32,12 +39,27 @@ colTest(df, condition, type = NULL, feature = NULL, imageID = "imageID")
 
   The imageID's if presenting a SingleCellExperiment
 
+- subject:
+
+  Optional, with a SingleCellExperiment or SpatialExperiment: the column
+  of the patient. The proportions are then those of each patient's
+  cells, all images pooled, and each patient is one unit of the test.
+
 ## Value
 
 A data.frame with one row per column of `df` (for example per cell
-type), ordered by p-value: the mean in each condition, the test
-statistic, the p-value (`pval`), the Benjamini-Hochberg adjusted p-value
-(`adjPval`) and the column name (`cluster`).
+type), ordered by p-value: the mean (t-test) or median (Wilcoxon test)
+in each condition, the test statistic, the p-value (`pval`), the
+Benjamini-Hochberg adjusted p-value (`adjPval`) and the column name
+(`cluster`).
+
+## Details
+
+With a matrix or data.frame `df` and a `condition` whose names (a
+vector, factor or `Surv` with names) or row names (a matrix or
+data.frame) are row names of `df`, the rows of `df` are matched to
+`condition` by name, and rows without a condition are left out.
+Otherwise `condition` is taken in the row order of `df`.
 
 ## Examples
 
@@ -49,7 +71,7 @@ props <- getProp(diabetesData)
 images <- unique(as.data.frame(SummarizedExperiment::colData(diabetesData))[, c("imageID", "stage")])
 condition <- setNames(as.character(images$stage), images$imageID)
 condition <- condition[condition %in% c("Long-duration", "Onset")]
-test <- colTest(props[names(condition), ], condition)
+test <- colTest(props, condition)   # the rows of props are matched to condition by name
 head(test)
 #>         mean in group Long-duration mean in group Onset tval.t    pval adjPval
 #> acinar                      5.9e-01             0.49000    6.6 5.2e-09 8.3e-08
@@ -65,4 +87,22 @@ head(test)
 #> ductal   ductal
 #> naiveTc naiveTc
 #> Th           Th
+
+# with donors as the units: each donor's cells, all images pooled
+diabetes <- diabetesData[, diabetesData$stage %in% c("Long-duration", "Onset")]
+head(colTest(diabetes, condition = "stage", feature = "cellType", subject = "case", type = "wilcox"))
+#>         median in group Onset median in group Long-duration tval.W  pval
+#> beta                   0.0300                       0.00000     16 0.029
+#> acinar                 0.4800                       0.59000      1 0.057
+#> B                      0.0020                       0.00012     15 0.057
+#> ductal                 0.2500                       0.21000     14 0.110
+#> naiveTc                0.0012                       0.00038     14 0.110
+#> stromal                0.0310                       0.01300     14 0.110
+#>         adjPval cluster
+#> beta       0.29    beta
+#> acinar     0.29  acinar
+#> B          0.29       B
+#> ductal     0.29  ductal
+#> naiveTc    0.29 naiveTc
+#> stromal    0.29 stromal
 ```

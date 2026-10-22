@@ -9,7 +9,7 @@ frame"><meta name="robots" content="noindex"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.36</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.38</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,7 +43,14 @@ frame</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">colTest</span><span class="op">(</span><span class="va">df</span>, <span class="va">condition</span>, type <span class="op">=</span> <span class="cn">NULL</span>, feature <span class="op">=</span> <span class="cn">NULL</span>, imageID <span class="op">=</span> <span class="st">"imageID"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">colTest</span><span class="op">(</span></span>
+<span>  <span class="va">df</span>,</span>
+<span>  <span class="va">condition</span>,</span>
+<span>  type <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  feature <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  imageID <span class="op">=</span> <span class="st">"imageID"</span>,</span>
+<span>  subject <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -69,12 +76,23 @@ frame</p>
 <dt id="arg-imageid">imageID<a class="anchor" aria-label="anchor" href="#arg-imageid"></a></dt>
 <dd><p>The imageID's if presenting a SingleCellExperiment</p></dd>
 
+
+<dt id="arg-subject">subject<a class="anchor" aria-label="anchor" href="#arg-subject"></a></dt>
+<dd><p>Optional, with a SingleCellExperiment or SpatialExperiment: the column of the patient. The
+proportions are then those of each patient's cells, all images pooled, and each patient is one unit of the test.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A data.frame with one row per column of <code>df</code> (for example per cell type), ordered by p-value:
-the mean in each condition, the test statistic, the p-value (<code>pval</code>), the Benjamini-Hochberg adjusted
-p-value (<code>adjPval</code>) and the column name (<code>cluster</code>).</p>
+the mean (t-test) or median (Wilcoxon test) in each condition, the test statistic, the p-value (<code>pval</code>),
+the Benjamini-Hochberg adjusted p-value (<code>adjPval</code>) and the column name (<code>cluster</code>).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>With a matrix or data.frame <code>df</code> and a <code>condition</code> whose names (a vector, factor or <code>Surv</code> with names) or
+row names (a matrix or data.frame) are row names of <code>df</code>, the rows of <code>df</code> are matched to <code>condition</code> by name,
+and rows without a condition are left out. Otherwise <code>condition</code> is taken in the row order of <code>df</code>.</p>
     </div>
 
     <div class="section level2">
@@ -86,7 +104,7 @@ p-value (<code>adjPval</code>) and the column name (<code>cluster</code>).</p>
 <span class="r-in"><span><span class="va">images</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu">SummarizedExperiment</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SummarizedExperiment/man/SummarizedExperiment-class.html" class="external-link">colData</a></span><span class="op">(</span><span class="va">diabetesData</span><span class="op">)</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"imageID"</span>, <span class="st">"stage"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">condition</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">images</span><span class="op">$</span><span class="va">stage</span><span class="op">)</span>, <span class="va">images</span><span class="op">$</span><span class="va">imageID</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">condition</span> <span class="op">&lt;-</span> <span class="va">condition</span><span class="op">[</span><span class="va">condition</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Long-duration"</span>, <span class="st">"Onset"</span><span class="op">)</span><span class="op">]</span></span></span>
-<span class="r-in"><span><span class="va">test</span> <span class="op">&lt;-</span> <span class="fu">colTest</span><span class="op">(</span><span class="va">props</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">condition</span><span class="op">)</span>, <span class="op">]</span>, <span class="va">condition</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">test</span> <span class="op">&lt;-</span> <span class="fu">colTest</span><span class="op">(</span><span class="va">props</span>, <span class="va">condition</span><span class="op">)</span>   <span class="co"># the rows of props are matched to condition by name</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">test</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         mean in group Long-duration mean in group Onset tval.t    pval adjPval</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> acinar                      5.9e-01             0.49000    6.6 5.2e-09 8.3e-08</span>
@@ -102,6 +120,24 @@ p-value (<code>adjPval</code>) and the column name (<code>cluster</code>).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ductal   ductal</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> naiveTc naiveTc</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Th           Th</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># with donors as the units: each donor's cells, all images pooled</span></span></span>
+<span class="r-in"><span><span class="va">diabetes</span> <span class="op">&lt;-</span> <span class="va">diabetesData</span><span class="op">[</span>, <span class="va">diabetesData</span><span class="op">$</span><span class="va">stage</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Long-duration"</span>, <span class="st">"Onset"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">colTest</span><span class="op">(</span><span class="va">diabetes</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, feature <span class="op">=</span> <span class="st">"cellType"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, type <span class="op">=</span> <span class="st">"wilcox"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         median in group Onset median in group Long-duration tval.W  pval</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> beta                   0.0300                       0.00000     16 0.029</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> acinar                 0.4800                       0.59000      1 0.057</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> B                      0.0020                       0.00012     15 0.057</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ductal                 0.2500                       0.21000     14 0.110</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> naiveTc                0.0012                       0.00038     14 0.110</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> stromal                0.0310                       0.01300     14 0.110</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         adjPval cluster</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> beta       0.29    beta</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> acinar     0.29  acinar</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> B          0.29       B</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ductal     0.29  ductal</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> naiveTc    0.29 naiveTc</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> stromal    0.29 stromal</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
