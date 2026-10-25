@@ -695,6 +695,9 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
   pval <- as.data.frame(df$p.value)
   cond <- colnames(pval)[grep("condition", colnames(pval))]
   cat("spicyR (image-level test): ", nrow(pval), " pairs\n", sep = "")
+  untested <- if (length(cond)) sum(is.na(pval[[cond[1]]])) else 0
+  if (untested) cat(untested, " pairs are not tested (p-value NA: the same value in every image, or the model ",
+                    "could not be fitted)\n", sep = "")
   cat("Pairs with BH-adjusted p < 0.05:\n")
   if (nrow(pval) == 1) print(sum(pval[cond] < 0.05, na.rm = TRUE))
   if (nrow(pval) > 1) print(colSums(apply(pval[cond], 2, p.adjust, "fdr") < 0.05, na.rm = TRUE))
@@ -745,6 +748,7 @@ spatialMEM <-
     }
 
     spatialData$weights <- weightFunction
+    if (.noVariation(spatialData)) return(NA)
 
     # Fit in C++ (lmerCoefTable()), on the rows and design lme4 would use. Cases
     # it does not cover fall through to lmerTest below.
@@ -782,6 +786,14 @@ spatialMEM <-
 
     summary(mixed.lmer)$coef
   }
+
+# TRUE when the pair's summary is the same in every image the model would use: there is nothing to test, and a
+# fit would give a p-value from rounding error alone. Such a pair is not tested (p-value NA), so it is left out of
+# the multiple-testing correction.
+.noVariation <- function(spatialData) {
+  y <- spatialData$spatAssoc[stats::complete.cases(spatialData)]
+  length(y) < 2 || diff(range(y)) <= 1e-10 * max(1, abs(y))
+}
 
 # Coefficient table of lmerTest::lmer(y ~ X + (1 | subject), weights = w), as
 # summary() gives it with Satterthwaite degrees of freedom. The REML fit and
@@ -840,6 +852,8 @@ spatialLM <-
           sep = "+"
         )
     }
+
+    if (.noVariation(spatialData)) return(NA)
 
     lm1 <- tryCatch(
       {

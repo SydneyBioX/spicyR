@@ -1,3 +1,12 @@
+CHANGES IN VERSION 1.99.41
+--------------------------
+
+    o Image method: a pair whose summary is the same in every image (e.g. a cell type absent from every image) is
+      not tested; its p-value is NA, so it is left out of the multiple-testing correction, and print() reports how
+      many pairs were not tested. Its fit had a standard error of about 1e-16, so its p-value came from rounding
+      error and could fall anywhere, below 0.05 included. The cell method already reports such pairs as
+      "none (no_variation)" with p-value NA.
+
 CHANGES IN VERSION 1.99.40
 --------------------------
 
