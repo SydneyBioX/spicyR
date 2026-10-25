@@ -1,3 +1,15 @@
+CHANGES IN VERSION 1.99.40
+--------------------------
+
+    o Image method: the built-in weight model follows scam()'s smoothing-parameter search exactly. Its GCV gradient
+      is now analytic, as scam's is (with A^{-1} in place of H^{-1} when H is not positive definite, as scam does).
+      It was by central differences, which near the flat GCV minimum are dominated by the inner fit's tolerance, so
+      the BFGS search (and its finite-difference starting Hessian) took a different path from scam's and stopped
+      elsewhere within tolerance. The weights moved by up to 0.004 on the TB granuloma MIBI data and the p-values
+      by up to 3e-4; on METABRIC (Jackson) the weight model's predictions differed from scam's by 0.11. On 80 real
+      analyses the weights now match scam()'s to 5e-8 on 78, to 4e-6 on one (from the start of the search), and
+      the 80th falls back to scam() as before. The fit is also faster: no refits for the differences.
+
 CHANGES IN VERSION 1.99.39
 --------------------------
 

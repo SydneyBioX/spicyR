@@ -57,6 +57,7 @@ std::vector<double> cholSolve(const std::vector<double>& L, int q, std::vector<d
 
 struct Fit {
   std::vector<double> beta, bt, r;
+  std::vector<double> grad;  // d GCV / d log(sp)
   double dev, gcv, trA;
   bool ok;
 };
@@ -164,21 +165,84 @@ class Model {
         A[i * q + k] = CGC[i * q + k] + Sl[i * q + k];
         H[i * q + k] = A[i * q + k] - (i == k ? C1[i] * r[i] : 0.0);
       }
-    if (!chol(H, q, L) && !chol(A, q, L)) { f.ok = false; return f; }
+    const bool posDef = chol(H, q, L);
+    if (!posDef && !chol(A, q, L)) { f.ok = false; return f; }
     double trA = 0;
-    std::vector<double> col(q);
+    std::vector<double> col(q), M(q * q);  // M = (H or A)^{-1} CGC
     for (int k = 0; k < q; ++k) {
       for (int i = 0; i < q; ++i) col[i] = CGC[i * q + k];
-      trA += cholSolve(L, q, col)[k];
+      const std::vector<double> mk = cholSolve(L, q, col);
+      for (int i = 0; i < q; ++i) M[i * q + k] = mk[i];
+      trA += mk[k];
     }
     f.r = r;
     f.trA = trA;
-    f.gcv = P.n * dev / ((P.n - trA) * (P.n - trA));
+    const double nr = P.n - trA;
+    f.gcv = P.n * dev / (nr * nr);
+    gradient(f, sp, Cd, C1, L, M, nr);
     return f;
   }
 
  private:
   const Problem& P;
+
+  // Analytic d GCV / d rho_j (rho = log sp), the derivative scam's
+  // gcv.ubre_grad() computes, written for the Gaussian identity case in the
+  // q x q quantities above. L is the Cholesky factor of H, or of A when H is
+  // not positive definite: scam then uses A^{-1} in place of H^{-1} in the same
+  // formula, and so does this. At the fit, grad_beta = -C r + S beta = 0, so
+  //   d beta / d rho_j = -H^{-1} sp_j S_j beta,
+  //   d dev = -2 r' C d beta,
+  //   d trA = tr(H^{-1} d(CGC)) - tr(H^{-1} dH H^{-1} CGC),
+  // with d C = diag(C1 d beta), d r = -G C d beta and
+  // dH = d(CGC) + sp_j S_j - diag(d(C1 r)).
+  void gradient(Fit& f, const std::vector<double>& sp, const std::vector<double>& Cd,
+                const std::vector<double>& C1, const std::vector<double>& L,
+                const std::vector<double>& M, double nr) const {
+    const int q = P.q, m = static_cast<int>(P.S.size());
+    std::vector<double> Hinv(q * q), e(q);
+    for (int k = 0; k < q; ++k) {
+      std::fill(e.begin(), e.end(), 0.0);
+      e[k] = 1;
+      const std::vector<double> hk = cholSolve(L, q, e);
+      for (int i = 0; i < q; ++i) Hinv[i * q + k] = hk[i];
+    }
+    f.grad.assign(m, 0.0);
+    std::vector<double> rhs(q), GCv(q), dC(q), dCGC(q * q), dH(q * q);
+    for (int j = 0; j < m; ++j) {
+      for (int i = 0; i < q; ++i) {
+        double v = 0;
+        for (int k = 0; k < q; ++k) v += P.S[j][i * q + k] * f.beta[k];
+        rhs[i] = sp[j] * v;
+      }
+      std::vector<double> dbeta = cholSolve(L, q, rhs);
+      for (double& v : dbeta) v = -v;
+      double dDev = 0;
+      for (int i = 0; i < q; ++i) dDev -= 2 * Cd[i] * f.r[i] * dbeta[i];
+      for (int i = 0; i < q; ++i) dC[i] = C1[i] * dbeta[i];
+      for (int i = 0; i < q; ++i) {
+        double v = 0;
+        for (int k = 0; k < q; ++k) v += P.G[i * q + k] * Cd[k] * dbeta[k];
+        GCv[i] = v;
+      }
+      for (int i = 0; i < q; ++i)
+        for (int k = 0; k < q; ++k) {
+          const double g = P.G[i * q + k];
+          dCGC[i * q + k] = dC[i] * g * Cd[k] + Cd[i] * g * dC[k];
+          dH[i * q + k] = dCGC[i * q + k] + sp[j] * P.S[j][i * q + k];
+        }
+      for (int i = 0; i < q; ++i) dH[i * q + i] -= dC[i] * f.r[i] - C1[i] * GCv[i];
+      // tr(Hinv dCGC) - tr(Hinv dH M), Hinv = (H or A)^{-1}
+      double dTr = 0;
+      for (int a = 0; a < q; ++a)
+        for (int b = 0; b < q; ++b) {
+          double dHM = 0;
+          for (int k = 0; k < q; ++k) dHM += dH[b * q + k] * M[k * q + a];
+          dTr += Hinv[a * q + b] * (dCGC[b * q + a] - dHM);
+        }
+      f.grad[j] = P.n * (dDev * nr + 2 * f.dev * dTr) / (nr * nr * nr);
+    }
+  }
 };
 
 }  // namespace
@@ -236,8 +300,11 @@ Rcpp::List scamMonoFit(Rcpp::NumericMatrix XtX, Rcpp::NumericVector Xty, double 
   }
 
   // GCV and its gradient at rho. Like scam's fn(), each call warm-starts from
-  // the previous fit and becomes the next start; the gradient is by central
-  // differences from this fit (scam computes it analytically).
+  // the previous fit and becomes the next start. The gradient is analytic, as
+  // scam's: the GCV surface is often flat near its minimum, and central
+  // differences there are dominated by the inner fit's tolerance, which sends
+  // the BFGS search (and its finite-difference starting Hessian) down a
+  // different path from scam's.
   struct Eval { double score, scaleEst; std::vector<double> grad; Fit fit; bool ok; };
   auto fn = [&](const std::vector<double>& r) {
     Eval e;
@@ -249,16 +316,7 @@ Rcpp::List scamMonoFit(Rcpp::NumericMatrix XtX, Rcpp::NumericVector Xty, double 
     warm = e.fit.beta;
     e.score = e.fit.gcv;
     e.scaleEst = e.fit.dev / (P.n - e.fit.trA);
-    e.grad.assign(m, 0.0);
-    const double h = 1e-5;
-    for (int j = 0; j < m; ++j) {
-      std::vector<double> up = sp, dn = sp;
-      up[j] = std::exp(r[j] + h);
-      dn[j] = std::exp(r[j] - h);
-      const Fit fu = model.fit(up, e.fit.beta), fd = model.fit(dn, e.fit.beta);
-      if (!fu.ok || !fd.ok) { e.ok = false; e.score = R_PosInf; return e; }
-      e.grad[j] = (fu.gcv - fd.gcv) / (2 * h);
-    }
+    e.grad = e.fit.grad;
     return e;
   };
 
