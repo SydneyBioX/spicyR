@@ -742,7 +742,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.39) to
+A methods sentence might read: “We used spicyR (version 1.99.40) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -954,14 +954,14 @@ sessionInfo()
 #>  [9] GenomicRanges_1.65.4        Seqinfo_1.3.2              
 #> [11] IRanges_2.47.5              S4Vectors_0.51.10          
 #> [13] MatrixGenerics_1.25.0       matrixStats_1.5.0          
-#> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.2        
+#> [15] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [17] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [19] BiocGenerics_0.59.12        generics_0.1.4             
-#> [21] spicyR_1.99.39              BiocStyle_2.41.0           
+#> [21] spicyR_1.99.40              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
-#>   [4] anndataR_1.3.2       rlang_1.3.0          magrittr_2.0.5      
+#>   [4] anndataR_1.3.3       rlang_1.3.0          magrittr_2.0.5      
 #>   [7] Rarr_2.1.48          otel_0.2.0           e1071_1.7-17        
 #>  [10] compiler_4.6.1       RSQLite_3.53.3       paws.storage_0.11.0 
 #>  [13] png_0.1-9            systemfonts_1.3.2    vctrs_0.7.3         
@@ -986,7 +986,7 @@ sessionInfo()
 #>  [70] scales_1.4.0         class_7.3-23         glue_1.8.1          
 #>  [73] tools_4.6.1          data.table_1.18.6.1  fs_2.1.0            
 #>  [76] grid_4.6.1           tidyr_1.3.2          crosstalk_1.2.2     
-#>  [79] AnnotationDbi_1.75.2 duckdb_1.5.6         cli_3.6.6           
+#>  [79] AnnotationDbi_1.75.2 duckdb_2.0.0         cli_3.6.6           
 #>  [82] rappdirs_0.3.4       textshaping_1.0.5    S4Arrays_1.13.2     
 #>  [85] viridisLite_0.4.3    dplyr_1.2.1          gtable_0.3.6        
 #>  [88] R.methodsS3_1.8.2    sass_0.4.10          digest_0.6.39       

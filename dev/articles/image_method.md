@@ -153,16 +153,16 @@ spicyTest <- spicy(method = "image",
 
 topPairs(spicyTest)
 #>                             intercept coefficient      p.value   adj.pvalue
-#> Macrophages__dn_T_CD3       56.446065   -50.08474 1.080268e-07 3.035554e-05
-#> dn_T_CD3__Macrophages       54.987150   -48.38664 2.194026e-07 3.082607e-05
-#> Macrophages__DC_or_Mono     73.239408   -59.90362 5.224650e-06 4.893755e-04
-#> DC_or_Mono__Macrophages     71.777083   -58.46833 7.431188e-06 5.220409e-04
-#> dn_T_CD3__dn_T_CD3         -63.786032   100.61010 2.878802e-05 1.208706e-03
-#> Neutrophils__dn_T_CD3      -63.141839    69.64356 2.891869e-05 1.208706e-03
-#> dn_T_CD3__Neutrophils      -63.133727    70.15508 3.011011e-05 1.208706e-03
-#> DC__Macrophages             96.893239   -92.55112 1.801305e-04 5.758112e-03
-#> Macrophages__DC             96.896215   -93.25194 1.844235e-04 5.758112e-03
-#> CD4_T_cell__Keratin_Tumour  -4.845036   -22.14995 2.834660e-04 7.409012e-03
+#> Macrophages__dn_T_CD3       56.446064   -50.08474 1.080273e-07 3.035568e-05
+#> dn_T_CD3__Macrophages       54.987151   -48.38664 2.194018e-07 3.082595e-05
+#> Macrophages__DC_or_Mono     73.239404   -59.90361 5.224660e-06 4.893765e-04
+#> DC_or_Mono__Macrophages     71.777087   -58.46833 7.431172e-06 5.220399e-04
+#> dn_T_CD3__dn_T_CD3         -63.786032   100.61010 2.878804e-05 1.208706e-03
+#> Neutrophils__dn_T_CD3      -63.141840    69.64356 2.891872e-05 1.208706e-03
+#> dn_T_CD3__Neutrophils      -63.133725    70.15508 3.011012e-05 1.208706e-03
+#> DC__Macrophages             96.893239   -92.55112 1.801300e-04 5.758129e-03
+#> Macrophages__DC             96.896215   -93.25194 1.844241e-04 5.758129e-03
+#> CD4_T_cell__Keratin_Tumour  -4.845037   -22.14995 2.834659e-04 7.409016e-03
 #>                                   from             to
 #> Macrophages__dn_T_CD3      Macrophages       dn_T_CD3
 #> dn_T_CD3__Macrophages         dn_T_CD3    Macrophages
@@ -344,16 +344,16 @@ spicySurvival = spicy(method = "image", kerenSPE,
 # top 10 significant pairs
 head(spicySurvival$survivalResults, 10)
 #>                      test         coef     se.coef      p.value
-#> 1     Other_Immune__Tregs  0.023565206 0.008656342 8.929522e-06
-#> 2       CD4_T_cell__Tregs  0.017697194 0.006849369 1.241121e-05
-#> 3     Tregs__Other_Immune  0.023714941 0.008733582 1.264807e-05
-#> 4       Tregs__CD4_T_cell  0.017081289 0.006758900 2.852449e-05
-#> 5  CD8_T_cell__CD8_T_cell  0.006050072 0.002723387 3.316528e-04
-#> 6      Tumour__CD8_T_cell -0.030532595 0.011429924 6.168710e-04
-#> 7      CD8_T_cell__Tumour -0.030478957 0.011593521 7.214929e-04
+#> 1     Other_Immune__Tregs  0.023565207 0.008656342 8.929510e-06
+#> 2       CD4_T_cell__Tregs  0.017697195 0.006849369 1.241123e-05
+#> 3     Tregs__Other_Immune  0.023714940 0.008733582 1.264808e-05
+#> 4       Tregs__CD4_T_cell  0.017081288 0.006758900 2.852446e-05
+#> 5  CD8_T_cell__CD8_T_cell  0.006050071 0.002723387 3.316529e-04
+#> 6      Tumour__CD8_T_cell -0.030532590 0.011429924 6.168720e-04
+#> 7      CD8_T_cell__Tumour -0.030478964 0.011593521 7.214916e-04
 #> 8    CD4_T_cell__dn_T_CD3  0.008453662 0.003533034 7.936924e-04
-#> 9    dn_T_CD3__CD4_T_cell  0.008398973 0.003530625 9.371907e-04
-#> 10       DC__Other_Immune -0.028885515 0.012294396 1.034119e-03
+#> 9    dn_T_CD3__CD4_T_cell  0.008398973 0.003530624 9.371904e-04
+#> 10       DC__Other_Immune -0.028885513 0.012294396 1.034120e-03
 ```
 
 ## Accounting for tissue inhomogeneity
@@ -428,16 +428,16 @@ spicyMixedTest <- spicy(method = "image",
 )
 topPairs(spicyMixedTest)
 #>                          intercept coefficient      p.value adj.pvalue
-#> beta__delta           6.081500e+01  -15.433250 0.0006616383 0.09171141
-#> delta__beta           6.090722e+01  -15.276363 0.0007164954 0.09171141
-#> B__Th                -2.664535e-15   10.480122 0.0127535357 0.42316682
-#> delta__delta          7.021913e+01  -16.358091 0.0155005353 0.42316682
-#> Th__B                 1.776357e-15   10.003453 0.0173028300 0.42316682
-#> B__unknown           -8.881784e-16    4.584273 0.0182158777 0.42316682
-#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646991 0.42316682
-#> unknown__macrophage   4.339586e+00   -5.274674 0.0222619404 0.42316682
-#> unknown__B            1.165734e-15    4.680750 0.0244004344 0.42316682
-#> macrophage__unknown   4.305429e+00   -4.886438 0.0249693485 0.42316682
+#> beta__delta           6.081501e+01  -15.433246 0.0006616399 0.09171146
+#> delta__beta           6.090722e+01  -15.276362 0.0007164958 0.09171146
+#> B__Th                -5.773160e-15   10.480124 0.0127535308 0.42316679
+#> delta__delta          7.021912e+01  -16.358091 0.0155005361 0.42316679
+#> Th__B                 3.996803e-15   10.003453 0.0173028316 0.42316679
+#> B__unknown           -2.498002e-15    4.584274 0.0182158655 0.42316679
+#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646993 0.42316679
+#> unknown__macrophage   4.339587e+00   -5.274674 0.0222619390 0.42316679
+#> unknown__B           -1.665335e-16    4.680750 0.0244004284 0.42316679
+#> macrophage__unknown   4.305429e+00   -4.886438 0.0249693473 0.42316679
 #>                             from         to
 #> beta__delta                 beta      delta
 #> delta__beta                delta       beta
@@ -480,10 +480,10 @@ sessionInfo()
 #> other attached packages:
 #>  [1] survival_3.8-6              dplyr_1.2.1                
 #>  [3] SpatialDatasets_1.11.0      ExperimentHub_3.3.2        
-#>  [5] AnnotationHub_4.3.2         BiocFileCache_3.3.0        
+#>  [5] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
 #>  [7] dbplyr_2.6.0                SpatialExperiment_1.23.0   
 #>  [9] SingleCellExperiment_1.35.2 ggplot2_4.0.3              
-#> [11] spicyR_1.99.39              SummarizedExperiment_1.43.0
+#> [11] spicyR_1.99.40              SummarizedExperiment_1.43.0
 #> [13] Biobase_2.73.2              GenomicRanges_1.65.4       
 #> [15] Seqinfo_1.3.2               IRanges_2.47.5             
 #> [17] S4Vectors_0.51.10           BiocGenerics_0.59.12       
