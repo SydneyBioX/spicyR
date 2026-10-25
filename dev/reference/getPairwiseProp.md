@@ -134,6 +134,7 @@ spicy(diabetesData,
 #> `alternateResult` / `sigma` given: using method = "image" (the original spicyR test).
 #> Dropping unused levels. Using stage = Non-diabetic as base comparison group. If this is not the desired base group, please convert cells$stage into a factor and change the order of levels(cells$stage) so that the base group is at index 1.
 #> spicyR (image-level test): 256 pairs
+#> 2 pairs are not tested (p-value NA: the same value in every image, or the model could not be fitted)
 #> Pairs with BH-adjusted p < 0.05:
 #>         conditionOnset conditionLong-duration 
 #>                      0                     13 
