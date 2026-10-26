@@ -44,12 +44,12 @@ Lists the pairs tested by \code{\link[=spicy]{spicy()}}, most significant first.
 }
 \details{
 For the cell method (the default of \code{\link[=spicy]{spicy()}}) the table has one row per pair (and per level with more than two
-conditions), with the columns of the test: \code{from}, \code{to}, \code{side}, \code{excess_ref} and \code{excess_comp} (the average
+conditions), with the columns of the test: \code{from}, \code{to}, \code{excess_ref} and \code{excess_comp} (the average
 effect in the reference and the comparison group), \code{excess_difference}, \code{p_value} and \code{p_adj}; with several
 radii, \code{r}, the radius with the strongest evidence; with covariates, the effect and p-value of each
 (\verb{<covariate>_effect}, \verb{<covariate>_p_value}); for survival, \code{hazard_ratio_sd}. \code{full = TRUE} adds the
-standard error, degrees of freedom, the variance between patients (\code{tau2}), what the test was adjusted for and
-the unadjusted test. For the image method the columns are \code{intercept}, \code{coefficient}, \code{p.value},
+scale of the effect (\code{side}), the standard error, degrees of freedom, the variance between patients (\code{tau2}),
+what the test was adjusted for and the unadjusted test. For the image method the columns are \code{intercept}, \code{coefficient}, \code{p.value},
 \code{adj.pvalue}, \code{from} and \code{to}, as in spicyR 1.x.
 }
 \examples{

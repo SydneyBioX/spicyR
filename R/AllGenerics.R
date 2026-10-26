@@ -11,12 +11,12 @@
 #' `n = NULL` to see every pair.
 #'
 #' For the cell method (the default of [spicy()]) the table has one row per pair (and per level with more than two
-#' conditions), with the columns of the test: `from`, `to`, `side`, `excess_ref` and `excess_comp` (the average
+#' conditions), with the columns of the test: `from`, `to`, `excess_ref` and `excess_comp` (the average
 #' effect in the reference and the comparison group), `excess_difference`, `p_value` and `p_adj`; with several
 #' radii, `r`, the radius with the strongest evidence; with covariates, the effect and p-value of each
 #' (`<covariate>_effect`, `<covariate>_p_value`); for survival, `hazard_ratio_sd`. `full = TRUE` adds the
-#' standard error, degrees of freedom, the variance between patients (`tau2`), what the test was adjusted for and
-#' the unadjusted test. For the image method the columns are `intercept`, `coefficient`, `p.value`,
+#' scale of the effect (`side`), the standard error, degrees of freedom, the variance between patients (`tau2`),
+#' what the test was adjusted for and the unadjusted test. For the image method the columns are `intercept`, `coefficient`, `p.value`,
 #' `adj.pvalue`, `from` and `to`, as in spicyR 1.x.
 #'
 #' @param x The output from [spicy()].
@@ -88,11 +88,11 @@ setMethod("topPairs", "SpicyResults", function(x,
 # the rows of the chosen from and to cell types
 .pickPairs <- function(results, from, to) {
     want <- list(from = from, to = to)
-    for (side in names(want)[!vapply(want, is.null, TRUE)]) {
-        miss <- setdiff(want[[side]], results[[side]])
-        if (length(miss)) stop("no pair with ", side, " = ", paste(dQuote(miss, FALSE), collapse = ", "),
+    for (col in names(want)[!vapply(want, is.null, TRUE)]) {
+        miss <- setdiff(want[[col]], results[[col]])
+        if (length(miss)) stop("no pair with ", col, " = ", paste(dQuote(miss, FALSE), collapse = ", "),
                                " in the results.", call. = FALSE)
-        results <- results[results[[side]] %in% want[[side]], , drop = FALSE]
+        results <- results[results[[col]] %in% want[[col]], , drop = FALSE]
     }
     results
 }
@@ -105,7 +105,7 @@ setMethod("topPairs", "SpicyResults", function(x,
     if (full) return(tab)
     effects <- grep("_effect$", names(tab), value = TRUE)
     covariate <- c(rbind(effects, sub("_effect$", "_p_value", effects)))
-    main <- c("from", "to", "parent", "level", "r", "side", "excess_ref", "excess_comp", "excess_difference",
+    main <- c("from", "to", "parent", "level", "r", "excess_ref", "excess_comp", "excess_difference",
               "hazard_ratio_sd", "p_value", "p_adj", covariate)
     tab[intersect(main, names(tab))]
 }

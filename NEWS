@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.44
+--------------------------
+
+    o topPairs() shows `side` only with `full = TRUE`: the sign of the effects gives the direction. The vignette
+      describes only the columns topPairs() shows by default.
+
 CHANGES IN VERSION 1.99.43
 --------------------------
 

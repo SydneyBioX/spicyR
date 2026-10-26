@@ -264,7 +264,7 @@ test_that("results work with topPairs, bind, spicyBoxPlot and signifPlot", {
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30))
   tp <- topPairs(res, n = 5)
   expect_equal(nrow(tp), 5L)
-  expect_identical(names(tp), c("from", "to", "side", "excess_ref", "excess_comp", "excess_difference", "p_value",
+  expect_identical(names(tp), c("from", "to", "excess_ref", "excess_comp", "excess_difference", "p_value",
                                 "p_adj"))
   expect_false(is.unsorted(tp$p_value))
   expect_identical(topPairs(res, n = NULL, full = TRUE), res$cellResults[order(res$cellResults$p_value), ])
