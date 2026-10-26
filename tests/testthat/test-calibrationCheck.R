@@ -12,8 +12,14 @@ test_that("calibrationCheck() shuffles the condition across patients and reports
   first <- !duplicated(cd$case)
   lab <- cd$stage[first][sample.int(sum(first))]
   d$shuffledCondition <- lab[match(cd$case, cd$case[first])]
-  p <- topPairs(suppressMessages(spicy(d, condition = "shuffledCondition", subject = "case", r = 50)), n = NULL)$p.value
+  p <- topPairs(suppressMessages(spicy(d, condition = "shuffledCondition", subject = "case", r = 50)), n = NULL)$p_value
   expect_equal(out$percent[1:2], 100 * c(mean(p < 0.05, na.rm = TRUE), mean(p < 0.01, na.rm = TRUE)))
+  # summary(): the average over the shuffles at each threshold; plot(): a ggplot
+  s <- summary(out)
+  expect_identical(names(s), c("threshold", "expected", "percent"))
+  expect_equal(s$expected, c(5, 1))
+  expect_equal(s$percent, c(mean(out$percent[c(1, 3)]), mean(out$percent[c(2, 4)])))
+  expect_s3_class(plot(out), "ggplot")
 })
 
 test_that("calibrationCheck() leaves a missing condition missing", {

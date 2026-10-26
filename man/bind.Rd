@@ -2,29 +2,41 @@
 % Please edit documentation in R/spicy.R
 \name{bind}
 \alias{bind}
-\title{The per-image values of every pair, as a data frame}
+\title{The per-image values of every pair, or of one pair, as a data frame}
 \usage{
-bind(results, pairName = NULL)
+bind(results, pairName = NULL, from = NULL, to = NULL, parent = NULL)
 }
 \arguments{
 \item{results}{The \code{SpicyResults} object returned by \code{spicy()}.}
 
 \item{pairName}{A pair, as \code{"from__to"}. If NULL, all pairs are returned.}
+
+\item{from, to}{One pair: a table of that pair alone, with its value in a column \code{effect} (\code{value} for the image
+method) and, for the cell method, each image's \code{weight} in the test.}
+
+\item{parent}{For a Kontextual result, the parent population of the pair given by \code{from} and \code{to}.}
 }
 \value{
-A data.frame with one row per image: \code{imageID}, \code{condition}, \code{subject} (if given) and
-one column per pair, named \code{"from__to"}. \code{NA} where the pair could not be measured in an image.
+A data.frame with one row per image, named by image: \code{imageID}, \code{condition},
+\code{subject} (if given) and one column per pair, named \code{"from__to"}, or with \code{from} and
+\code{to} the columns \code{effect} (or \code{value}) and \code{weight}. \code{NA} where the pair could not be
+measured in an image.
 }
 \description{
 Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: for the cell
 method its effect (by default the extra fraction of \code{to} cells with a \code{from} cell within \code{r};
 with \code{effect = "count"}, the extra \code{from} cells per \code{to} cell), or the L-function summary for
-the image method. Use it for your own plots or models.
+the image method. Use it for your own plots or models, or with \code{from} and \code{to} to look up the images
+behind one pair.
 }
 \examples{
 
 data(spicyTest)
 df <- bind(spicyTest)
+
+data("diabetesData")
+res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = "Th")
+head(bind(res, from = "Tc", to = "Th"))
 
 }
 \concept{test}

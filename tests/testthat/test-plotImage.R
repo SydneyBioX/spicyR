@@ -14,3 +14,14 @@ test_that("plotImage() shows every cell type without a pair, and the pair with o
   expect_error(plotImage(diabetesData, "A09", from = "acinar"), "both")
   expect_error(plotImage(diabetesData, "A09", r = 50), "circles")
 })
+
+test_that("plotImage() draws several images as panels, in the order given", {
+  data("diabetesData", package = "spicyR")
+  ims <- c("A11", "A09")
+  p <- plotImage(diabetesData, ims, from = "acinar", to = "alpha", r = 50)
+  expect_s3_class(p$facet, "FacetWrap")
+  expect_identical(levels(p$layers[[1]]$data$image), ims)
+  expect_equal(nrow(p$layers[[1]]$data), sum(diabetesData$imageID %in% ims))
+  expect_s3_class(plotImage(diabetesData, ims)$facet, "FacetWrap")
+  expect_error(plotImage(diabetesData, c("A09", "nothere")), "nothere")
+})

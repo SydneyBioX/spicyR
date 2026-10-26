@@ -57,15 +57,8 @@ BiocManager::install("spicyR", version = "devel")   # spicyR 2.0, until the next
 
 
 ```{r chunk-03, warning=FALSE, message=FALSE}
-# load required packages
-library(SummarizedExperiment)
-
-
 library(spicyR)
-library(ggplot2)
-library(SpatialExperiment)
 library(SpatialDatasets)
-library(dplyr)
 library(survival)
 ```
 
@@ -229,15 +222,14 @@ kerenSPE$event = 1 - kerenSPE$Censored
 kerenSPE$survival = Surv(kerenSPE$`Survival_days_capped*`, kerenSPE$event)
 ```
 
-We can then perform survival analysis using the `spicy` function by specifying `condition = "survival"`. We can then access the corresponding coefficients and p-values by accessing the `survivalResults` slot in the `spicy` results object.
+We can then perform survival analysis using the `spicy` function by specifying `condition = "survival"`. `topPairs()` lists the pairs most associated with survival, with their coefficients (log hazard ratios) and p-values.
 
 ```{r chunk-14}
 # Running survival analysis
 spicySurvival = spicy(method = "image", kerenSPE,
                       condition = "survival")
 
-# top 10 significant pairs
-head(spicySurvival$survivalResults, 10)
+topPairs(spicySurvival)
 ```
 
 
@@ -248,27 +240,15 @@ The `spicy` function can also account for tissue inhomogeneity to avoid false po
 For example, when we examine the L-function for `Keratin_Tumour__Neutrophils` when `sigma = NULL` and `Rs = 100`, the value is positive, indicating attraction between the two cell types. 
 
 ```{r chunk-15}
-# filter SPE object to obtain image 24 data
-kerenSubset = kerenSPE[, colData(kerenSPE)$imageID == "24"]
-
-pairwiseAssoc = getPairwise(kerenSubset, 
-                            sigma = NULL, 
-                            Rs = 100) |>
-  as.data.frame()
-
-pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
+image24 <- kerenSPE[, kerenSPE$imageID == "24"]
+getPairwise(image24, from = "Keratin_Tumour", to = "Neutrophils", Rs = 100)
 ```
 
 When we specify `sigma = 20` and re-calculate the L-function, it indicates that there is no relationship between `Keratin_Tumour` and `Neutrophils`, i.e., there is no major attraction or dispersion, as it now takes into account tissue inhomogeneity.
 
 
 ```{r chunk-16}
-pairwiseAssoc = getPairwise(kerenSubset, 
-                            sigma = 20, 
-                            Rs = 100) |>
-  as.data.frame()
-
-pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
+getPairwise(image24, from = "Keratin_Tumour", to = "Neutrophils", Rs = 100, sigma = 20)
 ```
 
 We can use the `plotImage` function to plot any pair of cell types for a specific image and visually inspect cellular relationships.

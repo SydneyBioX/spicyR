@@ -668,8 +668,14 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
       paste0(levels(df$condition)[-1], " vs ", levels(df$condition)[1], collapse = "; ")
     scale <- if (!is.null(df$k)) paste0("k = ", df$k, " nearest neighbours") else paste0("r = ", paste(df$r, collapse = ", "))
     cat("spicyR (cell-level test): ", length(unique(paste(tab$from, tab$to))), " pairs, ", what, ", ", scale, "\n", sep = "")
-    if (is.null(df$subject)) cat("Units: ", length(df$imageID), " images (no subject given: each image is a patient)\n", sep = "")
-    else cat("Units: ", length(unique(df$subject)), " patients with ", length(df$imageID), " images\n", sep = "")
+    unit <- df$subject %||% df$imageID
+    groups <- if (is.null(df$condition)) "" else {
+      n <- table(df$condition[!duplicated(unit)])
+      paste0(" (", paste(names(n), n, collapse = ", "), ")")
+    }
+    if (is.null(df$subject)) cat("Units: ", length(df$imageID), " images", groups,
+                                 "; no subject given: each image is a patient\n", sep = "")
+    else cat("Units: ", length(unique(df$subject)), " patients", groups, " with ", length(df$imageID), " images\n", sep = "")
     adj <- if (is.null(tab$adjusted_for)) character(0) else unique(tab$adjusted_for)
     novar <- sum(tab$adjusted_for %||% character(0) == "none (no_variation)")
     noinfo <- sum(tab$adjusted_for %||% character(0) == "none (no_information)")
@@ -689,7 +695,7 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
                       "patient, or one with too few effective patients)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
-    cat("\nSee topPairs() and $cellResults.\n")
+    cat("\nSee topPairs().\n")
     return(invisible(df))
   }
   pval <- as.data.frame(df$p.value)
@@ -1467,20 +1473,28 @@ colCoxTests <- function(measurements, outcome) {
   output
 }
 
-#' The per-image values of every pair, as a data frame
+#' The per-image values of every pair, or of one pair, as a data frame
 #'
 #' Returns, for each image, its condition and the value of each pair that \code{spicy()} tested: for the cell
 #' method its effect (by default the extra fraction of \code{to} cells with a \code{from} cell within \code{r};
 #' with \code{effect = "count"}, the extra \code{from} cells per \code{to} cell), or the L-function summary for
-#' the image method. Use it for your own plots or models.
+#' the image method. Use it for your own plots or models, or with \code{from} and \code{to} to look up the images
+#' behind one pair.
 #'
 #' @param results
 #'  The \code{SpicyResults} object returned by \code{spicy()}.
 #' @param pairName
 #'  A pair, as \code{"from__to"}. If NULL, all pairs are returned.
+#' @param from,to
+#'  One pair: a table of that pair alone, with its value in a column \code{effect} (\code{value} for the image
+#'  method) and, for the cell method, each image's \code{weight} in the test.
+#' @param parent
+#'  For a Kontextual result, the parent population of the pair given by \code{from} and \code{to}.
 #'
-#' @return A data.frame with one row per image: \code{imageID}, \code{condition}, \code{subject} (if given) and
-#'   one column per pair, named \code{"from__to"}. \code{NA} where the pair could not be measured in an image.
+#' @return A data.frame with one row per image, named by image: \code{imageID}, \code{condition},
+#'   \code{subject} (if given) and one column per pair, named \code{"from__to"}, or with \code{from} and
+#'   \code{to} the columns \code{effect} (or \code{value}) and \code{weight}. \code{NA} where the pair could not be
+#'   measured in an image.
 #' @export
 #'
 #' @examples
@@ -1488,26 +1502,41 @@ colCoxTests <- function(measurements, outcome) {
 #' data(spicyTest)
 #' df <- bind(spicyTest)
 #'
-#' @export
+#' data("diabetesData")
+#' res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = "Th")
+#' head(bind(res, from = "Tc", to = "Th"))
+#'
 #' @concept test
 bind <- function(results,
-                 pairName = NULL) {
+                 pairName = NULL,
+                 from = NULL,
+                 to = NULL,
+                 parent = NULL) {
   df <- data.frame(
     imageID = results$imageID,
-    condition = results$condition
+    condition = results$condition,
+    row.names = results$imageID
   )
 
   if (!is.null(results$subject)) {
-    df <- cbind(df, subject = results$subject)
+    df$subject <- results$subject
   }
 
-  if (is.null(pairName)) {
+  if (!is.null(from) || !is.null(to)) {
+    if (length(from) != 1 || length(to) != 1) stop("give one `from` and one `to` cell type.", call. = FALSE)
+    pairName <- paste(c(from, to, parent), collapse = "__")
+    if (is.null(results$pairwiseAssoc[[pairName]])) stop("pair ", from, " -> ", to, " not found in the results.",
+                                                         call. = FALSE)
+    cell <- identical(results$method, "cell")
+    df[[if (cell) "effect" else "value"]] <- results$pairwiseAssoc[[pairName]]
+    if (cell) df$weight <- results$imageWeights[[pairName]]
+  } else if (is.null(pairName)) {
     df <- cbind(df, do.call(cbind, results$pairwiseAssoc))
   } else {
     df[[pairName]] <- results$pairwiseAssoc[[pairName]]
   }
 
-  return(df)
+  df
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a

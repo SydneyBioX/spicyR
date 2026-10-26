@@ -74,3 +74,17 @@ test_that("the weight model fits a cell type paired with itself, as scam() does"
     expected <- stats::predict(fit, data.frame(x1 = xnew, x2 = xnew))
     expect_equal(unname(z), as.vector(expected), tolerance = 1e-3)
 })
+
+test_that("topPairs() lists an image-method survival result, and chooses pairs", {
+  data("diabetesData", package = "spicyR")
+  d <- diabetesData
+  set.seed(3)
+  ev <- tapply(d$case, d$case, function(z) rexp(1))
+  d$survival <- survival::Surv(ev[as.character(d$case)], rep(1, ncol(d)))
+  res <- suppressMessages(spicy(d, condition = "survival", method = "image", from = "Tc", to = c("beta", "Th")))
+  tp <- topPairs(res)
+  expect_identical(names(tp), c("coefficient", "se", "p.value", "adj.pvalue", "from", "to"))
+  expect_setequal(rownames(tp), c("Tc__beta", "Tc__Th"))
+  expect_equal(tp$p.value, res$survivalResults$p.value[match(rownames(tp), res$survivalResults$test)])
+  expect_identical(rownames(topPairs(res, to = "Th")), "Tc__Th")
+})

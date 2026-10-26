@@ -94,7 +94,6 @@ BiocManager::install("SydneyBioX/spicyR")
 ```{r packages}
 library(spicyR)
 library(SpatialDatasets)
-library(ggplot2)
 library(survival)
 ```
 
@@ -117,14 +116,13 @@ spe <- spe[, !is.na(spe$ER.Status)]   # the 456 patients with known ER status
 spe$imageID <- spe$file_id
 spe$cellType <- spe$description
 
-table(spe$ER.Status[!duplicated(spe$metabricId)])   # patients by ER status
 sort(table(spe$cellType), decreasing = TRUE)
 ```
 
 Two of the cores, one ER− and one ER+:
 
-```{r data-plot, fig.width = 6.5, fig.height = 4.5, fig.show = "hold", out.width = "50%"}
-for (im in c("MB0869_1_366", "MB0501_1_222")) print(plotImage(spe, im))
+```{r data-plot, fig.width = 10, fig.height = 4.5}
+plotImage(spe, c("MB0869_1_366", "MB0501_1_222"))
 ```
 
 # Testing every pair of cell types
@@ -145,19 +143,18 @@ res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25)
 res
 ```
 
-All `r nrow(res$cellResults)` ordered pairs of cell types are tested, in a few seconds on one core; run time and
+All `r nrow(topPairs(res, n = NULL))` ordered pairs of cell types are tested, in a few seconds on one core; run time and
 memory grow roughly in proportion to the number of cells and to the radius. `topPairs()` lists the most significant.
-`intercept` is the average effect in ER− patients, and `coefficient` is the difference in average effect between
-ER+ and ER− patients (ER+ minus ER−), as a fraction of the `to` cells. P-values are adjusted across all pairs by the
+`excess_ref` and `excess_comp` are the average effect in ER− and in ER+ patients, as a fraction of the `to` cells,
+and `excess_difference` is their difference (ER+ minus ER−). P-values are adjusted across all pairs by the
 Benjamini–Hochberg method.
 
 ```{r top-pairs}
 topPairs(res, n = 8)
 ```
 
-`r with(topPairs(res, n = 8), sum(from == "HR+ CK7-" | to == "HR+ CK7-"))` of these eight pairs have `HR+ CK7-` tumour
-cells as the `from` or the `to` type, the most significant as the `from` type; we come back to them in
-[Tissue compartments](#tissue-compartments).
+Most of these pairs have `HR+ CK7-` tumour cells as the `from` or the `to` type, the most significant as the `from`
+type; we come back to them in [Tissue compartments](#tissue-compartments).
 
 ```{r check-top-pairs, include = FALSE}
 # the text above and in "Tissue compartments" describes these pairs
@@ -165,10 +162,12 @@ stopifnot(with(topPairs(res, n = 8), sum(from == "HR+ CK7-" | to == "HR+ CK7-"))
           topPairs(res, n = 1)$from == "HR+ CK7-")
 ```
 
-The full results are in `res$cellResults`, with one row per pair:
+`topPairs(res, n = NULL)` lists every pair, and `from` and `to` choose pairs. With `full = TRUE` it gives every
+column of the test:
 
 | Column | Meaning |
 |---|---|
+| `side` | the scale of the effect: `attract` (more `to` cells next to `from` cells than chance) or `avoid` |
 | `excess_ref`, `excess_comp` | average effect in the reference group (ER−) and the comparison group (ER+) |
 | `excess_difference`, `se`, `df` | their difference, its standard error and degrees of freedom |
 | `p_value`, `p_adj` | p-value (NA where the pair is not tested), and Benjamini–Hochberg adjusted p-value across all pairs |
@@ -195,7 +194,7 @@ We focus on an immune pair, T cells → `HR- Ki67+`: are proliferating hormone-r
 near T cells? Its effect is the extra fraction of these tumour cells with a T cell within 25 µm.
 
 ```{r one-pair}
-onePair <- res$cellResults["T cells__HR- Ki67+", c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+onePair <- topPairs(res, from = "T cells", to = "HR- Ki67+")
 onePair
 ```
 
@@ -230,21 +229,19 @@ This is an association in one cohort; it does not show that T cells attract the 
 cells carry no information about the pair (`NA`).
 
 ```{r bind}
-head(bind(res, pairName = "T cells__HR- Ki67+"))
+head(bind(res, from = "T cells", to = "HR- Ki67+"))
 ```
 
 # Looking at the images
 
-`plotImage()` shows one image: the density of all cells in blue, the `from` cells in gold and the `to` cells in dark
+`plotImage()` shows images: the density of all cells in blue, the `from` cells in gold and the `to` cells in dark
 red. With `r`, it draws the circle around each `to` cell inside which spicyR looks for `from` cells. We look at
-three images found with the interactive box plot.
+three images found with the interactive box plot. `bind()` has their effects and weights, with the images as row
+names.
 
 ```{r example-images}
-pair <- "T cells__HR- Ki67+"
 examples <- c("MB0150_1_155", "MB0132_1_533", "MB0244_1_519")
-i <- match(examples, res$imageID)
-ex <- data.frame(image = examples, ER = res$condition[i], effect = res$pairwiseAssoc[[pair]][i],
-                 weight = res$imageWeights[[pair]][i])
+ex <- bind(res, from = "T cells", to = "HR- Ki67+")[examples, ]
 ex
 ```
 
@@ -253,9 +250,8 @@ ex
 stopifnot(ex$effect[1] > 0.5, ex$effect[2] < 0, ex$effect[3] == 1, ex$weight[3] < min(ex$weight[1:2]) / 2)
 ```
 
-```{r example-images-plot, fig.width = 5.5, fig.height = 4.5, fig.show = "hold", out.width = "33%"}
-for (im in examples)
-  print(plotImage(spe, im, from = "T cells", to = "HR- Ki67+", r = 25) + labs(x = NULL, y = NULL, color = NULL))
+```{r example-images-plot, fig.width = 12, fig.height = 4.5}
+plotImage(spe, examples, from = "T cells", to = "HR- Ki67+", r = 25)
 ```
 
 In the ER+ image on the left, the T cells run along the band of tumour cells at the bottom: an effect of
@@ -267,7 +263,7 @@ its two tumour cells both happen to sit in a cluster of T cells.
 ::: {.callout .callout-tip}
 **Point size matters.** The right-hand image sits at the top of the box plot, but its weight is close to
 zero: an effect estimated from two cells says little. Weights also level off. Once an image has a few dozen `to`
-cells, more cells add little, because the differences between patients outweigh the noise within an image. The weights are in `res$imageWeights`.
+cells, more cells add little, because the differences between patients outweigh the noise within an image.
 :::
 
 # Tissue compartments
@@ -278,15 +274,14 @@ and the other tumour cells sit among them, so far more of those cells have an `H
 been placed at random among all the other cells, stroma included.
 
 ```{r compartments}
-tab <- res$cellResults[res$cellResults$from == "HR+ CK7-", ]
-head(tab[order(tab$p_value), c("to", "excess_ref", "excess_comp", "p_adj")], 6)
-ki67 <- tab["HR+ CK7-__HR+ CK7- Ki67+", ]
+topPairs(res, from = "HR+ CK7-", n = 6)
+ki67 <- topPairs(res, from = "HR+ CK7-", to = "HR+ CK7- Ki67+")
 ```
 
 ```{r check-compartments, include = FALSE}
 # fibroblasts and T cells are placed away from HR+ CK7- cells in ER+ tumours
 stopifnot(ki67$excess_comp > 0.3, ki67$excess_ref < 0.2,
-          all(tab[c("HR+ CK7-__Fibroblasts", "HR+ CK7-__T cells"), "excess_comp"] < 0))
+          all(topPairs(res, from = "HR+ CK7-", to = c("Fibroblasts", "T cells"))$excess_comp < 0))
 ```
 
 In ER+ tumours the effect for proliferating `HR+ CK7- Ki67+` cells is `r round(ki67$excess_comp, 2)`, against
@@ -308,7 +303,7 @@ the effect is then the number of extra `from` cells within the radius of each `t
 
 ```{r count}
 resCount <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25, effect = "count")
-onePairCount <- resCount$cellResults[pair, c("excess_ref", "excess_comp", "excess_difference", "p_value", "p_adj")]
+onePairCount <- topPairs(resCount, from = "T cells", to = "HR- Ki67+")
 onePairCount
 ```
 
@@ -350,12 +345,12 @@ resImages
 ```
 
 ```{r check-several-images, include = FALSE}
-stopifnot(sum(resDonors$cellResults$p_adj < 0.05, na.rm = TRUE) == 0, sum(resImages$cellResults$p_adj < 0.05, na.rm = TRUE) > 0)
+stopifnot(nrow(topPairs(resDonors, cutoff = 0.05)) == 0, nrow(topPairs(resImages, cutoff = 0.05)) > 0)
 ```
 
 ::: {.callout .callout-important}
 Treating every image as an independent patient overstates the evidence: images from one donor are alike, and here
-it turns up `r sum(resImages$cellResults$p_adj < 0.05, na.rm = TRUE)` pairs that the donors do not support. Always give `subject` when patients have several images.
+it turns up `r nrow(topPairs(resImages, cutoff = 0.05))` pairs that the donors do not support. Always give `subject` when patients have several images.
 :::
 
 # Adjusting for clinical covariates
@@ -375,9 +370,7 @@ Each covariate also has its own effect and p-value. A factor has one per level a
 `Grade3` compare grades 2 and 3 with grade 1.
 
 ```{r covariate-effects}
-covPair <- resCov$cellResults[pair, c("excess_difference", "p_value", "Age.At.Diagnosis_effect",
-                                      "Age.At.Diagnosis_p_value", "Grade2_effect", "Grade2_p_value",
-                                      "Grade3_effect", "Grade3_p_value")]
+covPair <- topPairs(resCov, from = "T cells", to = "HR- Ki67+")
 covPair
 ```
 
@@ -392,7 +385,8 @@ clear effect of its own on this pair. Patients with a missing covariate are left
 
 ::: {.callout .callout-note}
 A pair that cannot be adjusted, for example because its cell types appear in images of only one grade, is reported
-unadjusted, and its `adjusted_for` column says why. The printed summary above counts these pairs.
+unadjusted, and its `adjusted_for` column (with `topPairs(full = TRUE)`) says why. The printed summary above counts
+these pairs.
 :::
 
 Restricting `from` and `to` does not change the results for the pairs that are tested.
@@ -407,10 +401,11 @@ correlated. `combine = "cauchy"`, the Cauchy combination of @liu2020cauchy, is a
 
 ```{r radii}
 resR <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = c(10, 25, 50, 75))
-resR$cellResults[c("T cells__HR- Ki67+", "B cells__HR- Ki67+"), c("r", "excess_difference", "p_value")]
+topPairs(resR, from = c("T cells", "B cells"), to = "HR- Ki67+")
 ```
 
-`r` is the radius with the strongest evidence, and `p_value` the combined p-value over all radii.
+`r` is the radius with the strongest evidence, and `p_value` the combined p-value over all radii. `radiusPlot()`
+shows the evidence at each radius.
 
 ::: {.callout .callout-tip}
 The effect depends on the radius: at a larger radius more cells have a `from` cell nearby by chance, and the effect
@@ -420,13 +415,7 @@ the chosen radius is a little optimistic, because that radius was picked for its
 :::
 
 ```{r radii-plot, fig.width = 6, fig.height = 4}
-profile <- subset(resR$radiusResults, to == "HR- Ki67+" & from %in% c("T cells", "B cells"))
-ggplot(profile, aes(r, -log10(p_value), colour = from)) +
-  geom_line() +
-  geom_point() +
-  expand_limits(y = 0) +
-  labs(x = "radius (µm)", y = "-log10 p at each radius, ER+ vs ER-", colour = "from (to: HR- Ki67+)") +
-  theme_classic()
+radiusPlot(resR, from = c("T cells", "B cells"), to = "HR- Ki67+")
 ```
 
 # Is co-localisation associated with survival?
@@ -438,8 +427,7 @@ we use relapse-free survival, adjusting for age.
 spe$RFS <- Surv(spe$timeRFS, spe$eventRFS)
 resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = "Age.At.Diagnosis")
 resS
-head(resS$cellResults[order(resS$cellResults$p_value),
-                      c("from", "to", "p_value", "p_adj", "hazard_ratio_sd")])
+topPairs(resS, n = 6)
 ```
 
 The p-value comes from a score test that relates each patient's effect to their outcome. `hazard_ratio_sd` is the
@@ -448,11 +436,11 @@ had a lower risk of relapse. It is missing when the effect barely varies between
 
 ```{r check-survival, include = FALSE}
 # the two strongest pairs have HR+ CK7- as the from type, with a lower risk of relapse for a higher effect
-topS <- resS$cellResults[order(resS$cellResults$p_value)[1:2], ]
+topS <- topPairs(resS, n = 2)
 stopifnot(all(topS$from == "HR+ CK7-"), all(topS$p_adj < 0.05), all(topS$hazard_ratio_sd < 1))
 ```
 
-`r sum(resS$cellResults$p_adj < 0.05, na.rm = TRUE)` pairs are significant after adjusting for multiple testing. The
+`r nrow(topPairs(resS, cutoff = 0.05))` pairs are significant after adjusting for multiple testing. The
 two strongest have `HR+ CK7-` tumour cells as the `from` type: patients in whom more of the other tumour cells sat
 next to `HR+ CK7-` cells relapsed later. These cells are typical of ER+ tumours, and ER status is itself related to
 relapse, so we add it to the covariates.
@@ -463,7 +451,7 @@ resSER
 ```
 
 ```{r check-survival-er, include = FALSE}
-stopifnot(sum(resSER$cellResults$p_adj < 0.05, na.rm = TRUE) == 0)
+stopifnot(nrow(topPairs(resSER, cutoff = 0.05)) == 0)
 ```
 
 No pair remains significant: these pairs say little about relapse beyond the tumour's ER status.
@@ -473,32 +461,26 @@ No pair remains significant: these pairs say little about relapse beyond the tum
 A test should give few significant results when there is nothing to find. Shuffling the ER labels across patients
 removes any real difference, so about 5% of pairs should then have p < 0.05, and about 1% p < 0.01.
 `calibrationCheck()` shuffles the condition and runs `spicy()` with the same arguments, ten times by default.
+`summary()` averages the shuffles and `plot()` shows each of them.
 
 ```{r shuffle}
 set.seed(2026)
 shuffles <- calibrationCheck(spe, condition = "ER.Status", subject = "metabricId", r = 25)
-calibration <- aggregate(percent ~ threshold, shuffles, mean)
+calibration <- summary(shuffles)
 calibration
 ```
 
 ```{r check-shuffle, include = FALSE}
 # the text below describes the shuffled-label rates as close to the nominal ones
-stopifnot(calibration$percent[calibration$threshold == 0.05] < 8,
-          calibration$percent[calibration$threshold == 0.01] < 2.5)
+stopifnot(calibration$percent < c(8, 2.5))
 ```
 
 ```{r shuffle-plot, fig.width = 5, fig.height = 3.5}
-ggplot(shuffles, aes(factor(threshold), percent)) +
-  geom_jitter(width = 0.1, height = 0, size = 2, alpha = 0.7) +
-  geom_point(aes(y = 100 * threshold), shape = 95, size = 14, colour = "#b3261e") +
-  scale_y_continuous(limits = c(0, 15), labels = function(v) paste0(v, "%")) +
-  labs(x = "p-value threshold", y = "pairs below the threshold",
-       title = "10 shuffles of the ER labels (red: expected)") +
-  theme_classic()
+plot(shuffles)
 ```
 
-On average `r round(calibration$percent[calibration$threshold == 0.05], 1)`% of pairs have p < 0.05 and
-`r round(calibration$percent[calibration$threshold == 0.01], 1)`% have p < 0.01, close to the expected 5% and 1%.
+On average `r round(calibration$percent[1], 1)`% of pairs have p < 0.05 and `r round(calibration$percent[2], 1)`%
+have p < 0.01, close to the expected 5% and 1%.
 Pairs share cells, so the percentage moves by a few points from one shuffle to the next.
 
 ::: {.callout .callout-tip}
@@ -568,7 +550,9 @@ spicyR 2.0 changes the default test. Before 2.0, `spicy()` compared a per-image 
 groups with a weighted mixed model [@canete2022spicyr]. That test is still available, and gives the same results as
 before, with `method = "image"`; it is described in the vignette "The original image-level test in spicyR". It is
 also the method to use with your own per-image statistics (`alternateResult`), for example from the Statial
-package. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work with both tests.
+package. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work with both tests. For the image-level test,
+`topPairs()` reports `intercept`, `coefficient`, `p.value` and `adj.pvalue` as before; for the cell-level test it
+reports the effects and p-values described above.
 
 ```{r image-method}
 resImage <- spicy(spe, condition = "ER.Status", subject = "metabricId", method = "image",
@@ -589,11 +573,12 @@ Python. The names follow Python conventions:
 |---|---|
 | `spicy(spe, condition, subject, imageID =, cellType =, from =, to =)` | `spicy(adata, condition, subject, image_id=, cell_type=, from_=, to=)` |
 | `condition = "RFS"` with a `Surv(time, event)` column | `survival=("timeRFS", "eventRFS")` |
-| `topPairs(res)`, `res$cellResults` | `res.top_pairs()`, `res.cell_results` |
-| `signifPlot(res)`, `spicyBoxPlot(res, from, to)`, `bind(res)` | `res.signif_plot()`, `res.box_plot(from_, to)`, `res.bind()` |
-| `plotImage(spe, image, from, to)`, `res$imageWeights` | `spicyr.plot_image(adata, image, from_, to)`, `res.image_weights` |
+| `topPairs(res, from =, to =, full =)` | `res.top_pairs(from_=, to=, full=)` |
+| `signifPlot(res)`, `spicyBoxPlot(res, from, to)`, `radiusPlot(res, from, to)` | `res.signif_plot()`, `res.box_plot(from_, to)`, `res.radius_plot(from_, to)` |
+| `bind(res)`, `bind(res, from, to)` | `res.bind()`, `res.bind(from_=, to=)` |
+| `plotImage(spe, images, from, to)` | `spicyr.plot_image(adata, images, from_, to)` |
 | `spicy("cells.zarr", condition, tableKey =, imageInfo =)` | `spicy("cells.zarr", condition, table_key=, image_info=)` |
-| `calibrationCheck(spe, condition, subject, nShuffles =)` | `spicyr.calibration_check(adata, condition, subject, n_shuffles=)` |
+| `calibrationCheck(spe, condition, subject, nShuffles =)`, `summary()`, `plot()` | `spicyr.calibration_check(adata, condition, subject, n_shuffles=)`, `.summary()`, `.plot()` |
 
 The image-level test is available only in R.
 

@@ -1,3 +1,19 @@
+CHANGES IN VERSION 1.99.42
+--------------------------
+
+    o topPairs() takes `from` and `to` to choose pairs, and `full = TRUE` for every column of the test. For the
+      cell method it reports the test's own columns (from, to, side, excess_ref, excess_comp, excess_difference,
+      p_value, p_adj, with r, the covariate effects or hazard_ratio_sd when present) instead of intercept,
+      coefficient, p.value and adj.pvalue, which remain for the image method. With `cutoff` and no `n` it lists
+      every pair below the cutoff, not only the first 10. The vignette no longer reads $cellResults.
+    o bind(results, from =, to =) gives one pair's table: each image's effect and its weight in the test. bind()
+      names its rows by image, so images can be looked up by ID.
+    o plotImage() draws several images side by side, on the same scale.
+    o radiusPlot(): the p-value of chosen pairs at each radius, for a result with several radii.
+    o calibrationCheck() results have summary() (the average percentage over shuffles at each threshold, with the
+      expected one) and plot().
+    o print() of a result gives the patients (or images) in each group.
+
 CHANGES IN VERSION 1.99.41
 --------------------------
 

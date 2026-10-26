@@ -2,6 +2,8 @@
 % Please edit documentation in R/calibrationCheck.R
 \name{calibrationCheck}
 \alias{calibrationCheck}
+\alias{summary.spicyCalibration}
+\alias{plot.spicyCalibration}
 \title{Check that spicy() is calibrated on your data by shuffling the condition}
 \usage{
 calibrationCheck(
@@ -12,6 +14,10 @@ calibrationCheck(
   thresholds = c(0.05, 0.01),
   ...
 )
+
+\method{summary}{spicyCalibration}(object, ...)
+
+\method{plot}{spicyCalibration}(x, ...)
 }
 \arguments{
 \item{cells}{The cells, as for \code{\link[=spicy]{spicy()}}: a \code{SpatialExperiment}, \code{SingleCellExperiment} or \code{data.frame} (not a
@@ -27,10 +33,14 @@ condition is shuffled across images.}
 \item{thresholds}{The p-value thresholds to report.}
 
 \item{...}{Other arguments of \code{\link[=spicy]{spicy()}}, such as \code{r}, \code{imageID}, \code{cellType} or \code{covariates}.}
+
+\item{object, x}{The result of \code{calibrationCheck()}.}
 }
 \value{
 A \code{data.frame} with one row per shuffle and threshold: \code{shuffle}, \code{threshold} and \code{percent}, the
-percentage of pairs whose p-value is below the threshold.
+percentage of pairs whose p-value is below the threshold. \code{summary()} gives the average percentage over the
+shuffles at each threshold, with the expected one, and \code{plot()} shows each shuffle against the expected
+percentage.
 }
 \description{
 Shuffles the condition across patients (or across images, without \code{subject}), which removes any real difference
@@ -41,6 +51,8 @@ percentage moves by a few points from one shuffle to the next; look at the avera
 \examples{
 data("diabetesData")
 set.seed(1)
-calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
+shuffles <- calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
+summary(shuffles)
+plot(shuffles)
 }
 \concept{test}

@@ -1,11 +1,12 @@
-#' Plot one image, showing its cell types or the `from` and `to` cells of a pair
+#' Plot images, showing their cell types or the `from` and `to` cells of a pair
 #'
 #' Without `from` and `to`, every cell is shown, coloured by its cell type. With them, the density of all cells is
 #' shown in blue, with the `from` and `to` cells on top. With `r`, a circle of radius `r` is drawn around each `to`
-#' cell: the `from` cells inside the circles are those that spicyR counts.
+#' cell: the `from` cells inside the circles are those that spicyR counts. Several images are drawn side by side, on
+#' the same scale.
 #'
 #' @param cells A SummarizedExperiment object.
-#' @param imageToPlot The ID of the image to be plotted.
+#' @param imageToPlot The ID of the image to plot, or several IDs.
 #' @param from The "from" cell type. Optional, with `to`.
 #' @param to The "to" cell type. Optional, with `from`.
 #' @param imageID The name of the imageID column in the SummarizedExperiment object.
@@ -20,6 +21,7 @@
 #' plotImage(diabetesData, "A09")
 #' plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
 #' plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
+#' plotImage(diabetesData, c("A09", "A11"), from = "acinar", to = "alpha")
 #' 
 #' @export
 #' @import ggplot2
@@ -43,8 +45,9 @@ plotImage = function(cells,
     stop(paste0(imageID, " not found in colData."))
   }
   
-  if (!imageToPlot %in% unique(cd[[imageID]])) {
-    stop(paste0("imageToPlot not found in ", imageID, " column."))
+  miss <- setdiff(imageToPlot, cd[[imageID]])
+  if (length(miss)) {
+    stop(paste0("imageToPlot not found in ", imageID, " column: ", paste(miss, collapse = ", ")))
   }
   
   if (!cellType %in% colnames(cd)) {
@@ -73,11 +76,15 @@ plotImage = function(cells,
     stop("from and/or to cell types not found in data.")
   }
   
-  # filter for specific image
-  keep <- cd[[imageID]] == imageToPlot
+  # the chosen images, in the order given
+  keep <- cd[[imageID]] %in% imageToPlot
   cData = data.frame(x = coords[keep, 1],
                      y = coords[keep, 2],
-                     cellType = as.character(cd[[cellType]][keep]))
+                     cellType = as.character(cd[[cellType]][keep]),
+                     image = factor(cd[[imageID]][keep], levels = unique(imageToPlot)))
+  # one image: its ID as the title; several: one panel each
+  layout <- if (length(unique(imageToPlot)) == 1) labs(title = paste0(imageID, ": ", imageToPlot)) else
+    facet_wrap(~ image)
   if (is.null(from)) {   # every cell, coloured by its cell type: a type has the same colour in every image
     types <- if (is.factor(cd[[cellType]])) levels(cd[[cellType]]) else sort(unique(as.character(cd[[cellType]])))
     hues <- seq(15, 375, length.out = length(types) + 1)[seq_along(types)]   # ggplot2's default hue palette
@@ -87,7 +94,8 @@ plotImage = function(cells,
              scale_colour_manual(values = pal, breaks = intersect(types, cData$cellType)) +
              coord_equal() +
              theme_classic() +
-             labs(title = paste0(imageID, ": ", imageToPlot), colour = cellType) +
+             layout +
+             labs(colour = cellType) +
              guides(colour = guide_legend(override.aes = list(size = 2))))
   }
   cData$cellTypeNew <- ifelse(cData$cellType %in% c(from, to), cData$cellType, "Other")
@@ -100,7 +108,7 @@ plotImage = function(cells,
     f <- cData[cData$cellType == to, , drop = FALSE]
     a <- seq(0, 2 * pi, length.out = 41)
     circles <- data.frame(x = rep(f$x, each = 41) + r * cos(a), y = rep(f$y, each = 41) + r * sin(a),
-                          id = rep(seq_len(nrow(f)), each = 41))
+                          id = rep(seq_len(nrow(f)), each = 41), image = rep(f$image, each = 41))
   }
   p <- ggplot() +
     stat_density_2d(data = cData, aes(x = .data$x, y = .data$y, fill = after_stat(density)), 
@@ -112,8 +120,8 @@ plotImage = function(cells,
     scale_fill_distiller(palette = "Blues", direction = 1) +
     coord_equal() +
     theme_classic() +
-    labs(title = paste0(imageID, ": ", imageToPlot),
-         color = cellType)
+    layout +
+    labs(color = cellType)
   if (!is.null(circles))
     p <- p + geom_path(data = circles, aes(x = .data$x, y = .data$y, group = .data$id), colour = "#850f07",
                        linewidth = 0.3, alpha = 0.7)

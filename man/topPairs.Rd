@@ -3,33 +3,63 @@
 \name{topPairs}
 \alias{topPairs}
 \alias{topPairs,SpicyResults-method}
-\title{A table of the significant results from spicy tests}
+\title{The most significant pairs, or the results of chosen pairs}
 \usage{
-topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL, figures = NULL)
+topPairs(
+  x,
+  coef = NULL,
+  n = 10,
+  adj = "fdr",
+  cutoff = NULL,
+  figures = NULL,
+  from = NULL,
+  to = NULL,
+  full = FALSE
+)
 }
 \arguments{
-\item{x}{The output from spicy.}
+\item{x}{The output from \code{\link[=spicy]{spicy()}}.}
 
-\item{coef}{Which coefficient to list.}
+\item{coef}{Which coefficient to list: a column of \code{x$p.value}, or with the cell method and more than two
+conditions, a level of the condition.}
 
-\item{n}{Extract the top n most significant pairs.}
+\item{n}{The number of pairs to list. \code{NULL} lists every pair, as does leaving \code{n} out when \code{cutoff} is given.}
 
 \item{adj}{Which p-value adjustment method to use, argument for p.adjust().}
 
-\item{cutoff}{A p-value threshold to extract significant pairs.}
+\item{cutoff}{List only the pairs whose adjusted p-value is at most \code{cutoff}.}
 
 \item{figures}{Round to \code{figures} significant figures.}
+
+\item{from, to}{Only the pairs with these \code{from} and \code{to} cell types.}
+
+\item{full}{Cell method: every column of the test, not only the main ones.}
 }
 \value{
-A data.frame
+A data.frame, one row per pair, with the pair (\code{"from__to"}) as row names.
 }
 \description{
-A table of the significant results from spicy tests
+Lists the pairs tested by \code{\link[=spicy]{spicy()}}, most significant first. Give \code{from} and/or \code{to} to see chosen pairs, and
+\code{n = NULL} to see every pair.
+}
+\details{
+For the cell method (the default of \code{\link[=spicy]{spicy()}}) the table has one row per pair (and per level with more than two
+conditions), with the columns of the test: \code{from}, \code{to}, \code{side}, \code{excess_ref} and \code{excess_comp} (the average
+effect in the reference and the comparison group), \code{excess_difference}, \code{p_value} and \code{p_adj}; with several
+radii, \code{r}, the radius with the strongest evidence; with covariates, the effect and p-value of each
+(\verb{<covariate>_effect}, \verb{<covariate>_p_value}); for survival, \code{hazard_ratio_sd}. \code{full = TRUE} adds the
+standard error, degrees of freedom, the variance between patients (\code{tau2}), what the test was adjusted for and
+the unadjusted test. For the image method the columns are \code{intercept}, \code{coefficient}, \code{p.value},
+\code{adj.pvalue}, \code{from} and \code{to}, as in spicyR 1.x.
 }
 \examples{
 
 data(spicyTest)
 topPairs(spicyTest)
+
+data("diabetesData")
+res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = c("Th", "beta"))
+topPairs(res, from = "Tc", to = "Th")
 
 }
 \concept{test}
