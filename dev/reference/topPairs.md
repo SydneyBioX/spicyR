@@ -68,16 +68,17 @@ names.
 For the cell method (the default of
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md))
 the table has one row per pair (and per level with more than two
-conditions), with the columns of the test: `from`, `to`, `side`,
-`excess_ref` and `excess_comp` (the average effect in the reference and
-the comparison group), `excess_difference`, `p_value` and `p_adj`; with
+conditions), with the columns of the test: `from`, `to`, `excess_ref`
+and `excess_comp` (the average effect in the reference and the
+comparison group), `excess_difference`, `p_value` and `p_adj`; with
 several radii, `r`, the radius with the strongest evidence; with
 covariates, the effect and p-value of each (`<covariate>_effect`,
 `<covariate>_p_value`); for survival, `hazard_ratio_sd`. `full = TRUE`
-adds the standard error, degrees of freedom, the variance between
-patients (`tau2`), what the test was adjusted for and the unadjusted
-test. For the image method the columns are `intercept`, `coefficient`,
-`p.value`, `adj.pvalue`, `from` and `to`, as in spicyR 1.x.
+adds the scale of the effect (`side`), the standard error, degrees of
+freedom, the variance between patients (`tau2`), what the test was
+adjusted for and the unadjusted test. For the image method the columns
+are `intercept`, `coefficient`, `p.value`, `adj.pvalue`, `from` and
+`to`, as in spicyR 1.x.
 
 ## Examples
 
@@ -111,10 +112,10 @@ topPairs(spicyTest)
 data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = c("Th", "beta"))
 topPairs(res, from = "Tc", to = "Th")
-#>                       from to         level    side excess_ref
-#> Tc__Th__Onset           Tc Th         Onset attract   0.272768
-#> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768
-#>                       excess_difference   p_value     p_adj
-#> Tc__Th__Onset                 0.1023755 0.4114593 0.4114593
-#> Tc__Th__Long-duration         0.0398330 0.7354259 0.7354259
+#>                       from to         level excess_ref excess_difference
+#> Tc__Th__Onset           Tc Th         Onset   0.272768         0.1023755
+#> Tc__Th__Long-duration   Tc Th Long-duration   0.272768         0.0398330
+#>                         p_value     p_adj
+#> Tc__Th__Onset         0.4114593 0.4114593
+#> Tc__Th__Long-duration 0.7354259 0.7354259
 ```

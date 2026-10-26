@@ -424,13 +424,13 @@ topPairs(spicyMixedTest)
 #>                          intercept coefficient      p.value adj.pvalue
 #> beta__delta           6.081501e+01  -15.433246 0.0006616399 0.09171146
 #> delta__beta           6.090722e+01  -15.276362 0.0007164958 0.09171146
-#> B__Th                -5.773160e-15   10.480124 0.0127535308 0.42316679
+#> B__Th                 5.773160e-15   10.480124 0.0127535308 0.42316679
 #> delta__delta          7.021912e+01  -16.358091 0.0155005361 0.42316679
-#> Th__B                 3.996803e-15   10.003453 0.0173028316 0.42316679
-#> B__unknown           -2.498002e-15    4.584274 0.0182158655 0.42316679
-#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646993 0.42316679
+#> Th__B                 7.105427e-15   10.003453 0.0173028316 0.42316679
+#> B__unknown            2.386980e-15    4.584274 0.0182158687 0.42316679
+#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199647002 0.42316679
 #> unknown__macrophage   4.339587e+00   -5.274674 0.0222619390 0.42316679
-#> unknown__B           -1.665335e-16    4.680750 0.0244004284 0.42316679
+#> unknown__B           -1.665335e-16    4.680750 0.0244004364 0.42316679
 #> macrophage__unknown   4.305429e+00   -4.886438 0.0249693473 0.42316679
 #>                             from         to
 #> beta__delta                 beta      delta
@@ -481,7 +481,7 @@ sessionInfo()
 #> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [15] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [17] BiocGenerics_0.59.12        generics_0.1.4             
-#> [19] spicyR_1.99.43              BiocStyle_2.41.0           
+#> [19] spicyR_1.99.44              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           

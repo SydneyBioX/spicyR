@@ -23,15 +23,15 @@ cells had been moved next to `from` cells and the rest left where chance
 would put them. For a pair whose `to` cells avoid the `from` cells
 (fewer have one nearby than chance, over all images), the effect is
 measured the other way: -0.2 means as if a fifth of the `to` cells that
-chance would put next to a `from` cell had been moved away. The `side`
-column says which scale a pair uses. Each `to` cell counts once, however
-many `from` cells are beside it, so more numerous or more tightly packed
-`from` cells do not inflate the effect. Because the comparison uses only
-the cells that are actually there, empty regions such as holes or air
-spaces, and uneven cell density, do not by themselves create a signal
-(artefacts that affect one cell type more than others are not removed).
-spicyR then compares the effect between groups of patients, treating
-patients, not images or cells, as the units of the test.
+chance would put next to a `from` cell had been moved away. Each `to`
+cell counts once, however many `from` cells are beside it, so more
+numerous or more tightly packed `from` cells do not inflate the effect.
+Because the comparison uses only the cells that are actually there,
+empty regions such as holes or air spaces, and uneven cell density, do
+not by themselves create a signal (artefacts that affect one cell type
+more than others are not removed). spicyR then compares the effect
+between groups of patients, treating patients, not images or cells, as
+the units of the test.
 
 **Pairs are directional.** Tumour cells → T cells asks whether T cells
 are placed near tumour cells (the extra fraction of T cells with a
@@ -184,33 +184,24 @@ P-values are adjusted across all pairs by the Benjamini–Hochberg method.
 ``` r
 
 topPairs(res, n = 8)
-#>                                    from             to    side excess_ref
-#> HR+ CK7-__HR+ CK7- Ki67+       HR+ CK7- HR+ CK7- Ki67+ attract 0.08639859
-#> HR+ CK7-__HR+ CK7-             HR+ CK7-       HR+ CK7- attract 0.23885209
-#> HR+ CK7- Ki67+__HR- CK7+ HR+ CK7- Ki67+       HR- CK7+ attract 0.23540053
-#> HR- CK7+__HR+ CK7- Ki67+       HR- CK7+ HR+ CK7- Ki67+ attract 0.41525086
-#> HR+ CK7-__HR- CK7+             HR+ CK7-       HR- CK7+ attract 0.10192807
-#> HR+ CK7-__HR- CK7-             HR+ CK7-       HR- CK7- attract 0.08379497
-#> Myofibroblasts__HR+ CK7- Myofibroblasts       HR+ CK7-   avoid 0.18749744
-#> HER2+__HR- CK7-                   HER2+       HR- CK7- attract 0.08406054
-#>                          excess_comp excess_difference      p_value
-#> HR+ CK7-__HR+ CK7- Ki67+  0.63951814        0.55311955 4.522041e-20
-#> HR+ CK7-__HR+ CK7-        0.59991693        0.36106484 4.450974e-13
-#> HR+ CK7- Ki67+__HR- CK7+  0.02446466       -0.21093586 1.084756e-12
-#> HR- CK7+__HR+ CK7- Ki67+  0.09239766       -0.32285320 7.884598e-12
-#> HR+ CK7-__HR- CK7+        0.49109228        0.38916421 8.591488e-12
-#> HR+ CK7-__HR- CK7-        0.42799655        0.34420159 5.783721e-11
-#> Myofibroblasts__HR+ CK7- -0.11343072       -0.30092815 6.011775e-08
-#> HER2+__HR- CK7-           0.01444977       -0.06961077 9.775584e-07
-#>                                 p_adj
-#> HR+ CK7-__HR+ CK7- Ki67+ 2.120837e-17
-#> HR+ CK7-__HR+ CK7-       1.043753e-10
-#> HR+ CK7- Ki67+__HR- CK7+ 1.695835e-10
-#> HR- CK7+__HR+ CK7- Ki67+ 8.058816e-10
-#> HR+ CK7-__HR- CK7+       8.058816e-10
-#> HR+ CK7-__HR- CK7-       4.520942e-09
-#> Myofibroblasts__HR+ CK7- 4.027889e-06
-#> HER2+__HR- CK7-          5.730936e-05
+#>                                    from             to excess_ref excess_comp
+#> HR+ CK7-__HR+ CK7- Ki67+       HR+ CK7- HR+ CK7- Ki67+ 0.08639859  0.63951814
+#> HR+ CK7-__HR+ CK7-             HR+ CK7-       HR+ CK7- 0.23885209  0.59991693
+#> HR+ CK7- Ki67+__HR- CK7+ HR+ CK7- Ki67+       HR- CK7+ 0.23540053  0.02446466
+#> HR- CK7+__HR+ CK7- Ki67+       HR- CK7+ HR+ CK7- Ki67+ 0.41525086  0.09239766
+#> HR+ CK7-__HR- CK7+             HR+ CK7-       HR- CK7+ 0.10192807  0.49109228
+#> HR+ CK7-__HR- CK7-             HR+ CK7-       HR- CK7- 0.08379497  0.42799655
+#> Myofibroblasts__HR+ CK7- Myofibroblasts       HR+ CK7- 0.18749744 -0.11343072
+#> HER2+__HR- CK7-                   HER2+       HR- CK7- 0.08406054  0.01444977
+#>                          excess_difference      p_value        p_adj
+#> HR+ CK7-__HR+ CK7- Ki67+        0.55311955 4.522041e-20 2.120837e-17
+#> HR+ CK7-__HR+ CK7-              0.36106484 4.450974e-13 1.043753e-10
+#> HR+ CK7- Ki67+__HR- CK7+       -0.21093586 1.084756e-12 1.695835e-10
+#> HR- CK7+__HR+ CK7- Ki67+       -0.32285320 7.884598e-12 8.058816e-10
+#> HR+ CK7-__HR- CK7+              0.38916421 8.591488e-12 8.058816e-10
+#> HR+ CK7-__HR- CK7-              0.34420159 5.783721e-11 4.520942e-09
+#> Myofibroblasts__HR+ CK7-       -0.30092815 6.011775e-08 4.027889e-06
+#> HER2+__HR- CK7-                -0.06961077 9.775584e-07 5.730936e-05
 ```
 
 Most of these pairs have `HR+ CK7-` tumour cells as the `from` or the
@@ -218,17 +209,14 @@ Most of these pairs have `HR+ CK7-` tumour cells as the `from` or the
 in [Tissue compartments](#tissue-compartments).
 
 `topPairs(res, n = NULL)` lists every pair, and `from` and `to` choose
-pairs. With `full = TRUE` it gives every column of the test:
+pairs. Its columns:
 
 | Column | Meaning |
 |----|----|
-| `side` | the scale of the effect: `attract` (more `to` cells next to `from` cells than chance) or `avoid` |
 | `excess_ref`, `excess_comp` | average effect in the reference group (ER−) and the comparison group (ER+) |
-| `excess_difference`, `se`, `df` | their difference, its standard error and degrees of freedom |
+| `excess_difference` | their difference |
 | `p_value`, `p_adj` | p-value (NA where the pair is not tested), and Benjamini–Hochberg adjusted p-value across all pairs |
-| `tau2` | how much the effect varies between patients within a group |
-| `adjusted_for`, `<covariate>_effect` | with covariates, what the test was adjusted for and the effect of each covariate |
-| `unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj` | with covariates, the same test without them |
+| `<covariate>_effect`, `<covariate>_p_value` | with covariates, the effect of each covariate and its p-value |
 
 With more than two groups there is one row per pair and group, each
 compared with the reference group, in a column `level`.
@@ -259,10 +247,10 @@ is the extra fraction of these tumour cells with a T cell within 25 µm.
 
 onePair <- topPairs(res, from = "T cells", to = "HR- Ki67+")
 onePair
-#>                       from        to    side excess_ref excess_comp
-#> T cells__HR- Ki67+ T cells HR- Ki67+ attract 0.02747419   0.1387424
-#>                    excess_difference      p_value     p_adj
-#> T cells__HR- Ki67+         0.1112682 0.0005879487 0.0114895
+#>                       from        to excess_ref excess_comp excess_difference
+#> T cells__HR- Ki67+ T cells HR- Ki67+ 0.02747419   0.1387424         0.1112682
+#>                         p_value     p_adj
+#> T cells__HR- Ki67+ 0.0005879487 0.0114895
 ```
 
 In ER− tumours these tumour cells have a T cell nearby barely more often
@@ -368,27 +356,27 @@ the other cells, stroma included.
 ``` r
 
 topPairs(res, from = "HR+ CK7-", n = 6)
-#>                                      from                     to    side
-#> HR+ CK7-__HR+ CK7- Ki67+         HR+ CK7-         HR+ CK7- Ki67+ attract
-#> HR+ CK7-__HR+ CK7-               HR+ CK7-               HR+ CK7- attract
-#> HR+ CK7-__HR- CK7+               HR+ CK7-               HR- CK7+ attract
-#> HR+ CK7-__HR- CK7-               HR+ CK7-               HR- CK7- attract
-#> HR+ CK7-__Macrophages Vim+ Slug+ HR+ CK7- Macrophages Vim+ Slug+ attract
-#> HR+ CK7-__HR+ CK7- Slug+         HR+ CK7-         HR+ CK7- Slug+ attract
-#>                                  excess_ref excess_comp excess_difference
-#> HR+ CK7-__HR+ CK7- Ki67+         0.08639859   0.6395181         0.5531196
-#> HR+ CK7-__HR+ CK7-               0.23885209   0.5999169         0.3610648
-#> HR+ CK7-__HR- CK7+               0.10192807   0.4910923         0.3891642
-#> HR+ CK7-__HR- CK7-               0.08379497   0.4279966         0.3442016
-#> HR+ CK7-__Macrophages Vim+ Slug+ 0.04024329   0.3464899         0.3062466
-#> HR+ CK7-__HR+ CK7- Slug+         0.05158642   0.5109853         0.4593989
-#>                                       p_value        p_adj
-#> HR+ CK7-__HR+ CK7- Ki67+         4.522041e-20 2.120837e-17
-#> HR+ CK7-__HR+ CK7-               4.450974e-13 1.043753e-10
-#> HR+ CK7-__HR- CK7+               8.591488e-12 8.058816e-10
-#> HR+ CK7-__HR- CK7-               5.783721e-11 4.520942e-09
-#> HR+ CK7-__Macrophages Vim+ Slug+ 1.514630e-06 7.892905e-05
-#> HR+ CK7-__HR+ CK7- Slug+         5.667043e-06 2.416221e-04
+#>                                      from                     to excess_ref
+#> HR+ CK7-__HR+ CK7- Ki67+         HR+ CK7-         HR+ CK7- Ki67+ 0.08639859
+#> HR+ CK7-__HR+ CK7-               HR+ CK7-               HR+ CK7- 0.23885209
+#> HR+ CK7-__HR- CK7+               HR+ CK7-               HR- CK7+ 0.10192807
+#> HR+ CK7-__HR- CK7-               HR+ CK7-               HR- CK7- 0.08379497
+#> HR+ CK7-__Macrophages Vim+ Slug+ HR+ CK7- Macrophages Vim+ Slug+ 0.04024329
+#> HR+ CK7-__HR+ CK7- Slug+         HR+ CK7-         HR+ CK7- Slug+ 0.05158642
+#>                                  excess_comp excess_difference      p_value
+#> HR+ CK7-__HR+ CK7- Ki67+           0.6395181         0.5531196 4.522041e-20
+#> HR+ CK7-__HR+ CK7-                 0.5999169         0.3610648 4.450974e-13
+#> HR+ CK7-__HR- CK7+                 0.4910923         0.3891642 8.591488e-12
+#> HR+ CK7-__HR- CK7-                 0.4279966         0.3442016 5.783721e-11
+#> HR+ CK7-__Macrophages Vim+ Slug+   0.3464899         0.3062466 1.514630e-06
+#> HR+ CK7-__HR+ CK7- Slug+           0.5109853         0.4593989 5.667043e-06
+#>                                         p_adj
+#> HR+ CK7-__HR+ CK7- Ki67+         2.120837e-17
+#> HR+ CK7-__HR+ CK7-               1.043753e-10
+#> HR+ CK7-__HR- CK7+               8.058816e-10
+#> HR+ CK7-__HR- CK7-               4.520942e-09
+#> HR+ CK7-__Macrophages Vim+ Slug+ 7.892905e-05
+#> HR+ CK7-__HR+ CK7- Slug+         2.416221e-04
 ki67 <- topPairs(res, from = "HR+ CK7-", to = "HR+ CK7- Ki67+")
 ```
 
@@ -511,14 +499,14 @@ own effect and p-value. A factor has one per level after the first:
 
 covPair <- topPairs(resCov, from = "T cells", to = "HR- Ki67+")
 covPair
-#>                       from        to    side excess_ref excess_comp
-#> T cells__HR- Ki67+ T cells HR- Ki67+ attract 0.02554753   0.1396577
-#>                    excess_difference     p_value      p_adj
-#> T cells__HR- Ki67+         0.1141102 0.001025469 0.02290214
-#>                    Age.At.Diagnosis_effect Age.At.Diagnosis_p_value
-#> T cells__HR- Ki67+             0.001110613                0.2308008
-#>                    Grade2_effect Grade2_p_value Grade3_effect Grade3_p_value
-#> T cells__HR- Ki67+    0.01812245      0.7678563    0.02406923      0.6902192
+#>                       from        to excess_ref excess_comp excess_difference
+#> T cells__HR- Ki67+ T cells HR- Ki67+ 0.02554753   0.1396577         0.1141102
+#>                        p_value      p_adj Age.At.Diagnosis_effect
+#> T cells__HR- Ki67+ 0.001025469 0.02290214             0.001110613
+#>                    Age.At.Diagnosis_p_value Grade2_effect Grade2_p_value
+#> T cells__HR- Ki67+                0.2308008    0.01812245      0.7678563
+#>                    Grade3_effect Grade3_p_value
+#> T cells__HR- Ki67+    0.02406923      0.6902192
 ```
 
 The difference between ER+ and ER− patients is much the same after
@@ -527,9 +515,8 @@ on this pair. Patients with a missing covariate are left out of the
 adjusted test.
 
 A pair that cannot be adjusted, for example because its cell types
-appear in images of only one grade, is reported unadjusted, and its
-`adjusted_for` column (with `topPairs(full = TRUE)`) says why. The
-printed summary above counts these pairs.
+appear in images of only one grade, is reported unadjusted. The printed
+summary above counts these pairs.
 
 Restricting `from` and `to` does not change the results for the pairs
 that are tested.
@@ -549,9 +536,9 @@ Cauchy combination of Liu and Xie (2020), is another alternative.
 
 resR <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = c(10, 25, 50, 75))
 topPairs(resR, from = c("T cells", "B cells"), to = "HR- Ki67+")
-#>                       from        to  r    side   excess_ref excess_comp
-#> T cells__HR- Ki67+ T cells HR- Ki67+ 25 attract  0.027474191   0.1387424
-#> B cells__HR- Ki67+ B cells HR- Ki67+ 25 attract -0.008642086   0.0452753
+#>                       from        to  r   excess_ref excess_comp
+#> T cells__HR- Ki67+ T cells HR- Ki67+ 25  0.027474191   0.1387424
+#> B cells__HR- Ki67+ B cells HR- Ki67+ 25 -0.008642086   0.0452753
 #>                    excess_difference     p_value      p_adj
 #> T cells__HR- Ki67+        0.11126824 0.002041489 0.02994183
 #> B cells__HR- Ki67+        0.05391739 0.030792490 0.20415843
@@ -600,13 +587,13 @@ topPairs(resS, n = 6)
 #> HR- CK7+__HRlow CKlow                        HR- CK7+              HRlow CKlow
 #> HR+ CK7-__Endothelial                        HR+ CK7-              Endothelial
 #> Myoepithelial__Macrophages Vim+ CD45low Myoepithelial Macrophages Vim+ CD45low
-#>                                            side hazard_ratio_sd      p_value
-#> HR+ CK7-__HR- CK7+                      attract       0.6473083 1.827938e-05
-#> HR+ CK7-__HR+ CK7- Ki67+                attract       0.6783083 2.631778e-05
-#> HRlow CKlow__HR- CK7+                     avoid       0.6691627 1.023385e-04
-#> HR- CK7+__HRlow CKlow                     avoid       0.7081093 1.412169e-04
-#> HR+ CK7-__Endothelial                     avoid       1.5313635 4.753616e-04
-#> Myoepithelial__Macrophages Vim+ CD45low attract       0.6410587 9.760336e-04
+#>                                         hazard_ratio_sd      p_value
+#> HR+ CK7-__HR- CK7+                            0.6473083 1.827938e-05
+#> HR+ CK7-__HR+ CK7- Ki67+                      0.6783083 2.631778e-05
+#> HRlow CKlow__HR- CK7+                         0.6691627 1.023385e-04
+#> HR- CK7+__HRlow CKlow                         0.7081093 1.412169e-04
+#> HR+ CK7-__Endothelial                         1.5313635 4.753616e-04
+#> Myoepithelial__Macrophages Vim+ CD45low       0.6410587 9.760336e-04
 #>                                               p_adj
 #> HR+ CK7-__HR- CK7+                      0.006368902
 #> HR+ CK7-__HR+ CK7- Ki67+                0.006368902
@@ -746,7 +733,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.43) to
+A methods sentence might read: “We used spicyR (version 1.99.44) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -951,7 +938,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.12       
-#> [19] generics_0.1.4              spicyR_1.99.43             
+#> [19] generics_0.1.4              spicyR_1.99.44             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
