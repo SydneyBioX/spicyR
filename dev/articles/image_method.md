@@ -19,15 +19,8 @@ BiocManager::install("spicyR", version = "devel")   # spicyR 2.0, until the next
 
 ``` r
 
-# load required packages
-library(SummarizedExperiment)
-
-
 library(spicyR)
-library(ggplot2)
-library(SpatialExperiment)
 library(SpatialDatasets)
-library(dplyr)
 library(survival)
 ```
 
@@ -331,9 +324,10 @@ kerenSPE$survival = Surv(kerenSPE$`Survival_days_capped*`, kerenSPE$event)
 ```
 
 We can then perform survival analysis using the `spicy` function by
-specifying `condition = "survival"`. We can then access the
-corresponding coefficients and p-values by accessing the
-`survivalResults` slot in the `spicy` results object.
+specifying `condition = "survival"`.
+[`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md)
+lists the pairs most associated with survival, with their coefficients
+(log hazard ratios) and p-values.
 
 ``` r
 
@@ -341,19 +335,29 @@ corresponding coefficients and p-values by accessing the
 spicySurvival = spicy(method = "image", kerenSPE,
                       condition = "survival")
 
-# top 10 significant pairs
-head(spicySurvival$survivalResults, 10)
-#>                      test         coef     se.coef      p.value
-#> 1     Other_Immune__Tregs  0.023565207 0.008656342 8.929510e-06
-#> 2       CD4_T_cell__Tregs  0.017697195 0.006849369 1.241123e-05
-#> 3     Tregs__Other_Immune  0.023714940 0.008733582 1.264808e-05
-#> 4       Tregs__CD4_T_cell  0.017081288 0.006758900 2.852446e-05
-#> 5  CD8_T_cell__CD8_T_cell  0.006050071 0.002723387 3.316529e-04
-#> 6      Tumour__CD8_T_cell -0.030532590 0.011429924 6.168720e-04
-#> 7      CD8_T_cell__Tumour -0.030478964 0.011593521 7.214916e-04
-#> 8    CD4_T_cell__dn_T_CD3  0.008453662 0.003533034 7.936924e-04
-#> 9    dn_T_CD3__CD4_T_cell  0.008398973 0.003530624 9.371904e-04
-#> 10       DC__Other_Immune -0.028885513 0.012294396 1.034120e-03
+topPairs(spicySurvival)
+#>                         coefficient          se      p.value  adj.pvalue
+#> Other_Immune__Tregs     0.023565207 0.008656342 8.929510e-06 0.001218432
+#> CD4_T_cell__Tregs       0.017697195 0.006849369 1.241123e-05 0.001218432
+#> Tregs__Other_Immune     0.023714940 0.008733582 1.264808e-05 0.001218432
+#> Tregs__CD4_T_cell       0.017081288 0.006758900 2.852446e-05 0.002060892
+#> CD8_T_cell__CD8_T_cell  0.006050071 0.002723387 3.316529e-04 0.019169537
+#> Tumour__CD8_T_cell     -0.030532590 0.011429924 6.168720e-04 0.028672136
+#> CD8_T_cell__Tumour     -0.030478964 0.011593521 7.214916e-04 0.028672136
+#> CD4_T_cell__dn_T_CD3    0.008453662 0.003533034 7.936924e-04 0.028672136
+#> dn_T_CD3__CD4_T_cell    0.008398973 0.003530624 9.371904e-04 0.029886077
+#> DC__Other_Immune       -0.028885513 0.012294396 1.034120e-03 0.029886077
+#>                                from           to
+#> Other_Immune__Tregs    Other_Immune        Tregs
+#> CD4_T_cell__Tregs        CD4_T_cell        Tregs
+#> Tregs__Other_Immune           Tregs Other_Immune
+#> Tregs__CD4_T_cell             Tregs   CD4_T_cell
+#> CD8_T_cell__CD8_T_cell   CD8_T_cell   CD8_T_cell
+#> Tumour__CD8_T_cell           Tumour   CD8_T_cell
+#> CD8_T_cell__Tumour       CD8_T_cell       Tumour
+#> CD4_T_cell__dn_T_CD3     CD4_T_cell     dn_T_CD3
+#> dn_T_CD3__CD4_T_cell       dn_T_CD3   CD4_T_cell
+#> DC__Other_Immune                 DC Other_Immune
 ```
 
 ## Accounting for tissue inhomogeneity
@@ -369,16 +373,10 @@ value is positive, indicating attraction between the two cell types.
 
 ``` r
 
-# filter SPE object to obtain image 24 data
-kerenSubset = kerenSPE[, colData(kerenSPE)$imageID == "24"]
-
-pairwiseAssoc = getPairwise(kerenSubset, 
-                            sigma = NULL, 
-                            Rs = 100) |>
-  as.data.frame()
-
-pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
-#> [1] 10.88892
+image24 <- kerenSPE[, kerenSPE$imageID == "24"]
+getPairwise(image24, from = "Keratin_Tumour", to = "Neutrophils", Rs = 100)
+#>    Keratin_Tumour__Neutrophils
+#> 24                    10.88892
 ```
 
 When we specify `sigma = 20` and re-calculate the L-function, it
@@ -388,13 +386,9 @@ now takes into account tissue inhomogeneity.
 
 ``` r
 
-pairwiseAssoc = getPairwise(kerenSubset, 
-                            sigma = 20, 
-                            Rs = 100) |>
-  as.data.frame()
-
-pairwiseAssoc[["Keratin_Tumour__Neutrophils"]]
-#> [1] 0.9024836
+getPairwise(image24, from = "Keratin_Tumour", to = "Neutrophils", Rs = 100, sigma = 20)
+#>    Keratin_Tumour__Neutrophils
+#> 24                    1.156565
 ```
 
 We can use the `plotImage` function to plot any pair of cell types for a
@@ -478,17 +472,16 @@ sessionInfo()
 #> [8] base     
 #> 
 #> other attached packages:
-#>  [1] survival_3.8-6              dplyr_1.2.1                
-#>  [3] SpatialDatasets_1.11.0      ExperimentHub_3.3.2        
-#>  [5] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
-#>  [7] dbplyr_2.6.0                SpatialExperiment_1.23.0   
-#>  [9] SingleCellExperiment_1.35.2 ggplot2_4.0.3              
-#> [11] spicyR_1.99.41              SummarizedExperiment_1.43.0
-#> [13] Biobase_2.73.2              GenomicRanges_1.65.4       
-#> [15] Seqinfo_1.3.2               IRanges_2.47.5             
-#> [17] S4Vectors_0.51.10           BiocGenerics_0.59.12       
-#> [19] generics_0.1.4              MatrixGenerics_1.25.0      
-#> [21] matrixStats_1.5.0           BiocStyle_2.41.0           
+#>  [1] survival_3.8-6              SpatialDatasets_1.11.0     
+#>  [3] SpatialExperiment_1.23.0    SingleCellExperiment_1.35.2
+#>  [5] SummarizedExperiment_1.43.0 Biobase_2.73.2             
+#>  [7] GenomicRanges_1.65.4        Seqinfo_1.3.2              
+#>  [9] IRanges_2.47.5              S4Vectors_0.51.10          
+#> [11] MatrixGenerics_1.25.0       matrixStats_1.5.0          
+#> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
+#> [15] BiocFileCache_3.3.0         dbplyr_2.6.0               
+#> [17] BiocGenerics_0.59.12        generics_0.1.4             
+#> [19] spicyR_1.99.42              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           
@@ -507,21 +500,21 @@ sessionInfo()
 #> [40] bookdown_0.48          knitr_1.52             tensor_1.5.1          
 #> [43] BiocBaseUtils_1.15.1   Matrix_1.7-5           splines_4.6.1         
 #> [46] tidyselect_1.2.1       abind_1.4-8            yaml_2.3.12           
-#> [49] spatstat.random_3.5-2  spatstat.explore_3.8-3 codetools_0.2-20      
+#> [49] spatstat.random_3.5-2  codetools_0.2-20       spatstat.explore_3.8-3
 #> [52] curl_8.1.0             lattice_0.22-9         tibble_3.3.1          
 #> [55] withr_3.0.3            KEGGREST_1.53.6        S7_0.2.2              
 #> [58] evaluate_1.0.5         desc_1.4.3             polyclip_1.10-7       
 #> [61] Biostrings_2.81.9      pillar_1.11.1          BiocManager_1.30.27   
-#> [64] filelock_1.0.3         BiocVersion_3.24.0     scales_1.4.0          
-#> [67] glue_1.8.1             tools_4.6.1            fs_2.1.0              
-#> [70] grid_4.6.1             AnnotationDbi_1.75.2   nlme_3.1-169          
-#> [73] cli_3.6.6              spatstat.sparse_3.2-0  rappdirs_0.3.4        
-#> [76] textshaping_1.0.5      S4Arrays_1.13.2        gtable_0.3.6          
-#> [79] sass_0.4.10            digest_0.6.39          SparseArray_1.13.4    
-#> [82] rjson_0.2.23           htmlwidgets_1.6.4      farver_2.1.2          
-#> [85] memoise_2.0.1          htmltools_0.5.9        pkgdown_2.2.1         
-#> [88] lifecycle_1.0.5        httr_1.4.9             MASS_7.3-65           
-#> [91] bit64_4.8.6
+#> [64] filelock_1.0.3         BiocVersion_3.24.0     ggplot2_4.0.3         
+#> [67] scales_1.4.0           glue_1.8.1             tools_4.6.1           
+#> [70] fs_2.1.0               grid_4.6.1             AnnotationDbi_1.75.2  
+#> [73] nlme_3.1-169           cli_3.6.6              spatstat.sparse_3.2-0 
+#> [76] rappdirs_0.3.4         textshaping_1.0.5      S4Arrays_1.13.2       
+#> [79] dplyr_1.2.1            gtable_0.3.6           sass_0.4.10           
+#> [82] digest_0.6.39          SparseArray_1.13.4     rjson_0.2.23          
+#> [85] htmlwidgets_1.6.4      farver_2.1.2           memoise_2.0.1         
+#> [88] htmltools_0.5.9        pkgdown_2.2.1          lifecycle_1.0.5       
+#> [91] httr_1.4.9             MASS_7.3-65            bit64_4.8.6
 ```
 
 ## References

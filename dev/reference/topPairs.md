@@ -1,26 +1,42 @@
-# A table of the significant results from spicy tests
+# The most significant pairs, or the results of chosen pairs
 
-A table of the significant results from spicy tests
+Lists the pairs tested by
+[`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md),
+most significant first. Give `from` and/or `to` to see chosen pairs, and
+`n = NULL` to see every pair.
 
 ## Usage
 
 ``` r
-topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL, figures = NULL)
+topPairs(
+  x,
+  coef = NULL,
+  n = 10,
+  adj = "fdr",
+  cutoff = NULL,
+  figures = NULL,
+  from = NULL,
+  to = NULL,
+  full = FALSE
+)
 ```
 
 ## Arguments
 
 - x:
 
-  The output from spicy.
+  The output from
+  [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md).
 
 - coef:
 
-  Which coefficient to list.
+  Which coefficient to list: a column of `x$p.value`, or with the cell
+  method and more than two conditions, a level of the condition.
 
 - n:
 
-  Extract the top n most significant pairs.
+  The number of pairs to list. `NULL` lists every pair, as does leaving
+  `n` out when `cutoff` is given.
 
 - adj:
 
@@ -28,15 +44,40 @@ topPairs(x, coef = NULL, n = 10, adj = "fdr", cutoff = NULL, figures = NULL)
 
 - cutoff:
 
-  A p-value threshold to extract significant pairs.
+  List only the pairs whose adjusted p-value is at most `cutoff`.
 
 - figures:
 
   Round to `figures` significant figures.
 
+- from, to:
+
+  Only the pairs with these `from` and `to` cell types.
+
+- full:
+
+  Cell method: every column of the test, not only the main ones.
+
 ## Value
 
-A data.frame
+A data.frame, one row per pair, with the pair (`"from__to"`) as row
+names.
+
+## Details
+
+For the cell method (the default of
+[`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md))
+the table has one row per pair (and per level with more than two
+conditions), with the columns of the test: `from`, `to`, `side`,
+`excess_ref` and `excess_comp` (the average effect in the reference and
+the comparison group), `excess_difference`, `p_value` and `p_adj`; with
+several radii, `r`, the radius with the strongest evidence; with
+covariates, the effect and p-value of each (`<covariate>_effect`,
+`<covariate>_p_value`); for survival, `hazard_ratio_sd`. `full = TRUE`
+adds the standard error, degrees of freedom, the variance between
+patients (`tau2`), what the test was adjusted for and the unadjusted
+test. For the image method the columns are `intercept`, `coefficient`,
+`p.value`, `adj.pvalue`, `from` and `to`, as in spicyR 1.x.
 
 ## Examples
 
@@ -66,4 +107,14 @@ topPairs(spicyTest)
 #> unknown__macrophage      unknown macrophage
 #> unknown__B               unknown          B
 #> macrophage__unknown   macrophage    unknown
+
+data("diabetesData")
+res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = c("Th", "beta"))
+topPairs(res, from = "Tc", to = "Th")
+#>                       from to         level    side excess_ref
+#> Tc__Th__Onset           Tc Th         Onset attract   0.272768
+#> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768
+#>                       excess_difference   p_value     p_adj
+#> Tc__Th__Onset                 0.1023755 0.4114593 0.4114593
+#> Tc__Th__Long-duration         0.0398330 0.7354259 0.7354259
 ```

@@ -1,10 +1,10 @@
-# Plot one image, showing its cell types or the `from` and `to` cells of a pair
+# Plot images, showing their cell types or the `from` and `to` cells of a pair
 
 Without `from` and `to`, every cell is shown, coloured by its cell type.
 With them, the density of all cells is shown in blue, with the `from`
 and `to` cells on top. With `r`, a circle of radius `r` is drawn around
 each `to` cell: the `from` cells inside the circles are those that
-spicyR counts.
+spicyR counts. Several images are drawn side by side, on the same scale.
 
 ## Usage
 
@@ -29,7 +29,7 @@ plotImage(
 
 - imageToPlot:
 
-  The ID of the image to be plotted.
+  The ID of the image to plot, or several IDs.
 
 - from:
 
@@ -68,5 +68,7 @@ plotImage(diabetesData, "A09")
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha")
 
 plotImage(diabetesData, "A09", from = "acinar", to = "alpha", r = 50)
+
+plotImage(diabetesData, c("A09", "A11"), from = "acinar", to = "alpha")
 
 ```

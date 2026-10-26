@@ -20,6 +20,12 @@ calibrationCheck(
   thresholds = c(0.05, 0.01),
   ...
 )
+
+# S3 method for class 'spicyCalibration'
+summary(object, ...)
+
+# S3 method for class 'spicyCalibration'
+plot(x, ...)
 ```
 
 ## Arguments
@@ -55,21 +61,29 @@ calibrationCheck(
   [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md),
   such as `r`, `imageID`, `cellType` or `covariates`.
 
+- object, x:
+
+  The result of `calibrationCheck()`.
+
 ## Value
 
 A `data.frame` with one row per shuffle and threshold: `shuffle`,
 `threshold` and `percent`, the percentage of pairs whose p-value is
-below the threshold.
+below the threshold. [`summary()`](https://rdrr.io/r/base/summary.html)
+gives the average percentage over the shuffles at each threshold, with
+the expected one, and
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) shows each
+shuffle against the expected percentage.
 
 ## Examples
 
 ``` r
 data("diabetesData")
 set.seed(1)
-calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
-#>   shuffle threshold   percent
-#> 1       1      0.05 1.7937220
-#> 2       1      0.01 0.0000000
-#> 3       2      0.05 0.5050505
-#> 4       2      0.01 0.0000000
+shuffles <- calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
+summary(shuffles)
+#>   threshold expected   percent
+#> 1      0.05        5 0.7989084
+#> 2      0.01        1 0.0000000
+plot(shuffles)
 ```

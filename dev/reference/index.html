@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.41</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.42</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,11 +54,11 @@
           <code><a href="bind.html">bind()</a></code>
 
         </dt>
-        <dd>The per-image values of every pair, as a data frame</dd>
+        <dd>The per-image values of every pair, or of one pair, as a data frame</dd>
 
         <dt>
 
-          <code><a href="calibrationCheck.html">calibrationCheck()</a></code>
+          <code><a href="calibrationCheck.html">calibrationCheck()</a></code> <code><a href="calibrationCheck.html">summary(<i>&lt;spicyCalibration&gt;</i>)</a></code> <code><a href="calibrationCheck.html">plot(<i>&lt;spicyCalibration&gt;</i>)</a></code>
 
         </dt>
         <dd>Check that spicy() is calibrated on your data by shuffling the condition</dd>
@@ -75,7 +75,7 @@
           <code><a href="topPairs.html">topPairs()</a></code>
 
         </dt>
-        <dd>A table of the significant results from spicy tests</dd>
+        <dd>The most significant pairs, or the results of chosen pairs</dd>
       </dl></div><div class="section level2">
       <h2 id="plot">Plot<a class="anchor" aria-label="anchor" href="#plot"></a></h2>
 
@@ -98,7 +98,14 @@
           <code><a href="plotImage.html">plotImage()</a></code>
 
         </dt>
-        <dd>Plot one image, showing its cell types or the <code>from</code> and <code>to</code> cells of a pair</dd>
+        <dd>Plot images, showing their cell types or the <code>from</code> and <code>to</code> cells of a pair</dd>
+
+        <dt>
+
+          <code><a href="radiusPlot.html">radiusPlot()</a></code>
+
+        </dt>
+        <dd>The evidence for pairs at each radius</dd>
 
         <dt>
 
