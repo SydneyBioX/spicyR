@@ -611,7 +611,6 @@ spatialdataR reads the same store as a `SpatialData` object, which `spicy()` als
 ```{r store-sdata}
 library(spatialdataR)
 sdata <- readSpatialData(path)
-sdata
 resObject <- spicy(sdata, condition = "ER.Status", subject = "metabricId", r = 25)
 ```
 

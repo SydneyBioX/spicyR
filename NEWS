@@ -1,3 +1,8 @@
+CHANGES IN VERSION 1.99.43
+--------------------------
+
+    o Vignette: the SpatialData object read from the store is no longer printed (it listed every image's points).
+
 CHANGES IN VERSION 1.99.42
 --------------------------
 
