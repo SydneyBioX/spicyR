@@ -481,7 +481,7 @@ sessionInfo()
 #> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [15] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [17] BiocGenerics_0.59.12        generics_0.1.4             
-#> [19] spicyR_1.99.42              BiocStyle_2.41.0           
+#> [19] spicyR_1.99.43              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           
