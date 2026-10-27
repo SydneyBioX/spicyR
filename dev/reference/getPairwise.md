@@ -34,22 +34,20 @@ getPairwise(
 
 - cells:
 
-  A SummarizedExperiment that contains at least the variables x and y,
-  giving the location coordinates of each cell, and cellType.
+  A data.frame, SingleCellExperiment or SpatialExperiment with one row
+  (column) per cell, giving its image, cell type and coordinates.
 
 - imageID:
 
-  The name of the imageID column if using a SingleCellExperiment or
-  SpatialExperiment.
+  The name of the image ID column.
 
 - cellType:
 
-  The name of the cellType column if using a SingleCellExperiment or
-  SpatialExperiment.
+  The name of the cell type column.
 
 - spatialCoords:
 
-  The names of the spatialCoords column if using a SingleCellExperiment.
+  The names of the coordinate columns.
 
 - r:
 
