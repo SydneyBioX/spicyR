@@ -97,7 +97,17 @@
   }
 
   nCells <- if (is.null(cellWeights)) table(getImageID(cells), getCellType(cells)) else weightedCounts
-  
+
+  # Each image takes the condition and subject of its first cell, so they must not vary within an image (as when
+  # an image ID such as "ROI_1" is reused in several patients).
+  for (col in c(condition, subject)) {
+    v <- cells[[col]]
+    if (!is.null(v) && any(tapply(as.character(v), cells$imageID, function(z) length(unique(z))) > 1L, na.rm = TRUE))
+      stop("'", col, "' must be constant within each image. If an image ID is used in several patients (for ",
+           "example ROI_1 in each), give each image its own ID, such as the patient and image IDs pasted together.",
+           call. = FALSE)
+  }
+
   
   if (!is.null(condition)) {
     conditionVector <- as.data.frame(getImagePheno(cells))[condition][, 1]
@@ -385,13 +395,11 @@ cleanMEM <- function(mixed.lmer, BPPARAM = NULL) {
 
 #' Get statistic from pairwise L curve of a single image.
 #'
-#' @param cells A SummarizedExperiment that contains at least the
-#'     variables x and y, giving the location coordinates of each cell, and
-#'     cellType.
-#' @param imageID
-#'     The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.
-#' @param cellType The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.
-#' @param spatialCoords The names of the spatialCoords column if using a SingleCellExperiment.
+#' @param cells A data.frame, SingleCellExperiment or SpatialExperiment with one row (column) per cell, giving
+#'     its image, cell type and coordinates.
+#' @param imageID The name of the image ID column.
+#' @param cellType The name of the cell type column.
+#' @param spatialCoords The names of the coordinate columns.
 #' @param r A vector of the radii that the measures of association should be calculated over.
 #' @param sigma A numeric variable used for scaling when fitting inhomogenous L-curves.
 #' @param from The 'from' cellType for generating the L curve.
@@ -464,19 +472,20 @@ getPairwise <- function(
   })
 
   
-  if (.is_class(cells, "SummarizedExperiment")) {
-    cells <- .format_data(
-      cells, imageID, cellType, spatialCoords, FALSE
-    )
-  }
-
   nThreads <- .n_workers(cores, BPPARAM)
 
+  # cellWeights are in the order of `cells`, so these cells are read unsorted
   if (!is.null(cellWeights)) {
     if (!is.null(sigma) || !window %in% c("square", "convex"))
       stop("`cellWeights` needs window = \"square\" or \"convex\" and no `sigma`.", call. = FALSE)
     return(getPairwiseWeighted(cells, cellWeights, imageID, cellType, spatialCoords, Rs, from, to, window,
                                edgeCorrect, includeZeroCells, nThreads))
+  }
+
+  if (.is_class(cells, "SummarizedExperiment") || is.data.frame(cells)) {
+    cells <- .format_data(
+      cells, imageID, cellType, spatialCoords, FALSE
+    )
   }
 
   # Square and convex windows without density weighting: one threaded C++
@@ -921,32 +930,45 @@ spatialSurv <- function(measurementMat,
       spatialData$weights = weights[[test]]
     }
     
-    if(is.null(subject)) {
-    # If no random effects must use coxph
-    fit <- survival::coxph(formula, data = spatialData, weights = spatialData$weights, subset = ind)
-    result <- summary(fit)$coefficients["measurementCol", c("coef", "se(coef)", "Pr(>|z|)")]
-  } else{
-    # Drop factors for any factor columns in spatialData
-    isFactor <- vapply(spatialData, is.factor, logical(1))
-    spatialData[isFactor] <- lapply(spatialData[isFactor], droplevels)
-    
-    # Mixed effects survival
-    fit <- coxme::coxme(formula, data = spatialData, weights = spatialData$weights, subset = ind)
-    
-    # from print.coxme() function
-    beta <- unname(fit$coefficients)
-    nvar <- length(beta)
-    nfrail <- nrow(fit$var) - nvar
-    
-    se <- sqrt(diag(as.matrix(fit$var))[nfrail + 1:nvar])
-    p_val <- 1 - stats::pchisq((beta / se) ^ 2, 1)
-    
-    # Need to select first indexes of each value incase of multiple betas
-    result <- c("coef" = beta[1], "se(coef)" = se[1], "Pr(>|z|)" = p_val[1])
-  }
-  
-  return(result)
+    # A pair whose model cannot be fitted (e.g. the optimiser fails, or the measurement is constant) is NA, and
+    # the other pairs are still fitted.
+    tryCatch({
+      if (is.null(subject)) {
+        # If no random effects must use coxph
+        fit <- survival::coxph(formula, data = spatialData, weights = spatialData$weights, subset = ind)
+        summary(fit)$coefficients["measurementCol", c("coef", "se(coef)", "Pr(>|z|)")]
+      } else {
+        # Drop factors for any factor columns in spatialData
+        isFactor <- vapply(spatialData, is.factor, logical(1))
+        spatialData[isFactor] <- lapply(spatialData[isFactor], droplevels)
+
+        # Mixed effects survival
+        fit <- coxme::coxme(formula, data = spatialData, weights = spatialData$weights, subset = ind)
+
+        # from print.coxme() function
+        beta <- unname(fit$coefficients)
+        nvar <- length(beta)
+        nfrail <- nrow(fit$var) - nvar
+
+        se <- sqrt(diag(as.matrix(fit$var))[nfrail + 1:nvar])
+        p_val <- 1 - stats::pchisq((beta / se) ^ 2, 1)
+
+        # Need to select first indexes of each value incase of multiple betas
+        c("coef" = beta[1], "se(coef)" = se[1], "Pr(>|z|)" = p_val[1])
+      }
+    }, error = function(e) {
+      structure(c("coef" = NA_real_, "se(coef)" = NA_real_, "Pr(>|z|)" = NA_real_), error = conditionMessage(e))
+    })
   }, cores = .n_workers(BPPARAM))
+
+failed <- vapply(result, function(x) !is.null(attr(x, "error")), logical(1))
+if (any(failed)) {
+  why <- vapply(result[failed], attr, character(1), "error")
+  shown <- utils::head(paste0(colnames(measurementMat)[failed], " (", trimws(why), ")"), 10)
+  warning("The survival model could not be fitted for ", sum(failed), " of ", length(failed),
+          " pairs; their results are NA: ", paste(shown, collapse = ", "),
+          if (sum(failed) > 10) paste0(" and ", sum(failed) - 10, " more"), ".", call. = FALSE)
+}
 
 result <- .bind_rows(result)
 result <- data.frame(
@@ -1026,6 +1048,22 @@ inhomLPair <- function(data,
                        to = NULL,
                        edgeCorrect = TRUE,
                        includeZeroCells = TRUE) {
+  if (is.null(from)) from <- levels(data$cellType)
+  if (is.null(to)) to <- levels(data$cellType)
+  m1 <- rep(from, times = length(to))
+  m2 <- rep(to, each = length(from))
+  labels <- paste(m1, m2, sep = "__")
+  noValue <- stats::setNames(rep(NA_real_, length(labels)), labels)
+
+  # Cells that span no area (one cell, or cells on a line for a convex window) have no window: the image's pairs are
+  # NA, as in getPairwiseThreaded().
+  if (diff(range(data$x)) <= 0 || diff(range(data$y)) <= 0) return(noValue)
+  if (window == "convex") {
+    hull <- grDevices::chull(data$x, data$y)
+    hx <- data$x[hull]
+    hy <- data$y[hull]
+    if (length(hull) < 3 || !(abs(sum(hx * c(hy[-1], hy[1]) - c(hx[-1], hx[1]) * hy)) > 0)) return(noValue)
+  }
   ow <- makeWindow(data, window, window.length)
 
 
@@ -1051,12 +1089,9 @@ inhomLPair <- function(data,
     den$v <- pmax(den$v, minLambda)
   }
 
-  if (is.null(from)) from <- levels(data$cellType)
-  if (is.null(to)) to <- levels(data$cellType)
-
   use <- data$cellType %in% c(from, to)
   if (all(!use)) {
-    return(NA)
+    return(noValue)
   }
   data <- data[use, ]
   X <- X[use, ]
@@ -1090,10 +1125,6 @@ inhomLPair <- function(data,
   L <- L[!is.na(L$Freq), ]
   wt <- L$Freq
   names(wt) <- paste(L$Var1, L$Var2, sep = "__")
-
-  m1 <- rep(from, times = length(to))
-  m2 <- rep(to, each = length(from))
-  labels <- paste(m1, m2, sep = "__")
 
   assoc <- rep(-sum(Rs), length(labels))
   names(assoc) <- labels

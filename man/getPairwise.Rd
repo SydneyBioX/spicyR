@@ -29,15 +29,14 @@ getPairwise(
 )
 }
 \arguments{
-\item{cells}{A SummarizedExperiment that contains at least the
-variables x and y, giving the location coordinates of each cell, and
-cellType.}
+\item{cells}{A data.frame, SingleCellExperiment or SpatialExperiment with one row (column) per cell, giving
+its image, cell type and coordinates.}
 
-\item{imageID}{The name of the imageID column if using a SingleCellExperiment or SpatialExperiment.}
+\item{imageID}{The name of the image ID column.}
 
-\item{cellType}{The name of the cellType column if using a SingleCellExperiment or SpatialExperiment.}
+\item{cellType}{The name of the cell type column.}
 
-\item{spatialCoords}{The names of the spatialCoords column if using a SingleCellExperiment.}
+\item{spatialCoords}{The names of the coordinate columns.}
 
 \item{r}{A vector of the radii that the measures of association should be calculated over.}
 

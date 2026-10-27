@@ -1,3 +1,19 @@
+CHANGES IN VERSION 1.99.45
+--------------------------
+
+    o spicy(method = "image") with a survival outcome: a pair whose Cox model (coxph, or coxme with a subject)
+      cannot be fitted is NA, with a warning naming such pairs, and the other pairs are returned (#84).
+    o spicy(method = "image") stops with an explanation when the condition or the subject varies within an image,
+      as when an image ID such as ROI_1 is used in several patients (#79). topPairs() of an image-method result in
+      which no pair could be tested says so.
+    o getPairwise() and spicy(method = "image") with `sigma` or a concave window: an image whose cells span no area
+      (a single cell, or with a convex window cells on a line) gives NA for its pairs instead of stopping, as it
+      does without `sigma` (#78).
+    o getPairwise() reads a data.frame by the `imageID`, `cellType` and `spatialCoords` given, as it reads a
+      SingleCellExperiment (#64).
+    o getPairwise() with `cellWeights` matches the weights to the cells of a SingleCellExperiment whose cells are not
+      ordered by image.
+
 CHANGES IN VERSION 1.99.44
 --------------------------
 

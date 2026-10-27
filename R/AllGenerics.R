@@ -119,7 +119,12 @@ setMethod("topPairs", "SpicyResults", function(x,
                           adj.pvalue = stats::p.adjust(s$p.value, adj), from = pair[, 1], to = pair[, 2],
                           row.names = s$test))
     }
-    if (is.null(coef)) coef <- grep("condition", colnames(x$p.value))[1]
+    if (is.null(coef)) {
+        coef <- grep("condition", colnames(x$p.value))[1]
+        if (is.na(coef)) stop("no pair could be tested: the model failed for every pair, so there is no condition ",
+                              "coefficient. Check that the condition has at least two levels among the images ",
+                              "tested.", call. = FALSE)
+    }
     if (methods::is(coef, "character") & !coef %in% colnames(x$p.value)) stop("coef not a column name")
     if (methods::is(coef, "numeric") & !coef %in% seq_len(ncol(x$p.value))) stop("coef not a column name")
     if (length(coef) > 1) warning("coef needs to be length 1, taking first entry.")

@@ -88,3 +88,80 @@ test_that("topPairs() lists an image-method survival result, and chooses pairs",
   expect_equal(tp$p.value, res$survivalResults$p.value[match(rownames(tp), res$survivalResults$test)])
   expect_identical(rownames(topPairs(res, to = "Th")), "Tc__Th")
 })
+
+test_that("a survival model that cannot be fitted for one pair gives NA for that pair, with a warning", {
+  set.seed(1)
+  pheno <- data.frame(subject = rep(seq_len(20), each = 2))
+  pheno$surv <- survival::Surv(rep(rexp(20), each = 2), rep(rbinom(20, 1, 0.7), each = 2))
+  M <- cbind(a__b = rnorm(40), a__c = NA_real_, b__c = rnorm(40))
+  for (subject in list(NULL, "subject")) {
+    if (!is.null(subject)) skip_if_not_installed("coxme")
+    expect_warning(res <- spatialSurv(M, "surv", pheno, subject = subject),
+                   "could not be fitted for 1 of 3 pairs; their results are NA: a__c")
+    expect_setequal(res$test, colnames(M))
+    expect_true(all(is.na(res[res$test == "a__c", c("coef", "se.coef", "p.value")])))
+    expect_false(anyNA(res[res$test != "a__c", c("coef", "se.coef", "p.value")]))
+  }
+})
+
+test_that("the image method stops when an image ID is reused across patients", {
+  cells <- sim_cells(seed = 2, n_pat = 4, n_cells = 150)
+  cells$roi <- sub(".*_", "ROI_", cells$imageID)   # ROI_1 and ROI_2 in every patient
+  expect_error(suppressWarnings(suppressMessages(
+    spicy(cells, condition = "condition", subject = "patient", imageID = "roi", from = "tumour", to = "T",
+          method = "image"))), "'condition' must be constant within each image")
+})
+
+test_that("topPairs() of an image-method result with no pair tested says so", {
+  cells <- sim_cells(seed = 2, n_pat = 4, n_cells = 150)
+  cells$condition <- "A"
+  res <- suppressWarnings(suppressMessages(spicy(cells, condition = "condition", from = "tumour", to = "T",
+                                                 method = "image")))
+  expect_error(topPairs(res), "no pair could be tested")
+})
+
+test_that("the image method gives NA, without stopping, for an image whose cells span no area", {
+  cells <- sim_cells(seed = 2, n_pat = 4, n_cells = 150)
+  one <- cells$imageID == "A01_1"
+  cells <- cells[!one | !duplicated(one), ]                 # a single cell in A01_1
+  two <- which(cells$imageID == "A02_1")
+  cells <- cells[-two[-(1:2)], ]                           # two cells in A02_1
+  line <- which(cells$imageID == "A03_1")
+  cells <- cells[-line[-(1:3)], ]                          # three cells on a line in A03_1
+  cells$y[cells$imageID == "A03_1"] <- cells$x[cells$imageID == "A03_1"]
+  for (window in c("square", "convex", "concave")) for (sigma in list(NULL, 50)) {
+    pa <- suppressWarnings(suppressMessages(getPairwise(cells, r = c(10, 30), window = window, sigma = sigma,
+                                                        from = "tumour", to = c("T", "tumour"))))
+    expect_true(all(is.na(pa["A01_1", ])))
+    if (window == "convex") expect_true(all(is.na(pa[c("A02_1", "A03_1"), ])))
+    expect_false(anyNA(pa["B01_1", ]))
+  }
+  res <- suppressWarnings(suppressMessages(spicy(cells, condition = "condition", subject = "patient", sigma = 50,
+                                                 from = "tumour", to = "T", method = "image")))
+  expect_false(is.na(topPairs(res)$p.value))
+})
+
+test_that("getPairwise() reads a data.frame's columns by the names given", {
+  cells <- sim_cells(seed = 2, n_pat = 2, n_cells = 150)
+  renamed <- cells
+  names(renamed)[match(c("imageID", "cellType", "x", "y"), names(renamed))] <- c("sample", "type", "px", "py")
+  for (window in c("convex", "concave")) {
+    a <- suppressMessages(getPairwise(cells, r = c(10, 30), window = window))
+    b <- suppressMessages(getPairwise(renamed, imageID = "sample", cellType = "type", spatialCoords = c("px", "py"),
+                                      r = c(10, 30), window = window))
+    expect_equal(b, a)
+  }
+})
+
+test_that("getPairwise() matches cellWeights to the cells when the images are not in order", {
+  skip_if_not_installed("SingleCellExperiment")
+  cells <- sim_cells(seed = 2, n_pat = 2, n_cells = 150)
+  cells <- cells[sample(nrow(cells)), ]
+  sce <- SingleCellExperiment::SingleCellExperiment(colData = S4Vectors::DataFrame(cells))
+  lev <- sort(unique(cells$cellType))
+  onehot <- outer(cells$cellType, lev, "==") * 1
+  colnames(onehot) <- lev
+  a <- getPairwise(sce, r = c(10, 30), window = "square")
+  b <- getPairwise(sce, r = c(10, 30), window = "square", cellWeights = onehot)
+  expect_equal(b[rownames(a), colnames(a)], a)
+})
