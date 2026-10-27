@@ -71,6 +71,19 @@ signifPlot(
 
 a ggplot object
 
+## Details
+
+The heatmap has a tile for each pair, `from` in the rows and `to` in the
+columns. A tile's colour is the pair's signed log10 p-value for the
+condition (of the BH-adjusted p-value with `fdr = TRUE`): -log10(p) when
+the coefficient is positive and log10(p) when it is negative, so the
+most significant positive differences are at the top of the scale and
+the most significant negative ones at the bottom. `breaks` sets the
+scale; values beyond it take the end colours, and pairs without a
+p-value are grey. The values behind either plot are available from
+[`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md)
+(`n = NULL` for every pair).
+
 ## Examples
 
 ``` r

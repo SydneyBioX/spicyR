@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.45</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.46</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -105,6 +105,15 @@ By default the Tableau colour palette is used.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>a ggplot object</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The heatmap has a tile for each pair, <code>from</code> in the rows and <code>to</code> in the columns. A tile's colour is the
+pair's signed log10 p-value for the condition (of the BH-adjusted p-value with <code>fdr = TRUE</code>): -log10(p)
+when the coefficient is positive and log10(p) when it is negative, so the most significant positive
+differences are at the top of the scale and the most significant negative ones at the bottom. <code>breaks</code> sets
+the scale; values beyond it take the end colours, and pairs without a p-value are grey. The values behind
+either plot are available from <code><a href="topPairs.html">topPairs()</a></code> (<code>n = NULL</code> for every pair).</p>
     </div>
 
     <div class="section level2">
