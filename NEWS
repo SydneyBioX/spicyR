@@ -1,3 +1,8 @@
+CHANGES IN VERSION 1.99.46
+--------------------------
+
+    o signifPlot()'s help page describes what the heatmap shows (#38).
+
 CHANGES IN VERSION 1.99.45
 --------------------------
 

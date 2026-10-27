@@ -48,6 +48,14 @@ a ggplot object
 \description{
 Plots result of signifPlot.
 }
+\details{
+The heatmap has a tile for each pair, \code{from} in the rows and \code{to} in the columns. A tile's colour is the
+pair's signed log10 p-value for the condition (of the BH-adjusted p-value with \code{fdr = TRUE}): -log10(p)
+when the coefficient is positive and log10(p) when it is negative, so the most significant positive
+differences are at the top of the scale and the most significant negative ones at the bottom. \code{breaks} sets
+the scale; values beyond it take the end colours, and pairs without a p-value are grey. The values behind
+either plot are available from \code{\link[=topPairs]{topPairs()}} (\code{n = NULL} for every pair).
+}
 \examples{
 data(spicyTest)
 

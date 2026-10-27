@@ -15,6 +15,14 @@
 #'  By default the Tableau colour palette is used.
 #' @param contextLabels Used for \code{\link[Statial]{Kontextual}} results. A named list to change the default labels for each context.
 #'
+#' @details
+#' The heatmap has a tile for each pair, `from` in the rows and `to` in the columns. A tile's colour is the
+#' pair's signed log10 p-value for the condition (of the BH-adjusted p-value with `fdr = TRUE`): -log10(p)
+#' when the coefficient is positive and log10(p) when it is negative, so the most significant positive
+#' differences are at the top of the scale and the most significant negative ones at the bottom. `breaks` sets
+#' the scale; values beyond it take the end colours, and pairs without a p-value are grey. The values behind
+#' either plot are available from [topPairs()] (`n = NULL` for every pair).
+#'
 #' @return a ggplot object
 #'
 #' @examples
