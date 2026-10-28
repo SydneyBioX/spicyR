@@ -20,7 +20,8 @@ scale at which the evidence is strongest. The combined p-value over the radii is
 }
 \examples{
 data("diabetesData")
-res <- spicy(diabetesData, condition = "stage", subject = "case", r = c(25, 50, 75),
+diabetes <- diabetesData[, diabetesData$stage \%in\% c("Non-diabetic", "Onset")]
+res <- spicy(diabetes, condition = "stage", subject = "case", r = c(25, 50, 75),
              from = c("Tc", "Th"), to = "beta")
 radiusPlot(res, from = c("Tc", "Th"), to = "beta")
 

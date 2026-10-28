@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.47
+--------------------------
+
+    o radiusPlot()'s example compares two stages of diabetesData, as spicy() with several radii needs two
+      conditions.
+
 CHANGES IN VERSION 1.99.46
 --------------------------
 
