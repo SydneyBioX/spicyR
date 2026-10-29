@@ -36,13 +36,18 @@
 #' `"none (no_information)"`), and it is left out of the combination over radii. With more than two conditions, a
 #' pair where any condition has no informative patient is not tested.
 #'
-#' The conditions share one dispersion. Each condition's CR2 variance is divided by its
-#' model-based variance, the ratios are averaged over the conditions with their numbers of patients as weights,
-#' and the model-based variance of the difference is multiplied by this average. The degrees of freedom are those
-#' of CR2. A small condition's own spread does not set the standard error alone, which matters when the conditions
-#' are of unequal size and the patients' effects are skewed. With adjustment, the ratios are those of the
-#' coefficient of each condition in the adjusted design, and every coefficient's variance is scaled the same way.
-#' `variance = "hartung_knapp"` keeps its own variance.
+#' The standard error of the difference is the sum of each condition's own CR2 variance, on Satterthwaite degrees of
+#' freedom; with adjustment, the CR2 variance of the adjusted design. `variance = "hartung_knapp"` keeps its own
+#' variance.
+#'
+#' For a self-pair (`from` = `to`) every cell can carry the label, so random labelling moves both the cells counted
+#' and their neighbours. Its variance is the exact random-labelling variance of the self-pair (for the radius graph
+#' and for the k nearest neighbours), not the variance of a pair of two types.
+#'
+#' With the allocation effect, an image whose room on the pair's side (the `to` cells without a `from` neighbour
+#' expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
+#' its effect could not show the pair's side, and could be large in the other direction. The side is chosen first,
+#' from every image.
 #'
 #' A patient's weight within its condition grows with the information of its images, so one or two patients can
 #' carry nearly all of a condition's weight. A radius where a condition's effective patients (Kish's
@@ -93,8 +98,8 @@
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
-#' @param variance Cell method: `"cr2"` (the default: CR2 on Satterthwaite df, with the dispersion shared by the
-#'   conditions, see Details) or `"hartung_knapp"` (the model-based variance, scaled by
+#' @param variance Cell method: `"cr2"` (the default: each condition's CR2 variance, on Satterthwaite df, see
+#'   Details) or `"hartung_knapp"` (the model-based variance, scaled by
 #'   the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).
 #' @param ref Cell method: the reference level of `condition`.
 #' @param cores Number of threads (cell method) or cores (image method).
@@ -125,8 +130,11 @@
 #'   condition (`excess_ref`, `excess_comp`, at the average covariates), the difference
 #'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
 #'   between-image variance (`tau2_image`) and, when the test was adjusted, what for (`adjusted_for`), the effect
-#'   and p-value of each adjustment, and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`). `$effect`
-#'   records which effect was estimated.
+#'   and p-value of each adjustment, and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
+#'   Every requested pair has a row: `not_tested` gives why a pair (or, in `$radiusResults`, a radius) was not tested
+#'   (`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"` or `"no_variation"`; `NA` when it
+#'   was), and its p-value is then `NA` and not counted in the BH adjustment. `$effect` records which effect was
+#'   estimated.
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
 #'   Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 #'

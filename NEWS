@@ -1,3 +1,20 @@
+CHANGES IN VERSION 1.99.48
+--------------------------
+
+    o spicy() (cell method), self-pairs (from = to): the variance of each image is the exact random-labelling
+      variance of the self-pair, for the radius graph and for k nearest neighbours (fraction: Var(O); count:
+      Var(O - pL)). It was the variance of a pair of two types, which for a self-pair is too small (about 0.6-0.8
+      of the true variance).
+    o Allocation effect: an image whose room on the pair's side (n_to - E when attracting, E when avoiding) is below
+      one cell is not used. The side is chosen first, from every image.
+    o The variance of the difference is each condition's own CR2 variance, on Satterthwaite df; the dispersion is
+      no longer pooled over the conditions (1.99.27-1.99.47).
+    o Every requested pair has a row in the results. The new column not_tested gives why a pair (or a radius) was
+      not tested: one_patient_per_group, no_information, few_effective_units or no_variation; its p-value is NA and
+      not counted in the BH adjustment.
+    o Faster with many patients: each image's patient is looked up directly (the test was quadratic in the number
+      of patients).
+
 CHANGES IN VERSION 1.99.47
 --------------------------
 

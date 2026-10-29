@@ -75,8 +75,8 @@ radii); the same inputs always give the same value.}
 (default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}
 cells from more densely packed ones, and it removes real effects when the share tracks the condition.}
 
-\item{variance}{Cell method: \code{"cr2"} (the default: CR2 on Satterthwaite df, with the dispersion shared by the
-conditions, see Details) or \code{"hartung_knapp"} (the model-based variance, scaled by
+\item{variance}{Cell method: \code{"cr2"} (the default: each condition's CR2 variance, on Satterthwaite df, see
+Details) or \code{"hartung_knapp"} (the model-based variance, scaled by
 the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).}
 
 \item{ref}{Cell method: the reference level of \code{condition}.}
@@ -115,8 +115,11 @@ the pair's \code{side} (\code{"attract"} or \code{"avoid"}, which sets the scale
 condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), the difference
 (\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
 between-image variance (\code{tau2_image}) and, when the test was adjusted, what for (\code{adjusted_for}), the effect
-and p-value of each adjustment, and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}). \verb{$effect}
-records which effect was estimated.
+and p-value of each adjustment, and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}).
+Every requested pair has a row: \code{not_tested} gives why a pair (or, in \verb{$radiusResults}, a radius) was not tested
+(\code{"one_patient_per_group"}, \code{"no_information"}, \code{"few_effective_units"} or \code{"no_variation"}; \code{NA} when it
+was), and its p-value is then \code{NA} and not counted in the BH adjustment. \verb{$effect} records which effect was
+estimated.
 }
 \description{
 \code{spicy()} tests, for every ordered pair of cell types \code{from} → \code{to}, whether the co-localisation of
@@ -156,13 +159,18 @@ standard error would rest on the other condition alone. Its p-value is \code{NA}
 \code{"none (no_information)"}), and it is left out of the combination over radii. With more than two conditions, a
 pair where any condition has no informative patient is not tested.
 
-The conditions share one dispersion. Each condition's CR2 variance is divided by its
-model-based variance, the ratios are averaged over the conditions with their numbers of patients as weights,
-and the model-based variance of the difference is multiplied by this average. The degrees of freedom are those
-of CR2. A small condition's own spread does not set the standard error alone, which matters when the conditions
-are of unequal size and the patients' effects are skewed. With adjustment, the ratios are those of the
-coefficient of each condition in the adjusted design, and every coefficient's variance is scaled the same way.
-\code{variance = "hartung_knapp"} keeps its own variance.
+The standard error of the difference is the sum of each condition's own CR2 variance, on Satterthwaite degrees of
+freedom; with adjustment, the CR2 variance of the adjusted design. \code{variance = "hartung_knapp"} keeps its own
+variance.
+
+For a self-pair (\code{from} = \code{to}) every cell can carry the label, so random labelling moves both the cells counted
+and their neighbours. Its variance is the exact random-labelling variance of the self-pair (for the radius graph
+and for the k nearest neighbours), not the variance of a pair of two types.
+
+With the allocation effect, an image whose room on the pair's side (the \code{to} cells without a \code{from} neighbour
+expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
+its effect could not show the pair's side, and could be large in the other direction. The side is chosen first,
+from every image.
 
 A patient's weight within its condition grows with the information of its images, so one or two patients can
 carry nearly all of a condition's weight. A radius where a condition's effective patients (Kish's
