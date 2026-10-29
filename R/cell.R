@@ -462,12 +462,21 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   row
 }
 
+## rbind() of one-row data.frames whose columns may differ (a pair with no image rows has no tau2_image or side):
+## the union of the columns, NA where a row lacks one, in order of first appearance.
+.cell_rbind_fill <- function(rows) {
+  rows <- Filter(Negate(is.null), rows)
+  if (!length(rows)) return(NULL)
+  cols <- unique(unlist(lapply(rows, names)))
+  do.call(rbind, lapply(rows, function(r) { for (cn in setdiff(cols, names(r))) r[[cn]] <- NA; r[cols] }))
+}
+
 .cell_table <- function(fits, ctx, adjusted) {
   if (length(ctx$levels) > 2L) return(.cell_table_levels(fits, ctx, adjusted))
   ok <- vapply(fits, `[[`, logical(1), "ok")
   enames <- .cell_effect_names(fits[ok])
   # every requested pair, tested or not (not_tested: why not; NA when it was)
-  tab <- do.call(rbind, lapply(fits, function(o) {
+  tab <- .cell_rbind_fill(lapply(fits, function(o) {
     x <- if (isTRUE(o$ok)) o$test else list(coef_ref = NA_real_, coef_comp = NA_real_, difference = NA_real_,
                                              se = NA_real_, df = NA_real_, p = NA_real_, tau2 = NA_real_)
     row <- data.frame(from = o$from, to = o$to, excess_ref = x$coef_ref, excess_comp = x$coef_comp,
@@ -475,6 +484,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                       stringsAsFactors = FALSE)
     if (!is.null(o$parent)) row$parent <- o$parent
     row <- .cell_add_side(row, o)
+    if (!isTRUE(o$ok) && !is.null(row$side)) row$side <- NA_character_
     row$not_tested <- if (!isTRUE(o$ok)) (if (length(o$reason) && nzchar(o$reason)) o$reason else "not_tested")
                       else if (!is.null(o$not_tested)) o$not_tested else NA_character_
     if (adjusted) {
@@ -499,14 +509,15 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   enames <- .cell_effect_names(fits[ok])
   # every requested pair and level, tested or not (not_tested: why not; NA when it was)
   na_test <- list(theta = NA_real_, estimate = NA_real_, se = NA_real_, df = NA_real_, p = NA_real_, tau2 = NA_real_)
-  tab <- do.call(rbind, lapply(fits, function(o) {
+  tab <- .cell_rbind_fill(lapply(fits, function(o) {
     lv <- if (isTRUE(o$ok)) names(o$levels_test) else ctx$levels[-1]
-    do.call(rbind, lapply(lv, function(l) { d <- if (isTRUE(o$ok)) o$levels_test[[l]] else na_test
+    .cell_rbind_fill(lapply(lv, function(l) { d <- if (isTRUE(o$ok)) o$levels_test[[l]] else na_test
       row <- data.frame(from = o$from, to = o$to, level = l, excess_ref = d$theta[1],
                         excess_difference = d$estimate, se = d$se, df = d$df, p_value = d$p, tau2 = d$tau2,
                         stringsAsFactors = FALSE)
       if (!is.null(o$parent)) row$parent <- o$parent
       row <- .cell_add_side(row, o)
+      if (!isTRUE(o$ok) && !is.null(row$side)) row$side <- NA_character_
       row$not_tested <- if (isTRUE(o$ok)) NA_character_ else if (length(o$reason)) o$reason else "not_tested"
       if (adjusted) {
         row$adjusted_for <- o$adjusted_for
