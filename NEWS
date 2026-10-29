@@ -11,7 +11,8 @@ CHANGES IN VERSION 1.99.48
       no longer pooled over the conditions (1.99.27-1.99.47).
     o Every requested pair has a row in the results. The new column not_tested gives why a pair (or a radius) was
       not tested: one_patient_per_group, no_information, few_effective_units or no_variation; its p-value is NA and
-      not counted in the BH adjustment.
+      not counted in the BH adjustment. With more than two conditions a pair that could not be tested is listed
+      instead of stopping the analysis.
     o Faster with many patients: each image's patient is looked up directly (the test was quadratic in the number
       of patients).
 
