@@ -53,11 +53,11 @@ df <- bind(spicyTest)
 data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = "Th")
 head(bind(res, from = "Tc", to = "Th"))
-#>     imageID condition subject     effect weight
-#> A09     A09     Onset    6362 -0.4514128     NA
-#> A11     A11     Onset    6362 -0.4166667     NA
-#> A16     A16     Onset    6362  1.0000000     NA
-#> A17     A17     Onset    6362  0.2318507     NA
-#> A25     A25     Onset    6362  0.1641414     NA
-#> A39     A39     Onset    6362         NA     NA
+#>     imageID condition subject    effect weight
+#> A09     A09     Onset    6362        NA     NA
+#> A11     A11     Onset    6362        NA     NA
+#> A16     A16     Onset    6362 1.0000000     NA
+#> A17     A17     Onset    6362 0.2318507     NA
+#> A25     A25     Onset    6362 0.1641414     NA
+#> A39     A39     Onset    6362        NA     NA
 ```

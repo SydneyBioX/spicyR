@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.47</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.48</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -146,8 +146,8 @@ cells from more densely packed ones, and it removes real effects when the share 
 
 
 <dt id="arg-variance">variance<a class="anchor" aria-label="anchor" href="#arg-variance"></a></dt>
-<dd><p>Cell method: <code>"cr2"</code> (the default: CR2 on Satterthwaite df, with the dispersion shared by the
-conditions, see Details) or <code>"hartung_knapp"</code> (the model-based variance, scaled by
+<dd><p>Cell method: <code>"cr2"</code> (the default: each condition's CR2 variance, on Satterthwaite df, see
+Details) or <code>"hartung_knapp"</code> (the model-based variance, scaled by
 the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).</p></dd>
 
 
@@ -200,8 +200,11 @@ the pair's <code>side</code> (<code>"attract"</code> or <code>"avoid"</code>, wh
 condition (<code>excess_ref</code>, <code>excess_comp</code>, at the average covariates), the difference
 (<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
 between-image variance (<code>tau2_image</code>) and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect
-and p-value of each adjustment, and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>). <code>$effect</code>
-records which effect was estimated.</p>
+and p-value of each adjustment, and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>).
+Every requested pair has a row: <code>not_tested</code> gives why a pair (or, in <code>$radiusResults</code>, a radius) was not tested
+(<code>"one_patient_per_group"</code>, <code>"no_information"</code>, <code>"few_effective_units"</code> or <code>"no_variation"</code>; <code>NA</code> when it
+was), and its p-value is then <code>NA</code> and not counted in the BH adjustment. <code>$effect</code> records which effect was
+estimated.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -234,13 +237,16 @@ patient is not tested: that condition's patients all have the same effect, so it
 standard error would rest on the other condition alone. Its p-value is <code>NA</code> (with adjustment, <code>adjusted_for</code> is
 <code>"none (no_information)"</code>), and it is left out of the combination over radii. With more than two conditions, a
 pair where any condition has no informative patient is not tested.</p>
-<p>The conditions share one dispersion. Each condition's CR2 variance is divided by its
-model-based variance, the ratios are averaged over the conditions with their numbers of patients as weights,
-and the model-based variance of the difference is multiplied by this average. The degrees of freedom are those
-of CR2. A small condition's own spread does not set the standard error alone, which matters when the conditions
-are of unequal size and the patients' effects are skewed. With adjustment, the ratios are those of the
-coefficient of each condition in the adjusted design, and every coefficient's variance is scaled the same way.
-<code>variance = "hartung_knapp"</code> keeps its own variance.</p>
+<p>The standard error of the difference is the sum of each condition's own CR2 variance, on Satterthwaite degrees of
+freedom; with adjustment, the CR2 variance of the adjusted design. <code>variance = "hartung_knapp"</code> keeps its own
+variance.</p>
+<p>For a self-pair (<code>from</code> = <code>to</code>) every cell can carry the label, so random labelling moves both the cells counted
+and their neighbours. Its variance is the exact random-labelling variance of the self-pair (for the radius graph
+and for the k nearest neighbours), not the variance of a pair of two types.</p>
+<p>With the allocation effect, an image whose room on the pair's side (the <code>to</code> cells without a <code>from</code> neighbour
+expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
+its effect could not show the pair's side, and could be large in the other direction. The side is chosen first,
+from every image.</p>
 <p>A patient's weight within its condition grows with the information of its images, so one or two patients can
 carry nearly all of a condition's weight. A radius where a condition's effective patients (Kish's
 (sum w)^2 / sum w^2 of the patients' weights w) fall below the smaller of 3 and half the number of its patients
@@ -283,22 +289,32 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level excess_ref excess_difference</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset   0.272768         0.1023755</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration   0.272768         0.0398330</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                         p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.4114593 0.4114593</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.7354259 0.7354259</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                         from   to         level excess_ref excess_difference</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset  0.3199387       0.072364141</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration  0.3199387       0.001750948</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset           Tc beta         Onset         NA                NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration   Tc beta Long-duration         NA                NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           p_value     p_adj</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.5909207 0.5909207</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9852766 0.9852766</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA        NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA        NA</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       from to         level    side excess_ref</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           Tc Th         Onset attract   0.272768</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       excess_difference        se       df   p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.1023755 0.1146014 5.153215 0.4114593 0.4114593</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.0398330 0.1117464 5.231229 0.7354259 0.7354259</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                              tau2 tau2_image</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset         0.001709649 0.05857091</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration 0.001709649 0.05857091</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                         from   to         level    side excess_ref</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset attract  0.3199387</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration attract  0.3199387</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset           Tc beta         Onset    &lt;NA&gt;         NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration   Tc beta Long-duration    &lt;NA&gt;         NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                         excess_difference         se       df   p_value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.072364141 0.12597874 4.925793 0.5909207</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.001750948 0.09031631 5.040000 0.9852766</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                        NA         NA       NA        NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration                NA         NA       NA        NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                             p_adj        tau2 tau2_image            not_tested</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.5909207 0.001361901 0.05860949                  &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9852766 0.001361901 0.05860949                  &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA          NA 0.14011289 one_patient_per_group</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA          NA 0.14011289 one_patient_per_group</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># the extra number of Tc cells within 50 units of each Th cell</span></span></span>
 <span class="r-in"><span><span class="va">resCount</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>

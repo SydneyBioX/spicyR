@@ -121,10 +121,10 @@ spicy(
 
 - variance:
 
-  Cell method: `"cr2"` (the default: CR2 on Satterthwaite df, with the
-  dispersion shared by the conditions, see Details) or `"hartung_knapp"`
-  (the model-based variance, scaled by the Pearson statistic when that
-  exceeds its df and never below CR2, on m - 2 df).
+  Cell method: `"cr2"` (the default: each condition's CR2 variance, on
+  Satterthwaite df, see Details) or `"hartung_knapp"` (the model-based
+  variance, scaled by the Pearson statistic when that exceeds its df and
+  never below CR2, on m - 2 df).
 
 - ref:
 
@@ -197,7 +197,12 @@ BH-adjusted p-value, the frailty variance, the between-image variance
 (`tau2_image`) and, when the test was adjusted, what for
 (`adjusted_for`), the effect and p-value of each adjustment, and the
 unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
-`unadjusted_p_adj`). `$effect` records which effect was estimated.
+`unadjusted_p_adj`). Every requested pair has a row: `not_tested` gives
+why a pair (or, in `$radiusResults`, a radius) was not tested
+(`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"`
+or `"no_variation"`; `NA` when it was), and its p-value is then `NA` and
+not counted in the BH adjustment. `$effect` records which effect was
+estimated.
 
 ## Details
 
@@ -247,16 +252,23 @@ condition alone. Its p-value is `NA` (with adjustment, `adjusted_for` is
 radii. With more than two conditions, a pair where any condition has no
 informative patient is not tested.
 
-The conditions share one dispersion. Each condition's CR2 variance is
-divided by its model-based variance, the ratios are averaged over the
-conditions with their numbers of patients as weights, and the
-model-based variance of the difference is multiplied by this average.
-The degrees of freedom are those of CR2. A small condition's own spread
-does not set the standard error alone, which matters when the conditions
-are of unequal size and the patients' effects are skewed. With
-adjustment, the ratios are those of the coefficient of each condition in
-the adjusted design, and every coefficient's variance is scaled the same
-way. `variance = "hartung_knapp"` keeps its own variance.
+The standard error of the difference is the sum of each condition's own
+CR2 variance, on Satterthwaite degrees of freedom; with adjustment, the
+CR2 variance of the adjusted design. `variance = "hartung_knapp"` keeps
+its own variance.
+
+For a self-pair (`from` = `to`) every cell can carry the label, so
+random labelling moves both the cells counted and their neighbours. Its
+variance is the exact random-labelling variance of the self-pair (for
+the radius graph and for the k nearest neighbours), not the variance of
+a pair of two types.
+
+With the allocation effect, an image whose room on the pair's side (the
+`to` cells without a `from` neighbour expected by chance for an
+attracting pair, those with one for an avoiding pair) is below one cell
+is not used: its effect could not show the pair's side, and could be
+large in the other direction. The side is chosen first, from every
+image.
 
 A patient's weight within its condition grows with the information of
 its images, so one or two patients can carry nearly all of a condition's
@@ -322,22 +334,32 @@ data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
-#>                       from to         level excess_ref excess_difference
-#> Tc__Th__Onset           Tc Th         Onset   0.272768         0.1023755
-#> Tc__Th__Long-duration   Tc Th Long-duration   0.272768         0.0398330
-#>                         p_value     p_adj
-#> Tc__Th__Onset         0.4114593 0.4114593
-#> Tc__Th__Long-duration 0.7354259 0.7354259
+#>                         from   to         level excess_ref excess_difference
+#> Tc__Th__Onset             Tc   Th         Onset  0.3199387       0.072364141
+#> Tc__Th__Long-duration     Tc   Th Long-duration  0.3199387       0.001750948
+#> Tc__beta__Onset           Tc beta         Onset         NA                NA
+#> Tc__beta__Long-duration   Tc beta Long-duration         NA                NA
+#>                           p_value     p_adj
+#> Tc__Th__Onset           0.5909207 0.5909207
+#> Tc__Th__Long-duration   0.9852766 0.9852766
+#> Tc__beta__Onset                NA        NA
+#> Tc__beta__Long-duration        NA        NA
 res$cellResults
-#>                       from to         level    side excess_ref
-#> Tc__Th__Onset           Tc Th         Onset attract   0.272768
-#> Tc__Th__Long-duration   Tc Th Long-duration attract   0.272768
-#>                       excess_difference        se       df   p_value     p_adj
-#> Tc__Th__Onset                 0.1023755 0.1146014 5.153215 0.4114593 0.4114593
-#> Tc__Th__Long-duration         0.0398330 0.1117464 5.231229 0.7354259 0.7354259
-#>                              tau2 tau2_image
-#> Tc__Th__Onset         0.001709649 0.05857091
-#> Tc__Th__Long-duration 0.001709649 0.05857091
+#>                         from   to         level    side excess_ref
+#> Tc__Th__Onset             Tc   Th         Onset attract  0.3199387
+#> Tc__Th__Long-duration     Tc   Th Long-duration attract  0.3199387
+#> Tc__beta__Onset           Tc beta         Onset    <NA>         NA
+#> Tc__beta__Long-duration   Tc beta Long-duration    <NA>         NA
+#>                         excess_difference         se       df   p_value
+#> Tc__Th__Onset                 0.072364141 0.12597874 4.925793 0.5909207
+#> Tc__Th__Long-duration         0.001750948 0.09031631 5.040000 0.9852766
+#> Tc__beta__Onset                        NA         NA       NA        NA
+#> Tc__beta__Long-duration                NA         NA       NA        NA
+#>                             p_adj        tau2 tau2_image            not_tested
+#> Tc__Th__Onset           0.5909207 0.001361901 0.05860949                  <NA>
+#> Tc__Th__Long-duration   0.9852766 0.001361901 0.05860949                  <NA>
+#> Tc__beta__Onset                NA          NA 0.14011289 one_patient_per_group
+#> Tc__beta__Long-duration        NA          NA 0.14011289 one_patient_per_group
 
 # the extra number of Tc cells within 50 units of each Th cell
 resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,

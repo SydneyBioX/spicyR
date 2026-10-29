@@ -6,9 +6,8 @@ compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the `to` cells are a random choice among
 the parent's cells, and combines the images as
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-does (frailty GEE, CR2 variance with the dispersion shared by the
-conditions, enough effective patients per condition, abundance
-adjustment).
+does (frailty GEE, each condition's CR2 variance, enough effective
+patients per condition, abundance adjustment).
 
 ## Usage
 

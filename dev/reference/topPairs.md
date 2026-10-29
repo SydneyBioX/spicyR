@@ -113,9 +113,9 @@ data("diabetesData")
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50, from = "Tc", to = c("Th", "beta"))
 topPairs(res, from = "Tc", to = "Th")
 #>                       from to         level excess_ref excess_difference
-#> Tc__Th__Onset           Tc Th         Onset   0.272768         0.1023755
-#> Tc__Th__Long-duration   Tc Th Long-duration   0.272768         0.0398330
+#> Tc__Th__Onset           Tc Th         Onset  0.3199387       0.072364141
+#> Tc__Th__Long-duration   Tc Th Long-duration  0.3199387       0.001750948
 #>                         p_value     p_adj
-#> Tc__Th__Onset         0.4114593 0.4114593
-#> Tc__Th__Long-duration 0.7354259 0.7354259
+#> Tc__Th__Onset         0.5909207 0.5909207
+#> Tc__Th__Long-duration 0.9852766 0.9852766
 ```
