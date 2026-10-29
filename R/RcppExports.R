@@ -89,6 +89,10 @@ dataset_multi_radius_totals <- function(ptr, radii, allocation, n_types) {
     .Call(`_spicyR_dataset_multi_radius_totals`, ptr, radii, allocation, n_types)
 }
 
+dataset_self_variances <- function(ptr, knn, allocation, n_types) {
+    .Call(`_spicyR_dataset_self_variances`, ptr, knn, allocation, n_types)
+}
+
 dataset_self_any_expected <- function(ptr, knn, n_types) {
     .Call(`_spicyR_dataset_self_any_expected`, ptr, knn, n_types)
 }
@@ -173,12 +177,12 @@ stats_norm_quantile <- function(p) {
     .Call(`_spicyR_stats_norm_quantile`, p)
 }
 
-stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn, psi, image_group = NULL) {
-    .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi, image_group)
+stats_excess_image_rows <- function(totals, out_sq_totals, counts, from, to, knn, psi, self_var, image_group = NULL) {
+    .Call(`_spicyR_stats_excess_image_rows`, totals, out_sq_totals, counts, from, to, knn, psi, self_var, image_group)
 }
 
-stats_allocation_image_rows <- function(any_totals, self_expected, counts, from, to, psi, image_group = NULL) {
-    .Call(`_spicyR_stats_allocation_image_rows`, any_totals, self_expected, counts, from, to, psi, image_group)
+stats_allocation_image_rows <- function(any_totals, self_expected, counts, from, to, psi, self_var, image_group = NULL) {
+    .Call(`_spicyR_stats_allocation_image_rows`, any_totals, self_expected, counts, from, to, psi, self_var, image_group)
 }
 
 stats_weighted_image_rows <- function(sums, n_labels, to, allocation, image_group = NULL) {
@@ -265,7 +269,7 @@ stats_mvn_outside_quadrature <- function(lower, upper, R) {
     .Call(`_spicyR_stats_mvn_outside_quadrature`, lower, upper, R)
 }
 
-stats_pair_tests <- function(a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads = 1L) {
-    .Call(`_spicyR_stats_pair_tests`, a, b, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads)
+stats_pair_tests <- function(a, b, self_var, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads = 1L) {
+    .Call(`_spicyR_stats_pair_tests`, a, b, self_var, allocation, knn, counts, psi, from, to, image_unit, image_group, n_units, image_heterogeneity, frailty, variance, adjust, z, keep_radius, combine, n_threads)
 }
 

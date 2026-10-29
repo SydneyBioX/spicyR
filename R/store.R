@@ -248,6 +248,7 @@
   K <- if (is.null(k)) length(radii) else 1L
   A <- lapply(seq_len(K), function(j) array(0, c(Tn, Tn, n)))
   B <- lapply(seq_len(K), function(j) if (allocation) matrix(0, Tn, n) else array(0, c(Tn, Tn, n)))
+  C <- lapply(seq_len(K), function(j) matrix(0, Tn, n))
   size <- rowSums(ctx$counts)
   budget <- min(.store_batch() * max(1L, as.integer(n_threads)), max(.store_batch(), .store_batch_max()))
   # batches of consecutive images (in row order when each image is a run of rows)
@@ -300,10 +301,12 @@
     for (j in seq_len(K)) {
       A[[j]][, , imgs] <- res[[j]]$a
       if (allocation) B[[j]][, imgs] <- res[[j]]$b else B[[j]][, , imgs] <- res[[j]]$b
+      C[[j]][, imgs] <- res[[j]]$c
     }
   }
   lapply(seq_len(K), function(j)
-    if (allocation) list(any = A[[j]], self_expected = B[[j]]) else list(totals = A[[j]], sq = B[[j]]))
+    if (allocation) list(any = A[[j]], self_expected = B[[j]], self_var = C[[j]])
+    else list(totals = A[[j]], sq = B[[j]], self_var = C[[j]]))
 }
 
 ## A SpatialData object (spatialdataR): its table's store when it was read from one (list(path, table = NULL)), else the

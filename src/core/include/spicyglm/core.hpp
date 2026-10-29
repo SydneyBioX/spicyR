@@ -125,6 +125,11 @@ class Dataset {
   //   (n_a / N) sum_b [1 - C(N - 1 - d_b, n_a - 1) / C(N - 1, n_a - 1)],
   // d_b the number of neighbours of cell b (other than b). 0 when n_a < 2.
   std::vector<double> self_any_expected(bool knn) const;
+  // For self-pairs, per image and type (img * n_types + a): the exact variance under random labelling of type a
+  // among all the image's cells (Supplementary Section 3.6), for any neighbour relation (one-way k-NN included):
+  // allocation, Var(O) of the number of a cells with an a neighbour; count, Var(O - p L), p = (n_a - 1) / (N - 1),
+  // L = sum over the a cells of the number of cells counting them as a neighbour. 0 when n_a < 2 or n_a = N.
+  std::vector<double> self_variances(bool knn, bool allocation) const;
   // Several radii from ONE neighbour search (radius graph; radii positive and increasing). For radius k the result
   // equals build_radius_index(radii[k]) followed by pair_neighbour_totals(false) and pair_neighbour_out_sq_totals(false)
   // (count; allocation = false) or pair_neighbour_any_totals(false) and self_any_expected(false) (allocation = true).
@@ -132,6 +137,7 @@ class Dataset {
   // functions, so the results are identical. Leaves the radius index at the largest radius.
   struct MultiRadiusTotals {
     std::vector<std::vector<double>> totals, sq, any, self_expected;
+    std::vector<std::vector<double>> self_var;   // self_variances(false, allocation) at each radius
   };
   MultiRadiusTotals multi_radius_totals(const std::vector<double>& radii, bool allocation);
   // Poisson design under the random-labelling null (Section 17): each REF cell's
@@ -236,6 +242,11 @@ class Dataset {
   void own_neighbour_counts(int img, bool knn, std::vector<double>& c) const;
   // self_any_expected for one image from its cells' own neighbour counts c (as own_neighbour_counts)
   void self_any_from_counts(int img, const std::vector<double>& c, double* out_img) const;
+  // The out-neighbour lists of image img's cells (local indices, CSR), b excluded.
+  void own_neighbour_lists(int img, bool knn, std::vector<int>& ptr, std::vector<int>& nb) const;
+  // self_variances for one image from its neighbour lists
+  void self_variance_from_lists(int img, const std::vector<int>& ptr, const std::vector<int>& nb, bool allocation,
+                                double* out_img) const;
 
   std::vector<double> x_, y_;
   std::vector<int> type_, image_offsets_;

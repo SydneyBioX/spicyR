@@ -15,7 +15,33 @@ ref_image_counts <- function(type, nb, A, B) {
   O <- sum(ck * yk); L <- sum(ck); L2 <- sum(ck^2)
   sigma2 <- p * (1 - p) * M / (M - 1)
   list(self = self, cand = cand, ck = ck, yk = yk, M = M, n = n, p = p, O = O, L = L, L2 = L2, E = p * L,
-       sigma2 = sigma2, v = sigma2 * (L2 - L^2 / M))
+       sigma2 = sigma2, v = if (self) ref_self_var(nb$adj, nA, FALSE) else sigma2 * (L2 - L^2 / M))
+}
+
+## Self-pair A -> A: the exact random-labelling variance (Supplementary Section 3.6, Propositions "self-frac" and
+## "self-count"), written out over every ordered pair of cells: pi_k = P(k given cells are all A), N(l) the
+## neighbours of l (adj[l, ]). count: Var(O - p L); allocation: Var(O).
+ref_self_var <- function(adj, nA, allocation) {
+  N <- nrow(adj); if (nA < 2 || nA >= N) return(0)
+  pk <- function(k) if (nA < k) 0 else prod((nA - seq_len(k) + 1) / (N - seq_len(k) + 1))
+  A <- adj * 1; d <- rowSums(A); w <- colSums(A)
+  if (!allocation) {
+    m <- sum(A); b <- sum(A * t(A)); t_ <- d + w; S <- sum(t_ * (t_ - 1)); p <- (nA - 1) / (N - 1)
+    EO2 <- (m + b) * pk(2) + (S - 2 * b) * pk(3) + (m^2 - m + b - S) * pk(4)
+    EOL <- pk(2) * sum(w * t_) + pk(3) * (m^2 - sum(w * t_))
+    EL2 <- pk(1) * sum(w^2) + pk(2) * (m^2 - sum(w^2))
+    return(EO2 - 2 * p * EOL + p^2 * EL2)
+  }
+  h <- function(s) ifelse(N - 1 - s >= nA - 1, exp(lchoose(pmax(N - 1 - s, 0), nA - 1) - lchoose(N - 1, nA - 1)), 0)
+  h2 <- function(s) ifelse(N - 2 - s >= nA - 2, exp(lchoose(pmax(N - 2 - s, 0), nA - 2) - lchoose(N - 2, nA - 2)), 0)
+  E <- nA / N * sum(1 - h(d))
+  a <- matrix(d, N, N) - A                 # a[l, k] = |N(l) \ {k}|
+  a2 <- t(a)                               # a'[l, k] = |N(k) \ {l}|
+  cc <- A %*% t(A)                         # common neighbours
+  Tm <- ifelse(A == 1 & t(A) == 1, 1, ifelse(A == 1, 1 - h2(a2), ifelse(t(A) == 1, 1 - h2(a),
+         1 - h2(a) - h2(a2) + h2(a + a2 - cc))))
+  diag(Tm) <- 0
+  E - E^2 + pk(2) * sum(Tm)
 }
 
 ## The allocation design: every candidate's score is g_k = 1{c_k >= 1} (any A cell among its neighbours), and
@@ -30,7 +56,7 @@ ref_image_counts_alloc <- function(type, nb, A, B) {
     N <- length(type); nA <- sum(type == A); d <- rowSums(nb$adj)
     if (nA < 2) 0 else nA / N * sum(1 - exp(lchoose(N - 1 - d, nA - 1) - lchoose(N - 1, nA - 1)))
   } else ic$p * ic$L
-  ic$v <- ic$sigma2 * (ic$L2 - ic$L^2 / ic$M)
+  ic$v <- if (ic$self) ref_self_var(nb$adj, sum(type == A), TRUE) else ic$sigma2 * (ic$L2 - ic$L^2 / ic$M)
   ic$n_to <- ic$n; ic$n <- ic$n - ic$E
   ic
 }
@@ -85,6 +111,8 @@ ref_image_data <- function(cells, pairs, r, label_clustering = TRUE, self_count 
       # the side, once per pair from the pooled images: attraction n = n_B - E, avoidance n = E
       d <- d[d$n_to > 0 & d$v > 0, , drop = FALSE]
       if (sum(d$O - d$E) < 0) d$n <- d$E
+      # the room guard (Section 3.8): an image whose chosen room is below one cell is not used
+      d <- d[d$n >= 1, , drop = FALSE]
     }
     d$n_to <- NULL
     d[d$n > 0 & d$v > 0, , drop = FALSE] }), paste0(pairs$from, "__", pairs$to))
@@ -155,8 +183,8 @@ ref_n_eff <- function(f) vapply(1:2, function(g) {
   w <- vapply(seq_along(f$idx)[f$g_u == g - 1], function(k) (t(f$D[[k]]) %*% f$W[[k]] %*% f$D[[k]])[g, g], 0)
   sum(w)^2 / sum(w^2) }, 0)
 
-## One pair: the test of delta_2 = delta_1 (Section 4.4), and the Hartung-Knapp option (Section 4.5); the pooled
-## dispersion (with CR2), and no test when a group's effective units fall below min(3, m_g / 2), m_g its units.
+## One pair: the test of delta_2 = delta_1 (Section 4.4), each condition's own CR2 variance, and the Hartung-Knapp
+## option (Section 4.5); no test when a group's effective units fall below min(3, m_g / 2), m_g its units.
 ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp"), effect = "count") {
   variance <- match.arg(variance)
   tau2 <- ref_tau2(d, unit, group); f <- ref_gee_fit(d, unit, group, tau2); cr <- ref_cr2(f)
@@ -164,7 +192,7 @@ ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")
   if (variance == "hartung_knapp") {
     m <- length(f$idx); X <- ref_pearson(d, unit, group, tau2); Vm <- f$B[1, 1] + f$B[2, 2]
     V <- max(V, Vm * max(1, X / (m - 2))); df <- m - 2
-  } else V <- ref_phi(f, 2, as.vector(table(factor(f$g_u, 0:1)))) * (f$B[1, 1] + f$B[2, 2])
+  }
   p <- 2 * stats::pt(-abs(est / sqrt(V)), df)
   if (cr$V > 0 && any(ref_n_eff(f) < pmin(3, as.vector(table(factor(f$g_u, 0:1))) / 2))) p <- NA_real_
   c(delta_ref = f$beta[1], delta_comp = f$beta[2], excess_difference = est, tau2 = tau2, se = sqrt(V), df = df,

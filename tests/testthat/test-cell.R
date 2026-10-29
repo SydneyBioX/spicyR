@@ -297,8 +297,8 @@ test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), 
   # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T
   share <- spicyR:::.cell_share(ctx, rows, "T")
   Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share))
-  a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2", TRUE)
-  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2, n_groups = 2)
+  a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2", FALSE)
+  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2, n_groups = 0)
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
                                 adjustAbundance = TRUE))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
@@ -571,11 +571,12 @@ test_that("a radius where a condition has no informative patient is not tested",
   expect_identical(attr(rows, "side"), "avoid")
   expect_true(all(rows$O[rows$group == 0L] == -1))
   expect_identical(spicyR:::stats_informative_units(rows, rows$unit, rows$group, 2L), c(0L, 8L))
-  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2", TRUE)
+  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2", FALSE)
   expect_true(u$ok && u$se > 0 && u$coef_ref == -1)
   # one radius: not tested, unadjusted and adjusted
   x <- run(4)$cellResults
   expect_true(is.na(x$p_value)); expect_identical(x$excess_ref, -1); expect_identical(x$se, u$se)
+  expect_identical(x$not_tested, "no_information")
   x <- run(4, covariates = "age", adjustAbundance = TRUE)$cellResults
   expect_identical(x$adjusted_for, "none (no_information)")
   expect_true(is.na(x$p_value)); expect_true(is.na(x$unadjusted_p_value))
@@ -600,7 +601,7 @@ test_that("a radius where a condition has no informative patient is not tested",
     gc <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE, effect = "count")
     gc$image_heterogeneity <- TRUE
     rc <- spicyR:::.cell_rows(ctx, gc, "tumour", "T")
-    uc <- spicyR:::stats_excess_test(rc, rc$unit, rc$group, length(ctx$unit_labels), TRUE, "cr2", TRUE)
+    uc <- spicyR:::stats_excess_test(rc, rc$unit, rc$group, length(ctx$unit_labels), TRUE, "cr2", FALSE)
     x <- run(r, effect = "count")$cellResults
     expect_identical(x$p_value, uc$p); expect_false(is.na(x$p_value))
   }
@@ -648,10 +649,10 @@ test_that("a radius where a condition has fewer than min(3, m_g / 2) effective p
   ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
   m <- length(ctx$unit_labels)
   rules <- spicyR:::stats_test_rules(TRUE)
-  expect_true(rules$pooled_dispersion && rules$min_effective_units); expect_identical(rules$min_n_eff, 3)
+  expect_true(!rules$pooled_dispersion && rules$min_effective_units); expect_identical(rules$min_n_eff, 3)
   for (r in c(5, 12)) {
     rows <- ne_rows(ctx, r)
-    u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", TRUE)
+    u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", FALSE)
     expect_equal(u$n_eff, ne_kish(rows, u$tau2), tolerance = 1e-12)
     expect_equal(spicyR:::stats_effective_units(rows, rows$unit, rows$group, 2L, u$tau2), u$n_eff, tolerance = 1e-12)
     expect_identical(u$n_units, c(8, 8))
@@ -659,6 +660,7 @@ test_that("a radius where a condition has fewer than min(3, m_g / 2) effective p
     expect_identical(few, r == 5)
     x <- run(r)$cellResults
     expect_identical(is.na(x$p_value), few); expect_equal(x$se, u$se, tolerance = 1e-12)
+    expect_identical(x$not_tested, if (few) "few_effective_units" else NA_character_)
     x <- run(r, covariates = "age")$cellResults
     if (few) {
       expect_identical(x$adjusted_for, "none (few_effective_units)")
@@ -684,7 +686,7 @@ test_that("a radius where a condition has fewer than min(3, m_g / 2) effective p
   }
   # the count effect and Kontextual have the same rules
   rc <- spicyR:::stats_test_rules(FALSE)
-  expect_true(rc$pooled_dispersion && rc$min_effective_units)
+  expect_true(!rc$pooled_dispersion && rc$min_effective_units)
   rows <- ne_rows(ctx, 5, "count")
   uc <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "cr2", rc$pooled_dispersion)
   x <- run(5, effect = "count")$cellResults
@@ -708,13 +710,13 @@ test_that("a condition of 3 patients is tested when its effective patients reach
   d <- ne_cells(n_img = 6, big = 1)
   ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
   rows <- ne_rows(ctx, 12)
-  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2", TRUE)
+  u <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(ctx$unit_labels), TRUE, "cr2", FALSE)
   expect_identical(u$n_units, c(3, 3)); expect_true(all(u$n_eff >= 1.5 & u$n_eff < 3))
   x <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T"))$cellResults
   expect_false(is.na(x$p_value)); expect_equal(x$se, u$se, tolerance = 1e-12)
 })
 
-test_that("the allocation test pools the dispersion of the conditions (hand calculation)", {
+test_that("the allocation test uses each condition's own CR2 variance (hand calculation)", {
   d <- ne_cells()
   ctx <- spicyR:::.cell_context(d, "condition", NULL, "imageID", "cellType", c("x", "y"))
   m <- length(ctx$unit_labels); rows <- ne_rows(ctx, 12)
@@ -726,8 +728,7 @@ test_that("the allocation test pools the dispersion of the conditions (hand calc
     beta <- sum(a * s[i]) / B; r <- s[i] - beta * J[i]; h <- a * J[i] / B
     c(beta = beta, V = sum(a^2 * r^2 / (B^2 * (1 - h))), EV = 1 / B, m = sum(i)) }, numeric(4))
   expect_equal(u0$se^2, sum(per["V", ]), tolerance = 1e-10)
-  phi <- sum(per["m", ] * per["V", ] / per["EV", ]) / sum(per["m", ])
-  se <- sqrt(phi * sum(per["EV", ])); dif <- per["beta", 2] - per["beta", 1]
+  se <- sqrt(sum(per["V", ])); dif <- per["beta", 2] - per["beta", 1]
   x <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T"))$cellResults
   expect_equal(c(x$excess_difference, x$se, x$df, x$p_value),
                unname(c(dif, se, u0$df, 2 * pt(-abs(dif / se), u0$df))), tolerance = 1e-10)
@@ -735,13 +736,41 @@ test_that("the allocation test pools the dispersion of the conditions (hand calc
   hk <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T", variance = "hartung_knapp"))$cellResults
   uh <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "hartung_knapp", FALSE)
   expect_equal(c(hk$se, hk$df, hk$p_value), c(uh$se, uh$df, uh$p), tolerance = 1e-12)
-  # adjusted: the ratio of each condition's coefficient, pooled the same way, scales every contrast's variance
+  # adjusted: the CR2 variance of the design, with no pooled dispersion
   xa <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T", covariates = "age"))$cellResults
   age <- d$age[match(ctx$image_labels[rows$img + 1L], d$imageID)]
   Z <- cbind(rows$group == 0, rows$group == 1, age - mean(age))
-  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), xa$tau2, n_groups = 2)
-  e <- ref_design(rows, rows$unit, Z, c(0, 0, 1), xa$tau2, n_groups = 2)
+  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), xa$tau2, n_groups = 0)
+  e <- ref_design(rows, rows$unit, Z, c(0, 0, 1), xa$tau2, n_groups = 0)
   expect_equal(c(xa$excess_difference, xa$se, xa$df, xa$p_value), unname(b), tolerance = 1e-8)
   expect_equal(c(xa$age_effect, xa$age_p_value), unname(e[c("estimate", "p")]), tolerance = 1e-8)
   expect_equal(xa$unadjusted_p_value, x$p_value, tolerance = 1e-12)
+})
+
+test_that("every requested pair is in the table, with why it was not tested", {
+  d <- sim_cells()
+  d$cellType[which(d$patient == "A01")[1:6]] <- "solo"   # a type in one patient of one condition only
+  n_types <- length(unique(d$cellType))
+  for (rr in list(30, c(15, 30))) for (ef in c("allocation", "count")) for (adj in c(FALSE, TRUE)) {
+    x <- suppressMessages(spicy(d, "condition", subject = "patient", r = rr, effect = ef,
+                                adjustAbundance = adj))$cellResults
+    expect_equal(nrow(x), n_types^2)
+    solo <- x$from == "solo" | x$to == "solo"
+    expect_true(all(x$not_tested[solo] == "one_patient_per_group"))
+    expect_true(all(is.na(x$p_value[solo])) && all(is.na(x$p_adj[solo])))
+    expect_true(all(is.na(x$not_tested[!solo]) == !is.na(x$p_value[!solo])))
+    # BH counts only the tests done: the same p_adj as without the untested pairs
+    expect_equal(x$p_adj[!solo], stats::p.adjust(x$p_value[!solo], "BH"), tolerance = 1e-12)
+  }
+})
+
+test_that("allocation: images whose chosen room is below one cell are not used (room guard)", {
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
+  for (r in c(5, 30)) {
+    g <- spicyR:::.cell_graph(ctx, NULL, r = r, label_clustering = FALSE)
+    for (i in seq_len(nrow(grid))) {
+      rows <- spicyR:::.cell_rows(ctx, g, grid$from[i], grid$to[i])
+      expect_true(all(rows$n >= 1))
+    }
+  }
 })

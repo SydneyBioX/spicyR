@@ -62,7 +62,7 @@ test_that("kontextualEngine (psi and abundance off) is the frailty GEE on the re
     data.frame(img = i - 1L, O = r$O, E = r$E, n = r$n, v = r$v) }))
   pat <- cells$patient[match(ids, cells$imageID)]; grp <- cells$condition[match(ids, cells$imageID)]
   rows$unit <- match(pat, unique(pat)) - 1L; rows$group <- as.integer(grp == "B")
-  ref <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(unique(pat)), TRUE, "cr2", TRUE)
+  ref <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(unique(pat)), TRUE, "cr2", FALSE)
   expect_equal(res$p_value, ref$p, tolerance = 1e-10)
   expect_equal(res$excess_difference, ref$difference, tolerance = 1e-10)
   # T cells were moved next to tumour cells in group B: more tumour cells around T than around the other lymphoid cells

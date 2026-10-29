@@ -69,13 +69,15 @@ struct StreamOptions {
   std::size_t n_results() const { return k > 0 ? 1 : radii.size(); }
   std::size_t block_a() const { return static_cast<std::size_t>(n_types) * n_types; }
   std::size_t block_b() const { return allocation ? static_cast<std::size_t>(n_types) : block_a(); }
+  std::size_t block_c() const { return static_cast<std::size_t>(n_types); }
 };
 
 // One pair of arrays per result (radius, or k): a[j] holds block_a() entries per image and b[j] block_b(), image
 // after image, in the layout the whole-data Dataset gives (entry (img * n_types + from) * n_types + to). The
 // functions below write the blocks of the images they see and leave the rest untouched.
+// c[j] holds block_c() entries per image: the self-pair variances (Dataset::self_variances) of each type.
 struct StreamOutput {
-  std::vector<double*> a, b;
+  std::vector<double*> a, b, c;
 };
 
 // The totals of one batch of whole images already grouped image by image: image i of the batch is rows

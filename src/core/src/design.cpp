@@ -28,11 +28,14 @@ struct Units {
 
 Units group_units(const std::vector<int>& unit) {
   Units u;
-  std::vector<int> seen;
+  // unit codes are 0-based: look each one up in a table rather than searching the units seen so far
+  int max_unit = -1;
+  for (int c : unit) max_unit = std::max(max_unit, c);
+  std::vector<int> pos_of(static_cast<std::size_t>(max_unit + 1), -1);
   for (std::size_t i = 0; i < unit.size(); ++i) {
-    auto it = std::find(seen.begin(), seen.end(), unit[i]);
-    if (it == seen.end()) { seen.push_back(unit[i]); u.rows.push_back({static_cast<int>(i)}); }
-    else u.rows[it - seen.begin()].push_back(static_cast<int>(i));
+    int& q = pos_of[unit[i]];
+    if (q < 0) { q = static_cast<int>(u.rows.size()); u.rows.push_back({}); }
+    u.rows[q].push_back(static_cast<int>(i));
   }
   return u;
 }

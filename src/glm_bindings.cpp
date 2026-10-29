@@ -237,7 +237,8 @@ NumericVector dataset_pair_neighbour_any_totals(SEXP ptr, bool knn, int n_types)
 
 // Several radii from one neighbour search (Dataset::multi_radius_totals): a list with one element per radius, each
 // with `any` ([to, from, image]) and `self_expected` (types x images) for the allocation design, or `totals` and `sq`
-// ([to, from, image]) for the count, exactly as the single-radius bindings after dataset_build_radius_index.
+// ([to, from, image]) for the count, exactly as the single-radius bindings after dataset_build_radius_index; and
+// `self_var` (types x images), the exact self-pair variances (dataset_self_variances).
 // [[Rcpp::export]]
 List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types) {
   XPtr<Dataset> d(ptr);
@@ -248,13 +249,25 @@ List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation,
     o.attr("dim") = IntegerVector::create(n_types, n_types, n_img); return o; };
   List out(K);
   for (int k = 0; k < K; ++k) {
+    NumericMatrix sv(n_types, n_img); std::copy(m.self_var[k].begin(), m.self_var[k].end(), sv.begin());
     if (allocation) {
       NumericMatrix se(n_types, n_img); std::copy(m.self_expected[k].begin(), m.self_expected[k].end(), se.begin());
-      out[k] = List::create(_["any"] = cube(m.any[k]), _["self_expected"] = se);
+      out[k] = List::create(_["any"] = cube(m.any[k]), _["self_expected"] = se, _["self_var"] = sv);
     } else {
-      out[k] = List::create(_["totals"] = cube(m.totals[k]), _["sq"] = cube(m.sq[k]));
+      out[k] = List::create(_["totals"] = cube(m.totals[k]), _["sq"] = cube(m.sq[k]), _["self_var"] = sv);
     }
   }
+  return out;
+}
+
+// Exact null variance of each type's self-pair row, types x images (Dataset::self_variances): allocation Var(O),
+// count Var(O - p L) (Supplementary Section 3.6).
+// [[Rcpp::export]]
+NumericMatrix dataset_self_variances(SEXP ptr, bool knn, bool allocation, int n_types) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->self_variances(knn, allocation);
+  NumericMatrix out(n_types, static_cast<int>(v.size() / n_types));
+  std::copy(v.begin(), v.end(), out.begin());
   return out;
 }
 
@@ -453,8 +466,8 @@ IntegerVector cell_rows_differing(SEXP v, SEXP image, SEXP ref, int image_base =
 // The neighbour totals of the cell method from the cells in input order (spicyglm::stream_totals): image_fac and
 // type_fac are factor codes, mapped by image_map / type_map (indexed by code - 1; type_map's last entry is a missing
 // type) to the 0-based image (in .cell_context()'s sorted order) and cell type. k > 0: the k nearest neighbours; else
-// the radius graph at radii. One element per radius (one for kNN), each list(any, self_expected) (allocation) or
-// list(totals, sq) (count), as the whole-data dataset gives them. Batches of about 2^21 cells per thread.
+// the radius graph at radii. One element per radius (one for kNN), each list(any, self_expected, self_var)
+// (allocation) or list(totals, sq, self_var) (count), as the whole-data dataset gives them. Batches of about 2^21 cells per thread.
 // [[Rcpp::export]]
 List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac,
                         IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation,
@@ -469,12 +482,14 @@ List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map,
   List res(o.n_results());
   spicyglm::StreamOutput out;
   for (std::size_t j = 0; j < o.n_results(); ++j) {
-    NumericVector a(o.block_a() * n_images), b(o.block_b() * n_images);
+    NumericVector a(o.block_a() * n_images), b(o.block_b() * n_images), c(o.block_c() * n_images);
     a.attr("dim") = IntegerVector::create(n_types, n_types, n_images);
     if (allocation) b.attr("dim") = IntegerVector::create(n_types, n_images);
     else b.attr("dim") = IntegerVector::create(n_types, n_types, n_images);
-    out.a.push_back(a.begin()); out.b.push_back(b.begin());
-    res[j] = allocation ? List::create(_["any"] = a, _["self_expected"] = b) : List::create(_["totals"] = a, _["sq"] = b);
+    c.attr("dim") = IntegerVector::create(n_types, n_images);
+    out.a.push_back(a.begin()); out.b.push_back(b.begin()); out.c.push_back(c.begin());
+    res[j] = allocation ? List::create(_["any"] = a, _["self_expected"] = b, _["self_var"] = c)
+                        : List::create(_["totals"] = a, _["sq"] = b, _["self_var"] = c);
   }
   spicyglm::stream_totals(cells, maps, o, out, n_threads, (1LL << 21) * std::max(1, n_threads));
   return res;
@@ -483,7 +498,8 @@ List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map,
 // The neighbour totals of one batch of whole images that the caller has already gathered (spicyglm::batch_totals):
 // the cells image by image (each image's cells in row order), x, y (or x the N x 2 matrix of both and y empty) and
 // 0-based cell types, offsets[i] the first cell of image i of the batch. One element per radius (one for kNN), each
-// list(a, b): the any / totals block and the self_expected / sq block of every image of the batch.
+// list(a, b, c): the any / totals block, the self_expected / sq block and the self-pair variances (types per image)
+// of every image of the batch.
 // [[Rcpp::export]]
 List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types,
                        NumericVector radii, int k, bool allocation, int n_threads = 1) {
@@ -497,9 +513,9 @@ List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, Int
   List res(o.n_results());
   spicyglm::StreamOutput out;
   for (std::size_t j = 0; j < o.n_results(); ++j) {
-    NumericVector a(o.block_a() * nb), b(o.block_b() * nb);
-    out.a.push_back(a.begin()); out.b.push_back(b.begin());
-    res[j] = List::create(_["a"] = a, _["b"] = b);
+    NumericVector a(o.block_a() * nb), b(o.block_b() * nb), c(o.block_c() * nb);
+    out.a.push_back(a.begin()); out.b.push_back(b.begin()); out.c.push_back(c.begin());
+    res[j] = List::create(_["a"] = a, _["b"] = b, _["c"] = c);
   }
   spicyglm::batch_totals(x.begin(), matrix ? x.begin() + N : y.begin(), type.begin(), offsets.begin(), nb,
                          index.data(), o, out, n_threads);

@@ -60,11 +60,14 @@ GroupFit fit_group(const ImageRows& d, const std::vector<int>& idx, const std::v
   std::vector<int> pos(1, 0);
   std::vector<int> slot;  // per idx entry: its unit's position
   {
-    std::vector<int> seen;
+    // unit codes are 0-based: look each one up in a table rather than searching the units seen so far
+    int max_unit = -1;
+    for (int i : idx) max_unit = std::max(max_unit, unit[i]);
+    std::vector<int> pos_of(static_cast<std::size_t>(max_unit + 1), -1), seen;
     for (int i : idx) {
-      auto it = std::find(seen.begin(), seen.end(), unit[i]);
-      if (it == seen.end()) { slot.push_back(static_cast<int>(seen.size())); seen.push_back(unit[i]); }
-      else slot.push_back(static_cast<int>(it - seen.begin()));
+      int& q = pos_of[unit[i]];
+      if (q < 0) { q = static_cast<int>(seen.size()); seen.push_back(unit[i]); }
+      slot.push_back(q);
     }
     f.units = seen;
   }
@@ -121,16 +124,20 @@ int distinct(const std::vector<int>& idx, const std::vector<int>& unit) {
 
 ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector<double>& out_sq_totals,
                             const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                            bool knn, const std::vector<double>& psi, const std::vector<int>& image_group) {
+                            bool knn, const std::vector<double>& psi, const std::vector<double>& self_var,
+                            const std::vector<int>& image_group) {
   return excess_image_rows(totals.data(), out_sq_totals.data(), counts.data(), n_types, n_images, from, to, knn,
-                           psi.empty() ? nullptr : psi.data(), image_group.empty() ? nullptr : image_group.data());
+                           psi.empty() ? nullptr : psi.data(), self_var.empty() ? nullptr : self_var.data(),
+                           image_group.empty() ? nullptr : image_group.data());
 }
 
 ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, const double* counts, int n_types,
-                            int n_images, int from, int to, bool knn, const double* psi, const int* image_group) {
+                            int n_images, int from, int to, bool knn, const double* psi, const double* self_var,
+                            const int* image_group) {
   // totals[(img * T + b) * T + a] = sum over the image's b cells of their a neighbours (R: tot[a, b, img])
   const int T = n_types;
   const bool self = from == to;
+  if (self && !self_var) throw std::invalid_argument("excess_image_rows: a self-pair needs self_var (Dataset::self_variances)");
   auto tot = [&](int a, int b, int img) { return totals[(static_cast<std::size_t>(img) * T + b) * T + a]; };
   auto sq = [&](int a, int b, int img) { return out_sq_totals[(static_cast<std::size_t>(img) * T + b) * T + a]; };
   ImageRows out;
@@ -147,7 +154,9 @@ ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, c
     if (self && !knn) { O -= nA; L -= nA; }   // the radius totals count each cell as its own neighbour
     double M = self ? N : N - nA;
     double p = self ? std::max(nA - 1, 0.0) / std::max(M - 1, 1.0) : nB / std::max(M, 1.0);
-    double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(Q - L * L / std::max(M, 1.0), 0.0);
+    // cross pair: Proposition 1 (the scores x are fixed); self pair: the exact Var(O - pL) (Section 3.6)
+    double v = self ? self_var[static_cast<std::size_t>(img) * T + from]
+                    : p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(Q - L * L / std::max(M, 1.0), 0.0);
     if (psi) v *= psi[static_cast<std::size_t>(to) * n_images + img];
     if (nB > 0 && v > 0) {
       out.image.push_back(img); out.O.push_back(O); out.E.push_back(p * L); out.n.push_back(nB); out.v.push_back(v);
@@ -181,7 +190,7 @@ ImageRows weighted_image_rows(const double* sums, int n_images, int n_labels, in
   ImageRows kept;
   for (std::size_t i = 0; i < out.O.size(); ++i) {
     double n = avoid ? out.E[i] : out.n[i] - out.E[i];
-    if (n > 0) {
+    if (n >= 1) {   // room guard: an image whose chosen room is below one cell is not used (Section 3.8)
       kept.image.push_back(out.image[i]); kept.O.push_back(out.O[i]); kept.E.push_back(out.E[i]);
       kept.n.push_back(n); kept.v.push_back(out.v[i]);
     }
@@ -191,17 +200,20 @@ ImageRows weighted_image_rows(const double* sums, int n_images, int n_labels, in
 
 ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                                const std::vector<double>& psi, const std::vector<int>& image_group) {
+                                const std::vector<double>& psi, const std::vector<double>& self_var,
+                                const std::vector<int>& image_group) {
   return allocation_image_rows(any_totals.data(), self_expected.data(), counts.data(), n_types, n_images, from, to,
-                               psi.empty() ? nullptr : psi.data(), image_group.empty() ? nullptr : image_group.data());
+                               psi.empty() ? nullptr : psi.data(), self_var.empty() ? nullptr : self_var.data(),
+                               image_group.empty() ? nullptr : image_group.data());
 }
 
 ImageRows allocation_image_rows(const double* any_totals, const double* self_expected, const double* counts,
                                 int n_types, int n_images, int from, int to, const double* psi,
-                                const int* image_group) {
+                                const double* self_var, const int* image_group) {
   // any_totals[(img * T + a) * T + b] = the number of the image's b cells with an a cell among their neighbours
   const int T = n_types;
   const bool self = from == to;
+  if (self && !self_var) throw std::invalid_argument("allocation_image_rows: a self-pair needs self_var (Dataset::self_variances)");
   auto any = [&](int a, int b, int img) { return any_totals[(static_cast<std::size_t>(img) * T + a) * T + b]; };
   ImageRows out;
   for (int img = 0; img < n_images; ++img) {
@@ -214,7 +226,9 @@ ImageRows allocation_image_rows(const double* any_totals, const double* self_exp
     double M = self ? N : N - nA;
     double p = self ? std::max(nA - 1, 0.0) / std::max(M - 1, 1.0) : nB / std::max(M, 1.0);
     double E = self ? self_expected[static_cast<std::size_t>(img) * T + from] : p * L;
-    double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(L - L * L / std::max(M, 1.0), 0.0);
+    // cross pair: Proposition 1 with 0/1 scores; self pair: the exact Var(O) (Section 3.6)
+    double v = self ? self_var[static_cast<std::size_t>(img) * T + from]
+                    : p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(L - L * L / std::max(M, 1.0), 0.0);
     if (psi) v *= psi[static_cast<std::size_t>(to) * n_images + img];
     if (nB > 0 && v > 0) {
       out.image.push_back(img); out.O.push_back(O); out.E.push_back(E); out.n.push_back(nB); out.v.push_back(v);
@@ -228,7 +242,7 @@ ImageRows allocation_image_rows(const double* any_totals, const double* self_exp
   ImageRows kept;
   for (std::size_t i = 0; i < out.O.size(); ++i) {
     double n = avoid ? out.E[i] : out.n[i] - out.E[i];
-    if (n > 0) {
+    if (n >= 1) {   // room guard: an image whose chosen room is below one cell is not used (Section 3.8)
       kept.image.push_back(out.image[i]); kept.O.push_back(out.O[i]); kept.E.push_back(out.E[i]);
       kept.n.push_back(n); kept.v.push_back(out.v[i]);
     }
@@ -432,10 +446,12 @@ std::vector<double> effective_units(const ImageRows& rows, const std::vector<int
 }
 
 TestRules test_rules(bool allocation) {
-  // The allocation effect has both rules; so do the count effect and Kontextual (kCount*).
-  constexpr bool kCountPooledDispersion = true, kCountMinEffectiveUnits = true;
+  // Every effect (allocation, count, Kontextual) has the minimum effective units rule. The variance is each
+  // condition's own CR2 (standard, Welch-type): the pooled dispersion (spicyR 1.99.27-1.99.47) is off
+  // (DECISIONS 29 Oct 2026).
+  constexpr bool kCountMinEffectiveUnits = true;
   TestRules r;
-  r.pooled_dispersion = allocation || kCountPooledDispersion;
+  r.pooled_dispersion = false;
   r.min_effective_units = allocation || kCountMinEffectiveUnits;
   return r;
 }
@@ -483,12 +499,16 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
     for (std::size_t u = 0; u < f.units.size(); ++u) { const double w = f.a[u] * f.J[u]; sw += w; sw2 += w * w; }
     res.n_eff[g] = sw * sw / sw2; res.n_units[g] = static_cast<double>(f.units.size());
   }
+  std::vector<int> pos_of(static_cast<std::size_t>(std::max(n_units, 0)), -1);
   for (int g = 0; g < 2; ++g) {
     const GroupFit& f = g == 0 ? f0 : f1;
     const std::vector<int>& idx = g == 0 ? g0 : g1;
+    for (std::size_t u = 0; u < f.units.size(); ++u) {
+      if (f.units[u] >= static_cast<int>(pos_of.size())) pos_of.resize(f.units[u] + 1, -1);
+      pos_of[f.units[u]] = static_cast<int>(u);
+    }
     for (int i : idx) {
-      auto it = std::find(f.units.begin(), f.units.end(), unit[i]);
-      double a = f.a[it - f.units.begin()];
+      double a = f.a[pos_of[unit[i]]];
       res.image_weight[i] = a * rows.n[i] * rows.n[i] / rows.v[i] / f.B;   // a_u (n^2 / v) / S_g
     }
   }

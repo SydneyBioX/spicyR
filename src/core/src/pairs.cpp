@@ -163,6 +163,7 @@ PairTests pair_tests(const PairTestInput& in) {
                   &res.u_se, &res.u_df, &res.u_p})
     v->assign(PK, kNaN);
   res.design.assign(PK, 0); res.abundance.assign(PK, 0); res.design_reason.assign(PK, std::string());
+  res.not_tested.assign(PK, std::string());
   res.effect.assign(PK * ne, kNaN); res.effect_p.assign(PK * ne, kNaN);
   res.rows.assign(P, ImageRows()); res.image_weight.assign(P, std::vector<double>());
   res.best.assign(P, -1); res.comb_p.assign(P, kNaN); res.comb_p_best.assign(P, kNaN); res.comb_u_p.assign(P, kNaN);
@@ -175,8 +176,10 @@ PairTests pair_tests(const PairTestInput& in) {
       const std::size_t o = static_cast<std::size_t>(pr) * K + k;
       // images with a missing condition give no row (no part in the side, tau2_image or the tests)
       ImageRows r = in.allocation
-        ? allocation_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.psi, in.image_group)
-        : excess_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.knn, in.psi, in.image_group);
+        ? allocation_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.psi,
+                                k < static_cast<int>(in.self_var.size()) ? in.self_var[k] : nullptr, in.image_group)
+        : excess_image_rows(in.a[k], in.b[k], in.counts, in.n_types, in.n_images, f, t, in.knn, in.psi,
+                            k < static_cast<int>(in.self_var.size()) ? in.self_var[k] : nullptr, in.image_group);
       const std::size_t N = r.O.size();
       std::vector<int> unit(N), group(N);
       for (std::size_t i = 0; i < N; ++i) { unit[i] = in.image_unit[r.image[i]]; group[i] = in.image_group[r.image[i]]; }
@@ -194,7 +197,7 @@ PairTests pair_tests(const PairTestInput& in) {
       res.n_rows[o] = static_cast<int>(N);
       ExcessResult u = excess_test(r, unit, group, in.n_units, in.frailty, in.variance, rules.pooled_dispersion);
       if (k == in.keep_radius) { res.rows[pr] = r; res.image_weight[pr] = u.image_weight; }
-      if (!u.ok) continue;
+      if (!u.ok) { res.not_tested[o] = u.reason.empty() ? "not_tested" : u.reason; continue; }
       res.ok[o] = 1;
       res.u_difference[o] = u.difference; res.u_se[o] = u.se; res.u_df[o] = u.df; res.u_p[o] = u.p;
       res.coef_ref[o] = u.coef_ref; res.coef_comp[o] = u.coef_comp; res.difference[o] = u.difference;
@@ -215,7 +218,9 @@ PairTests pair_tests(const PairTestInput& in) {
       if (!not_tested && rules.min_effective_units && u.se > 0 &&
           few_effective_units(u.n_eff, u.n_units))
         not_tested = "few_effective_units";
+      if (!not_tested && !(u.se > 0)) res.not_tested[o] = "no_variation";
       if (not_tested) {
+        res.not_tested[o] = not_tested;
         res.p[o] = kNaN; res.u_p[o] = kNaN;
         if (adjusting) { res.design[o] = 2; res.design_reason[o] = not_tested; }
         if (several) {

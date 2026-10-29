@@ -196,6 +196,107 @@ WindowGeometry window_geometry(const double* x, const double* y, std::size_t n, 
   return W;
 }
 
+
+// Exact random-labelling variance of a self-pair a -> a (Supplementary Section 3.6, Appendix B), for any neighbour
+// relation: N(l) = the out-neighbours of cell l (the cells within r, or its k nearest; l itself excluded).
+// Built once per image from the neighbour lists; evaluated for every type count n with self_graph_variance().
+struct SelfGraph {
+  int N = 0;
+  // count: m links, b of them with their reverse a link, w in-degree, t = out + in degree
+  long double m = 0, b = 0, S = 0, Swt = 0, Sw2 = 0;
+  // fraction: number of cells with each out-degree d, and the coefficient of h2(x) in
+  //   sum over ordered pairs l != k of T_lk (Proposition "self-frac"), apart from the constant N (N - 1)
+  std::vector<double> deg_count, h2_coef;
+};
+
+// ptr / nb: out-neighbour lists of the image's cells, local indices 0..N-1 (CSR).
+SelfGraph self_graph(int N, const std::vector<int>& ptr, const std::vector<int>& nb, bool allocation) {
+  SelfGraph g; g.N = N;
+  std::vector<int> d(N), w(N, 0);
+  int dmax = 0;
+  for (int l = 0; l < N; ++l) { d[l] = ptr[l + 1] - ptr[l]; dmax = std::max(dmax, d[l]); }
+  for (int e = 0; e < ptr[N]; ++e) ++w[nb[e]];
+  // in-neighbour lists
+  std::vector<int> iptr(N + 1, 0), inb(ptr[N]);
+  for (int e = 0; e < ptr[N]; ++e) ++iptr[nb[e] + 1];
+  for (int l = 0; l < N; ++l) iptr[l + 1] += iptr[l];
+  { std::vector<int> pos(iptr.begin(), iptr.end() - 1);
+    for (int l = 0; l < N; ++l) for (int e = ptr[l]; e < ptr[l + 1]; ++e) inb[pos[nb[e]]++] = l; }
+  std::vector<char> out_mark(N, 0), in_mark(N, 0);
+  if (!allocation) {
+    for (int l = 0; l < N; ++l) {
+      for (int e = ptr[l]; e < ptr[l + 1]; ++e) out_mark[nb[e]] = 1;
+      for (int e = iptr[l]; e < iptr[l + 1]; ++e) if (out_mark[inb[e]]) g.b += 1;   // l -> k and k -> l
+      for (int e = ptr[l]; e < ptr[l + 1]; ++e) out_mark[nb[e]] = 0;
+      const long double t = d[l] + w[l];
+      g.m += d[l]; g.S += t * (t - 1); g.Swt += w[l] * t; g.Sw2 += static_cast<long double>(w[l]) * w[l];
+    }
+    return g;
+  }
+  g.deg_count.assign(dmax + 1, 0.0);
+  for (int l = 0; l < N; ++l) g.deg_count[d[l]] += 1;
+  std::vector<double>& A = g.h2_coef;
+  A.assign(2 * dmax + 1, 0.0);
+  // every ordered pair as if unlinked and sharing no neighbour: 1 - h2(d_l) - h2(d_k) + h2(d_l + d_k)
+  for (int x = 0; x <= dmax; ++x) {
+    if (!g.deg_count[x]) continue;
+    A[x] -= 2.0 * (N - 1) * g.deg_count[x];
+    A[2 * x] -= g.deg_count[x];                                   // the l = k terms of the double sum below
+    for (int y = 0; y <= dmax; ++y) if (g.deg_count[y]) A[x + y] += g.deg_count[x] * g.deg_count[y];
+  }
+  // corrections for the pairs that are linked or share a neighbour: T_lk minus the term above
+  std::vector<int> common(N, 0), touched;
+  for (int l = 0; l < N; ++l) {
+    touched.clear();
+    auto touch = [&](int k) { if (k != l && !out_mark[k] && !in_mark[k] && !common[k]) touched.push_back(k); };
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) { touch(nb[e]); out_mark[nb[e]] = 1; }
+    for (int e = iptr[l]; e < iptr[l + 1]; ++e) { touch(inb[e]); in_mark[inb[e]] = 1; }
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) {
+      const int v = nb[e];
+      for (int f = iptr[v]; f < iptr[v + 1]; ++f) { const int k = inb[f]; if (k == l) continue; touch(k); ++common[k]; }
+    }
+    for (int k : touched) {
+      const int s = d[l] + d[k];
+      if (out_mark[k] && in_mark[k]) { A[d[l]] += 1; A[d[k]] += 1; A[s] -= 1; }      // linked both ways: T = 1
+      else if (out_mark[k]) { A[d[l]] += 1; A[s] -= 1; }                             // k in N(l) only
+      else if (in_mark[k]) { A[d[k]] += 1; A[s] -= 1; }                              // l in N(k) only
+      else { A[s - common[k]] += 1; A[s] -= 1; }                                     // c common neighbours
+    }
+    for (int k : touched) { out_mark[k] = 0; in_mark[k] = 0; common[k] = 0; }
+  }
+  return g;
+}
+
+// Var(O) (allocation) or Var(O - p L) (count) of the self-pair of a type with n of the image's N cells.
+double self_graph_variance(const SelfGraph& g, int n, bool allocation) {
+  const int N = g.N;
+  if (n < 2 || n >= N) return 0;
+  auto lchoose = [](double a, double c) { return std::lgamma(a + 1) - std::lgamma(c + 1) - std::lgamma(a - c + 1); };
+  long double pk[5] = {1, 0, 0, 0, 0};
+  for (int k = 1; k <= 4; ++k) pk[k] = n >= k ? pk[k - 1] * (n - k + 1) / static_cast<long double>(N - k + 1) : 0;
+  if (!allocation) {
+    const long double p = static_cast<long double>(n - 1) / (N - 1), m = g.m, b = g.b;
+    const long double EO2 = (m + b) * pk[2] + (g.S - 2 * b) * pk[3] + (m * m - m + b - g.S) * pk[4];
+    const long double EOL = pk[2] * g.Swt + pk[3] * (m * m - g.Swt);
+    const long double EL2 = pk[1] * g.Sw2 + pk[2] * (m * m - g.Sw2);
+    const long double V = EO2 - 2 * p * EOL + p * p * EL2;
+    return V > 1e-11L * (1 + EO2) ? static_cast<double>(V) : 0.0;
+  }
+  // h1(s) = C(N-1-s, n-1) / C(N-1, n-1); h2(s) = C(N-2-s, n-2) / C(N-2, n-2)
+  const double l1 = lchoose(N - 1, n - 1), l2 = lchoose(N - 2, n - 2);
+  long double E = 0;
+  for (std::size_t x = 0; x < g.deg_count.size(); ++x) if (g.deg_count[x])
+    E += g.deg_count[x] * (N - 1 - static_cast<double>(x) >= n - 1 ? -std::expm1(lchoose(N - 1 - x, n - 1) - l1) : 1.0);
+  E *= static_cast<long double>(n) / N;
+  long double sum = static_cast<long double>(N) * (N - 1);
+  for (std::size_t x = 0; x < g.h2_coef.size(); ++x) if (g.h2_coef[x] != 0) {
+    const double h2 = N - 2 - static_cast<double>(x) >= n - 2 ? std::exp(lchoose(N - 2 - x, n - 2) - l2) : 0.0;
+    sum += g.h2_coef[x] * static_cast<long double>(h2);
+  }
+  const long double V = E - E * E + pk[2] * sum;
+  return V > 1e-11L * (1 + E * E) ? static_cast<double>(V) : 0.0;
+}
+
 }  // namespace
 
 double window_area(const double* x, const double* y, std::size_t n, Window window) {
@@ -1042,6 +1143,61 @@ void Dataset::self_any_from_counts(int img, const std::vector<double>& c, double
   }
 }
 
+void Dataset::own_neighbour_lists(int img, bool knn, std::vector<int>& ptr, std::vector<int>& nb) const {
+  const int start = image_offsets_[img], end = image_offsets_[img + 1], N = end - start;
+  ptr.assign(N + 1, 0); nb.clear();
+  if (knn) {
+    for (int row = start; row < end; ++row) {
+      const int* q = knn_.data() + static_cast<std::size_t>(row) * k_;
+      for (int slot = 0; slot < k_; ++slot) if (q[slot] >= 0 && q[slot] != row) nb.push_back(q[slot] - start);
+      ptr[row - start + 1] = static_cast<int>(nb.size());
+    }
+    return;
+  }
+  const Grid& g = grids_[img];
+  const double r2 = r_ * r_;
+  for (int row = start; row < end; ++row) {
+    const double px = x_[row], py = y_[row];
+    long long bx = static_cast<long long>((px - g.xmin) / g.side);
+    long long by = static_cast<long long>((py - g.ymin) / g.side);
+    for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+      for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+        std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+        for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+          if (grow_[p] == row) continue;
+          double dx = gx_[p] - px, dy = gy_[p] - py;
+          if (dx * dx + dy * dy <= r2) nb.push_back(grow_[p] - start);
+        }
+      }
+    ptr[row - start + 1] = static_cast<int>(nb.size());
+  }
+}
+
+void Dataset::self_variance_from_lists(int img, const std::vector<int>& ptr, const std::vector<int>& nb,
+                                       bool allocation, double* out_img) const {
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  const int N = image_offsets_[img + 1] - image_offsets_[img];
+  bool any = false;
+  for (std::size_t a = 0; a < T; ++a) { const int na = type_count(img, static_cast<int>(a)); if (na >= 2 && na < N) any = true; }
+  if (!any) return;
+  SelfGraph g = self_graph(N, ptr, nb, allocation);
+  for (std::size_t a = 0; a < T; ++a) out_img[a] = self_graph_variance(g, type_count(img, static_cast<int>(a)), allocation);
+}
+
+std::vector<double> Dataset::self_variances(bool knn, bool allocation) const {
+  if (knn && k_ == 0) throw std::logic_error("call build_knn first");
+  if (!knn && grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * T, 0.0);
+  std::vector<int> ptr, nb;
+  for (int img = 0; img < n_images(); ++img) {
+    if (image_offsets_[img + 1] - image_offsets_[img] < 3) continue;
+    own_neighbour_lists(img, knn, ptr, nb);
+    self_variance_from_lists(img, ptr, nb, allocation, out.data() + static_cast<std::size_t>(img) * T);
+  }
+  return out;
+}
+
 Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double>& radii, bool allocation) {
   const int K = static_cast<int>(radii.size());
   if (K < 1) throw std::invalid_argument("radii must not be empty");
@@ -1051,6 +1207,7 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
   const std::size_t T = static_cast<std::size_t>(n_types_);
   const std::size_t per = static_cast<std::size_t>(n_images()) * T * T;
   MultiRadiusTotals out;
+  out.self_var.assign(K, std::vector<double>(static_cast<std::size_t>(n_images()) * T, 0.0));
   if (allocation) {
     out.any.assign(K, std::vector<double>(per, 0.0));
     out.self_expected.assign(K, std::vector<double>(static_cast<std::size_t>(n_images()) * T, 0.0));
@@ -1060,12 +1217,12 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
   }
   std::vector<double> r2(K);
   for (int k = 0; k < K; ++k) r2[k] = radii[k] * radii[k];
-  std::vector<int> e_row, e_type, e_k, order, k_start;
+  std::vector<int> e_row, e_col, e_type, e_k, order, k_start, lptr, lnb;
   std::vector<double> c;
   for (int img = 0; img < n_images(); ++img) {
     const int start = image_offsets_[img], end = image_offsets_[img + 1];
     const Grid& g = grids_[img];
-    e_row.clear(); e_type.clear(); e_k.clear();
+    e_row.clear(); e_col.clear(); e_type.clear(); e_k.clear();
     // every neighbour pair (b, p), p != b, within the largest radius, with the smallest radius that contains it
     for (int row = start; row < end; ++row) {
       const double px = x_[row], py = y_[row];
@@ -1078,7 +1235,7 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
             if (grow_[p] == row) continue;
             double dx = gx_[p] - px, dy = gy_[p] - py, d2 = dx * dx + dy * dy;
             if (!(d2 <= r2[K - 1])) continue;
-            e_row.push_back(row - start); e_type.push_back(gtype_[p]);
+            e_row.push_back(row - start); e_col.push_back(grow_[p] - start); e_type.push_back(gtype_[p]);
             e_k.push_back(static_cast<int>(std::lower_bound(r2.begin(), r2.end(), d2) - r2.begin()));
           }
         }
@@ -1095,6 +1252,17 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
     for (int k = 0; k < K; ++k) {
       for (int q = k_start[k]; q < k_start[k + 1]; ++q) { const int e = order[q];
         c[static_cast<std::size_t>(e_row[e]) * T + static_cast<std::size_t>(e_type[e])] += 1.0; }
+      // the self-pair variances at this radius: the neighbour lists of the pairs within radii[k]
+      if (end - start >= 3) {
+        const int N = end - start;
+        lptr.assign(N + 1, 0);
+        for (int q = 0; q < k_start[k + 1]; ++q) ++lptr[e_row[order[q]] + 1];
+        for (int l = 0; l < N; ++l) lptr[l + 1] += lptr[l];
+        lnb.assign(lptr[N], 0);
+        { std::vector<int> pos(lptr.begin(), lptr.end() - 1);
+          for (int q = 0; q < k_start[k + 1]; ++q) { const int e = order[q]; lnb[pos[e_row[e]]++] = e_col[e]; } }
+        self_variance_from_lists(img, lptr, lnb, allocation, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
+      }
       if (allocation) {
         double* M = out.any[k].data() + static_cast<std::size_t>(img) * T * T;
         for (int row = start; row < end; ++row) {

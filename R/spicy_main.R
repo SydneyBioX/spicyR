@@ -322,7 +322,8 @@ spicy <- function(cells,
   keep <- if (K > 1L) which.min(abs(radii - stats::median(radii))) else 1L
   from <- vapply(pairs, `[`, "", 1L); to <- vapply(pairs, `[`, "", 2L)
   x <- stats_pair_tests(lapply(graphs, `[[`, if (allocation) "any" else "totals"),
-                        lapply(graphs, `[[`, if (allocation) "self_expected" else "sq"), allocation, graphs[[1]]$knn,
+                        lapply(graphs, `[[`, if (allocation) "self_expected" else "sq"), lapply(graphs, `[[`, "self_var"),
+                        allocation, graphs[[1]]$knn,
                         ctx$counts, graphs[[1]]$psi, match(from, ctx$type_labels) - 1L, match(to, ctx$type_labels) - 1L,
                         ctx$image_unit, ctx$image_group, length(ctx$unit_labels), TRUE, TRUE, variance, adjust,
                         if (is.null(Z_extra)) matrix(0, 0, 0) else Z_extra, keep, if (K > 1L) combine else "none",
@@ -338,14 +339,22 @@ spicy <- function(cells,
                                                     unadjusted = list(image_weight = x$image_weight[[i]])))
   if (K == 1L) return(list(table = tabs[[1]], fits = fits))
   long <- do.call(rbind, Map(function(t, rr) if (!is.null(t)) cbind(r = rr, t), tabs, radii))
-  # the rows of `long`: radius by radius, the pairs tested there; one row per pair (in order of first appearance),
-  # that of its chosen radius
-  pk <- lapply(seq_len(K), function(k) which(x$ok[k, ] == 1L))
-  at <- matrix(NA_integer_, K, length(pairs)); at[cbind(rep(seq_len(K), lengths(pk)), unlist(pk))] <- seq_along(unlist(pk))
-  key <- unique(unlist(pk))
-  tab <- long[at[cbind(x$best[key], key)], , drop = FALSE]
-  tab$p_value <- x$comb_p[key]; tab$p_value_best_radius <- x$comb_p_best[key]
-  if (adjusted) tab$unadjusted_p_value <- x$comb_u_p[key]
+  # the rows of `long`: radius by radius, every pair; one row per pair, that of its chosen radius. A pair tested at
+  # no radius keeps a row of NAs, with the reasons it was not tested at each radius.
+  P <- length(pairs)
+  best <- x$best
+  tab <- long[(ifelse(is.na(best), keep, best) - 1L) * P + seq_len(P), , drop = FALSE]
+  tab$p_value <- x$comb_p; tab$p_value_best_radius <- x$comb_p_best
+  if (adjusted) tab$unadjusted_p_value <- x$comb_u_p
+  none <- is.na(best)
+  if (any(none)) {
+    num <- vapply(tab, is.numeric, TRUE); num[c("r")] <- TRUE
+    tab[none, num] <- NA
+    if (allocation) tab$side[none] <- NA_character_
+    tab$not_tested[none] <- vapply(which(none), function(j) {
+      w <- unique(x$not_tested[, j]); w <- w[nzchar(w)]
+      if (length(w)) paste(w, collapse = "; ") else NA_character_ }, "")
+  }
   tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
   if (adjusted) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
   for (col in c("unadjusted_difference", "unadjusted_se", "unadjusted_df")) tab[[col]] <- NULL
@@ -364,14 +373,16 @@ spicy <- function(cells,
 
 ## The table of one radius from stats_pair_tests() (the columns and rows .cell_table() gives for the same fits).
 .cell_pairs_table <- function(x, k, from, to, allocation, adjust, zn, enames = .cell_pairs_enames(x, k, adjust, zn)) {
-  s <- which(x$ok[k, ] == 1L)
+  # every requested pair, tested or not (not_tested: why not; NA when it was)
+  s <- seq_along(from)
   if (!length(s)) return(NULL)
   at <- function(m) m[k, s]
   tab <- data.frame(from = from[s], to = to[s], excess_ref = at(x$coef_ref), excess_comp = at(x$coef_comp),
                     excess_difference = at(x$difference), se = at(x$se), df = at(x$df), p_value = at(x$p),
                     tau2 = at(x$tau2), stringsAsFactors = FALSE)
-  if (allocation) tab$side <- c("avoid", "attract")[(at(x$side) > 0L) + 1L]
+  if (allocation) tab$side <- ifelse(at(x$ok) == 1L, c("avoid", "attract")[(at(x$side) > 0L) + 1L], NA_character_)
   tab$tau2_image <- at(x$tau2_image)
+  nt <- at(x$not_tested); tab$not_tested <- ifelse(nzchar(nt), nt, NA_character_)
   if (adjust || !is.null(zn)) {
     d <- at(x$design); ab <- at(x$abundance) == 1L
     with_ab <- adjust & (ab | "abundance" %in% zn)

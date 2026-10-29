@@ -56,8 +56,8 @@ struct ImageCells {
 void check(const StreamOptions& opt, const StreamOutput& out) {
   if (opt.n_types < 1) throw std::invalid_argument("no cell types");
   if (opt.k <= 0 && opt.radii.empty()) throw std::invalid_argument("give a radius or k");
-  if (out.a.size() != opt.n_results() || out.b.size() != opt.n_results())
-    throw std::invalid_argument("one pair of output arrays per radius");
+  if (out.a.size() != opt.n_results() || out.b.size() != opt.n_results() || out.c.size() != opt.n_results())
+    throw std::invalid_argument("one set of output arrays (a, b, c) per radius");
 }
 
 // The totals of one image into its blocks of the outputs.
@@ -66,6 +66,7 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
   Dataset d(std::move(c.x), std::move(c.y), std::move(c.type), std::vector<int>{0, n}, opt.n_types);
   const std::size_t A = opt.block_a(), B = opt.block_b();
   const std::size_t at = static_cast<std::size_t>(c.index) * A, at_b = static_cast<std::size_t>(c.index) * B;
+  const std::size_t at_c = static_cast<std::size_t>(c.index) * opt.block_c();
   auto put = [](const std::vector<double>& from, double* to) { std::copy(from.begin(), from.end(), to); };
   const bool knn = opt.k > 0;
   if (!knn && opt.radii.size() > 1) {
@@ -73,6 +74,7 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
     for (std::size_t j = 0; j < opt.radii.size(); ++j) {
       if (opt.allocation) { put(m.any[j], out.a[j] + at); put(m.self_expected[j], out.b[j] + at_b); }
       else { put(m.totals[j], out.a[j] + at); put(m.sq[j], out.b[j] + at_b); }
+      put(m.self_var[j], out.c[j] + at_c);
     }
     return;
   }
@@ -84,6 +86,7 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
     put(d.pair_neighbour_totals(knn), out.a[0] + at);
     put(d.pair_neighbour_out_sq_totals(knn), out.b[0] + at_b);
   }
+  put(d.self_variances(knn, opt.allocation), out.c[0] + at_c);
 }
 
 // Each image in a Dataset of its own, the images handed out in turn to up to n_threads threads: make(i, cells)

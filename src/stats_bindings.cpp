@@ -72,8 +72,9 @@ NumericVector stats_norm_quantile(NumericVector p) {
 
 // [[Rcpp::export]]
 List stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, NumericMatrix counts,
-                                  int from, int to, bool knn, NumericMatrix psi,
+                                  int from, int to, bool knn, NumericMatrix psi, NumericVector self_var,
                                   Nullable<IntegerVector> image_group = R_NilValue) {
+  // self_var: types x images (dataset_self_variances), needed for a self-pair; may be empty otherwise
   // counts: images x types (R layout); psi: types x images, or 0 x 0 for psi = 1; image_group: per image (NA: a
   // missing condition, no row), or NULL for every image
   const int n_images = counts.nrow(), T = counts.ncol();
@@ -86,13 +87,15 @@ List stats_excess_image_rows(NumericVector totals, NumericVector out_sq_totals, 
   }
   std::vector<int> ig;
   if (image_group.isNotNull()) ig = ivec(IntegerVector(image_group));
-  return rows_to(excess_image_rows(dvec(totals), dvec(out_sq_totals), cnt, T, n_images, from, to, knn, ps, ig));
+  return rows_to(excess_image_rows(dvec(totals), dvec(out_sq_totals), cnt, T, n_images, from, to, knn, ps,
+                                   dvec(self_var), ig));
 }
 
 // [[Rcpp::export]]
 List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_expected, NumericMatrix counts,
-                                      int from, int to, NumericMatrix psi,
+                                      int from, int to, NumericMatrix psi, NumericVector self_var,
                                       Nullable<IntegerVector> image_group = R_NilValue) {
+  // self_var: types x images (dataset_self_variances), needed for a self-pair; may be empty otherwise
   // self_expected: types x images (dataset_self_any_expected); counts: images x types; psi: types x images, or 0 x 0;
   // image_group: per image (NA: a missing condition, no row and no part in the side), or NULL for every image
   const int n_images = counts.nrow(), T = counts.ncol();
@@ -106,7 +109,7 @@ List stats_allocation_image_rows(NumericVector any_totals, NumericMatrix self_ex
   std::vector<int> ig;
   if (image_group.isNotNull()) ig = ivec(IntegerVector(image_group));
   return rows_to(allocation_image_rows(dvec(any_totals), std::vector<double>(self_expected.begin(), self_expected.end()),
-                                       cnt, T, n_images, from, to, ps, ig));
+                                       cnt, T, n_images, from, to, ps, dvec(self_var), ig));
 }
 
 // [[Rcpp::export]]
@@ -305,7 +308,7 @@ double stats_mvn_outside_quadrature(NumericVector lower, NumericVector upper, Nu
 }
 
 // [[Rcpp::export]]
-List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix counts, NumericMatrix psi,
+List stats_pair_tests(List a, List b, List self_var, bool allocation, bool knn, NumericMatrix counts, NumericMatrix psi,
                       IntegerVector from, IntegerVector to, IntegerVector image_unit, IntegerVector image_group,
                       int n_units, bool image_heterogeneity, bool frailty, std::string variance, bool adjust,
                       NumericMatrix z, int keep_radius, std::string combine, int n_threads = 1) {
@@ -313,12 +316,13 @@ List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix c
   // types; psi: types x images, or 0 x 0 for psi = 1; z: images x covariates (centred, NA where missing), or 0 x 0;
   // keep_radius and the radius chosen are 1-based. Per pair and radius: K x P matrices.
   const int K = a.size(), n_images = counts.nrow(), T = counts.ncol();
-  if (b.size() != K || K < 1) stop("stats_pair_tests: one a and one b per radius");
-  std::vector<NumericVector> av, bv;
+  if (b.size() != K || self_var.size() != K || K < 1) stop("stats_pair_tests: one a, b and self_var per radius");
+  std::vector<NumericVector> av, bv, cv;
   PairTestInput in;
   for (int k = 0; k < K; ++k) {
-    av.push_back(as<NumericVector>(a[k])); bv.push_back(as<NumericVector>(b[k]));
+    av.push_back(as<NumericVector>(a[k])); bv.push_back(as<NumericVector>(b[k])); cv.push_back(as<NumericVector>(self_var[k]));
     in.a.push_back(av.back().begin()); in.b.push_back(bv.back().begin());
+    in.self_var.push_back(cv.back().size() ? cv.back().begin() : nullptr);
   }
   std::vector<double> cnt = image_major(counts), ps, zz;
   if (psi.nrow() > 0) {
@@ -357,7 +361,9 @@ List stats_pair_tests(List a, List b, bool allocation, bool knn, NumericMatrix c
   out.push_back(km(r.tau2), "tau2"); out.push_back(km(r.u_difference), "u_difference");
   out.push_back(km(r.u_se), "u_se"); out.push_back(km(r.u_df), "u_df"); out.push_back(km(r.u_p), "u_p");
   out.push_back(ki(r.design), "design"); out.push_back(ki(r.abundance), "abundance");
-  out.push_back(reason, "design_reason"); out.push_back(ke(r.effect), "effect"); out.push_back(ke(r.effect_p), "effect_p");
+  CharacterVector not_tested(r.not_tested.begin(), r.not_tested.end());
+  not_tested.attr("dim") = Dimension(K, P);
+  out.push_back(reason, "design_reason"); out.push_back(not_tested, "not_tested"); out.push_back(ke(r.effect), "effect"); out.push_back(ke(r.effect_p), "effect_p");
   out.push_back(rows, "rows"); out.push_back(weight, "image_weight"); out.push_back(best, "best");
   out.push_back(nv(r.comb_p), "comb_p"); out.push_back(nv(r.comb_p_best), "comb_p_best");
   out.push_back(nv(r.comb_u_p), "comb_u_p");

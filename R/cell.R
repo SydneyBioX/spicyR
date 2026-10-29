@@ -168,7 +168,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 }
 
 ## The neighbour totals of every radius (or k), image by image from the cells' own columns (cell_stream_totals): one
-## element per radius, list(any, self_expected) or list(totals, sq), as the whole-data dataset gives them.
+## element per radius, list(any, self_expected, self_var) or list(totals, sq, self_var), as the whole-data dataset
+## gives them (self_var: the exact self-pair variances, types x images).
 .cell_stream <- function(ctx, radii = NULL, k = NULL, allocation = TRUE, n_threads = 1L) {
   if (!is.null(ctx$store)) return(.store_stream(ctx, radii = radii, k = k, allocation = allocation, n_threads = n_threads))
   z <- ctx$cells
@@ -189,6 +190,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     x <- .cell_stream(ctx, radii = r, k = k, allocation = allocation, n_threads = n_threads)[[1]]
     g <- if (allocation) list(knn = knn, effect = effect, any = x$any, self_expected = x$self_expected)
          else list(knn = knn, effect = effect, totals = x$totals, sq = x$sq)
+    g$self_var <- x$self_var
     g$psi <- matrix(numeric(0), 0, 0)
     return(g)
   }
@@ -207,6 +209,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                             self_expected = dataset_self_any_expected(ctx$data, knn, n_types))
        else list(knn = knn, effect = effect, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
                  sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, n_types))
+  g$self_var <- dataset_self_variances(ctx$data, knn, allocation, n_types)
   # psi of a `to` type is the median over every counted type (not only the requested pairs), so a pair's result does
   # not depend on which other pairs were asked for
   tos <- unique(vapply(pairs, `[`, "", 2L))
@@ -224,6 +227,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   lapply(m, function(x) {
     g <- if (allocation) list(knn = FALSE, effect = effect, any = x$any, self_expected = x$self_expected)
          else list(knn = FALSE, effect = effect, totals = x$totals, sq = x$sq)
+    g$self_var <- x$self_var
     g$psi <- matrix(numeric(0), 0, 0)
     g
   })
@@ -233,9 +237,9 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_rows <- function(ctx, g, f, t) {
   fc <- match(f, ctx$type_labels) - 1L; tc <- match(t, ctx$type_labels) - 1L
   # images with a missing condition give no row: they play no part in the side, tau2_image or the test
-  rows <- if (g$effect == "allocation") stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi,
+  rows <- if (g$effect == "allocation") stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi, g$self_var,
                                                                     ctx$image_group)
-          else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi, ctx$image_group)
+          else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi, g$self_var, ctx$image_group)
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
   # allocation: the pair's side, chosen in the core from the images (attraction scales by 1 - q, avoidance by q)
@@ -374,6 +378,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   skip <- if (r$se > 0 && .cell_no_information(rows, 2L)) "no_information"
           else if (rules$min_effective_units && r$se > 0 && .cell_few_effective(r$n_eff, r$n_units, rules)) "few_effective_units"
   if (!is.null(skip)) { out$test$p <- NaN; out$unadjusted$p <- NaN }
+  out$not_tested <- if (!is.null(skip)) skip else if (!(r$se > 0)) "no_variation"
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
   if (!is.null(skip)) { out$adjusted_for <- paste0("none (", skip, ")"); return(out) }
@@ -461,17 +466,21 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (length(ctx$levels) > 2L) return(.cell_table_levels(fits, ctx, adjusted))
   ok <- vapply(fits, `[[`, logical(1), "ok")
   enames <- .cell_effect_names(fits[ok])
-  tab <- do.call(rbind, lapply(fits[ok], function(o) {
-    x <- o$test
+  # every requested pair, tested or not (not_tested: why not; NA when it was)
+  tab <- do.call(rbind, lapply(fits, function(o) {
+    x <- if (isTRUE(o$ok)) o$test else list(coef_ref = NA_real_, coef_comp = NA_real_, difference = NA_real_,
+                                             se = NA_real_, df = NA_real_, p = NA_real_, tau2 = NA_real_)
     row <- data.frame(from = o$from, to = o$to, excess_ref = x$coef_ref, excess_comp = x$coef_comp,
                       excess_difference = x$difference, se = x$se, df = x$df, p_value = x$p, tau2 = x$tau2,
                       stringsAsFactors = FALSE)
     if (!is.null(o$parent)) row$parent <- o$parent
     row <- .cell_add_side(row, o)
+    row$not_tested <- if (!isTRUE(o$ok)) (if (length(o$reason) && nzchar(o$reason)) o$reason else "not_tested")
+                      else if (!is.null(o$not_tested)) o$not_tested else NA_character_
     if (adjusted) {
       row$adjusted_for <- o$adjusted_for
       row <- .cell_add_effects(row, o, enames)
-      u <- o$unadjusted
+      u <- if (isTRUE(o$ok)) o$unadjusted else list(difference = NA_real_, se = NA_real_, df = NA_real_, p = NA_real_)
       row$unadjusted_difference <- u$difference; row$unadjusted_se <- u$se; row$unadjusted_df <- u$df
       row$unadjusted_p_value <- u$p
     }
@@ -488,17 +497,21 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_table_levels <- function(fits, ctx, adjusted) {
   ok <- vapply(fits, `[[`, TRUE, "ok")
   enames <- .cell_effect_names(fits[ok])
-  tab <- do.call(rbind, lapply(fits[ok], function(o) {
-    do.call(rbind, lapply(names(o$levels_test), function(l) { d <- o$levels_test[[l]]
+  # every requested pair and level, tested or not (not_tested: why not; NA when it was)
+  na_test <- list(theta = NA_real_, estimate = NA_real_, se = NA_real_, df = NA_real_, p = NA_real_, tau2 = NA_real_)
+  tab <- do.call(rbind, lapply(fits, function(o) {
+    lv <- if (isTRUE(o$ok)) names(o$levels_test) else ctx$levels[-1]
+    do.call(rbind, lapply(lv, function(l) { d <- if (isTRUE(o$ok)) o$levels_test[[l]] else na_test
       row <- data.frame(from = o$from, to = o$to, level = l, excess_ref = d$theta[1],
                         excess_difference = d$estimate, se = d$se, df = d$df, p_value = d$p, tau2 = d$tau2,
                         stringsAsFactors = FALSE)
       if (!is.null(o$parent)) row$parent <- o$parent
       row <- .cell_add_side(row, o)
+      row$not_tested <- if (isTRUE(o$ok)) NA_character_ else if (length(o$reason)) o$reason else "not_tested"
       if (adjusted) {
         row$adjusted_for <- o$adjusted_for
         row <- .cell_add_effects(row, o, enames)
-        u <- o$unadjusted_levels[[l]]
+        u <- if (isTRUE(o$ok)) o$unadjusted_levels[[l]] else na_test
         row$unadjusted_difference <- u$estimate; row$unadjusted_se <- u$se; row$unadjusted_df <- u$df
         row$unadjusted_p_value <- u$p
       }
@@ -514,7 +527,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## The main test first, then what it was adjusted for and the effects, then the unadjusted test.
 .cell_order_columns <- function(tab) {
   first <- intersect(c("from", "to", "parent", "level", "r", "side", "excess_ref", "excess_comp", "excess_difference",
-                       "se", "df", "p_value", "p_adj", "p_value_best_radius", "tau2", "tau2_image", "adjusted_for"), names(tab))
+                       "se", "df", "p_value", "p_adj", "p_value_best_radius", "tau2", "tau2_image", "not_tested",
+                       "adjusted_for"), names(tab))
   un <- grep("^unadjusted_", names(tab), value = TRUE)
   tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]
 }

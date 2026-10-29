@@ -35,7 +35,8 @@ struct ImageRows {
 // empty for psi = 1. knn: the k-nearest-neighbour graph (no self-loops), else the radius graph.
 ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector<double>& out_sq_totals,
                             const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                            bool knn, const std::vector<double>& psi, const std::vector<int>& image_group = {});
+                            bool knn, const std::vector<double>& psi, const std::vector<double>& self_var,
+                            const std::vector<int>& image_group = {});
 
 // The allocation effect: the fraction of TARGET cells moved next to (or away from) REF cells. `any_totals` is
 // Dataset::pair_neighbour_any_totals, `self_expected` Dataset::self_any_expected. Every candidate (a non-REF cell;
@@ -50,17 +51,22 @@ ImageRows excess_image_rows(const std::vector<double>& totals, const std::vector
 // in both cases however many REF cells there are and however densely they are packed.
 ImageRows allocation_image_rows(const std::vector<double>& any_totals, const std::vector<double>& self_expected,
                                 const std::vector<double>& counts, int n_types, int n_images, int from, int to,
-                                const std::vector<double>& psi, const std::vector<int>& image_group = {});
+                                const std::vector<double>& psi, const std::vector<double>& self_var,
+                                const std::vector<int>& image_group = {});
 
+// self_var: Dataset::self_variances (image-major, img * n_types + type), the exact variance of a self-pair's row
+// (Supplementary Section 3.6); required for a self-pair, unused otherwise (empty / nullptr allowed then).
+// Allocation: an image whose chosen room n is below one cell gives no row (the room guard, Section 3.8); the side
+// is chosen first, from every image with a row.
 // The two above on the caller's arrays, without copies (psi: nullptr for psi = 1). image_group (per image; empty or
 // nullptr: every image): an image with a negative group (a missing condition) gives no row, so it plays no part in
 // the choice of the side either.
 ImageRows excess_image_rows(const double* totals, const double* out_sq_totals, const double* counts, int n_types,
-                            int n_images, int from, int to, bool knn, const double* psi,
+                            int n_images, int from, int to, bool knn, const double* psi, const double* self_var,
                             const int* image_group = nullptr);
 ImageRows allocation_image_rows(const double* any_totals, const double* self_expected, const double* counts,
                                 int n_types, int n_images, int from, int to, const double* psi,
-                                const int* image_group = nullptr);
+                                const double* self_var, const int* image_group = nullptr);
 
 // Label-clustering factor (Supplementary, "Label Clustering"): per (TARGET type, image) the median
 // over the requested REF types of HAC / (sigma^2 R), floored at 1. Returns type-major n_types x
@@ -300,6 +306,7 @@ struct PairTestInput {
   // per radius (or the one k): allocation: a = any_totals, b = self_expected; count: a = totals, b = out_sq_totals
   // (the layouts of allocation_image_rows / excess_image_rows)
   std::vector<const double*> a, b;
+  std::vector<const double*> self_var;  // per radius: Dataset::self_variances (needed when a pair is a self-pair)
   bool allocation = true, knn = false;
   const double* counts = nullptr;     // image-major n_images x n_types
   int n_types = 0, n_images = 0;
@@ -358,6 +365,9 @@ struct PairTests {
   std::vector<int> design;            // PairDesign::design
   std::vector<int> abundance;         // PairDesign::abundance
   std::vector<std::string> design_reason;   // design == 2: why
+  // why the radius was not tested ("" when it was): "one_patient_per_group" (ok = 0), "no_information",
+  // "few_effective_units" or "no_variation" (ok = 1, p NaN)
+  std::vector<std::string> not_tested;
   // the added columns (abundance, then the n_z covariates) at ((p * K + k) * (1 + n_z) + j): estimate and p, NaN
   // where not in the design
   std::vector<double> effect, effect_p;
