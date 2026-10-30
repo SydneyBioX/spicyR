@@ -244,23 +244,26 @@ SelfGraph self_graph(int N, const std::vector<int>& ptr, const std::vector<int>&
     A[2 * x] -= g.deg_count[x];                                   // the l = k terms of the double sum below
     for (int y = 0; y <= dmax; ++y) if (g.deg_count[y]) A[x + y] += g.deg_count[x] * g.deg_count[y];
   }
-  // corrections for the pairs that are linked or share a neighbour: T_lk minus the term above
+  // corrections for the pairs that are linked or share a neighbour: T_lk minus the term above. T_lk = T_kl, so each
+  // unordered pair is visited once (k > l) and counted twice; each in-neighbour list is in increasing order (built by
+  // l above), so the k > l part of it starts at upper_bound(l).
   std::vector<int> common(N, 0), touched;
   for (int l = 0; l < N; ++l) {
     touched.clear();
-    auto touch = [&](int k) { if (k != l && !out_mark[k] && !in_mark[k] && !common[k]) touched.push_back(k); };
-    for (int e = ptr[l]; e < ptr[l + 1]; ++e) { touch(nb[e]); out_mark[nb[e]] = 1; }
-    for (int e = iptr[l]; e < iptr[l + 1]; ++e) { touch(inb[e]); in_mark[inb[e]] = 1; }
+    auto touch = [&](int k) { if (!out_mark[k] && !in_mark[k] && !common[k]) touched.push_back(k); };
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) if (nb[e] > l) { touch(nb[e]); out_mark[nb[e]] = 1; }
+    for (int e = iptr[l]; e < iptr[l + 1]; ++e) if (inb[e] > l) { touch(inb[e]); in_mark[inb[e]] = 1; }
     for (int e = ptr[l]; e < ptr[l + 1]; ++e) {
       const int v = nb[e];
-      for (int f = iptr[v]; f < iptr[v + 1]; ++f) { const int k = inb[f]; if (k == l) continue; touch(k); ++common[k]; }
+      const int* first = std::upper_bound(inb.data() + iptr[v], inb.data() + iptr[v + 1], l);
+      for (const int* f = first; f < inb.data() + iptr[v + 1]; ++f) { touch(*f); ++common[*f]; }
     }
     for (int k : touched) {
       const int s = d[l] + d[k];
-      if (out_mark[k] && in_mark[k]) { A[d[l]] += 1; A[d[k]] += 1; A[s] -= 1; }      // linked both ways: T = 1
-      else if (out_mark[k]) { A[d[l]] += 1; A[s] -= 1; }                             // k in N(l) only
-      else if (in_mark[k]) { A[d[k]] += 1; A[s] -= 1; }                              // l in N(k) only
-      else { A[s - common[k]] += 1; A[s] -= 1; }                                     // c common neighbours
+      if (out_mark[k] && in_mark[k]) { A[d[l]] += 2; A[d[k]] += 2; A[s] -= 2; }      // linked both ways: T = 1
+      else if (out_mark[k]) { A[d[l]] += 2; A[s] -= 2; }                             // k in N(l) only
+      else if (in_mark[k]) { A[d[k]] += 2; A[s] -= 2; }                              // l in N(k) only
+      else { A[s - common[k]] += 2; A[s] -= 2; }                                     // c common neighbours
     }
     for (int k : touched) { out_mark[k] = 0; in_mark[k] = 0; common[k] = 0; }
   }
@@ -1222,39 +1225,48 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
   for (int img = 0; img < n_images(); ++img) {
     const int start = image_offsets_[img], end = image_offsets_[img + 1];
     const Grid& g = grids_[img];
-    e_row.clear(); e_col.clear(); e_type.clear(); e_k.clear();
-    // every neighbour pair (b, p), p != b, within the largest radius, with the smallest radius that contains it
-    for (int row = start; row < end; ++row) {
-      const double px = x_[row], py = y_[row];
-      long long bx = static_cast<long long>((px - g.xmin) / g.side);
-      long long by = static_cast<long long>((py - g.ymin) / g.side);
-      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
-        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
-          std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
-          for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
-            if (grow_[p] == row) continue;
-            double dx = gx_[p] - px, dy = gy_[p] - py, d2 = dx * dx + dy * dy;
-            if (!(d2 <= r2[K - 1])) continue;
-            e_row.push_back(row - start); e_col.push_back(grow_[p] - start); e_type.push_back(gtype_[p]);
-            e_k.push_back(static_cast<int>(std::lower_bound(r2.begin(), r2.end(), d2) - r2.begin()));
+    const int N = end - start;
+    c.assign(static_cast<std::size_t>(N) * T, 0.0);
+    if (K == 1) {
+      // one radius: the neighbour lists from one search, and each cell's own counts c_b[t] from them
+      own_neighbour_lists(img, false, lptr, lnb);
+      for (int l = 0; l < N; ++l)
+        for (int e = lptr[l]; e < lptr[l + 1]; ++e) c[static_cast<std::size_t>(l) * T + static_cast<std::size_t>(type_[start + lnb[e]])] += 1.0;
+    } else {
+      e_row.clear(); e_col.clear(); e_type.clear(); e_k.clear();
+      // every neighbour pair (b, p), p != b, within the largest radius, with the smallest radius that contains it
+      for (int row = start; row < end; ++row) {
+        const double px = x_[row], py = y_[row];
+        long long bx = static_cast<long long>((px - g.xmin) / g.side);
+        long long by = static_cast<long long>((py - g.ymin) / g.side);
+        for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+          for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+            std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+            for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+              if (grow_[p] == row) continue;
+              double dx = gx_[p] - px, dy = gy_[p] - py, d2 = dx * dx + dy * dy;
+              if (!(d2 <= r2[K - 1])) continue;
+              e_row.push_back(row - start); e_col.push_back(grow_[p] - start); e_type.push_back(gtype_[p]);
+              e_k.push_back(static_cast<int>(std::lower_bound(r2.begin(), r2.end(), d2) - r2.begin()));
+            }
           }
-        }
+      }
+      // counting sort of the pairs by radius
+      k_start.assign(K + 1, 0);
+      for (int k : e_k) ++k_start[k + 1];
+      for (int k = 0; k < K; ++k) k_start[k + 1] += k_start[k];
+      order.assign(e_k.size(), 0);
+      { std::vector<int> pos(k_start.begin(), k_start.end() - 1);
+        for (std::size_t e = 0; e < e_k.size(); ++e) order[pos[e_k[e]]++] = static_cast<int>(e); }
     }
-    // counting sort of the pairs by radius
-    k_start.assign(K + 1, 0);
-    for (int k : e_k) ++k_start[k + 1];
-    for (int k = 0; k < K; ++k) k_start[k + 1] += k_start[k];
-    order.assign(e_k.size(), 0);
-    { std::vector<int> pos(k_start.begin(), k_start.end() - 1);
-      for (std::size_t e = 0; e < e_k.size(); ++e) order[pos[e_k[e]]++] = static_cast<int>(e); }
     // cumulative own counts c_b[t] over the radii, and each radius's totals from them
-    c.assign(static_cast<std::size_t>(end - start) * T, 0.0);
     for (int k = 0; k < K; ++k) {
-      for (int q = k_start[k]; q < k_start[k + 1]; ++q) { const int e = order[q];
+      if (K > 1) for (int q = k_start[k]; q < k_start[k + 1]; ++q) { const int e = order[q];
         c[static_cast<std::size_t>(e_row[e]) * T + static_cast<std::size_t>(e_type[e])] += 1.0; }
       // the self-pair variances at this radius: the neighbour lists of the pairs within radii[k]
-      if (end - start >= 3) {
-        const int N = end - start;
+      if (N >= 3 && K == 1) {
+        self_variance_from_lists(img, lptr, lnb, allocation, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
+      } else if (N >= 3) {
         lptr.assign(N + 1, 0);
         for (int q = 0; q < k_start[k + 1]; ++q) ++lptr[e_row[order[q]] + 1];
         for (int l = 0; l < N; ++l) lptr[l + 1] += lptr[l];

@@ -69,7 +69,8 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
   const std::size_t at_c = static_cast<std::size_t>(c.index) * opt.block_c();
   auto put = [](const std::vector<double>& from, double* to) { std::copy(from.begin(), from.end(), to); };
   const bool knn = opt.k > 0;
-  if (!knn && opt.radii.size() > 1) {
+  // A radius (one or several): every total and the self-pair variances from one neighbour search per image
+  if (!knn) {
     Dataset::MultiRadiusTotals m = d.multi_radius_totals(opt.radii, opt.allocation);
     for (std::size_t j = 0; j < opt.radii.size(); ++j) {
       if (opt.allocation) { put(m.any[j], out.a[j] + at); put(m.self_expected[j], out.b[j] + at_b); }
@@ -78,7 +79,7 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
     }
     return;
   }
-  if (knn) d.build_knn(opt.k, 1); else d.build_radius_index(opt.radii[0]);
+  d.build_knn(opt.k, 1);
   if (opt.allocation) {
     put(d.pair_neighbour_any_totals(knn), out.a[0] + at);
     put(d.self_any_expected(knn), out.b[0] + at_b);
