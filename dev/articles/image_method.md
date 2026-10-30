@@ -450,7 +450,7 @@ topPairs(spicyMixedTest)
 ``` r
 
 sessionInfo()
-#> R version 4.6.1 (2026-06-24)
+#> R version 4.6.2 (2026-10-29)
 #> Platform: x86_64-pc-linux-gnu
 #> Running under: Ubuntu 24.04.5 LTS
 #> 
@@ -472,7 +472,7 @@ sessionInfo()
 #> [8] base     
 #> 
 #> other attached packages:
-#>  [1] survival_3.8-6              SpatialDatasets_1.11.0     
+#>  [1] survival_3.8-12             SpatialDatasets_1.11.0     
 #>  [3] SpatialExperiment_1.23.0    SingleCellExperiment_1.35.2
 #>  [5] SummarizedExperiment_1.43.0 Biobase_2.73.2             
 #>  [7] GenomicRanges_1.65.4        Seqinfo_1.3.2              
@@ -481,40 +481,40 @@ sessionInfo()
 #> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [15] BiocFileCache_3.3.0         dbplyr_2.6.0               
 #> [17] BiocGenerics_0.59.12        generics_0.1.4             
-#> [19] spicyR_1.99.48              BiocStyle_2.41.0           
+#> [19] spicyR_1.99.49              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           
 #>  [4] rlang_1.3.0            magrittr_2.0.5         otel_0.2.0            
-#>  [7] compiler_4.6.1         RSQLite_3.53.3         spatstat.geom_3.8-3   
-#> [10] fftwtools_0.9-11       png_0.1-9              systemfonts_1.3.2     
-#> [13] vctrs_0.7.3            pkgconfig_2.0.3        crayon_1.5.3          
-#> [16] fastmap_1.2.0          magick_2.9.1           XVector_0.53.0        
-#> [19] labeling_0.4.3         rmarkdown_2.32         ragg_1.5.2            
-#> [22] purrr_1.2.2            bit_4.6.0              xfun_0.62             
-#> [25] cachem_1.1.0           jsonlite_2.0.0         goftest_1.2-3         
-#> [28] blob_1.3.0             DelayedArray_0.39.8    spatstat.utils_3.2-5  
-#> [31] BiocParallel_1.47.0    parallel_4.6.1         R6_2.6.1              
-#> [34] bslib_0.12.0           RColorBrewer_1.1-3     spatstat.data_3.1-9   
-#> [37] spatstat.univar_3.2-0  jquerylib_0.1.4        Rcpp_1.1.2            
-#> [40] bookdown_0.48          knitr_1.52             tensor_1.5.1          
-#> [43] BiocBaseUtils_1.15.1   Matrix_1.7-5           splines_4.6.1         
-#> [46] tidyselect_1.2.1       abind_1.4-8            yaml_2.3.12           
-#> [49] spatstat.random_3.5-2  codetools_0.2-20       spatstat.explore_3.8-3
-#> [52] curl_8.1.0             lattice_0.22-9         tibble_3.3.1          
-#> [55] withr_3.0.3            KEGGREST_1.53.6        S7_0.2.2              
-#> [58] evaluate_1.0.5         desc_1.4.3             polyclip_1.10-7       
-#> [61] Biostrings_2.81.9      pillar_1.11.1          BiocManager_1.30.27   
-#> [64] filelock_1.0.3         BiocVersion_3.24.0     ggplot2_4.0.3         
-#> [67] scales_1.4.0           glue_1.8.1             tools_4.6.1           
-#> [70] fs_2.1.0               grid_4.6.1             AnnotationDbi_1.75.2  
-#> [73] nlme_3.1-169           cli_3.6.6              spatstat.sparse_3.2-0 
-#> [76] rappdirs_0.3.4         textshaping_1.0.5      S4Arrays_1.13.2       
-#> [79] dplyr_1.2.1            gtable_0.3.6           sass_0.4.10           
-#> [82] digest_0.6.39          SparseArray_1.13.4     rjson_0.2.23          
-#> [85] htmlwidgets_1.6.4      farver_2.1.2           memoise_2.0.1         
-#> [88] htmltools_0.5.9        pkgdown_2.2.1          lifecycle_1.0.5       
-#> [91] httr_1.4.9             MASS_7.3-65            bit64_4.8.6
+#>  [7] compiler_4.6.2         RSQLite_3.53.3         spatstat.geom_3.8-3   
+#> [10] png_0.1-9              systemfonts_1.3.2      vctrs_0.7.3           
+#> [13] pkgconfig_2.0.3        crayon_1.5.3           fastmap_1.2.0         
+#> [16] magick_2.9.1           XVector_0.53.0         labeling_0.4.3        
+#> [19] rmarkdown_2.32         ragg_1.5.2             purrr_1.2.2           
+#> [22] bit_4.6.0              xfun_0.62              cachem_1.1.0          
+#> [25] jsonlite_2.0.0         goftest_1.2-3          blob_1.3.0            
+#> [28] DelayedArray_0.39.8    spatstat.utils_3.2-5   BiocParallel_1.47.0   
+#> [31] parallel_4.6.2         R6_2.6.1               bslib_0.12.0          
+#> [34] RColorBrewer_1.1-3     spatstat.data_3.1-9    spatstat.univar_3.2-0 
+#> [37] jquerylib_0.1.4        Rcpp_1.1.2             bookdown_0.48         
+#> [40] knitr_1.52             tensor_1.5.1           BiocBaseUtils_1.15.1  
+#> [43] Matrix_1.7-6           splines_4.6.2          tidyselect_1.2.1      
+#> [46] abind_1.4-8            yaml_2.3.12            spatstat.random_3.5-2 
+#> [49] codetools_0.2-20       spatstat.explore_3.8-3 curl_8.1.0            
+#> [52] lattice_0.23-1         tibble_3.3.1           withr_3.0.3           
+#> [55] KEGGREST_1.53.6        S7_0.2.2               evaluate_1.0.5        
+#> [58] desc_1.4.3             polyclip_1.10-7        Biostrings_2.81.9     
+#> [61] pillar_1.11.1          BiocManager_1.30.27    filelock_1.0.3        
+#> [64] BiocVersion_3.24.0     ggplot2_4.0.3          scales_1.4.0          
+#> [67] glue_1.8.1             tools_4.6.2            fs_2.1.0              
+#> [70] grid_4.6.2             AnnotationDbi_1.75.2   nlme_3.1-171          
+#> [73] cli_3.6.6              spatstat.sparse_3.2-0  rappdirs_0.3.4        
+#> [76] textshaping_1.0.5      S4Arrays_1.13.2        dplyr_1.2.1           
+#> [79] gtable_0.3.6           sass_0.4.10            digest_0.6.39         
+#> [82] SparseArray_1.13.4     rjson_0.2.23           htmlwidgets_1.6.4     
+#> [85] farver_2.1.2           memoise_2.0.1          htmltools_0.5.9       
+#> [88] pkgdown_2.2.1          lifecycle_1.0.5        httr_1.4.9            
+#> [91] MASS_7.3-66            bit64_4.8.6
 ```
 
 ## References

@@ -752,7 +752,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.48) to
+A methods sentence might read: “We used spicyR (version 1.99.49) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -926,7 +926,7 @@ ran on one core in under 2 GB of memory.
 ``` r
 
 sessionInfo()
-#> R version 4.6.1 (2026-06-24)
+#> R version 4.6.2 (2026-10-29)
 #> Platform: x86_64-pc-linux-gnu
 #> Running under: Ubuntu 24.04.5 LTS
 #> 
@@ -948,7 +948,7 @@ sessionInfo()
 #> [8] base     
 #> 
 #> other attached packages:
-#>  [1] spatialdataR_0.99.47        survival_3.8-6             
+#>  [1] spatialdataR_0.99.47        survival_3.8-12            
 #>  [3] SpatialDatasets_1.11.0      SpatialExperiment_1.23.0   
 #>  [5] SingleCellExperiment_1.35.2 SummarizedExperiment_1.43.0
 #>  [7] Biobase_2.73.2              GenomicRanges_1.65.4       
@@ -957,14 +957,14 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.12       
-#> [19] generics_0.1.4              spicyR_1.99.48             
+#> [19] generics_0.1.4              spicyR_1.99.49             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
 #>   [4] anndataR_1.3.3       rlang_1.3.0          magrittr_2.0.5      
-#>   [7] Rarr_2.1.50          otel_0.2.0           e1071_1.7-17        
-#>  [10] compiler_4.6.1       RSQLite_3.53.3       paws.storage_0.11.0 
+#>   [7] Rarr_2.1.53          otel_0.2.0           e1071_1.7-17        
+#>  [10] compiler_4.6.2       RSQLite_3.53.3       paws.storage_0.11.0 
 #>  [13] png_0.1-9            systemfonts_1.3.2    vctrs_0.7.3         
 #>  [16] wk_0.9.5             pkgconfig_2.0.3      crayon_1.5.3        
 #>  [19] fastmap_1.2.0        magick_2.9.1         XVector_0.53.0      
@@ -976,17 +976,17 @@ sessionInfo()
 #>  [37] bslib_0.12.0         RColorBrewer_1.1-3   reticulate_1.47.0   
 #>  [40] jquerylib_0.1.4      Rcpp_1.1.2           bookdown_0.48       
 #>  [43] knitr_1.52           R.utils_2.13.0       BiocBaseUtils_1.15.1
-#>  [46] Matrix_1.7-5         splines_4.6.1        tidyselect_1.2.1    
+#>  [46] Matrix_1.7-6         splines_4.6.2        tidyselect_1.2.1    
 #>  [49] duckspatial_1.3.0    abind_1.4-8          yaml_2.3.12         
-#>  [52] curl_8.1.0           lattice_0.22-9       tibble_3.3.1        
+#>  [52] curl_8.1.0           lattice_0.23-1       tibble_3.3.1        
 #>  [55] withr_3.0.3          KEGGREST_1.53.6      S7_0.2.2            
 #>  [58] evaluate_1.0.5       sf_1.1-3             desc_1.4.3          
 #>  [61] units_1.0-1          proxy_0.4-29         Biostrings_2.81.9   
 #>  [64] pillar_1.11.1        BiocManager_1.30.27  filelock_1.0.3      
-#>  [67] KernSmooth_2.23-26   plotly_4.12.1        BiocVersion_3.24.0  
-#>  [70] ggplot2_4.0.3        scales_1.4.0         class_7.3-23        
-#>  [73] glue_1.8.1           tools_4.6.1          data.table_1.18.6.1 
-#>  [76] fs_2.1.0             grid_4.6.1           tidyr_1.3.2         
+#>  [67] KernSmooth_2.23-27   plotly_4.12.1        BiocVersion_3.24.0  
+#>  [70] ggplot2_4.0.3        scales_1.4.0         class_7.3-24        
+#>  [73] glue_1.8.1           tools_4.6.2          data.table_1.18.6.1 
+#>  [76] fs_2.1.0             grid_4.6.2           tidyr_1.3.2         
 #>  [79] crosstalk_1.2.2      AnnotationDbi_1.75.2 duckdb_2.0.0        
 #>  [82] cli_3.6.6            rappdirs_0.3.4       textshaping_1.0.5   
 #>  [85] S4Arrays_1.13.2      viridisLite_0.4.3    dplyr_1.2.1         
@@ -995,7 +995,7 @@ sessionInfo()
 #>  [94] ZarrArray_1.1.7      rjson_0.2.23         htmlwidgets_1.6.4   
 #>  [97] farver_2.1.2         memoise_2.0.1        htmltools_0.5.9     
 #> [100] pkgdown_2.2.1        R.oo_1.27.1          lifecycle_1.0.5     
-#> [103] httr_1.4.9           bit64_4.8.6          MASS_7.3-65
+#> [103] httr_1.4.9           bit64_4.8.6          MASS_7.3-66
 ```
 
 ## References
