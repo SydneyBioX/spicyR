@@ -296,7 +296,7 @@
     }
     res <- cell_batch_totals(as.numeric(xy$x), if (is.null(xy$y)) numeric(0) else as.numeric(xy$y), ty, as.integer(c(0L, cumsum(size[imgs]))), Tn,
                              as.numeric(if (is.null(radii)) numeric(0) else radii), if (is.null(k)) 0L else as.integer(k),
-                             allocation, as.integer(n_threads))
+                             allocation, as.integer(n_threads), .self_var_opts(ctx)$method, .self_var_opts(ctx)$cells)
     rm(xy, ty)
     for (j in seq_len(K)) {
       A[[j]][, , imgs] <- res[[j]]$a

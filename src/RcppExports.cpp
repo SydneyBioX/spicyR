@@ -306,8 +306,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // dataset_multi_radius_totals
-List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types);
-RcppExport SEXP _spicyR_dataset_multi_radius_totals(SEXP ptrSEXP, SEXP radiiSEXP, SEXP allocationSEXP, SEXP n_typesSEXP) {
+List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types, int self_var_method, int self_var_cells);
+RcppExport SEXP _spicyR_dataset_multi_radius_totals(SEXP ptrSEXP, SEXP radiiSEXP, SEXP allocationSEXP, SEXP n_typesSEXP, SEXP self_var_methodSEXP, SEXP self_var_cellsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -315,13 +315,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type radii(radiiSEXP);
     Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
     Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
-    rcpp_result_gen = Rcpp::wrap(dataset_multi_radius_totals(ptr, radii, allocation, n_types));
+    Rcpp::traits::input_parameter< int >::type self_var_method(self_var_methodSEXP);
+    Rcpp::traits::input_parameter< int >::type self_var_cells(self_var_cellsSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_multi_radius_totals(ptr, radii, allocation, n_types, self_var_method, self_var_cells));
     return rcpp_result_gen;
 END_RCPP
 }
 // dataset_self_variances
-NumericMatrix dataset_self_variances(SEXP ptr, bool knn, bool allocation, int n_types);
-RcppExport SEXP _spicyR_dataset_self_variances(SEXP ptrSEXP, SEXP knnSEXP, SEXP allocationSEXP, SEXP n_typesSEXP) {
+NumericMatrix dataset_self_variances(SEXP ptr, bool knn, bool allocation, int n_types, int self_var_method, int self_var_cells);
+RcppExport SEXP _spicyR_dataset_self_variances(SEXP ptrSEXP, SEXP knnSEXP, SEXP allocationSEXP, SEXP n_typesSEXP, SEXP self_var_methodSEXP, SEXP self_var_cellsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -329,7 +331,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type knn(knnSEXP);
     Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
     Rcpp::traits::input_parameter< int >::type n_types(n_typesSEXP);
-    rcpp_result_gen = Rcpp::wrap(dataset_self_variances(ptr, knn, allocation, n_types));
+    Rcpp::traits::input_parameter< int >::type self_var_method(self_var_methodSEXP);
+    Rcpp::traits::input_parameter< int >::type self_var_cells(self_var_cellsSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_self_variances(ptr, knn, allocation, n_types, self_var_method, self_var_cells));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -494,8 +498,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cell_stream_totals
-List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac, IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation, int n_threads);
-RcppExport SEXP _spicyR_cell_stream_totals(SEXP xSEXP, SEXP ySEXP, SEXP image_facSEXP, SEXP image_mapSEXP, SEXP n_imagesSEXP, SEXP type_facSEXP, SEXP type_mapSEXP, SEXP n_typesSEXP, SEXP radiiSEXP, SEXP kSEXP, SEXP allocationSEXP, SEXP n_threadsSEXP) {
+List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac, IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation, int n_threads, int self_var_method, int self_var_cells);
+RcppExport SEXP _spicyR_cell_stream_totals(SEXP xSEXP, SEXP ySEXP, SEXP image_facSEXP, SEXP image_mapSEXP, SEXP n_imagesSEXP, SEXP type_facSEXP, SEXP type_mapSEXP, SEXP n_typesSEXP, SEXP radiiSEXP, SEXP kSEXP, SEXP allocationSEXP, SEXP n_threadsSEXP, SEXP self_var_methodSEXP, SEXP self_var_cellsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -511,13 +515,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type k(kSEXP);
     Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_stream_totals(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads));
+    Rcpp::traits::input_parameter< int >::type self_var_method(self_var_methodSEXP);
+    Rcpp::traits::input_parameter< int >::type self_var_cells(self_var_cellsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_stream_totals(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads, self_var_method, self_var_cells));
     return rcpp_result_gen;
 END_RCPP
 }
 // cell_batch_totals
-List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types, NumericVector radii, int k, bool allocation, int n_threads);
-RcppExport SEXP _spicyR_cell_batch_totals(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP offsetsSEXP, SEXP n_typesSEXP, SEXP radiiSEXP, SEXP kSEXP, SEXP allocationSEXP, SEXP n_threadsSEXP) {
+List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types, NumericVector radii, int k, bool allocation, int n_threads, int self_var_method, int self_var_cells);
+RcppExport SEXP _spicyR_cell_batch_totals(SEXP xSEXP, SEXP ySEXP, SEXP typeSEXP, SEXP offsetsSEXP, SEXP n_typesSEXP, SEXP radiiSEXP, SEXP kSEXP, SEXP allocationSEXP, SEXP n_threadsSEXP, SEXP self_var_methodSEXP, SEXP self_var_cellsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -530,7 +536,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type k(kSEXP);
     Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
     Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(cell_batch_totals(x, y, type, offsets, n_types, radii, k, allocation, n_threads));
+    Rcpp::traits::input_parameter< int >::type self_var_method(self_var_methodSEXP);
+    Rcpp::traits::input_parameter< int >::type self_var_cells(self_var_cellsSEXP);
+    rcpp_result_gen = Rcpp::wrap(cell_batch_totals(x, y, type, offsets, n_types, radii, k, allocation, n_threads, self_var_method, self_var_cells));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1063,8 +1071,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_pair_neighbour_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_sq_totals, 3},
     {"_spicyR_dataset_pair_neighbour_out_sq_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_out_sq_totals, 3},
     {"_spicyR_dataset_pair_neighbour_any_totals", (DL_FUNC) &_spicyR_dataset_pair_neighbour_any_totals, 3},
-    {"_spicyR_dataset_multi_radius_totals", (DL_FUNC) &_spicyR_dataset_multi_radius_totals, 4},
-    {"_spicyR_dataset_self_variances", (DL_FUNC) &_spicyR_dataset_self_variances, 4},
+    {"_spicyR_dataset_multi_radius_totals", (DL_FUNC) &_spicyR_dataset_multi_radius_totals, 6},
+    {"_spicyR_dataset_self_variances", (DL_FUNC) &_spicyR_dataset_self_variances, 6},
     {"_spicyR_dataset_self_any_expected", (DL_FUNC) &_spicyR_dataset_self_any_expected, 3},
     {"_spicyR_dataset_rl_model_data", (DL_FUNC) &_spicyR_dataset_rl_model_data, 3},
     {"_spicyR_dataset_weighted_phi_sums", (DL_FUNC) &_spicyR_dataset_weighted_phi_sums, 5},
@@ -1076,8 +1084,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_cell_block_scan", (DL_FUNC) &_spicyR_cell_block_scan, 8},
     {"_spicyR_cell_constant_within", (DL_FUNC) &_spicyR_cell_constant_within, 3},
     {"_spicyR_cell_rows_differing", (DL_FUNC) &_spicyR_cell_rows_differing, 4},
-    {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 12},
-    {"_spicyR_cell_batch_totals", (DL_FUNC) &_spicyR_cell_batch_totals, 9},
+    {"_spicyR_cell_stream_totals", (DL_FUNC) &_spicyR_cell_stream_totals, 14},
+    {"_spicyR_cell_batch_totals", (DL_FUNC) &_spicyR_cell_batch_totals, 11},
     {"_spicyR_first_appearance_factor", (DL_FUNC) &_spicyR_first_appearance_factor, 1},
     {"_spicyR_inhomLCpp", (DL_FUNC) &_spicyR_inhomLCpp, 13},
     {"_spicyR_lmerRandomIntercept", (DL_FUNC) &_spicyR_lmerRandomIntercept, 5},

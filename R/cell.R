@@ -170,12 +170,20 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## The neighbour totals of every radius (or k), image by image from the cells' own columns (cell_stream_totals): one
 ## element per radius, list(any, self_expected, self_var) or list(totals, sq, self_var), as the whole-data dataset
 ## gives them (self_var: the exact self-pair variances, types x images).
+## How the allocation self-pair variance's shared-neighbour term is computed (spicy()'s selfVariance and
+## selfVarianceCells, kept in ctx$self_var): the core's method code and number of sampled cells. Radius graph only;
+## kNN and the count effect are always exact.
+.self_var_opts <- function(ctx) {
+  s <- if (is.null(ctx$self_var)) list(method = "sampled", cells = 50L) else ctx$self_var
+  list(method = match(s$method, c("exact", "geometric", "sampled", "geometricSampled")) - 1L, cells = as.integer(s$cells))
+}
+
 .cell_stream <- function(ctx, radii = NULL, k = NULL, allocation = TRUE, n_threads = 1L) {
   if (!is.null(ctx$store)) return(.store_stream(ctx, radii = radii, k = k, allocation = allocation, n_threads = n_threads))
   z <- ctx$cells
   cell_stream_totals(z$x, z$y, z$image, z$image_map, ctx$n_images, z$type, z$type_map, length(ctx$type_labels),
                      as.numeric(if (is.null(radii)) numeric(0) else radii), if (is.null(k)) 0L else as.integer(k),
-                     allocation, as.integer(n_threads))
+                     allocation, as.integer(n_threads), .self_var_opts(ctx)$method, .self_var_opts(ctx)$cells)
 }
 
 ## Neighbour sums and the label-clustering factor at one radius (or k). effect "allocation": for every cell, whether
@@ -209,7 +217,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                             self_expected = dataset_self_any_expected(ctx$data, knn, n_types))
        else list(knn = knn, effect = effect, totals = dataset_pair_neighbour_totals(ctx$data, knn, n_types),
                  sq = dataset_pair_neighbour_out_sq_totals(ctx$data, knn, n_types))
-  g$self_var <- dataset_self_variances(ctx$data, knn, allocation, n_types)
+  g$self_var <- dataset_self_variances(ctx$data, knn, allocation, n_types, .self_var_opts(ctx)$method, .self_var_opts(ctx)$cells)
   # psi of a `to` type is the median over every counted type (not only the requested pairs), so a pair's result does
   # not depend on which other pairs were asked for
   tos <- unique(vapply(pairs, `[`, "", 2L))

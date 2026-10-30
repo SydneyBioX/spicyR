@@ -26,6 +26,8 @@ spicy(
   tableKey = NULL,
   imageInfo = NULL,
   cellWeights = NULL,
+  selfVariance = c("sampled", "exact", "geometricSampled", "geometric"),
+  selfVarianceCells = 50,
   ...
 )
 }
@@ -104,6 +106,13 @@ replace those of random labelling; weights of 1 give the results of the cell typ
 \code{from} label's summed weight over the image's cells. One radius and cells in memory; pairs of a label with
 itself are not tested. Image method: see \code{\link[=getPairwise]{getPairwise()}}.}
 
+\item{selfVariance}{Cell method, allocation effect with a radius: how a self-pair's variance counts the
+neighbours shared by nearby cells: \code{"sampled"} (the default), \code{"exact"}, \code{"geometricSampled"} or \code{"geometric"}
+(see Details).}
+
+\item{selfVarianceCells}{The number of cells sampled in each image for \code{selfVariance = "sampled"} or
+\code{"geometricSampled"} (every cell when an image has no more).}
+
 \item{...}{Arguments of the image method: \code{sigma}, \code{alternateResult}, \code{minLambda}, \code{weights},
 \code{weightsByPair}, \code{weightFactor}, \code{weightZThreshold}, \code{window}, \code{window.length}, \code{edgeCorrect},
 \code{includeZeroCells}, \code{verbose}, \code{BPPARAM}. Supplying \code{alternateResult} selects the image method.}
@@ -164,8 +173,15 @@ freedom; with adjustment, the CR2 variance of the adjusted design. \code{varianc
 variance.
 
 For a self-pair (\code{from} = \code{to}) every cell can carry the label, so random labelling moves both the cells counted
-and their neighbours. Its variance is the exact random-labelling variance of the self-pair (for the radius graph
-and for the k nearest neighbours), not the variance of a pair of two types.
+and their neighbours. Its variance is the random-labelling variance of the self-pair (for the radius graph and for
+the k nearest neighbours), not the variance of a pair of two types. For the allocation effect this variance
+depends on how many neighbours each pair of nearby cells shares, which takes time in proportion to the number of
+cells times the square of the number of neighbours per cell. With a radius, the shared neighbours are by default
+counted from \code{selfVarianceCells} randomly chosen cells of each image and scaled up (\code{selfVariance = "sampled"}),
+an unbiased estimate of the variance; the sample is fixed by the image, so results are reproducible.
+\code{selfVariance = "exact"} counts them for every cell; \code{"geometric"} takes two cells to share their local density
+times the area where their two discs overlap; \code{"geometricSampled"} corrects that with the sampled cells. The count
+effect and the k nearest neighbours always use the exact variance.
 
 With the allocation effect, an image whose room on the pair's side (the \code{to} cells without a \code{from} neighbour
 expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:

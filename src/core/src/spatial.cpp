@@ -2,7 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <numeric>
+#include <random>
 #include <stdexcept>
 
 namespace spicyglm {
@@ -1187,7 +1190,98 @@ void Dataset::self_variance_from_lists(int img, const std::vector<int>& ptr, con
   for (std::size_t a = 0; a < T; ++a) out_img[a] = self_graph_variance(g, type_count(img, static_cast<int>(a)), allocation);
 }
 
-std::vector<double> Dataset::self_variances(bool knn, bool allocation) const {
+void Dataset::self_variance_approx(int img, const std::vector<int>& ptr, const std::vector<int>& nb, double r,
+                                   int method, int cells, double* out_img) const {
+  const std::size_t T = static_cast<std::size_t>(n_types_);
+  const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
+  bool any = false;
+  for (std::size_t a = 0; a < T; ++a) { const int na = type_count(img, static_cast<int>(a)); if (na >= 2 && na < N) any = true; }
+  if (!any) return;
+  SelfGraph g; g.N = N;
+  std::vector<int> d(N);
+  int dmax = 0;
+  for (int l = 0; l < N; ++l) { d[l] = ptr[l + 1] - ptr[l]; dmax = std::max(dmax, d[l]); }
+  g.deg_count.assign(dmax + 1, 0.0);
+  for (int l = 0; l < N; ++l) g.deg_count[d[l]] += 1;
+  std::vector<double>& A = g.h2_coef;
+  A.assign(2 * dmax + 2, 0.0);
+  for (int x = 0; x <= dmax; ++x) {
+    if (!g.deg_count[x]) continue;
+    A[x] -= 2.0 * (N - 1) * g.deg_count[x];
+    A[2 * x] -= g.deg_count[x];
+    for (int y = 0; y <= dmax; ++y) if (g.deg_count[y]) A[x + y] += g.deg_count[x] * g.deg_count[y];
+  }
+  // weight w at a fractional index x, split between its two neighbouring integers
+  auto add = [&](double x, double w) {
+    if (x < 0) x = 0;
+    const std::size_t f = static_cast<std::size_t>(std::floor(x));
+    const double frac = x - static_cast<double>(f);
+    A[f] += w * (1 - frac);
+    if (frac > 0) A[f + 1] += w * frac;
+  };
+  // linked pairs (a radius graph links both ways): T = 1, each unordered pair once, counted twice
+  for (int l = 0; l < N; ++l)
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) if (nb[e] > l) { const int k = nb[e]; A[d[l]] += 2; A[d[k]] += 2; A[d[l] + d[k]] -= 2; }
+  // unlinked pairs at distance (r, 2r]: the geometric guess of their shared neighbours, from a grid of side 2r
+  const double r2 = r * r, side = 2 * r, disc = M_PI * r2;
+  const double* X = x_.data() + start; const double* Y = y_.data() + start;
+  double xmin = X[0], ymin = Y[0], xmax = X[0], ymax = Y[0];
+  for (int i = 1; i < N; ++i) { xmin = std::min(xmin, X[i]); xmax = std::max(xmax, X[i]); ymin = std::min(ymin, Y[i]); ymax = std::max(ymax, Y[i]); }
+  const long long nbx = static_cast<long long>((xmax - xmin) / side) + 1, nby = static_cast<long long>((ymax - ymin) / side) + 1;
+  std::vector<int> bstart(static_cast<std::size_t>(nbx * nby) + 1, 0), bcell(N), bin(N);
+  for (int i = 0; i < N; ++i) { bin[i] = static_cast<int>(static_cast<long long>((Y[i] - ymin) / side) * nbx + static_cast<long long>((X[i] - xmin) / side)); ++bstart[bin[i] + 1]; }
+  for (std::size_t b = 0; b + 1 < bstart.size(); ++b) bstart[b + 1] += bstart[b];
+  { std::vector<int> pos(bstart.begin(), bstart.end() - 1); for (int i = 0; i < N; ++i) bcell[pos[bin[i]]++] = i; }
+  auto geo_pairs = [&](int l, bool upper, double w) {   // l's unlinked partners at distance (r, 2r], k > l if upper
+    const long long bx = static_cast<long long>((X[l] - xmin) / side), by = static_cast<long long>((Y[l] - ymin) / side);
+    for (long long yy = std::max(0LL, by - 1); yy <= std::min(nby - 1, by + 1); ++yy)
+      for (long long xx = std::max(0LL, bx - 1); xx <= std::min(nbx - 1, bx + 1); ++xx) {
+        const long long b = yy * nbx + xx;
+        for (int q = bstart[b]; q < bstart[b + 1]; ++q) {
+          const int k = bcell[q];
+          if (k == l || (upper && k < l)) continue;
+          const double dx = X[k] - X[l], dy = Y[k] - Y[l], dd = dx * dx + dy * dy;
+          if (dd <= r2 || dd > 4 * r2) continue;
+          const double t = std::sqrt(dd);
+          const double lens = 2 * r2 * std::acos(t / (2 * r)) - (t / 2) * std::sqrt(4 * r2 - dd);
+          const double c = (d[l] + d[k]) / (2 * disc) * lens;
+          const int s = d[l] + d[k];
+          add(s - c, w); add(s, -w);
+        }
+      }
+  };
+  if (method == 1 || method == 3)
+    for (int l = 0; l < N; ++l) geo_pairs(l, true, 2.0);
+  if (method == 2 || method == 3) {
+    // a random sample of cells, seeded by the image's size and first cell (the same in R and Python)
+    std::vector<int> sample(N);
+    std::iota(sample.begin(), sample.end(), 0);
+    std::uint64_t seed = static_cast<std::uint64_t>(N) * 0x9E3779B97F4A7C15ULL;
+    { std::uint64_t bx; std::memcpy(&bx, &X[0], 8); seed ^= bx + 0x632BE59BD9B4E019ULL + (seed << 6) + (seed >> 2);
+      std::memcpy(&bx, &Y[0], 8); seed ^= bx + 0x632BE59BD9B4E019ULL + (seed << 6) + (seed >> 2); }
+    std::mt19937_64 gen(seed);
+    const int m = std::min(N, std::max(1, cells));
+    for (int i = 0; i < m; ++i) { std::uniform_int_distribution<int> u(i, N - 1); std::swap(sample[i], sample[u(gen)]); }
+    const double scale = static_cast<double>(N) / m;
+    std::vector<int> common(N, 0), touched;
+    std::vector<char> linked(N, 0);
+    for (int i = 0; i < m; ++i) {
+      const int l = sample[i];
+      touched.clear();
+      for (int e = ptr[l]; e < ptr[l + 1]; ++e) linked[nb[e]] = 1;
+      for (int e = ptr[l]; e < ptr[l + 1]; ++e) {
+        const int v = nb[e];
+        for (int f = ptr[v]; f < ptr[v + 1]; ++f) { const int k = nb[f]; if (k == l || linked[k]) continue; if (!common[k]) touched.push_back(k); ++common[k]; }
+      }
+      for (int k : touched) { const int s = d[l] + d[k]; A[s - common[k]] += scale; A[s] -= scale; common[k] = 0; }
+      for (int e = ptr[l]; e < ptr[l + 1]; ++e) linked[nb[e]] = 0;
+      if (method == 3) geo_pairs(l, false, -scale);
+    }
+  }
+  for (std::size_t a = 0; a < T; ++a) out_img[a] = self_graph_variance(g, type_count(img, static_cast<int>(a)), true);
+}
+
+std::vector<double> Dataset::self_variances(bool knn, bool allocation, int self_var_method, int self_var_cells) const {
   if (knn && k_ == 0) throw std::logic_error("call build_knn first");
   if (!knn && grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
   const std::size_t T = static_cast<std::size_t>(n_types_);
@@ -1196,12 +1290,15 @@ std::vector<double> Dataset::self_variances(bool knn, bool allocation) const {
   for (int img = 0; img < n_images(); ++img) {
     if (image_offsets_[img + 1] - image_offsets_[img] < 3) continue;
     own_neighbour_lists(img, knn, ptr, nb);
-    self_variance_from_lists(img, ptr, nb, allocation, out.data() + static_cast<std::size_t>(img) * T);
+    if (!knn && allocation && self_var_method != 0)
+      self_variance_approx(img, ptr, nb, r_, self_var_method, self_var_cells, out.data() + static_cast<std::size_t>(img) * T);
+    else self_variance_from_lists(img, ptr, nb, allocation, out.data() + static_cast<std::size_t>(img) * T);
   }
   return out;
 }
 
-Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double>& radii, bool allocation) {
+Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double>& radii, bool allocation,
+                                                       int self_var_method, int self_var_cells) {
   const int K = static_cast<int>(radii.size());
   if (K < 1) throw std::invalid_argument("radii must not be empty");
   for (int k = 0; k < K; ++k)
@@ -1264,8 +1361,10 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
       if (K > 1) for (int q = k_start[k]; q < k_start[k + 1]; ++q) { const int e = order[q];
         c[static_cast<std::size_t>(e_row[e]) * T + static_cast<std::size_t>(e_type[e])] += 1.0; }
       // the self-pair variances at this radius: the neighbour lists of the pairs within radii[k]
+      const bool approx = allocation && self_var_method != 0;
       if (N >= 3 && K == 1) {
-        self_variance_from_lists(img, lptr, lnb, allocation, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
+        if (approx) self_variance_approx(img, lptr, lnb, radii[k], self_var_method, self_var_cells, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
+        else self_variance_from_lists(img, lptr, lnb, allocation, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
       } else if (N >= 3) {
         lptr.assign(N + 1, 0);
         for (int q = 0; q < k_start[k + 1]; ++q) ++lptr[e_row[order[q]] + 1];
@@ -1273,7 +1372,8 @@ Dataset::MultiRadiusTotals Dataset::multi_radius_totals(const std::vector<double
         lnb.assign(lptr[N], 0);
         { std::vector<int> pos(lptr.begin(), lptr.end() - 1);
           for (int q = 0; q < k_start[k + 1]; ++q) { const int e = order[q]; lnb[pos[e_row[e]]++] = e_col[e]; } }
-        self_variance_from_lists(img, lptr, lnb, allocation, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
+        if (approx) self_variance_approx(img, lptr, lnb, radii[k], self_var_method, self_var_cells, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
+        else self_variance_from_lists(img, lptr, lnb, allocation, out.self_var[k].data() + static_cast<std::size_t>(img) * T);
       }
       if (allocation) {
         double* M = out.any[k].data() + static_cast<std::size_t>(img) * T * T;

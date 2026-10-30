@@ -8,6 +8,7 @@ grid <- expand.grid(from = types, to = types, stringsAsFactors = FALSE)
 ## The cell method through its internal steps, with the label-clustering inflation available (spicy() has it off)
 cell_internal <- function(cells, r, effect, label_clustering, variance, image_heterogeneity = TRUE) {
   ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"), dataset = TRUE)
+  ctx$self_var <- list(method = "exact", cells = 50L)   # the reference computes the exact self-pair variance
   pairs <- lapply(seq_len(nrow(grid)), function(i) c(grid$from[i], grid$to[i]))
   g <- spicyR:::.cell_graph(ctx, pairs, r = r, label_clustering = label_clustering, effect = effect)
   g$image_heterogeneity <- image_heterogeneity
@@ -17,7 +18,8 @@ cell_internal <- function(cells, r, effect, label_clustering, variance, image_he
 
 test_that("spicy() is the internal cell method with the frailty and image random effect, without inflation", {
   for (ef in c("allocation", "count")) {
-    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef))$cellResults
+    res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef,
+                                    selfVariance = "exact"))$cellResults
     int <- cell_internal(cells, 30, ef, FALSE, "cr2")
     m <- merge(res, int, by = c("from", "to"))
     expect_equal(nrow(m), nrow(grid))
@@ -773,4 +775,26 @@ test_that("allocation: images whose chosen room is below one cell are not used (
       expect_true(all(rows$n >= 1))
     }
   }
+})
+
+test_that("selfVariance: sampling every cell is exact; the sample is reproducible and close; cross pairs untouched", {
+  fit <- function(...) suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, ...))$cellResults
+  n_max <- max(table(cells$imageID))
+  ex <- fit(selfVariance = "exact")
+  self <- ex$from == ex$to
+  expect_true(any(self))
+  # a sample of every cell is the exact variance
+  all_cells <- fit(selfVariance = "sampled", selfVarianceCells = n_max)
+  expect_equal(all_cells$p_value, ex$p_value, tolerance = 1e-12)
+  expect_equal(fit(selfVariance = "geometricSampled", selfVarianceCells = n_max)$p_value, ex$p_value, tolerance = 1e-10)
+  for (m in c("sampled", "geometricSampled", "geometric")) {
+    a <- fit(selfVariance = m, selfVarianceCells = 20)
+    # cross pairs do not use the self-pair variance
+    expect_identical(a$p_value[!self], ex$p_value[!self])
+    expect_lt(max(abs(log(a$p_value[self] / ex$p_value[self])), na.rm = TRUE), 0.25)
+  }
+  # the sample is fixed by the image: the same results every time
+  expect_identical(fit(selfVarianceCells = 20)$p_value, fit(selfVarianceCells = 20)$p_value)
+  expect_error(fit(selfVarianceCells = 0), "selfVarianceCells")
+  expect_error(fit(selfVariance = "approximate"))
 })

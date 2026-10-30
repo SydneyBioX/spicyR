@@ -129,7 +129,8 @@ class Dataset {
   // among all the image's cells (Supplementary Section 3.6), for any neighbour relation (one-way k-NN included):
   // allocation, Var(O) of the number of a cells with an a neighbour; count, Var(O - p L), p = (n_a - 1) / (N - 1),
   // L = sum over the a cells of the number of cells counting them as a neighbour. 0 when n_a < 2 or n_a = N.
-  std::vector<double> self_variances(bool knn, bool allocation) const;
+  // self_var_method / self_var_cells: as multi_radius_totals (radius graph, allocation; otherwise exact)
+  std::vector<double> self_variances(bool knn, bool allocation, int self_var_method = 0, int self_var_cells = 50) const;
   // Several radii from ONE neighbour search (radius graph; radii positive and increasing). For radius k the result
   // equals build_radius_index(radii[k]) followed by pair_neighbour_totals(false) and pair_neighbour_out_sq_totals(false)
   // (count; allocation = false) or pair_neighbour_any_totals(false) and self_any_expected(false) (allocation = true).
@@ -139,7 +140,11 @@ class Dataset {
     std::vector<std::vector<double>> totals, sq, any, self_expected;
     std::vector<std::vector<double>> self_var;   // self_variances(false, allocation) at each radius
   };
-  MultiRadiusTotals multi_radius_totals(const std::vector<double>& radii, bool allocation);
+  // self_var_method (allocation, radius graph): 0 exact; approximations of the shared-neighbour term of unlinked pairs:
+  // 1 geometric (two cells at distance t share their local density times the area of the two discs' overlap),
+  // 2 sampled (exact for self_var_cells random cells, scaled), 3 geometric plus the sampled cells' exact - geometric
+  MultiRadiusTotals multi_radius_totals(const std::vector<double>& radii, bool allocation, int self_var_method = 0,
+                                        int self_var_cells = 50);
   // Poisson design under the random-labelling null (Section 17): each REF cell's
   // offset is its number of candidate neighbours within r times the TARGET share
   // of the candidates. Candidates are the non-REF cells, or for a self-pair all
@@ -247,6 +252,9 @@ class Dataset {
   // self_variances for one image from its neighbour lists
   void self_variance_from_lists(int img, const std::vector<int>& ptr, const std::vector<int>& nb, bool allocation,
                                 double* out_img) const;
+  // the allocation self-pair variances of a radius graph (symmetric lists) with an approximate shared-neighbour term
+  void self_variance_approx(int img, const std::vector<int>& ptr, const std::vector<int>& nb, double r, int method,
+                            int cells, double* out_img) const;
 
   std::vector<double> x_, y_;
   std::vector<int> type_, image_offsets_;

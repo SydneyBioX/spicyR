@@ -85,12 +85,12 @@ dataset_pair_neighbour_any_totals <- function(ptr, knn, n_types) {
     .Call(`_spicyR_dataset_pair_neighbour_any_totals`, ptr, knn, n_types)
 }
 
-dataset_multi_radius_totals <- function(ptr, radii, allocation, n_types) {
-    .Call(`_spicyR_dataset_multi_radius_totals`, ptr, radii, allocation, n_types)
+dataset_multi_radius_totals <- function(ptr, radii, allocation, n_types, self_var_method = 0L, self_var_cells = 50L) {
+    .Call(`_spicyR_dataset_multi_radius_totals`, ptr, radii, allocation, n_types, self_var_method, self_var_cells)
 }
 
-dataset_self_variances <- function(ptr, knn, allocation, n_types) {
-    .Call(`_spicyR_dataset_self_variances`, ptr, knn, allocation, n_types)
+dataset_self_variances <- function(ptr, knn, allocation, n_types, self_var_method = 0L, self_var_cells = 50L) {
+    .Call(`_spicyR_dataset_self_variances`, ptr, knn, allocation, n_types, self_var_method, self_var_cells)
 }
 
 dataset_self_any_expected <- function(ptr, knn, n_types) {
@@ -137,12 +137,12 @@ cell_rows_differing <- function(v, image, ref, image_base = 1L) {
     .Call(`_spicyR_cell_rows_differing`, v, image, ref, image_base)
 }
 
-cell_stream_totals <- function(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads = 1L) {
-    .Call(`_spicyR_cell_stream_totals`, x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads)
+cell_stream_totals <- function(x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads = 1L, self_var_method = 0L, self_var_cells = 50L) {
+    .Call(`_spicyR_cell_stream_totals`, x, y, image_fac, image_map, n_images, type_fac, type_map, n_types, radii, k, allocation, n_threads, self_var_method, self_var_cells)
 }
 
-cell_batch_totals <- function(x, y, type, offsets, n_types, radii, k, allocation, n_threads = 1L) {
-    .Call(`_spicyR_cell_batch_totals`, x, y, type, offsets, n_types, radii, k, allocation, n_threads)
+cell_batch_totals <- function(x, y, type, offsets, n_types, radii, k, allocation, n_threads = 1L, self_var_method = 0L, self_var_cells = 50L) {
+    .Call(`_spicyR_cell_batch_totals`, x, y, type, offsets, n_types, radii, k, allocation, n_threads, self_var_method, self_var_cells)
 }
 
 first_appearance_factor <- function(x) {

@@ -510,7 +510,10 @@ its own true effect, which varies around its group's mean by an amount estimated
 random-effects, model, with the between-patient variance estimated as by @paule1982consensus). The difference between groups, adjusted for any covariates, is tested on Satterthwaite degrees of freedom
 with patients as the clusters, using the small-sample cluster-robust (CR2) variance [@bell2002bias; @pustejovsky2018small].
 Each group contributes its own CR2 variance. For a self-pair (`from` the same as `to`), whose cells and neighbours are
-both moved by random labelling, the variance is the exact random-labelling variance of the self-pair. With the
+both moved by random labelling, the variance is the random-labelling variance of the self-pair. For the allocation
+effect with a radius, the neighbours shared by nearby cells are counted from 50 randomly chosen cells of each image
+(`selfVarianceCells`) and scaled up, an unbiased and reproducible estimate that keeps large radii fast;
+`selfVariance = "exact"` counts them for every cell. With the
 allocation effect, an image whose room on the pair's side is below one cell is not used. A radius where a group's effective patients fall below the smaller of three and half
 its patients at that radius, because a few patients carry nearly all of its weight, is not tested. This is designed to keep false positives near the nominal rate even
 with modest numbers of patients. A paper describing the method is in preparation.

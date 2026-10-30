@@ -71,7 +71,7 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
   const bool knn = opt.k > 0;
   // A radius (one or several): every total and the self-pair variances from one neighbour search per image
   if (!knn) {
-    Dataset::MultiRadiusTotals m = d.multi_radius_totals(opt.radii, opt.allocation);
+    Dataset::MultiRadiusTotals m = d.multi_radius_totals(opt.radii, opt.allocation, opt.self_var_method, opt.self_var_cells);
     for (std::size_t j = 0; j < opt.radii.size(); ++j) {
       if (opt.allocation) { put(m.any[j], out.a[j] + at); put(m.self_expected[j], out.b[j] + at_b); }
       else { put(m.totals[j], out.a[j] + at); put(m.sq[j], out.b[j] + at_b); }
@@ -87,7 +87,7 @@ void image_totals(ImageCells& c, const StreamOptions& opt, const StreamOutput& o
     put(d.pair_neighbour_totals(knn), out.a[0] + at);
     put(d.pair_neighbour_out_sq_totals(knn), out.b[0] + at_b);
   }
-  put(d.self_variances(knn, opt.allocation), out.c[0] + at_c);
+  put(d.self_variances(knn, opt.allocation, opt.self_var_method, opt.self_var_cells), out.c[0] + at_c);
 }
 
 // Each image in a Dataset of its own, the images handed out in turn to up to n_threads threads: make(i, cells)

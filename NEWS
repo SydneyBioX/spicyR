@@ -1,3 +1,14 @@
+CHANGES IN VERSION 1.99.50
+--------------------------
+
+    o spicy() (cell method), allocation effect with a radius: a self-pair's variance counts the neighbours shared by
+      nearby cells from selfVarianceCells (50) randomly chosen cells of each image, scaled up (selfVariance =
+      "sampled", the default): an unbiased estimate, fixed by the image so results are reproducible. Counting them
+      for every cell (selfVariance = "exact", as 1.99.48-1.99.49) takes time in proportion to the cells times the
+      square of the neighbours per cell: on NeoTRIP at r = 200, 13 minutes against 72 seconds sampled, with the
+      self-pairs' p-values within 2%. "geometric" and "geometricSampled" are also available. Cross pairs, the count
+      effect and k nearest neighbours are unchanged.
+
 CHANGES IN VERSION 1.99.49
 --------------------------
 

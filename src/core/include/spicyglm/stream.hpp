@@ -66,6 +66,8 @@ struct StreamOptions {
   int k = 0;
   bool allocation = true;
   int n_types = 0;
+  int self_var_method = 0;   // Dataset::multi_radius_totals
+  int self_var_cells = 50;
   std::size_t n_results() const { return k > 0 ? 1 : radii.size(); }
   std::size_t block_a() const { return static_cast<std::size_t>(n_types) * n_types; }
   std::size_t block_b() const { return allocation ? static_cast<std::size_t>(n_types) : block_a(); }

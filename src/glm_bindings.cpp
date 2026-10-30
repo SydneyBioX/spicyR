@@ -240,9 +240,11 @@ NumericVector dataset_pair_neighbour_any_totals(SEXP ptr, bool knn, int n_types)
 // ([to, from, image]) for the count, exactly as the single-radius bindings after dataset_build_radius_index; and
 // `self_var` (types x images), the exact self-pair variances (dataset_self_variances).
 // [[Rcpp::export]]
-List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types) {
+List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation, int n_types, int self_var_method = 0,
+                                 int self_var_cells = 50) {
   XPtr<Dataset> d(ptr);
-  Dataset::MultiRadiusTotals m = d->multi_radius_totals(std::vector<double>(radii.begin(), radii.end()), allocation);
+  Dataset::MultiRadiusTotals m = d->multi_radius_totals(std::vector<double>(radii.begin(), radii.end()), allocation,
+                                                        self_var_method, self_var_cells);
   const int K = radii.size();
   const int n_img = static_cast<int>((allocation ? m.any[0].size() : m.totals[0].size()) / (static_cast<std::size_t>(n_types) * n_types));
   auto cube = [&](const std::vector<double>& v) { NumericVector o(v.begin(), v.end());
@@ -263,9 +265,10 @@ List dataset_multi_radius_totals(SEXP ptr, NumericVector radii, bool allocation,
 // Exact null variance of each type's self-pair row, types x images (Dataset::self_variances): allocation Var(O),
 // count Var(O - p L) (Supplementary Section 3.6).
 // [[Rcpp::export]]
-NumericMatrix dataset_self_variances(SEXP ptr, bool knn, bool allocation, int n_types) {
+NumericMatrix dataset_self_variances(SEXP ptr, bool knn, bool allocation, int n_types, int self_var_method = 0,
+                                     int self_var_cells = 50) {
   XPtr<Dataset> d(ptr);
-  std::vector<double> v = d->self_variances(knn, allocation);
+  std::vector<double> v = d->self_variances(knn, allocation, self_var_method, self_var_cells);
   NumericMatrix out(n_types, static_cast<int>(v.size() / n_types));
   std::copy(v.begin(), v.end(), out.begin());
   return out;
@@ -397,8 +400,11 @@ const void* r_bytes(SEXP v) {
   }
 }
 
-spicyglm::StreamOptions stream_options(int n_types, const NumericVector& radii, int k, bool allocation) {
+spicyglm::StreamOptions stream_options(int n_types, const NumericVector& radii, int k, bool allocation,
+                                       int self_var_method = 0, int self_var_cells = 50) {
   spicyglm::StreamOptions o;
+  o.self_var_method = self_var_method;
+  o.self_var_cells = self_var_cells;
   o.radii.assign(radii.begin(), radii.end());
   o.k = k;
   o.allocation = allocation;
@@ -471,14 +477,14 @@ IntegerVector cell_rows_differing(SEXP v, SEXP image, SEXP ref, int image_base =
 // [[Rcpp::export]]
 List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map, int n_images, SEXP type_fac,
                         IntegerVector type_map, int n_types, NumericVector radii, int k, bool allocation,
-                        int n_threads = 1) {
+                        int n_threads = 1, int self_var_method = 0, int self_var_cells = 50) {
   const R_xlen_t N = XLENGTH(image_fac);
   spicyglm::CellColumns cells{r_column(x, N, "x"), r_column(y, N, "y"), r_codes(image_fac, 1, "image"),
                               r_codes(type_fac, 1, "cell type")};
   if (XLENGTH(type_fac) != N) stop("cell type: wrong length");
   spicyglm::CodeMaps maps{image_map.begin(), static_cast<std::size_t>(image_map.size()), type_map.begin(),
                           static_cast<std::size_t>(type_map.size() - 1), n_images};
-  const spicyglm::StreamOptions o = stream_options(n_types, radii, k, allocation);
+  const spicyglm::StreamOptions o = stream_options(n_types, radii, k, allocation, self_var_method, self_var_cells);
   List res(o.n_results());
   spicyglm::StreamOutput out;
   for (std::size_t j = 0; j < o.n_results(); ++j) {
@@ -502,12 +508,13 @@ List cell_stream_totals(SEXP x, SEXP y, SEXP image_fac, IntegerVector image_map,
 // of every image of the batch.
 // [[Rcpp::export]]
 List cell_batch_totals(NumericVector x, NumericVector y, IntegerVector type, IntegerVector offsets, int n_types,
-                       NumericVector radii, int k, bool allocation, int n_threads = 1) {
+                       NumericVector radii, int k, bool allocation, int n_threads = 1, int self_var_method = 0,
+                       int self_var_cells = 50) {
   const int nb = offsets.size() - 1;
   const R_xlen_t N = type.size();
   const bool matrix = y.size() == 0 && x.size() == 2 * N;   // y empty: x is the N x 2 matrix of the coordinates
   if (nb < 1 || (!matrix && (x.size() != N || y.size() != N)) || offsets[nb] != N) stop("batch: inconsistent lengths");
-  const spicyglm::StreamOptions o = stream_options(n_types, radii, k, allocation);
+  const spicyglm::StreamOptions o = stream_options(n_types, radii, k, allocation, self_var_method, self_var_cells);
   std::vector<int> index(nb);
   for (int i = 0; i < nb; ++i) index[i] = i;
   List res(o.n_results());

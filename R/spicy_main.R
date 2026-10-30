@@ -41,8 +41,15 @@
 #' variance.
 #'
 #' For a self-pair (`from` = `to`) every cell can carry the label, so random labelling moves both the cells counted
-#' and their neighbours. Its variance is the exact random-labelling variance of the self-pair (for the radius graph
-#' and for the k nearest neighbours), not the variance of a pair of two types.
+#' and their neighbours. Its variance is the random-labelling variance of the self-pair (for the radius graph and for
+#' the k nearest neighbours), not the variance of a pair of two types. For the allocation effect this variance
+#' depends on how many neighbours each pair of nearby cells shares, which takes time in proportion to the number of
+#' cells times the square of the number of neighbours per cell. With a radius, the shared neighbours are by default
+#' counted from `selfVarianceCells` randomly chosen cells of each image and scaled up (`selfVariance = "sampled"`),
+#' an unbiased estimate of the variance; the sample is fixed by the image, so results are reproducible.
+#' `selfVariance = "exact"` counts them for every cell; `"geometric"` takes two cells to share their local density
+#' times the area where their two discs overlap; `"geometricSampled"` corrects that with the sampled cells. The count
+#' effect and the k nearest neighbours always use the exact variance.
 #'
 #' With the allocation effect, an image whose room on the pair's side (the `to` cells without a `from` neighbour
 #' expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
@@ -110,6 +117,11 @@
 #'   row names, gives the image IDs, or the name of a table of the SpatialData store or object. Every image of the
 #'   cells needs a row, and every row an image. A `survival::Surv` column given as `condition` makes a survival
 #'   analysis, also from a store.
+#' @param selfVariance Cell method, allocation effect with a radius: how a self-pair's variance counts the
+#'   neighbours shared by nearby cells: `"sampled"` (the default), `"exact"`, `"geometricSampled"` or `"geometric"`
+#'   (see Details).
+#' @param selfVarianceCells The number of cells sampled in each image for `selfVariance = "sampled"` or
+#'   `"geometricSampled"` (every cell when an image has no more).
 #' @param cellWeights Optional cell weights in \[0, 1\], in the order of `cells`: a numeric vector with one weight
 #'   per cell for its own cell type (for example a quality score), or a matrix (or sparse `Matrix`) of soft cell type
 #'   membership with one row per cell and one named column per label (for example a classifier's confidence). With
@@ -198,6 +210,8 @@ spicy <- function(cells,
                   tableKey = NULL,
                   imageInfo = NULL,
                   cellWeights = NULL,
+                  selfVariance = c("sampled", "exact", "geometricSampled", "geometric"),
+                  selfVarianceCells = 50,
                   ...) {
   dots <- list(...)
   if (.is_class(cells, "SpatialData")) {   # spatialdataR: its table's store, or the table in memory
@@ -273,6 +287,10 @@ spicy <- function(cells,
   if (!is.null(imageInfo))
     ctx <- .cell_image_info(ctx, .image_info_table(imageInfo, ctx$image_labels, imageID), info_cols, condition,
                             subject, ref, survival)
+  selfVariance <- match.arg(selfVariance)
+  if (!is.numeric(selfVarianceCells) || length(selfVarianceCells) != 1L || !is.finite(selfVarianceCells) || selfVarianceCells < 1)
+    stop("`selfVarianceCells` must be a positive number of cells.", call. = FALSE)
+  ctx$self_var <- list(method = selfVariance, cells = as.integer(selfVarianceCells))
   pheno <- ctx$pheno
   types <- if (weighted) memb$labels else ctx$type_labels
   bad <- setdiff(c(from, to), types)
