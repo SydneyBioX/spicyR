@@ -798,3 +798,11 @@ test_that("selfVariance: sampling every cell is exact; the sample is reproducibl
   expect_error(fit(selfVarianceCells = 0), "selfVarianceCells")
   expect_error(fit(selfVariance = "approximate"))
 })
+
+test_that("selfVariance = \"sampled\" does not depend on the order of the rows", {
+  fit <- function(z) suppressMessages(spicy(z, "condition", subject = "patient", r = 30, selfVarianceCells = 20))$cellResults
+  set.seed(5)
+  a <- fit(cells)
+  b <- fit(cells[sample(nrow(cells)), ])
+  expect_identical(b$p_value[order(b$from, b$to)], a$p_value[order(a$from, a$to)])
+})

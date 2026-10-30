@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.51
+--------------------------
+
+    o selfVariance = "sampled": the sampled cells are those with the smallest hash of their coordinates, so the
+      results do not depend on the order of the rows (in 1.99.50 they did).
+
 CHANGES IN VERSION 1.99.50
 --------------------------
 

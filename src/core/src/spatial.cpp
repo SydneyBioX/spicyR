@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstring>
 #include <numeric>
-#include <random>
 #include <stdexcept>
 
 namespace spicyglm {
@@ -1253,18 +1252,25 @@ void Dataset::self_variance_approx(int img, const std::vector<int>& ptr, const s
   if (method == 1 || method == 3)
     for (int l = 0; l < N; ++l) geo_pairs(l, true, 2.0);
   if (method == 2 || method == 3) {
-    // a random sample of cells, seeded by the image's size and first cell (the same in R and Python)
-    std::vector<int> sample(N);
-    std::iota(sample.begin(), sample.end(), 0);
-    std::uint64_t seed = static_cast<std::uint64_t>(N) * 0x9E3779B97F4A7C15ULL;
-    { std::uint64_t bx; std::memcpy(&bx, &X[0], 8); seed ^= bx + 0x632BE59BD9B4E019ULL + (seed << 6) + (seed >> 2);
-      std::memcpy(&bx, &Y[0], 8); seed ^= bx + 0x632BE59BD9B4E019ULL + (seed << 6) + (seed >> 2); }
-    std::mt19937_64 gen(seed);
+    // a pseudo-random sample of cells: the m with the smallest hash of their coordinates, so the sample does not depend
+    // on the order of the rows (cells at the same place contribute the same) and is the same in R and Python
+    auto mix = [](std::uint64_t z) {
+      z += 0x9E3779B97F4A7C15ULL; z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL; z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+      return z ^ (z >> 31); };
+    std::vector<std::pair<std::uint64_t, int>> key(N);
+    for (int i = 0; i < N; ++i) {
+      std::uint64_t bx, by; const double xi = X[i] + 0.0, yi = Y[i] + 0.0;   // + 0.0: -0 and 0 hash alike
+      std::memcpy(&bx, &xi, 8); std::memcpy(&by, &yi, 8);
+      key[i] = {mix(bx ^ mix(by)), i};
+    }
     const int m = std::min(N, std::max(1, cells));
-    for (int i = 0; i < m; ++i) { std::uniform_int_distribution<int> u(i, N - 1); std::swap(sample[i], sample[u(gen)]); }
+    std::nth_element(key.begin(), key.begin() + (m - 1), key.end());
+    std::vector<int> sample(m);
+    for (int i = 0; i < m; ++i) sample[i] = key[i].second;
     const double scale = static_cast<double>(N) / m;
     std::vector<int> common(N, 0), touched;
     std::vector<char> linked(N, 0);
+    std::vector<long long> hits(A.size(), 0);   // whole counts, scaled once at the end: the same sums in any row order
     for (int i = 0; i < m; ++i) {
       const int l = sample[i];
       touched.clear();
@@ -1273,10 +1279,11 @@ void Dataset::self_variance_approx(int img, const std::vector<int>& ptr, const s
         const int v = nb[e];
         for (int f = ptr[v]; f < ptr[v + 1]; ++f) { const int k = nb[f]; if (k == l || linked[k]) continue; if (!common[k]) touched.push_back(k); ++common[k]; }
       }
-      for (int k : touched) { const int s = d[l] + d[k]; A[s - common[k]] += scale; A[s] -= scale; common[k] = 0; }
+      for (int k : touched) { const int s = d[l] + d[k]; ++hits[s - common[k]]; --hits[s]; common[k] = 0; }
       for (int e = ptr[l]; e < ptr[l + 1]; ++e) linked[nb[e]] = 0;
       if (method == 3) geo_pairs(l, false, -scale);
     }
+    for (std::size_t x = 0; x < hits.size(); ++x) if (hits[x]) A[x] += scale * static_cast<double>(hits[x]);
   }
   for (std::size_t a = 0; a < T; ++a) out_img[a] = self_graph_variance(g, type_count(img, static_cast<int>(a)), true);
 }
