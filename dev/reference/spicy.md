@@ -30,6 +30,8 @@ spicy(
   tableKey = NULL,
   imageInfo = NULL,
   cellWeights = NULL,
+  selfVariance = c("sampled", "exact", "geometricSampled", "geometric"),
+  selfVarianceCells = 50,
   ...
 )
 ```
@@ -172,6 +174,19 @@ spicy(
   are not tested. Image method: see
   [`getPairwise()`](https://sydneybiox.github.io/spicyR/dev/reference/getPairwise.md).
 
+- selfVariance:
+
+  Cell method, allocation effect with a radius: how a self-pair's
+  variance counts the neighbours shared by nearby cells: `"sampled"`
+  (the default), `"exact"`, `"geometricSampled"` or `"geometric"` (see
+  Details).
+
+- selfVarianceCells:
+
+  The number of cells sampled in each image for
+  `selfVariance = "sampled"` or `"geometricSampled"` (every cell when an
+  image has no more).
+
 - ...:
 
   Arguments of the image method: `sigma`, `alternateResult`,
@@ -259,9 +274,20 @@ its own variance.
 
 For a self-pair (`from` = `to`) every cell can carry the label, so
 random labelling moves both the cells counted and their neighbours. Its
-variance is the exact random-labelling variance of the self-pair (for
-the radius graph and for the k nearest neighbours), not the variance of
-a pair of two types.
+variance is the random-labelling variance of the self-pair (for the
+radius graph and for the k nearest neighbours), not the variance of a
+pair of two types. For the allocation effect this variance depends on
+how many neighbours each pair of nearby cells shares, which takes time
+in proportion to the number of cells times the square of the number of
+neighbours per cell. With a radius, the shared neighbours are by default
+counted from `selfVarianceCells` randomly chosen cells of each image and
+scaled up (`selfVariance = "sampled"`), an unbiased estimate of the
+variance; the sample is fixed by the image, so results are reproducible.
+`selfVariance = "exact"` counts them for every cell; `"geometric"` takes
+two cells to share their local density times the area where their two
+discs overlap; `"geometricSampled"` corrects that with the sampled
+cells. The count effect and the k nearest neighbours always use the
+exact variance.
 
 With the allocation effect, an image whose room on the pair's side (the
 `to` cells without a `from` neighbour expected by chance for an
