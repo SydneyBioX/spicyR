@@ -201,7 +201,7 @@ topPairs(res, n = 8)
 #> HR+ CK7-__Macrophages Vim+ Slug+ 0.05321105  0.36643911         0.3132281
 #> HR+ CK7- Ki67+__HR- CK7+         0.24029870  0.02524918        -0.2150495
 #> HR- CK7+__HR+ CK7- Ki67+         0.42114341  0.08618614        -0.3349573
-#> HR+ CK7-__HR+ CK7-               0.24546548  0.55107611         0.3056106
+#> HR+ CK7-__HR+ CK7-               0.24542959  0.55082550         0.3053959
 #>                                       p_value        p_adj
 #> HR+ CK7-__HR+ CK7- Ki67+         2.450417e-26 1.154146e-23
 #> HR+ CK7-__HR- CK7-               1.919165e-17 4.519634e-15
@@ -210,7 +210,7 @@ topPairs(res, n = 8)
 #> HR+ CK7-__Macrophages Vim+ Slug+ 1.111567e-08 1.047097e-06
 #> HR+ CK7- Ki67+__HR- CK7+         1.432717e-08 1.124683e-06
 #> HR- CK7+__HR+ CK7- Ki67+         2.719414e-08 1.829777e-06
-#> HR+ CK7-__HR+ CK7-               5.736390e-08 3.377299e-06
+#> HR+ CK7-__HR+ CK7-               5.858613e-08 3.449258e-06
 ```
 
 Most of these pairs have `HR+ CK7-` tumour cells as the `from` or the
@@ -371,21 +371,21 @@ topPairs(res, from = "HR+ CK7-", n = 6)
 #> HR+ CK7-__HR- CK7+               HR+ CK7-               HR- CK7+ 0.10713337
 #> HR+ CK7-__HR+ CK7- Slug+         HR+ CK7-         HR+ CK7- Slug+ 0.05632972
 #> HR+ CK7-__Macrophages Vim+ Slug+ HR+ CK7- Macrophages Vim+ Slug+ 0.05321105
-#> HR+ CK7-__HR+ CK7-               HR+ CK7-               HR+ CK7- 0.24546548
+#> HR+ CK7-__HR+ CK7-               HR+ CK7-               HR+ CK7- 0.24542959
 #>                                  excess_comp excess_difference      p_value
 #> HR+ CK7-__HR+ CK7- Ki67+           0.6397706         0.5516063 2.450417e-26
 #> HR+ CK7-__HR- CK7-                 0.4266184         0.3394389 1.919165e-17
 #> HR+ CK7-__HR- CK7+                 0.4964008         0.3892675 3.161955e-15
 #> HR+ CK7-__HR+ CK7- Slug+           0.5504994         0.4941697 5.723759e-09
 #> HR+ CK7-__Macrophages Vim+ Slug+   0.3664391         0.3132281 1.111567e-08
-#> HR+ CK7-__HR+ CK7-                 0.5510761         0.3056106 5.736390e-08
+#> HR+ CK7-__HR+ CK7-                 0.5508255         0.3053959 5.858613e-08
 #>                                         p_adj
 #> HR+ CK7-__HR+ CK7- Ki67+         1.154146e-23
 #> HR+ CK7-__HR- CK7-               4.519634e-15
 #> HR+ CK7-__HR- CK7+               4.964269e-13
 #> HR+ CK7-__HR+ CK7- Slug+         6.739726e-07
 #> HR+ CK7-__Macrophages Vim+ Slug+ 1.047097e-06
-#> HR+ CK7-__HR+ CK7-               3.377299e-06
+#> HR+ CK7-__HR+ CK7-               3.449258e-06
 ki67 <- topPairs(res, from = "HR+ CK7-", to = "HR+ CK7- Ki67+")
 ```
 
@@ -756,7 +756,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.50) to
+A methods sentence might read: “We used spicyR (version 1.99.51) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -961,7 +961,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.12       
-#> [19] generics_0.1.4              spicyR_1.99.50             
+#> [19] generics_0.1.4              spicyR_1.99.51             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
