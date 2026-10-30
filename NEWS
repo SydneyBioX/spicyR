@@ -1,3 +1,8 @@
+CHANGES IN VERSION 1.99.52
+--------------------------
+
+    o Builds with MSVC (the geometric self-pair variance used M_PI).
+
 CHANGES IN VERSION 1.99.51
 --------------------------
 

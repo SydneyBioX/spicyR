@@ -1222,7 +1222,7 @@ void Dataset::self_variance_approx(int img, const std::vector<int>& ptr, const s
   for (int l = 0; l < N; ++l)
     for (int e = ptr[l]; e < ptr[l + 1]; ++e) if (nb[e] > l) { const int k = nb[e]; A[d[l]] += 2; A[d[k]] += 2; A[d[l] + d[k]] -= 2; }
   // unlinked pairs at distance (r, 2r]: the geometric guess of their shared neighbours, from a grid of side 2r
-  const double r2 = r * r, side = 2 * r, disc = M_PI * r2;
+  const double r2 = r * r, side = 2 * r, disc = 3.14159265358979323846 * r2;   // pi (MSVC has no M_PI)
   const double* X = x_.data() + start; const double* Y = y_.data() + start;
   double xmin = X[0], ymin = Y[0], xmax = X[0], ymax = Y[0];
   for (int i = 1; i < N; ++i) { xmin = std::min(xmin, X[i]); xmax = std::max(xmax, X[i]); ymin = std::min(ymin, Y[i]); ymax = std::max(ymax, Y[i]); }
