@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.52</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.53</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -287,8 +287,6 @@ for example the confidence of a classifier, instead of through a single cell typ
 Bioinformatics 38(11), 3099-3105. <a href="https://doi.org/10.1093/bioinformatics/btac268" class="external-link">doi:10.1093/bioinformatics/btac268</a></p>
 <p>Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
 samples. Survey Methodology 28(2), 169-181.</p>
-<p>DerSimonian R, Laird N (1986). Meta-analysis in clinical trials. Controlled Clinical Trials 7(3), 177-188.
-<a href="https://doi.org/10.1016/0197-2456%2886%2990046-2" class="external-link">doi:10.1016/0197-2456(86)90046-2</a></p>
 <p>Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 testing in fixed effects models. Journal of Business &amp; Economic Statistics 36(4), 672-683.
 <a href="https://doi.org/10.1080/07350015.2016.1247004" class="external-link">doi:10.1080/07350015.2016.1247004</a></p>
@@ -310,31 +308,31 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="topPairs.html">topPairs</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         from   to         level excess_ref excess_difference</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset  0.3199387       0.072364141</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration  0.3199387       0.001750948</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset  0.3225594       0.067948496</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration  0.3225594      -0.001655389</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset           Tc beta         Onset         NA                NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration   Tc beta Long-duration         NA                NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                           p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.5909207 0.5909207</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9852766 0.9852766</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.6078397 0.6078397</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9859338 0.9859338</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA        NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA        NA</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         from   to         level    side excess_ref</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset attract  0.3199387</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration attract  0.3199387</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset attract  0.3225594</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration attract  0.3225594</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset           Tc beta         Onset    &lt;NA&gt;         NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration   Tc beta Long-duration    &lt;NA&gt;         NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         excess_difference         se       df   p_value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.072364141 0.12597874 4.925793 0.5909207</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.001750948 0.09031631 5.040000 0.9852766</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.067948496 0.12418948 4.993347 0.6078397</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration        -0.001655389 0.08941797 5.087533 0.9859338</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                        NA         NA       NA        NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration                NA         NA       NA        NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                             p_adj        tau2 tau2_image            not_tested</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.5909207 0.001361901 0.05860949                  &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9852766 0.001361901 0.05860949                  &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA          NA 0.14011289 one_patient_per_group</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA          NA 0.14011289 one_patient_per_group</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.6078397 0.003755877 0.04266841                  &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9859338 0.003755877 0.04266841                  &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA          NA 0.48210348 one_patient_per_group</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA          NA 0.48210348 one_patient_per_group</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># the extra number of Tc cells within 50 units of each Th cell</span></span></span>
 <span class="r-in"><span><span class="va">resCount</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>

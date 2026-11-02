@@ -454,7 +454,7 @@ resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
 resDonors
 #> spicyR (cell-level test): 256 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 8 patients (Non-diabetic 4, Onset 4) with 80 images
-#> 74 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
+#> 73 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
 #> BH-adjusted p < 0.05: 0 pairs
 #> See topPairs().
 ```
@@ -717,17 +717,17 @@ an analogue of Ripley’s K function.
 Images from the same patient are combined, giving more weight to more
 informative images (usually those with more `to` cells), up to a limit:
 a patient’s images can differ in their true effect, by an amount
-estimated from the spread between each patient’s images (DerSimonian and
-Laird 1986), so one large image cannot outweigh the patient’s other
+estimated from the spread between each patient’s images (Paule and
+Mandel 1982), so one large image cannot outweigh the patient’s other
 images. Each patient has its own true effect, which varies around its
 group’s mean by an amount estimated from the data (a frailty, or
-random-effects, model, with the between-patient variance estimated as by
-Paule and Mandel (1982)). The difference between groups, adjusted for
-any covariates, is tested on Satterthwaite degrees of freedom with
-patients as the clusters, using the small-sample cluster-robust (CR2)
-variance (Bell and McCaffrey 2002; Pustejovsky and Tipton 2018). Each
-group contributes its own CR2 variance. For a self-pair (`from` the same
-as `to`), whose cells and neighbours are both moved by random labelling,
+random-effects, model, with the between-patient variance estimated in
+the same way). The difference between groups, adjusted for any
+covariates, is tested on Satterthwaite degrees of freedom with patients
+as the clusters, using the small-sample cluster-robust (CR2) variance
+(Bell and McCaffrey 2002; Pustejovsky and Tipton 2018). Each group
+contributes its own CR2 variance. For a self-pair (`from` the same as
+`to`), whose cells and neighbours are both moved by random labelling,
 the variance is the random-labelling variance of the self-pair. For the
 allocation effect with a radius, the neighbours shared by nearby cells
 are counted from 50 randomly chosen cells of each image
@@ -756,7 +756,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.52) to
+A methods sentence might read: “We used spicyR (version 1.99.53) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -961,7 +961,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.12       
-#> [19] generics_0.1.4              spicyR_1.99.52             
+#> [19] generics_0.1.4              spicyR_1.99.53             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
@@ -1026,10 +1026,6 @@ Cytometry.” *Cell Metabolism* 29 (3): 755–68.
 Davies, Robert B. 1987. “Hypothesis Testing When a Nuisance Parameter Is
 Present Only Under the Alternative.” *Biometrika* 74 (1): 33–43.
 <https://doi.org/10.1093/biomet/74.1.33>.
-
-DerSimonian, Rebecca, and Nan Laird. 1986. “Meta-Analysis in Clinical
-Trials.” *Controlled Clinical Trials* 7 (3): 177–88.
-<https://doi.org/10.1016/0197-2456(86)90046-2>.
 
 Hartung, Joachim, and Guido Knapp. 2001. “A Refined Method for the
 Meta-Analysis of Controlled Clinical Trials with Binary Outcome.”

@@ -328,10 +328,6 @@ Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for
 linear regression with multi-stage samples. Survey Methodology 28(2),
 169-181.
 
-DerSimonian R, Laird N (1986). Meta-analysis in clinical trials.
-Controlled Clinical Trials 7(3), 177-188.
-[doi:10.1016/0197-2456(86)90046-2](https://doi.org/10.1016/0197-2456%2886%2990046-2)
-
 Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust
 variance estimation and hypothesis testing in fixed effects models.
 Journal of Business & Economic Statistics 36(4), 672-683.
@@ -361,31 +357,31 @@ res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))
 topPairs(res)
 #>                         from   to         level excess_ref excess_difference
-#> Tc__Th__Onset             Tc   Th         Onset  0.3199387       0.072364141
-#> Tc__Th__Long-duration     Tc   Th Long-duration  0.3199387       0.001750948
+#> Tc__Th__Onset             Tc   Th         Onset  0.3225594       0.067948496
+#> Tc__Th__Long-duration     Tc   Th Long-duration  0.3225594      -0.001655389
 #> Tc__beta__Onset           Tc beta         Onset         NA                NA
 #> Tc__beta__Long-duration   Tc beta Long-duration         NA                NA
 #>                           p_value     p_adj
-#> Tc__Th__Onset           0.5909207 0.5909207
-#> Tc__Th__Long-duration   0.9852766 0.9852766
+#> Tc__Th__Onset           0.6078397 0.6078397
+#> Tc__Th__Long-duration   0.9859338 0.9859338
 #> Tc__beta__Onset                NA        NA
 #> Tc__beta__Long-duration        NA        NA
 res$cellResults
 #>                         from   to         level    side excess_ref
-#> Tc__Th__Onset             Tc   Th         Onset attract  0.3199387
-#> Tc__Th__Long-duration     Tc   Th Long-duration attract  0.3199387
+#> Tc__Th__Onset             Tc   Th         Onset attract  0.3225594
+#> Tc__Th__Long-duration     Tc   Th Long-duration attract  0.3225594
 #> Tc__beta__Onset           Tc beta         Onset    <NA>         NA
 #> Tc__beta__Long-duration   Tc beta Long-duration    <NA>         NA
 #>                         excess_difference         se       df   p_value
-#> Tc__Th__Onset                 0.072364141 0.12597874 4.925793 0.5909207
-#> Tc__Th__Long-duration         0.001750948 0.09031631 5.040000 0.9852766
+#> Tc__Th__Onset                 0.067948496 0.12418948 4.993347 0.6078397
+#> Tc__Th__Long-duration        -0.001655389 0.08941797 5.087533 0.9859338
 #> Tc__beta__Onset                        NA         NA       NA        NA
 #> Tc__beta__Long-duration                NA         NA       NA        NA
 #>                             p_adj        tau2 tau2_image            not_tested
-#> Tc__Th__Onset           0.5909207 0.001361901 0.05860949                  <NA>
-#> Tc__Th__Long-duration   0.9852766 0.001361901 0.05860949                  <NA>
-#> Tc__beta__Onset                NA          NA 0.14011289 one_patient_per_group
-#> Tc__beta__Long-duration        NA          NA 0.14011289 one_patient_per_group
+#> Tc__Th__Onset           0.6078397 0.003755877 0.04266841                  <NA>
+#> Tc__Th__Long-duration   0.9859338 0.003755877 0.04266841                  <NA>
+#> Tc__beta__Onset                NA          NA 0.48210348 one_patient_per_group
+#> Tc__beta__Long-duration        NA          NA 0.48210348 one_patient_per_group
 
 # the extra number of Tc cells within 50 units of each Th cell
 resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
