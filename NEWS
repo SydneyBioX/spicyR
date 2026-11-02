@@ -1,3 +1,13 @@
+CHANGES IN VERSION 1.99.53
+--------------------------
+
+    o The variance between a patient's images (tau2_image) is estimated by Paule-Mandel, as the variance between
+      patients already was: the value at which the weighted spread of the images about their patient's mean equals
+      its degrees of freedom, with each image weighted by 1 / (its sampling variance + tau2_image). It was the
+      DerSimonian-Laird estimate, which weights by 1 / (sampling variance) alone and is a one-step approximation to
+      this. With one image per patient nothing changes. On the main simulation, IST and the real analyses against
+      shuffled labels, power, AUC and null rates are within 0.5 points of 1.99.52.
+
 CHANGES IN VERSION 1.99.52
 --------------------------
 

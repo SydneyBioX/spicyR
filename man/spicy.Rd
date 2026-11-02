@@ -229,9 +229,6 @@ Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 Bell RM, McCaffrey DF (2002). Bias reduction in standard errors for linear regression with multi-stage
 samples. Survey Methodology 28(2), 169-181.
 
-DerSimonian R, Laird N (1986). Meta-analysis in clinical trials. Controlled Clinical Trials 7(3), 177-188.
-\doi{10.1016/0197-2456(86)90046-2}
-
 Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
 \doi{10.1080/07350015.2016.1247004}

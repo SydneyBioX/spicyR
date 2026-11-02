@@ -384,24 +384,34 @@ ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>
   if (unit.size() != N) throw std::invalid_argument("image_heterogeneity_rows: one unit per row");
   std::vector<double> y(N), s2(N);
   for (std::size_t i = 0; i < N; ++i) { y[i] = (rows.O[i] - rows.E[i]) / rows.n[i]; s2[i] = rows.v[i] / (rows.n[i] * rows.n[i]); }
-  // DerSimonian-Laird within units: Q = sum_u sum_j w (y - ybar_u)^2 on sum_u (k_u - 1) df,
-  // C = sum_u (sum w - sum w^2 / sum w)
+  // Paule-Mandel within units: tau2 solves Q(tau2) = sum_u (k_u - 1), where
+  // Q(t) = sum_u sum_j (y - ybar_u(t))^2 / (s2 + t) and ybar_u(t) is the unit's mean weighted by 1 / (s2 + t);
+  // Q decreases in t, so tau2 = 0 when Q(0) <= df. Units with one row do not contribute.
   int n_units = 0;
   for (int u : unit) n_units = std::max(n_units, u + 1);
-  std::vector<double> sw(n_units, 0), swy(n_units, 0), sw2(n_units, 0);
   std::vector<int> k(n_units, 0);
-  for (std::size_t i = 0; i < N; ++i) {
-    const double w = 1 / s2[i]; const int u = unit[i];
-    sw[u] += w; swy[u] += w * y[i]; sw2[u] += w * w; ++k[u];
+  for (int u : unit) ++k[u];
+  double df = 0;
+  for (int u = 0; u < n_units; ++u) if (k[u] > 1) df += k[u] - 1;
+  std::vector<double> sw(n_units), swy(n_units);
+  auto Q = [&](double t) {
+    std::fill(sw.begin(), sw.end(), 0.0); std::fill(swy.begin(), swy.end(), 0.0);
+    for (std::size_t i = 0; i < N; ++i) {
+      const double w = 1 / (s2[i] + t); sw[unit[i]] += w; swy[unit[i]] += w * y[i];
+    }
+    double q = 0;
+    for (std::size_t i = 0; i < N; ++i) {
+      const int u = unit[i];
+      if (k[u] > 1) { const double d = y[i] - swy[u] / sw[u]; q += d * d / (s2[i] + t); }
+    }
+    return q;
+  };
+  double tau2 = 0;
+  if (df > 0 && Q(0) > df) {
+    double up = 1e-4;
+    while (Q(up) > df && up < 1e6) up *= 4;
+    tau2 = brent([&](double t) { return Q(t) - df; }, 0, up, 0);
   }
-  double Q = 0, df = 0, C = 0;
-  for (std::size_t i = 0; i < N; ++i) {
-    const int u = unit[i];
-    if (k[u] > 1) { const double d = y[i] - swy[u] / sw[u]; Q += d * d / s2[i]; }
-  }
-  for (int u = 0; u < n_units; ++u)
-    if (k[u] > 1) { df += k[u] - 1; C += sw[u] - sw2[u] / sw[u]; }
-  const double tau2 = (df > 0 && C > 0) ? std::max(0.0, (Q - df) / C) : 0.0;
   if (tau2_image) *tau2_image = tau2;
   ImageRows out;
   out.image = rows.image; out.O = y; out.E.assign(N, 0.0); out.n.assign(N, 1.0); out.v.resize(N);

@@ -200,13 +200,17 @@ ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")
 }
 
 ## Images within a unit: each row becomes y = (O - E) / n with variance v / n^2 + tau2_image, tau2_image the
-## DerSimonian-Laird estimate from the spread of y within units (weights n^2 / v).
+## Paule-Mandel estimate from the spread of y within units: the root of Q(t) = sum (k_u - 1), with
+## Q(t) = sum_u sum_j (y - ybar_u(t))^2 / (s2 + t) and ybar_u(t) weighted by 1 / (s2 + t); 0 when Q(0) <= df.
 ref_image_heterogeneity <- function(d, unit) {
-  y <- (d$O - d$E) / d$n; s2 <- d$v / d$n^2; w <- 1 / s2; Q <- 0; df <- 0; C <- 0
-  for (u in split(seq_along(y), unit)) { if (length(u) < 2) next
-    m <- sum(w[u] * y[u]) / sum(w[u]); Q <- Q + sum(w[u] * (y[u] - m)^2); df <- df + length(u) - 1
-    C <- C + sum(w[u]) - sum(w[u]^2) / sum(w[u]) }
-  tau2 <- if (df > 0 && C > 0) max(0, (Q - df) / C) else 0
+  y <- (d$O - d$E) / d$n; s2 <- d$v / d$n^2
+  us <- Filter(function(u) length(u) > 1, split(seq_along(y), unit))
+  df <- sum(lengths(us)) - length(us)
+  Q <- function(t) sum(vapply(us, function(u) { w <- 1 / (s2[u] + t); m <- sum(w * y[u]) / sum(w)
+    sum(w * (y[u] - m)^2) }, 0))
+  tau2 <- 0
+  if (df > 0 && Q(0) > df) { up <- 1e-4; while (Q(up) > df && up < 1e6) up <- up * 4
+    tau2 <- stats::uniroot(function(t) Q(t) - df, c(0, up), tol = 1e-15)$root }
   d$O <- y; d$E <- 0; d$n <- 1; d$v <- s2 + tau2; attr(d, "tau2_image") <- tau2; d
 }
 
