@@ -40,8 +40,10 @@ Column names then refer to the table's \code{obs}; \code{imageID} defaults to th
 \code{spatialCoords} to its \code{obsm} array \code{"spatial"}. A \code{SpatialData} object (spatialdataR) read from a store
 is read from that store in the same way; one built in memory is analysed from its table.}
 
-\item{condition}{The column of the image-level condition: two groups, or a \code{survival::Surv} column
-for a survival outcome (from a store, a column of \code{imageInfo}).}
+\item{condition}{The column of the image-level condition (from a store, a column of \code{imageInfo}): two groups;
+more than two groups (cell method: each level against the reference, and an overall test of all of them); a
+number with more than two values, taken as continuous (cell method: the slope of the effect on it); or a
+\code{survival::Surv} column for a survival outcome. Give a factor to compare numeric values as groups.}
 
 \item{subject}{The column of the patient (unit) of each image. Images of one patient are combined;
 if omitted, every image is its own patient.}
@@ -81,7 +83,7 @@ cells from more densely packed ones, and it removes real effects when the share 
 Details) or \code{"hartung_knapp"} (the model-based variance, scaled by
 the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).}
 
-\item{ref}{Cell method: the reference level of \code{condition}.}
+\item{ref}{Cell method: the reference level of \code{condition} (not for a continuous condition).}
 
 \item{cores}{Number of threads (cell method) or cores (image method).}
 
@@ -125,8 +127,14 @@ condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), th
 (\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
 between-image variance (\code{tau2_image}) and, when the test was adjusted, what for (\code{adjusted_for}), the effect
 and p-value of each adjustment, and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}).
+With more than two groups, one row per pair and level against the reference, and the overall test of the pair
+(\code{overall_F} on \code{overall_df1} and \code{overall_df2} df, \code{overall_p_value}, \code{overall_p_adj}: the CR2 Wald test of
+every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky). With a continuous
+condition, one row per pair: the effect at the condition's mean (\code{excess_mean}) and its slope per unit of the
+condition (\code{excess_slope}), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
 Every requested pair has a row: \code{not_tested} gives why a pair (or, in \verb{$radiusResults}, a radius) was not tested
-(\code{"one_patient_per_group"}, \code{"no_information"}, \code{"few_effective_units"} or \code{"no_variation"}; \code{NA} when it
+(\code{"one_patient_per_group"}, \code{"no_information"}, \code{"few_effective_units"} or \code{"no_variation"}; for a continuous
+condition also \code{"too_few_units"} or \code{"design_not_full_rank"} (the condition does not vary); \code{NA} when it
 was), and its p-value is then \code{NA} and not counted in the BH adjustment. \verb{$effect} records which effect was
 estimated.
 }
@@ -232,6 +240,10 @@ samples. Survey Methodology 28(2), 169-181.
 Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
 \doi{10.1080/07350015.2016.1247004}
+
+Tipton E, Pustejovsky JE (2015). Small-sample adjustments for tests of moderators and model fit using robust
+variance estimation in meta-regression. Journal of Educational and Behavioral Statistics 40(6), 604-634.
+\doi{10.3102/1076998615606099}
 
 Paule RC, Mandel J (1982). Consensus values and weighting factors. Journal of Research of the National
 Bureau of Standards 87(5), 377-385. \doi{10.6028/jres.087.022}

@@ -20,6 +20,7 @@ double pnorm_upper(double z);                 // P(Z > z), accurate in the far t
 double norm_quantile(double p);                       // Wichura AS241
 double pt_upper(double t, double df);         // P(T > t), Student t (df = inf: normal)
 double pt_two_sided(double t, double df);     // P(|T| > |t|)
+double pf_upper(double f, double df1, double df2);  // P(F > f), F distribution
 
 // ------------------------------------------------------------ image rows ---
 
@@ -206,6 +207,22 @@ DesignResult design_test(const ImageRows& rows, const std::vector<int>& unit, in
 std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                                        const std::vector<double>& Z, int q, const std::vector<double>& contrasts,
                                        int k, double tau2, bool hartung_knapp = false, int n_groups = 0);
+
+// The joint test of k contrasts of one fit (C, row-major k x q), as design_tests fits it. CR2: the Wald statistic
+// Q = (C theta)' V^-1 (C theta) with V the CR2 covariance of C theta, referred to the HTZ approximation (Tipton and
+// Pustejovsky 2015): V is taken as Wishart with eta degrees of freedom, eta = k (k + 1) / (the summed variances of
+// the entries of V, normalised by its expectation C B C', under the working model), and (eta - k + 1) / (eta k) Q
+// ~ F(k, eta - k + 1). With k = 1 this is the t test of design_tests (Q = t^2, eta its Satterthwaite df).
+// hartung_knapp: V = max(1, Pearson / (m - q)) C B C', floored at CR2 (the smaller of the two Wald statistics, as
+// design_tests floors each contrast), Q / k ~ F(k, m - q).
+struct JointResult {
+  bool ok = false;
+  std::string reason;
+  double statistic = 0, df1 = 0, df2 = 0, p = 1, wald = 0, tau2 = 0;
+};
+
+JointResult design_joint_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<double>& Z, int q,
+                              const std::vector<double>& contrasts, int k, double tau2, bool hartung_knapp = false);
 
 // Option 2 (Supplementary Methods, Section 2): the two-group test with a slope on the centred covariate x
 // (the log share of the REF type), tau2 held at the unadjusted value. Rows with a negative group are left out.

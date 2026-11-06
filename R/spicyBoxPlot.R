@@ -6,6 +6,8 @@
 #' is sized by how much the image contributes to the test (its weight in the frailty model, relative to the
 #' average image of its condition). With `interactive = TRUE` the plot is a plotly widget: hover over a point to
 #' see its image, patient, excess and weight, which helps to find images worth looking at with [plotImage()].
+#' With a continuous condition the plot is a scatter of the per-image value against the condition, with the fitted
+#' line of the cell method's slope.
 #'
 #' @param results The SpicyResults object returned by spicy() (either method).
 #' @param from The `from` cell type (the neighbours looked for around each `to` cell).
@@ -61,8 +63,10 @@ spicyBoxPlot <- function(results,
   w <- results$imageWeights[[pairName]]
   df$weight <- if (cell && !is.null(w)) w else NA_real_
   df <- df[is.finite(df$value) & !is.na(df$condition), , drop = FALSE]
-  # relative weight: 1 for an image of average weight in its condition
-  df$relative <- stats::ave(df$weight, df$condition, FUN = function(z) z / mean(z, na.rm = TRUE))
+  continuous <- is.numeric(df$condition)
+  # relative weight: 1 for an image of average weight in its condition (in all the images, for a continuous condition)
+  df$relative <- if (continuous) df$weight / mean(df$weight, na.rm = TRUE)
+                 else stats::ave(df$weight, df$condition, FUN = function(z) z / mean(z, na.rm = TRUE))
   sized <- any(is.finite(df$relative))
   if (cell && isTRUE(results$isKontextual)) {
     ylabel <- "Kontextual excess\n(beyond chance within the parent)"
@@ -82,8 +86,19 @@ spicyBoxPlot <- function(results,
                      "<br>", if (cell) "excess: " else "value: ", signif(df$value, 3),
                      if (sized) paste0("<br>relative weight: ", signif(df$relative, 2)) else "")
 
-  jitter <- ggplot2::position_jitter(width = 0.2, height = 0, seed = 1)
   pt <- if (sized) ggplot2::aes(size = .data$relative, text = .data$hover) else ggplot2::aes(text = .data$hover)
+  if (continuous) {
+    # the cell method's fit: the excess at the mean condition of these images, and the slope
+    b <- unlist(results$coefficient[pairName, ])
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$condition, y = .data$value)) +
+      suppressWarnings(ggplot2::geom_point(pt, colour = "grey30", alpha = 0.6, stroke = 0)) +
+      ggplot2::ggtitle(title) +
+      ggplot2::labs(x = "condition", y = ylabel, size = "Relative\nweight") +
+      ggplot2::theme_classic()
+    if (cell && all(is.finite(b)))
+      p <- p + ggplot2::geom_abline(intercept = b[1] - b[2] * mean(df$condition), slope = b[2], colour = "#D73027")
+  } else {
+  jitter <- ggplot2::position_jitter(width = 0.2, height = 0, seed = 1)
   p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$condition, y = .data$value)) +
     suppressWarnings(ggplot2::geom_point(pt, position = jitter, colour = "grey45", alpha = 0.5, stroke = 0)) +
     ggplot2::geom_boxplot(ggplot2::aes(fill = .data$condition), outlier.shape = NA, alpha = 0.35, width = 0.55) +
@@ -91,6 +106,7 @@ spicyBoxPlot <- function(results,
     ggplot2::labs(x = NULL, y = ylabel, fill = NULL, size = "Relative\nweight") +
     ggplot2::guides(fill = "none") +
     ggplot2::theme_classic()
+  }
   if (sized) p <- p + ggplot2::scale_size_area(max_size = 4)
   if (cell) p <- p + ggplot2::geom_hline(yintercept = 0, linetype = 2, colour = "grey50")
   if (!interactive) return(p)

@@ -168,7 +168,7 @@ ref_cr2 <- function(f, ell = c(-1, 1)) {
   Gam <- vapply(seq_len(m), function(i) { r <- (off[i] + 1):off[i + 1]
     drop(t(ell) %*% f$B %*% t(f$D[[i]]) %*% f$W[[i]] %*% Phi[[i]] %*% (diag(J) - H)[r, , drop = FALSE]) }, numeric(J))
   Om <- t(Gam) %*% Sig %*% Gam
-  list(V = sum(zeta^2), df = sum(diag(Om))^2 / sum(Om^2), Omega = Om)
+  list(V = sum(zeta^2), df = sum(diag(Om))^2 / sum(Om^2), Omega = Om, zeta = zeta, Gamma = Gam, Sigma = Sig)
 }
 
 ## The pooled dispersion: each group's CR2 variance over its model variance (the diagonal of the bread), averaged
@@ -255,6 +255,27 @@ ref_design <- function(d, unit, Z, cvec, tau2, n_groups = 0) {
     V <- ref_phi(f, n_groups, units_g) * drop(t(cvec) %*% B %*% cvec)
   }
   c(estimate = est, se = sqrt(V), df = cr$df, p = 2 * stats::pt(-abs(est / sqrt(V)), cr$df))
+}
+
+## The joint test of the rows of C (Tipton and Pustejovsky 2015, HTZ) from the definitions: the contrasts normalised
+## by (C B C')^-1/2, the CR2 covariance V from their zeta, and the variance of each entry of V from the loading vectors,
+## Var(V_st) = sum_ij Omega^ss_ij Omega^tt_ij + Omega^st_ij Omega^ts_ij with Omega^st = Gamma_s' Sigma Gamma_t.
+ref_joint <- function(d, unit, Z, C, tau2) {
+  idx <- split(seq_len(nrow(d)), factor(unit, levels = unique(unit)))
+  V <- lapply(idx, function(u) diag(d$v[u], length(u)) + tau2 * tcrossprod(d$n[u])); W <- lapply(V, solve)
+  D <- lapply(idx, function(u) d$n[u] * Z[u, , drop = FALSE]); Y <- lapply(idx, function(u) d$O[u] - d$E[u])
+  B <- solve(Reduce(`+`, Map(function(D, W) t(D) %*% W %*% D, D, W)))
+  theta <- drop(B %*% Reduce(`+`, Map(function(D, W, y) t(D) %*% W %*% y, D, W, Y)))
+  f <- list(idx = idx, V = V, W = W, D = D, B = B, e = Map(function(D, y) drop(y - D %*% theta), D, Y))
+  k <- nrow(C); Cn <- msqrt(C %*% B %*% t(C), -0.5) %*% C
+  cr <- lapply(seq_len(k), function(s) ref_cr2(f, Cn[s, ]))
+  Vn <- crossprod(vapply(cr, `[[`, numeric(length(idx)), "zeta"))
+  est <- drop(Cn %*% theta); Q <- sum(est * solve(Vn, est))
+  Om <- function(s, t) t(cr[[s]]$Gamma) %*% cr[[1]]$Sigma %*% cr[[t]]$Gamma
+  total <- 0
+  for (s in seq_len(k)) for (t in seq_len(k)) { Ost <- Om(s, t); total <- total + sum(Om(s, s) * Om(t, t)) + sum(Ost * t(Ost)) }
+  eta <- k * (k + 1) / total; F <- (eta - k + 1) / (eta * k) * Q
+  c(statistic = F, df2 = eta - k + 1, p = stats::pf(F, k, eta - k + 1, lower.tail = FALSE))
 }
 
 ## A small data set: n_pat patients per group, two images each, six types; in group B, a fraction of the

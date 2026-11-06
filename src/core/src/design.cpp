@@ -117,6 +117,33 @@ double design_tau2(const ImageRows& d, const Units& U, const MatrixXd& D) {
   return brent_root([&](double t) { return pearson(d, U, D, t) - df; }, 0, up);
 }
 
+// Per unit: the CR2 adjustment A_k = (I - X_k B X_k')^{-1/2} and the whitened residuals.
+void unit_adjustments(const Fit& f, std::vector<MatrixXd>& A, std::vector<VectorXd>& E) {
+  A.assign(f.X.size(), MatrixXd()); E.assign(f.X.size(), VectorXd());
+  for (std::size_t u = 0; u < f.X.size(); ++u) {
+    const MatrixXd& Xk = f.X[u];
+    const int J = static_cast<int>(Xk.rows());
+    Eigen::SelfAdjointEigenSolver<MatrixXd> es(MatrixXd::Identity(J, J) - Xk * f.B * Xk.transpose());
+    VectorXd ev = es.eigenvalues().cwiseMax(1e-12).cwiseSqrt().cwiseInverse();
+    A[u] = es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
+    E[u] = f.y[u] - Xk * f.theta;
+  }
+}
+
+bool no_variation(const Fit& f, const std::vector<VectorXd>& E, int N) {
+  // No variation: the design fits the response exactly (e.g. the same fraction in every image, as at a radius where
+  // no `to` cell has a `from` neighbour, or every one has), so the residuals are rounding error and every test is 0 / 0
+  // computed from noise. Fitting such a response in double precision leaves a residual of the order of n eps |y| (the
+  // n rows are summed into F and g, then theta is subtracted back out of each), so a weighted residual sum of squares
+  // at most (64 eps n)^2 times the weighted sum of squares of y about zero is taken as none; the factor 64 is room for
+  // the q-dimensional solve. It is scale-free, and far below any response with real variation (for n = 1000 it asks
+  // the residuals to be under 1.4e-11 of |y|).
+  double rss = 0, yss = 0;
+  for (std::size_t u = 0; u < E.size(); ++u) { rss += E[u].squaredNorm(); yss += f.y[u].squaredNorm(); }
+  const double tol = 64 * std::numeric_limits<double>::epsilon() * N;
+  return rss <= tol * tol * yss;
+}
+
 }  // namespace
 
 std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
@@ -132,29 +159,10 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
   Fit f = gls(rows, U, D, tau2);
   if (!f.ok) { for (auto& r : out) r.reason = "design_not_full_rank"; return out; }
   // per-unit pieces shared by the contrasts: the adjustment A_k and the whitened residuals
-  std::vector<MatrixXd> A(U.rows.size());
-  std::vector<VectorXd> E(U.rows.size());
-  for (std::size_t u = 0; u < U.rows.size(); ++u) {
-    const MatrixXd& Xk = f.X[u];
-    const int J = static_cast<int>(Xk.rows());
-    Eigen::SelfAdjointEigenSolver<MatrixXd> es(MatrixXd::Identity(J, J) - Xk * f.B * Xk.transpose());
-    VectorXd ev = es.eigenvalues().cwiseMax(1e-12).cwiseSqrt().cwiseInverse();
-    A[u] = es.eigenvectors() * ev.asDiagonal() * es.eigenvectors().transpose();
-    E[u] = f.y[u] - Xk * f.theta;
-  }
-  // No variation: the design fits the response exactly (e.g. the same fraction in every image, as at a radius where
-  // no `to` cell has a `from` neighbour, or every one has), so the residuals are rounding error and every test is 0 / 0
-  // computed from noise. Fitting such a response in double precision leaves a residual of the order of n eps |y| (the
-  // n rows are summed into F and g, then theta is subtracted back out of each), so a weighted residual sum of squares
-  // at most (64 eps n)^2 times the weighted sum of squares of y about zero is taken as none; the factor 64 is room for
-  // the q-dimensional solve. It is scale-free, and far below any response with real variation (for n = 1000 it asks
-  // the residuals to be under 1.4e-11 of |y|).
-  {
-    double rss = 0, yss = 0;
-    for (std::size_t u = 0; u < U.rows.size(); ++u) { rss += E[u].squaredNorm(); yss += f.y[u].squaredNorm(); }
-    const double tol = 64 * std::numeric_limits<double>::epsilon() * N;
-    if (rss <= tol * tol * yss) { for (auto& r : out) r.reason = "no_variation"; return out; }
-  }
+  std::vector<MatrixXd> A;
+  std::vector<VectorXd> E;
+  unit_adjustments(f, A, E);
+  if (no_variation(f, E, N)) { for (auto& r : out) r.reason = "no_variation"; return out; }
   // the pooled dispersion: each condition's CR2 / model variance ratio of its coefficient, pooled by units
   const bool pooled = n_groups > 0 && !hartung_knapp;
   double phi = 1;
@@ -208,6 +216,82 @@ std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<
     res.se = std::sqrt(V);
     res.p = pt_two_sided(res.estimate / res.se, res.df);
   }
+  return out;
+}
+
+JointResult design_joint_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<double>& Z, int q,
+                              const std::vector<double>& contrasts, int k, double tau2, bool hartung_knapp) {
+  JointResult out;
+  out.df1 = k;
+  const int N = static_cast<int>(rows.O.size());
+  MatrixXd D(N, q);
+  for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) D(i, j) = rows.n[i] * Z[static_cast<std::size_t>(i) * q + j];
+  Units U = group_units(unit);
+  const int m = static_cast<int>(U.rows.size());
+  if (m <= q) { out.reason = "too_few_units"; return out; }
+  if (tau2 < 0) tau2 = design_tau2(rows, U, D);
+  Fit f = gls(rows, U, D, tau2);
+  if (!f.ok) { out.reason = "design_not_full_rank"; return out; }
+  std::vector<MatrixXd> A;
+  std::vector<VectorXd> E;
+  unit_adjustments(f, A, E);
+  if (no_variation(f, E, N)) { out.reason = "no_variation"; return out; }
+  MatrixXd C(k, q);
+  for (int c = 0; c < k; ++c) for (int j = 0; j < q; ++j) C(c, j) = contrasts[static_cast<std::size_t>(c) * q + j];
+  const VectorXd est = C * f.theta;
+  const MatrixXd CBC = C * f.B * C.transpose();   // the model covariance of C theta: the expectation of CR2's
+  out.tau2 = tau2;
+  // CR2 loadings P_u = C B X_u' A_u (k x J_u), their projections T_u = P_u X_u, and the CR2 covariance
+  std::vector<MatrixXd> P(m), T(m);
+  MatrixXd V = MatrixXd::Zero(k, k);
+  for (int u = 0; u < m; ++u) {
+    P[u] = C * f.B * f.X[u].transpose() * A[u];
+    T[u] = P[u] * f.X[u];
+    const VectorXd s = P[u] * E[u];
+    V += s * s.transpose();
+  }
+  Eigen::LDLT<MatrixXd> ldlt(V);
+  if (ldlt.info() != Eigen::Success || ldlt.vectorD().minCoeff() <= 0) { out.reason = "singular_covariance"; return out; }
+  const double wald_cr2 = est.dot(ldlt.solve(est));
+  if (hartung_knapp) {
+    // floored at CR2 as design_tests floors each contrast: the smaller of the two Wald statistics (with one
+    // contrast, the t test of design_tests squared)
+    const double nu = static_cast<double>(m - q);
+    if (nu < 1) { out.reason = "too_few_units"; return out; }
+    const double s = std::max(1.0, pearson(rows, U, D, tau2) / nu);
+    out.wald = std::min(est.dot((s * CBC).ldlt().solve(est)), wald_cr2);
+    out.statistic = out.wald / k; out.df2 = nu;
+  } else {
+    Eigen::SelfAdjointEigenSolver<MatrixXd> es(CBC);
+    if (es.eigenvalues().minCoeff() <= 0) { out.reason = "design_not_full_rank"; return out; }
+    const MatrixXd W = es.eigenvectors() * es.eigenvalues().cwiseSqrt().cwiseInverse().asDiagonal() *
+                       es.eigenvectors().transpose();
+    // normalised by W = (C B C')^-1/2, the covariance of the loadings of units u and v under the working model is
+    // Omega_uv = [u == v] P_u P_u' - T_u B T_v'; the entries of V have summed variance
+    // sum_uv tr(Omega_uv)^2 + tr(Omega_uv Omega_uv)
+    std::vector<MatrixXd> TB(m), Tn(m), PP(m);
+    for (int u = 0; u < m; ++u) {
+      Tn[u] = W * T[u]; TB[u] = Tn[u] * f.B;
+      const MatrixXd Pn = W * P[u]; PP[u] = Pn * Pn.transpose();
+    }
+    double total = 0;
+    for (int u = 0; u < m; ++u) {
+      for (int v = 0; v < m; ++v) {
+        MatrixXd O = -TB[u] * Tn[v].transpose();
+        if (u == v) O += PP[u];
+        const double tr = O.trace();
+        total += tr * tr + (O * O).trace();
+      }
+    }
+    const double eta = k * (k + 1.0) / total;
+    if (!std::isfinite(eta)) { out.reason = "too_few_df"; out.p = std::numeric_limits<double>::quiet_NaN(); return out; }
+    out.wald = wald_cr2;
+    out.df2 = eta - k + 1;
+    out.statistic = out.df2 / (eta * k) * out.wald;
+  }
+  if (!(out.df2 > 0)) { out.reason = "too_few_df"; out.p = std::numeric_limits<double>::quiet_NaN(); return out; }
+  out.p = pf_upper(out.statistic, out.df1, out.df2);
+  out.ok = true;
   return out;
 }
 

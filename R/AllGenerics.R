@@ -105,8 +105,8 @@ setMethod("topPairs", "SpicyResults", function(x,
     if (full) return(tab)
     effects <- grep("_effect$", names(tab), value = TRUE)
     covariate <- c(rbind(effects, sub("_effect$", "_p_value", effects)))
-    main <- c("from", "to", "parent", "level", "r", "excess_ref", "excess_comp", "excess_difference",
-              "hazard_ratio_sd", "p_value", "p_adj", covariate)
+    main <- c("from", "to", "parent", "level", "r", "excess_ref", "excess_comp", "excess_difference", "excess_mean",
+              "excess_slope", "hazard_ratio_sd", "p_value", "p_adj", "overall_p_value", "overall_p_adj", covariate)
     tab[intersect(main, names(tab))]
 }
 

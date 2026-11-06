@@ -23,7 +23,7 @@ calibrationCheck(
 \item{cells}{The cells, as for \code{\link[=spicy]{spicy()}}: a \code{SpatialExperiment}, \code{SingleCellExperiment} or \code{data.frame} (not a
 store).}
 
-\item{condition}{The column of the condition to shuffle (a factor, character or \code{Surv} column).}
+\item{condition}{The column of the condition to shuffle (a factor, character, number or \code{Surv} column).}
 
 \item{subject}{The column of the patient. Each patient keeps one condition, moved as a whole; without it, the
 condition is shuffled across images.}

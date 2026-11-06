@@ -295,6 +295,127 @@ test_that("more than two conditions give one contrast per level", {
   expect_equal(colnames(res$p.value), c("(Intercept)", "conditionB", "conditionC"))
 })
 
+test_that("the joint test of several contrasts matches its definition, and one contrast is the t test", {
+  set.seed(5); zp <- rnorm(m_units)[rows$unit + 1L]
+  g3 <- (rows$unit %% 3)   # three groups of patients
+  Z <- cbind(outer(g3, 0:2, `==`) * 1, zp - mean(zp))
+  C <- spicyR:::.cell_contrasts(3, 4)[1:2, ]
+  for (tau2 in c(0, 0.01)) {
+    j <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C, tau2, FALSE)
+    expect_equal(c(j$statistic, j$df2, j$p), unname(ref_joint(rows, rows$unit, Z, C, tau2)), tolerance = 1e-8)
+    one <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C[2, , drop = FALSE], tau2, FALSE)
+    t1 <- spicyR:::stats_design_test(rows, rows$unit, m_units, Z, C[2, ], tau2)
+    expect_equal(c(one$statistic, one$df2, one$p), c((t1$estimate / t1$se)^2, t1$df, t1$p), tolerance = 1e-10)
+  }
+  # Hartung-Knapp: floored at CR2, so one contrast is the Hartung-Knapp t test of design_tests
+  hk1 <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C[2, , drop = FALSE], 0.01, TRUE)
+  hkt <- spicyR:::stats_design_tests(rows, rows$unit, m_units, Z, C[2, , drop = FALSE], 0.01, TRUE)[[1]]
+  expect_equal(c(hk1$statistic, hk1$df2, hk1$p), c((hkt$estimate / hkt$se)^2, hkt$df, hkt$p), tolerance = 1e-10)
+  hk <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C, 0.01, TRUE)
+  cr <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C, 0.01, FALSE)
+  expect_lte(hk$wald, cr$wald + 1e-12)
+  # Paule-Mandel tau2 (-1) is the design test's
+  j <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C, -1, FALSE)
+  expect_equal(j$tau2, spicyR:::stats_design_test(rows, rows$unit, m_units, Z, C[1, ], -1)$tau2, tolerance = 1e-12)
+  skip_if_not_installed("clubSandwich")
+  # clubSandwich's HTZ on the whitened model (working covariance I)
+  t2 <- 0.01; Dw <- rows$n * Z; yw <- rows$O - rows$E
+  for (u in unique(rows$unit)) { k <- rows$unit == u
+    L <- t(chol(t2 * tcrossprod(rows$n[k]) + diag(rows$v[k], sum(k))))
+    Dw[k, ] <- forwardsolve(L, Dw[k, , drop = FALSE]); yw[k] <- forwardsolve(L, yw[k]) }
+  w <- clubSandwich::Wald_test(stats::lm(yw ~ 0 + Dw), constraints = C, vcov = "CR2", cluster = rows$unit, test = "HTZ")
+  j <- spicyR:::stats_design_joint_test(rows, rows$unit, Z, C, t2, FALSE)
+  expect_equal(c(j$statistic, j$df2, j$p), c(w$Fstat, w$df_denom, w$p_val), tolerance = 1e-8)
+})
+
+test_that("more than two conditions: the overall test of each pair, adjusted and unadjusted", {
+  c3 <- sim_cells(n_pat = 10); c3$condition <- as.character(c3$condition)
+  c3$condition[c3$patient %in% sprintf("A%02d", 1:5)] <- "C"
+  res <- suppressMessages(spicy(c3, "condition", subject = "patient", r = 30, from = c("tumour", "T"), to = c("T", "B")))
+  tab <- res$cellResults
+  # one value per pair, the same on each level's row
+  expect_true(all(tapply(tab$overall_p_value, paste(tab$from, tab$to), function(z) length(unique(z)) == 1L)))
+  expect_true(all(tab$overall_df1 == 2, na.rm = TRUE))
+  first <- tab$level == "B"
+  expect_equal(tab$overall_p_adj[first], stats::p.adjust(tab$overall_p_value[first], "BH"))
+  # the overall test is the joint test of the core on the pair's rows
+  ctx3 <- spicyR:::.cell_context(c3, "condition", "patient", "imageID", "cellType", c("x", "y"))
+  g3 <- spicyR:::.cell_graph(ctx3, list(c("tumour", "T")), r = 30, label_clustering = FALSE, effect = "allocation"); g3$image_heterogeneity <- TRUE
+  r3 <- spicyR:::.cell_rows(ctx3, g3, "tumour", "T")
+  Zg <- outer(r3$group, 0:2, `==`) * 1
+  j <- spicyR:::stats_design_joint_test(r3, r3$unit, Zg, spicyR:::.cell_contrasts(3, 3), -1, FALSE)
+  expect_equal(tab$overall_p_value[tab$from == "tumour" & tab$to == "T"][1], j$p, tolerance = 1e-10)
+  adj <- suppressMessages(spicy(c3, "condition", subject = "patient", r = 30, from = "tumour", to = "T",
+                                adjustAbundance = TRUE))$cellResults
+  expect_equal(adj$unadjusted_overall_p_value[1], j$p, tolerance = 1e-10)
+  expect_true(all(c("overall_p_value", "overall_p_adj") %in% names(topPairs(res))))
+})
+
+test_that("a numeric condition with more than two values is continuous: the slope of the excess", {
+  cc <- cells; pat <- unique(cc$patient); set.seed(3); age <- setNames(round(runif(length(pat), 30, 70)), pat)
+  cc$age <- age[cc$patient]
+  res <- suppressMessages(spicy(cc, "age", subject = "patient", r = 30, from = "tumour", to = "T"))
+  tab <- res$cellResults
+  expect_true(all(c("excess_mean", "excess_slope", "se", "df", "p_value", "p_adj") %in% names(tab)))
+  expect_null(tab$level); expect_null(tab$excess_difference)
+  # the design test with the intercept and the centred condition, on the pair's rows
+  cx <- spicyR:::.cell_context(cc, "age", "patient", "imageID", "cellType", c("x", "y"))
+  expect_true(cx$continuous)
+  gx <- spicyR:::.cell_graph(cx, list(c("tumour", "T")), r = 30, label_clustering = FALSE, effect = "allocation"); gx$image_heterogeneity <- TRUE
+  rx <- spicyR:::.cell_rows(cx, gx, "tumour", "T"); x <- cx$x[rx$img + 1L]
+  d <- spicyR:::stats_design_test(rx, rx$unit, length(cx$unit_labels), cbind(1, x - mean(x)), c(0, 1), -1)
+  expect_equal(c(tab$excess_mean, tab$excess_slope, tab$se, tab$df, tab$p_value), c(d$theta[1], d$estimate, d$se, d$df, d$p),
+               tolerance = 1e-10)
+  # in other units (decades, shifted) the slope scales and the test is unchanged
+  cc$age10 <- (cc$age - 50) / 10
+  res10 <- suppressMessages(spicy(cc, "age10", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  expect_equal(res10$excess_slope, 10 * tab$excess_slope, tolerance = 1e-8)
+  expect_equal(c(res10$excess_mean, res10$p_value, res10$df), c(tab$excess_mean, tab$p_value, tab$df), tolerance = 1e-8)
+  # adjusted for abundance and a covariate, with the unadjusted slope alongside
+  cc$batch <- c("a", "b")[(match(cc$patient, pat) %% 2) + 1]
+  adj <- suppressMessages(spicy(cc, "age", subject = "patient", r = 30, from = "tumour", to = "T", covariates = "batch",
+                                adjustAbundance = TRUE))$cellResults
+  expect_equal(adj$adjusted_for, "abundance+covariates")
+  expect_equal(adj$unadjusted_p_value, tab$p_value, tolerance = 1e-10)
+  expect_true(all(c("abundance_effect", "batchb_effect") %in% names(adj)))
+  # plots and helpers
+  expect_s3_class(spicyBoxPlot(res, from = "tumour", to = "T"), "ggplot")
+  expect_no_error(signifPlot(suppressMessages(spicy(cc, "age", subject = "patient", r = 30))))
+  expect_true("excess_slope" %in% names(topPairs(res)))
+  expect_equal(bind(res)$condition, res$condition)
+})
+
+test_that("a continuous condition: two values stay groups, and what it cannot be given", {
+  cc <- cells; pat <- unique(cc$patient); cc$age <- setNames(seq_along(pat) * 5, pat)[cc$patient]
+  # a number with two values is two groups
+  cc$two <- ifelse(cc$condition == "A", 0, 1)
+  two <- suppressMessages(spicy(cc, "two", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  ref <- suppressMessages(spicy(cc, "condition", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  expect_equal(two$p_value, ref$p_value)
+  # a factor of numbers is groups
+  cc$agef <- factor(cc$age)
+  expect_false(isTRUE(spicyR:::.cell_context(cc, "agef", "patient", "imageID", "cellType", c("x", "y"))$continuous))
+  expect_error(spicy(cc, "age", subject = "patient", r = 30, ref = 5), "continuous")
+  expect_message(spicy(cc, "age", subject = "patient", r = 30, from = "tumour", to = "T"), "slope per unit")
+  rc <- suppressMessages(spicy(cc, "age", subject = "patient", r = 30))
+  expect_error(signifPlot(rc, comparisonGroup = "B"), "continuous")
+  expect_error(spicy(cc, "age", subject = "patient", r = c(20, 30)), "give one `r`")
+  bad <- cc; bad$age[bad$imageID == bad$imageID[1]] <- 99
+  expect_error(spicy(bad, "age", subject = "patient", r = 30), "single value|constant within each image")
+  # images with a missing value are left out, as if removed
+  na <- cc; na$age[na$patient == pat[1]] <- NA
+  a <- suppressMessages(spicy(na, "age", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  b <- suppressMessages(spicy(cc[cc$patient != pat[1], ], "age", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
+  expect_equal(a$p_value, b$p_value, tolerance = 1e-10)
+})
+
+test_that("calibrationCheck shuffles a continuous condition", {
+  cc <- cells; pat <- unique(cc$patient); cc$age <- setNames(seq_along(pat) * 5, pat)[cc$patient]
+  set.seed(1)
+  cal <- suppressMessages(calibrationCheck(cc, "age", subject = "patient", nShuffles = 2, r = 30, from = "tumour", to = "T"))
+  expect_equal(nrow(cal), 4)
+})
+
 test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), with the unadjusted test alongside", {
   # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T
   share <- spicyR:::.cell_share(ctx, rows, "T")

@@ -79,8 +79,10 @@
 #'   Column names then refer to the table's `obs`; `imageID` defaults to the table's region key and
 #'   `spatialCoords` to its `obsm` array `"spatial"`. A `SpatialData` object (spatialdataR) read from a store
 #'   is read from that store in the same way; one built in memory is analysed from its table.
-#' @param condition The column of the image-level condition: two groups, or a `survival::Surv` column
-#'   for a survival outcome (from a store, a column of `imageInfo`).
+#' @param condition The column of the image-level condition (from a store, a column of `imageInfo`): two groups;
+#'   more than two groups (cell method: each level against the reference, and an overall test of all of them); a
+#'   number with more than two values, taken as continuous (cell method: the slope of the effect on it); or a
+#'   `survival::Surv` column for a survival outcome. Give a factor to compare numeric values as groups.
 #' @param subject The column of the patient (unit) of each image. Images of one patient are combined;
 #'   if omitted, every image is its own patient.
 #' @param covariates Image- or patient-level columns to adjust for (cell method: added to the design of
@@ -108,7 +110,7 @@
 #' @param variance Cell method: `"cr2"` (the default: each condition's CR2 variance, on Satterthwaite df, see
 #'   Details) or `"hartung_knapp"` (the model-based variance, scaled by
 #'   the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df).
-#' @param ref Cell method: the reference level of `condition`.
+#' @param ref Cell method: the reference level of `condition` (not for a continuous condition).
 #' @param cores Number of threads (cell method) or cores (image method).
 #' @param tableKey Cell method with a SpatialData store or object: the name of the cell table in `tables/` (by
 #'   default the only table, or the one called `"table"`).
@@ -143,8 +145,14 @@
 #'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
 #'   between-image variance (`tau2_image`) and, when the test was adjusted, what for (`adjusted_for`), the effect
 #'   and p-value of each adjustment, and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
+#'   With more than two groups, one row per pair and level against the reference, and the overall test of the pair
+#'   (`overall_F` on `overall_df1` and `overall_df2` df, `overall_p_value`, `overall_p_adj`: the CR2 Wald test of
+#'   every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky). With a continuous
+#'   condition, one row per pair: the effect at the condition's mean (`excess_mean`) and its slope per unit of the
+#'   condition (`excess_slope`), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
 #'   Every requested pair has a row: `not_tested` gives why a pair (or, in `$radiusResults`, a radius) was not tested
-#'   (`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"` or `"no_variation"`; `NA` when it
+#'   (`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"` or `"no_variation"`; for a continuous
+#'   condition also `"too_few_units"` or `"design_not_full_rank"` (the condition does not vary); `NA` when it
 #'   was), and its p-value is then `NA` and not counted in the BH adjustment. `$effect` records which effect was
 #'   estimated.
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
@@ -156,6 +164,10 @@
 #'   Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 #'   testing in fixed effects models. Journal of Business & Economic Statistics 36(4), 672-683.
 #'   \doi{10.1080/07350015.2016.1247004}
+#'
+#'   Tipton E, Pustejovsky JE (2015). Small-sample adjustments for tests of moderators and model fit using robust
+#'   variance estimation in meta-regression. Journal of Educational and Behavioral Statistics 40(6), 604-634.
+#'   \doi{10.3102/1076998615606099}
 #'
 #'   Paule RC, Mandel J (1982). Consensus values and weighting factors. Journal of Research of the National
 #'   Bureau of Standards 87(5), 377-385. \doi{10.6028/jres.087.022}
@@ -309,7 +321,7 @@ spicy <- function(cells,
   }
 
   radii <- if (is.null(k)) sort(unique(r)) else NA
-  if (length(radii) > 1L && !survival && length(ctx$levels) > 2L)
+  if (length(radii) > 1L && !survival && (length(ctx$levels) > 2L || isTRUE(ctx$continuous)))
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
   if (combine == "maxT" && length(radii) > 6L && !survival)
     stop("combine = \"maxT\" supports up to 6 radii; use combine = \"davies\" for more.", call. = FALSE)
@@ -323,7 +335,7 @@ spicy <- function(cells,
     graphs <- if (length(radii) > 1L) .cell_graphs_radii(ctx, radii, effect) else
       list(.cell_graph(ctx, pairs, r = if (is.na(radii)) NULL else radii, k = k, label_clustering = FALSE,
                        n_threads = cores, effect = effect))
-    if (length(ctx$levels) > 2L) {   # one radius: each pair's design in turn
+    if (length(ctx$levels) > 2L || isTRUE(ctx$continuous)) {   # one radius: each pair's design in turn
       g <- graphs[[1]]; g$image_heterogeneity <- TRUE
       fits <- lapply(pairs, function(p) .cell_pair_test(ctx, g, p[1], p[2], TRUE, variance, adjustAbundance, Z_extra))
       res <- list(table = .cell_table(fits, ctx, adjustAbundance || !is.null(covariates)), fits = fits)
@@ -511,13 +523,19 @@ spicy <- function(cells,
     tab <- tab[match(labels, key), ]
   } else {
   labels <- rownames(tab)
-  term <- if (survival) "condition" else paste0("condition", ctx$levels[2])
+  term <- if (survival || isTRUE(ctx$continuous)) "condition" else paste0("condition", ctx$levels[2])
   mk <- function(a, b) { d <- data.frame(a, b); names(d) <- c("(Intercept)", term); rownames(d) <- labels; d }
   if (survival) {
     out$coefficient <- mk(NA_real_, tab$log_hr_sd); out$p.value <- mk(NA_real_, tab$p_value)
     out$se <- mk(NA_real_, tab$score_se); out$statistic <- mk(NA_real_, tab$score_coefficient / tab$score_se)
     out$df <- mk(NA_real_, tab$score_df)
     out$survivalOutcome <- survival::Surv(pheno$.time, pheno$.event)
+  } else if (isTRUE(ctx$continuous)) {
+    # the excess at the condition's mean, and its slope per unit of the condition
+    out$coefficient <- mk(tab$excess_mean, tab$excess_slope); out$p.value <- mk(NA_real_, tab$p_value)
+    out$se <- mk(NA_real_, tab$se); out$statistic <- mk(NA_real_, tab$excess_slope / tab$se)
+    out$df <- mk(NA_real_, tab$df)
+    out$condition <- ctx$x
   } else {
     out$coefficient <- mk(tab$excess_ref, tab$excess_difference); out$p.value <- mk(NA_real_, tab$p_value)
     out$se <- mk(NA_real_, tab$se); out$statistic <- mk(NA_real_, tab$excess_difference / tab$se)

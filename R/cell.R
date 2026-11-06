@@ -47,8 +47,20 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 }
 
 ## The condition of each image (cv), its levels present (lev; `ref` first) and the image groups. check(): the caller's
-## check that the condition is constant within images, after the levels are checked.
+## check that the condition is constant within images, after the levels are checked. A numeric condition with more
+## than two values is continuous: ctx$x holds its value per image, and every image with a value is in group 0.
 .cell_condition <- function(ctx, cv, condition, ref = NULL, lev = .cell_levels(cv), check = function() NULL) {
+  if (is.numeric(cv) && length(lev) > 2L) {
+    if (!is.null(ref)) stop("`ref` is for a condition with groups; '", condition, "' is continuous (a number with more ",
+                            "than two values). Make it a factor to compare its values as groups.", call. = FALSE)
+    check()
+    message("'", condition, "' is a number with ", length(lev), " values: testing the slope per unit of it ",
+            "(make it a factor to compare its values as groups).")
+    ctx$continuous <- TRUE
+    ctx$x <- as.numeric(cv)
+    ctx$image_group <- ifelse(is.na(cv), NA_integer_, 0L)
+    return(.cell_check_groups(ctx, condition))
+  }
   if (length(lev) < 2L)
     stop("`condition` needs at least two levels; found ", length(lev), ".", call. = FALSE)
   if (!is.null(ref)) {
@@ -62,7 +74,9 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 }
 
 .cell_check_groups <- function(ctx, condition) {
-  if (!is.null(ctx$image_group) && any(tapply(ctx$image_group, ctx$image_unit, function(z) length(unique(z))) > 1L))
+  if (isTRUE(ctx$continuous) && any(tapply(ctx$x, ctx$image_unit, function(z) length(unique(z))) > 1L))
+    stop("each subject must have a single value of '", condition, "'.", call. = FALSE)
+  if (!isTRUE(ctx$continuous) && !is.null(ctx$image_group) && any(tapply(ctx$image_group, ctx$image_unit, function(z) length(unique(z))) > 1L))
     stop("each subject must belong to a single '", condition, "' level.", call. = FALSE)
   ctx
 }
@@ -346,10 +360,16 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (!is.null(Z_extra)) { ze <- Z_extra[rows$img + 1L, , drop = FALSE]; keep <- keep & stats::complete.cases(ze); X <- cbind(X, ze) }
   if (is.null(X)) return(NULL)
   rows <- rows[keep, , drop = FALSE]; X <- sweep(X[keep, , drop = FALSE], 2, colMeans(X[keep, , drop = FALSE]))
-  G <- length(ctx$levels)
-  list(rows = rows, Z = cbind(outer(rows$group, seq_len(G) - 1L, `==`) * 1, X), extra = colnames(X),
+  list(rows = rows, Z = cbind(.cell_condition_block(ctx, rows), X), extra = colnames(X),
        adjusted_for = paste(c(if (adjust && "abundance" %in% colnames(X)) "abundance", if (!is.null(Z_extra)) "covariates"),
                             collapse = "+"))
+}
+
+## The condition's columns of a design: one indicator per level, or for a continuous condition the intercept and the
+## condition centred over these rows (the intercept is then the excess at the condition's mean).
+.cell_condition_block <- function(ctx, rows) {
+  if (isTRUE(ctx$continuous)) { x <- ctx$x[rows$img + 1L]; return(cbind(1, x - mean(x))) }
+  outer(rows$group, seq_along(ctx$levels) - 1L, `==`) * 1
 }
 
 ## tau2 of the adjusted design: re-estimated (exact Paule-Mandel) when every added column is constant within
@@ -374,6 +394,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 
 ## The test of one pair on given image rows (spicy's excess, or the Kontextual excess).
 .cell_rows_test <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra = NULL) {
+  if (isTRUE(ctx$continuous)) return(.cell_pair_test_continuous(ctx, rows, f, t, frailty, variance, adjust, Z_extra))
   if (length(ctx$levels) > 2L) return(.cell_pair_test_levels(ctx, rows, f, t, frailty, variance, adjust, Z_extra))
   m <- length(ctx$unit_labels)
   rules <- .cell_rules(rows)
@@ -444,14 +465,47 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   names(u) <- ctx$levels[-1]
   out$ok <- TRUE; out$levels_test <- out$unadjusted_levels <- u
   out$test <- list(coef_ref = u[[1]]$theta[1], tau2 = u[[1]]$tau2)
+  # the overall test: every level equal to the reference, jointly (HTZ)
+  out$overall <- out$unadjusted_overall <- stats_design_joint_test(rg, rg$unit, Zg, .cell_contrasts(G, G), u[[1]]$tau2, hk)
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
   a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(G, ncol(d$Z)),
                           .cell_design_tau2(d, G, frailty, u[[1]]$tau2), hk, ng)
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
+  out$overall <- stats_design_joint_test(d$rows, d$rows$unit, d$Z, .cell_contrasts(G, ncol(d$Z))[seq_len(G - 1L), , drop = FALSE],
+                                         a[[1]]$tau2, hk)
   out$levels_test <- stats::setNames(a[seq_len(G - 1L)], ctx$levels[-1])
   out$effects <- stats::setNames(a[-seq_len(G - 1L)], d$extra)
   out$test <- list(coef_ref = a[[1]]$theta[1], tau2 = a[[1]]$tau2)
+  out$adjusted_for <- d$adjusted_for
+  out
+}
+
+## A continuous condition: the slope of the excess on the condition, in the design of the intercept and the centred
+## condition (CR2, Satterthwaite df, tau2 by Paule-Mandel under that design), with the same adjustments and rules as
+## for groups (the rules with every patient in one group).
+.cell_pair_test_continuous <- function(ctx, rows, f, t, frailty, variance, adjust, Z_extra) {
+  m <- length(ctx$unit_labels); hk <- variance == "hartung_knapp"; rules <- .cell_rules(rows)
+  out <- list(from = f, to = t, ok = FALSE, rows = rows, adjusted_for = "none")
+  rg <- rows[!is.na(rows$group), , drop = FALSE]   # images with a missing condition are left out
+  if (!nrow(rg)) { out$reason <- "too_few_units"; return(out) }
+  u <- stats_design_tests(rg, rg$unit, m, .cell_condition_block(ctx, rg), rbind(c(0, 1)), if (frailty) -1 else 0, hk, 0L)[[1]]
+  if (!u$ok) { out$reason <- u$reason; return(out) }
+  if (.cell_no_information(rows, 1L)) { out$reason <- "no_information"; return(out) }
+  if (rules$min_effective_units &&
+      .cell_few_effective(stats_effective_units(rg, rg$unit, rg$group, 1L, u$tau2), length(unique(rg$unit)), rules)) {
+    out$reason <- "few_effective_units"; return(out)
+  }
+  slope <- function(x) list(intercept = x$theta[1], slope = x$estimate, se = x$se, df = x$df, p = x$p, tau2 = x$tau2)
+  out$ok <- TRUE; out$test <- out$unadjusted <- slope(u)
+  d <- .cell_design(ctx, rows, f, adjust, Z_extra)
+  if (is.null(d)) return(out)
+  q <- ncol(d$Z)
+  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, diag(q)[-1, , drop = FALSE], .cell_design_tau2(d, 2L, frailty, u$tau2),
+                          hk, 0L)
+  if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
+  out$test <- slope(a[[1]])
+  out$effects <- stats::setNames(a[-1], d$extra)
   out$adjusted_for <- d$adjusted_for
   out
 }
@@ -480,6 +534,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 }
 
 .cell_table <- function(fits, ctx, adjusted) {
+  if (isTRUE(ctx$continuous)) return(.cell_table_continuous(fits, ctx, adjusted))
   if (length(ctx$levels) > 2L) return(.cell_table_levels(fits, ctx, adjusted))
   ok <- vapply(fits, `[[`, logical(1), "ok")
   enames <- .cell_effect_names(fits[ok])
@@ -527,26 +582,67 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
       row <- .cell_add_side(row, o)
       if (!isTRUE(o$ok) && !is.null(row$side)) row$side <- NA_character_
       row$not_tested <- if (isTRUE(o$ok)) NA_character_ else if (length(o$reason)) o$reason else "not_tested"
+      ov <- .cell_overall(o$overall)
+      row$overall_F <- ov$statistic; row$overall_df1 <- ov$df1; row$overall_df2 <- ov$df2; row$overall_p_value <- ov$p
       if (adjusted) {
         row$adjusted_for <- o$adjusted_for
         row <- .cell_add_effects(row, o, enames)
         u <- if (isTRUE(o$ok)) o$unadjusted_levels[[l]] else na_test
         row$unadjusted_difference <- u$estimate; row$unadjusted_se <- u$se; row$unadjusted_df <- u$df
         row$unadjusted_p_value <- u$p
+        row$unadjusted_overall_p_value <- .cell_overall(o$unadjusted_overall)$p
       }
       row })) }))
   if (is.null(tab)) return(NULL)
   for (l in unique(tab$level)) { k <- tab$level == l
     tab$p_adj[k] <- stats::p.adjust(tab$p_value[k], "BH")
     if (adjusted) tab$unadjusted_p_adj[k] <- stats::p.adjust(tab$unadjusted_p_value[k], "BH") }
+  # the overall test, once per pair (BH over the pairs)
+  first <- tab$level == tab$level[1]
+  adj_overall <- function(p) stats::p.adjust(p[first], "BH")[match(.cell_labels(tab), .cell_labels(tab)[first])]
+  tab$overall_p_adj <- adj_overall(tab$overall_p_value)
+  if (adjusted) tab$unadjusted_overall_p_adj <- adj_overall(tab$unadjusted_overall_p_value)
   rownames(tab) <- paste(.cell_labels(tab), tab$level, sep = "__")
+  .cell_order_columns(tab)
+}
+
+## The overall test of a fit (NA when it was not tested).
+.cell_overall <- function(x) if (!is.null(x) && isTRUE(x$ok)) x else list(statistic = NA_real_, df1 = NA_real_, df2 = NA_real_, p = NA_real_)
+
+## A continuous condition: one row per pair, the excess at the condition's mean and its slope on the condition.
+.cell_table_continuous <- function(fits, ctx, adjusted) {
+  ok <- vapply(fits, `[[`, TRUE, "ok")
+  enames <- .cell_effect_names(fits[ok])
+  na_test <- list(intercept = NA_real_, slope = NA_real_, se = NA_real_, df = NA_real_, p = NA_real_, tau2 = NA_real_)
+  tab <- .cell_rbind_fill(lapply(fits, function(o) {
+    x <- if (isTRUE(o$ok)) o$test else na_test
+    row <- data.frame(from = o$from, to = o$to, excess_mean = x$intercept, excess_slope = x$slope, se = x$se, df = x$df,
+                      p_value = x$p, tau2 = x$tau2, stringsAsFactors = FALSE)
+    if (!is.null(o$parent)) row$parent <- o$parent
+    row <- .cell_add_side(row, o)
+    if (!isTRUE(o$ok) && !is.null(row$side)) row$side <- NA_character_
+    row$not_tested <- if (isTRUE(o$ok)) NA_character_ else if (length(o$reason) && nzchar(o$reason)) o$reason else "not_tested"
+    if (adjusted) {
+      row$adjusted_for <- o$adjusted_for
+      row <- .cell_add_effects(row, o, enames)
+      u <- if (isTRUE(o$ok)) o$unadjusted else na_test
+      row$unadjusted_slope <- u$slope; row$unadjusted_se <- u$se; row$unadjusted_df <- u$df
+      row$unadjusted_p_value <- u$p
+    }
+    row
+  }))
+  if (is.null(tab)) return(NULL)
+  tab$p_adj <- stats::p.adjust(tab$p_value, "BH")
+  if (adjusted) tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
+  rownames(tab) <- .cell_labels(tab)
   .cell_order_columns(tab)
 }
 
 ## The main test first, then what it was adjusted for and the effects, then the unadjusted test.
 .cell_order_columns <- function(tab) {
   first <- intersect(c("from", "to", "parent", "level", "r", "side", "excess_ref", "excess_comp", "excess_difference",
-                       "se", "df", "p_value", "p_adj", "p_value_best_radius", "tau2", "tau2_image", "not_tested",
+                       "excess_mean", "excess_slope", "se", "df", "p_value", "p_adj", "overall_F", "overall_df1",
+                       "overall_df2", "overall_p_value", "overall_p_adj", "p_value_best_radius", "tau2", "tau2_image", "not_tested",
                        "adjusted_for"), names(tab))
   un <- grep("^unadjusted_", names(tab), value = TRUE)
   tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]

@@ -7,7 +7,7 @@
 #'
 #' @param cells The cells, as for [spicy()]: a `SpatialExperiment`, `SingleCellExperiment` or `data.frame` (not a
 #'   store).
-#' @param condition The column of the condition to shuffle (a factor, character or `Surv` column).
+#' @param condition The column of the condition to shuffle (a factor, character, number or `Surv` column).
 #' @param subject The column of the patient. Each patient keeps one condition, moved as a whole; without it, the
 #'   condition is shuffled across images.
 #' @param nShuffles The number of shuffles.
@@ -48,7 +48,10 @@ calibrationCheck <- function(cells, condition, subject = NULL, nShuffles = 10, t
     shuffled[has] <- labels[has][sample.int(length(has))]
     cells[["shuffledCondition"]] <- shuffled[at]
     res <- spicy(cells, condition = "shuffledCondition", subject = subject, ...)
-    p <- if (identical(res$method, "cell")) res$cellResults$p_value else topPairs(res, n = NULL)$p.value
+    # more than two conditions: the overall test of each pair
+    tab <- res$cellResults
+    p <- if (!identical(res$method, "cell")) topPairs(res, n = NULL)$p.value
+         else if (!is.null(tab$overall_p_value)) tab$overall_p_value[tab$level == tab$level[1]] else tab$p_value
     data.frame(shuffle = i, threshold = thresholds,
                percent = 100 * vapply(thresholds, function(t) mean(p < t, na.rm = TRUE), numeric(1)))
   })

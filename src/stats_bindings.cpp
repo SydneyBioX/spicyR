@@ -235,6 +235,19 @@ List stats_design_tests(List rows, IntegerVector unit, int n_units, NumericMatri
 }
 
 // [[Rcpp::export]]
+List stats_design_joint_test(List rows, IntegerVector unit, NumericMatrix Z, NumericMatrix contrasts, double tau2,
+                             bool hartung_knapp) {
+  // contrasts: one row per contrast, q columns; tested jointly
+  const int N = Z.nrow(), q = Z.ncol(), k = contrasts.nrow();
+  std::vector<double> z(static_cast<std::size_t>(N) * q), c(static_cast<std::size_t>(k) * q);
+  for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) z[static_cast<std::size_t>(i) * q + j] = Z(i, j);
+  for (int i = 0; i < k; ++i) for (int j = 0; j < q; ++j) c[static_cast<std::size_t>(i) * q + j] = contrasts(i, j);
+  JointResult r = design_joint_test(rows_from(rows), ivec(unit), z, q, c, k, tau2, hartung_knapp);
+  return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["statistic"] = r.statistic, _["df1"] = r.df1,
+                      _["df2"] = r.df2, _["p"] = r.p, _["wald"] = r.wald, _["tau2"] = r.tau2);
+}
+
+// [[Rcpp::export]]
 List stats_availability_test(List rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x,
                              double tau2) {
   return design_list(availability_test(rows_from(rows), ivec(unit), ivec(group), n_units, dvec(x), tau2));

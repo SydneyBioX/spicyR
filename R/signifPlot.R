@@ -21,7 +21,9 @@
 #' when the coefficient is positive and log10(p) when it is negative, so the most significant positive
 #' differences are at the top of the scale and the most significant negative ones at the bottom. `breaks` sets
 #' the scale; values beyond it take the end colours, and pairs without a p-value are grey. The values behind
-#' either plot are available from [topPairs()] (`n = NULL` for every pair).
+#' either plot are available from [topPairs()] (`n = NULL` for every pair). In the bubble plot, the two halves of a
+#' bubble are the pair's effect in the two groups; for a continuous condition, one SD (across images) below and above
+#' the condition's mean.
 #'
 #' @return a ggplot object
 #'
@@ -54,6 +56,8 @@ signifPlot <- function(results,
 
   if (is.null(comparisonGroup)) {
     coef <- 2
+  } else if (is.numeric(results$condition)) {
+    stop("`comparisonGroup` is for a condition with groups; this condition is continuous.", call. = FALSE)
   } else {
     coef <- which(levels(results$condition) == comparisonGroup)
   }
@@ -236,7 +240,14 @@ bubblePlot <- function(test,
   }
   isCell <- identical(test$method, "cell")
 
-  if (test$alternateResult || isCell) {
+  # a continuous condition: the halves are the effect one SD (across images) below and above the condition's mean
+  continuous <- is.numeric(test$condition)
+  halves <- if (continuous) c("mean - 1 SD", "mean + 1 SD") else levels(test$condition)[c(1, coef)]
+  if (continuous) {
+    sdx <- stats::sd(test$condition, na.rm = TRUE)
+    groupA <- test$coefficient[, 1] - sdx * test$coefficient[, coef]
+    groupB <- test$coefficient[, 1] + sdx * test$coefficient[, coef]
+  } else if (test$alternateResult || isCell) {
     # alternate results and the cell method's excess are plotted on their own scale
     groupA <- test$coefficient[, 1]
     groupB <- (test$coefficient[, 1] + test$coefficient[, coef])
@@ -286,9 +297,7 @@ bubblePlot <- function(test,
 
   df.shape <- data.frame(
     cellTypeA = c(NA, NA), cellTypeB = c(NA, NA), size = c(1, 1),
-    condition = c(
-      levels(test$condition)[1], levels(test$condition)[coef]
-    )
+    condition = halves
   )
 
   if(is.null(breaks)) {
@@ -343,7 +352,7 @@ bubblePlot <- function(test,
   right <- halfDiscs(drawn$groupB, 0, pi)
   left <- halfDiscs(drawn$groupA, pi, 2 * pi)
 
-  df.shape$condition <- factor(df.shape$condition, levels = levels(test$condition))
+  df.shape$condition <- factor(df.shape$condition, levels = if (continuous) halves else levels(test$condition))
 
   xLabels <- stats::setNames(as.character(df$cellTypeB), as.character(df$cellTypeB_id))
 

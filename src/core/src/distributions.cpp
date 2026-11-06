@@ -107,5 +107,13 @@ double pt_two_sided(double t, double df) {
   return ibeta(df / 2, 0.5, df / (df + t * t), t * t / (df + t * t));
 }
 
+double pf_upper(double f, double df1, double df2) {
+  if (std::isnan(f) || std::isnan(df1) || std::isnan(df2) || df1 <= 0 || df2 <= 0)
+    return std::numeric_limits<double>::quiet_NaN();
+  if (f <= 0) return 1;
+  // P(F > f) = I_x(df2 / 2, df1 / 2) with x = df2 / (df2 + df1 f)
+  return ibeta(df2 / 2, df1 / 2, df2 / (df2 + df1 * f), df1 * f / (df2 + df1 * f));
+}
+
 
 }  // namespace spicyglm

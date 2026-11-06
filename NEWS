@@ -1,3 +1,19 @@
+CHANGES IN VERSION 1.99.54
+--------------------------
+
+    o spicy() (cell method) takes a continuous condition: a number with more than two values (give a factor to
+      compare such values as groups). Each pair's per-image effect is regressed on the condition in the frailty
+      model, with the patient variance by Paule-Mandel under that design; the slope (excess_slope, per unit of the
+      condition) has its CR2 standard error and Satterthwaite df, as the difference of two groups has. The table
+      gives the effect at the condition's mean (excess_mean) in place of each group's. Covariates and
+      adjustAbundance work as with groups, and the rules for an untested pair are those of one group. One radius.
+      A numeric condition with more than two values was made a factor before.
+    o More than two conditions: an overall test of each pair (overall_F, overall_df1, overall_df2, overall_p_value,
+      overall_p_adj), the CR2 Wald test of every level equal to the reference with the HTZ small-sample F (Tipton
+      and Pustejovsky 2015). With one contrast it is the t test of two groups. calibrationCheck() counts the overall
+      test for more than two conditions.
+    o spicyBoxPlot() of a continuous condition is a scatter against the condition with the fitted slope.
+
 CHANGES IN VERSION 1.99.53
 --------------------------
 

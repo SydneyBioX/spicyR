@@ -37,6 +37,8 @@ cells with a \code{from} cell within \code{r}; with \code{effect = "count"}, the
 is sized by how much the image contributes to the test (its weight in the frailty model, relative to the
 average image of its condition). With \code{interactive = TRUE} the plot is a plotly widget: hover over a point to
 see its image, patient, excess and weight, which helps to find images worth looking at with \code{\link[=plotImage]{plotImage()}}.
+With a continuous condition the plot is a scatter of the per-image value against the condition, with the fitted
+line of the cell method's slope.
 }
 \examples{
 data(spicyTest)

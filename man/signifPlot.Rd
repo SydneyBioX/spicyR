@@ -54,7 +54,9 @@ pair's signed log10 p-value for the condition (of the BH-adjusted p-value with \
 when the coefficient is positive and log10(p) when it is negative, so the most significant positive
 differences are at the top of the scale and the most significant negative ones at the bottom. \code{breaks} sets
 the scale; values beyond it take the end colours, and pairs without a p-value are grey. The values behind
-either plot are available from \code{\link[=topPairs]{topPairs()}} (\code{n = NULL} for every pair).
+either plot are available from \code{\link[=topPairs]{topPairs()}} (\code{n = NULL} for every pair). In the bubble plot, the two halves of a
+bubble are the pair's effect in the two groups; for a continuous condition, one SD (across images) below and above
+the condition's mean.
 }
 \examples{
 data(spicyTest)
