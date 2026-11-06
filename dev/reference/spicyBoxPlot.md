@@ -12,6 +12,8 @@ of its condition). With `interactive = TRUE` the plot is a plotly
 widget: hover over a point to see its image, patient, excess and weight,
 which helps to find images worth looking at with
 [`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md).
+With a continuous condition the plot is a scatter of the per-image value
+against the condition, with the fitted line of the cell method's slope.
 
 ## Usage
 

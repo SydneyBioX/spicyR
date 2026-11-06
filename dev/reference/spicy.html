@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.53</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.54</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -89,8 +89,10 @@ is read from that store in the same way; one built in memory is analysed from it
 
 
 <dt id="arg-condition">condition<a class="anchor" aria-label="anchor" href="#arg-condition"></a></dt>
-<dd><p>The column of the image-level condition: two groups, or a <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv</a></code> column
-for a survival outcome (from a store, a column of <code>imageInfo</code>).</p></dd>
+<dd><p>The column of the image-level condition (from a store, a column of <code>imageInfo</code>): two groups;
+more than two groups (cell method: each level against the reference, and an overall test of all of them); a
+number with more than two values, taken as continuous (cell method: the slope of the effect on it); or a
+<code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv</a></code> column for a survival outcome. Give a factor to compare numeric values as groups.</p></dd>
 
 
 <dt id="arg-subject">subject<a class="anchor" aria-label="anchor" href="#arg-subject"></a></dt>
@@ -154,7 +156,7 @@ the Pearson statistic when that exceeds its df and never below CR2, on m - 2 df)
 
 
 <dt id="arg-ref">ref<a class="anchor" aria-label="anchor" href="#arg-ref"></a></dt>
-<dd><p>Cell method: the reference level of <code>condition</code>.</p></dd>
+<dd><p>Cell method: the reference level of <code>condition</code> (not for a continuous condition).</p></dd>
 
 
 <dt id="arg-cores">cores<a class="anchor" aria-label="anchor" href="#arg-cores"></a></dt>
@@ -214,8 +216,14 @@ condition (<code>excess_ref</code>, <code>excess_comp</code>, at the average cov
 (<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
 between-image variance (<code>tau2_image</code>) and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect
 and p-value of each adjustment, and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>).
+With more than two groups, one row per pair and level against the reference, and the overall test of the pair
+(<code>overall_F</code> on <code>overall_df1</code> and <code>overall_df2</code> df, <code>overall_p_value</code>, <code>overall_p_adj</code>: the CR2 Wald test of
+every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky). With a continuous
+condition, one row per pair: the effect at the condition's mean (<code>excess_mean</code>) and its slope per unit of the
+condition (<code>excess_slope</code>), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
 Every requested pair has a row: <code>not_tested</code> gives why a pair (or, in <code>$radiusResults</code>, a radius) was not tested
-(<code>"one_patient_per_group"</code>, <code>"no_information"</code>, <code>"few_effective_units"</code> or <code>"no_variation"</code>; <code>NA</code> when it
+(<code>"one_patient_per_group"</code>, <code>"no_information"</code>, <code>"few_effective_units"</code> or <code>"no_variation"</code>; for a continuous
+condition also <code>"too_few_units"</code> or <code>"design_not_full_rank"</code> (the condition does not vary); <code>NA</code> when it
 was), and its p-value is then <code>NA</code> and not counted in the BH adjustment. <code>$effect</code> records which effect was
 estimated.</p>
     </div>
@@ -290,6 +298,9 @@ samples. Survey Methodology 28(2), 169-181.</p>
 <p>Pustejovsky JE, Tipton E (2018). Small-sample methods for cluster-robust variance estimation and hypothesis
 testing in fixed effects models. Journal of Business &amp; Economic Statistics 36(4), 672-683.
 <a href="https://doi.org/10.1080/07350015.2016.1247004" class="external-link">doi:10.1080/07350015.2016.1247004</a></p>
+<p>Tipton E, Pustejovsky JE (2015). Small-sample adjustments for tests of moderators and model fit using robust
+variance estimation in meta-regression. Journal of Educational and Behavioral Statistics 40(6), 604-634.
+<a href="https://doi.org/10.3102/1076998615606099" class="external-link">doi:10.3102/1076998615606099</a></p>
 <p>Paule RC, Mandel J (1982). Consensus values and weighting factors. Journal of Research of the National
 Bureau of Standards 87(5), 377-385. <a href="https://doi.org/10.6028/jres.087.022" class="external-link">doi:10.6028/jres.087.022</a></p>
 <p>Hartung J, Knapp G (2001). A refined method for the meta-analysis of controlled clinical trials with binary
@@ -312,11 +323,11 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration     Tc   Th Long-duration  0.3225594      -0.001655389</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset           Tc beta         Onset         NA                NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration   Tc beta Long-duration         NA                NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                           p_value     p_adj</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.6078397 0.6078397</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9859338 0.9859338</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA        NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA        NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           p_value     p_adj overall_p_value overall_p_adj</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.6078397 0.6078397       0.8619533     0.8619533</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9859338 0.9859338       0.8619533     0.8619533</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA        NA              NA            NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA        NA              NA            NA</span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">cellResults</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         from   to         level    side excess_ref</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset             Tc   Th         Onset attract  0.3225594</span>
@@ -328,11 +339,21 @@ arbitrary dependency structures. Journal of the American Statistical Association
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration        -0.001655389 0.08941797 5.087533 0.9859338</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                        NA         NA       NA        NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration                NA         NA       NA        NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                             p_adj        tau2 tau2_image            not_tested</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.6078397 0.003755877 0.04266841                  &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9859338 0.003755877 0.04266841                  &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA          NA 0.48210348 one_patient_per_group</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA          NA 0.48210348 one_patient_per_group</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                             p_adj overall_F overall_df1 overall_df2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset           0.6078397 0.1531064           2    4.946364</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration   0.9859338 0.1531064           2    4.946364</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                NA        NA          NA          NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration        NA        NA          NA          NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                         overall_p_value overall_p_adj        tau2 tau2_image</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                 0.8619533     0.8619533 0.003755877 0.04266841</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration         0.8619533     0.8619533 0.003755877 0.04266841</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset                      NA            NA          NA 0.48210348</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration              NA            NA          NA 0.48210348</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                    not_tested</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Onset                            &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__Th__Long-duration                    &lt;NA&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Onset         one_patient_per_group</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Tc__beta__Long-duration one_patient_per_group</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># the extra number of Tc cells within 50 units of each Th cell</span></span></span>
 <span class="r-in"><span><span class="va">resCount</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>

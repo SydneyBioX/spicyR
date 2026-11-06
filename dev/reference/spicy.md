@@ -54,9 +54,14 @@ spicy(
 
 - condition:
 
-  The column of the image-level condition: two groups, or a
+  The column of the image-level condition (from a store, a column of
+  `imageInfo`): two groups; more than two groups (cell method: each
+  level against the reference, and an overall test of all of them); a
+  number with more than two values, taken as continuous (cell method:
+  the slope of the effect on it); or a
   [`survival::Surv`](https://rdrr.io/pkg/survival/man/Surv.html) column
-  for a survival outcome (from a store, a column of `imageInfo`).
+  for a survival outcome. Give a factor to compare numeric values as
+  groups.
 
 - subject:
 
@@ -130,7 +135,8 @@ spicy(
 
 - ref:
 
-  Cell method: the reference level of `condition`.
+  Cell method: the reference level of `condition` (not for a continuous
+  condition).
 
 - cores:
 
@@ -212,11 +218,21 @@ BH-adjusted p-value, the frailty variance, the between-image variance
 (`tau2_image`) and, when the test was adjusted, what for
 (`adjusted_for`), the effect and p-value of each adjustment, and the
 unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
-`unadjusted_p_adj`). Every requested pair has a row: `not_tested` gives
-why a pair (or, in `$radiusResults`, a radius) was not tested
-(`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"`
-or `"no_variation"`; `NA` when it was), and its p-value is then `NA` and
-not counted in the BH adjustment. `$effect` records which effect was
+`unadjusted_p_adj`). With more than two groups, one row per pair and
+level against the reference, and the overall test of the pair
+(`overall_F` on `overall_df1` and `overall_df2` df, `overall_p_value`,
+`overall_p_adj`: the CR2 Wald test of every level equal to the
+reference, with the HTZ small-sample F of Tipton and Pustejovsky). With
+a continuous condition, one row per pair: the effect at the condition's
+mean (`excess_mean`) and its slope per unit of the condition
+(`excess_slope`), with its CR2 standard error and Satterthwaite df, in
+place of the two groups' columns. Every requested pair has a row:
+`not_tested` gives why a pair (or, in `$radiusResults`, a radius) was
+not tested (`"one_patient_per_group"`, `"no_information"`,
+`"few_effective_units"` or `"no_variation"`; for a continuous condition
+also `"too_few_units"` or `"design_not_full_rank"` (the condition does
+not vary); `NA` when it was), and its p-value is then `NA` and not
+counted in the BH adjustment. `$effect` records which effect was
 estimated.
 
 ## Details
@@ -333,6 +349,12 @@ variance estimation and hypothesis testing in fixed effects models.
 Journal of Business & Economic Statistics 36(4), 672-683.
 [doi:10.1080/07350015.2016.1247004](https://doi.org/10.1080/07350015.2016.1247004)
 
+Tipton E, Pustejovsky JE (2015). Small-sample adjustments for tests of
+moderators and model fit using robust variance estimation in
+meta-regression. Journal of Educational and Behavioral Statistics 40(6),
+604-634.
+[doi:10.3102/1076998615606099](https://doi.org/10.3102/1076998615606099)
+
 Paule RC, Mandel J (1982). Consensus values and weighting factors.
 Journal of Research of the National Bureau of Standards 87(5), 377-385.
 [doi:10.6028/jres.087.022](https://doi.org/10.6028/jres.087.022)
@@ -361,11 +383,11 @@ topPairs(res)
 #> Tc__Th__Long-duration     Tc   Th Long-duration  0.3225594      -0.001655389
 #> Tc__beta__Onset           Tc beta         Onset         NA                NA
 #> Tc__beta__Long-duration   Tc beta Long-duration         NA                NA
-#>                           p_value     p_adj
-#> Tc__Th__Onset           0.6078397 0.6078397
-#> Tc__Th__Long-duration   0.9859338 0.9859338
-#> Tc__beta__Onset                NA        NA
-#> Tc__beta__Long-duration        NA        NA
+#>                           p_value     p_adj overall_p_value overall_p_adj
+#> Tc__Th__Onset           0.6078397 0.6078397       0.8619533     0.8619533
+#> Tc__Th__Long-duration   0.9859338 0.9859338       0.8619533     0.8619533
+#> Tc__beta__Onset                NA        NA              NA            NA
+#> Tc__beta__Long-duration        NA        NA              NA            NA
 res$cellResults
 #>                         from   to         level    side excess_ref
 #> Tc__Th__Onset             Tc   Th         Onset attract  0.3225594
@@ -377,11 +399,21 @@ res$cellResults
 #> Tc__Th__Long-duration        -0.001655389 0.08941797 5.087533 0.9859338
 #> Tc__beta__Onset                        NA         NA       NA        NA
 #> Tc__beta__Long-duration                NA         NA       NA        NA
-#>                             p_adj        tau2 tau2_image            not_tested
-#> Tc__Th__Onset           0.6078397 0.003755877 0.04266841                  <NA>
-#> Tc__Th__Long-duration   0.9859338 0.003755877 0.04266841                  <NA>
-#> Tc__beta__Onset                NA          NA 0.48210348 one_patient_per_group
-#> Tc__beta__Long-duration        NA          NA 0.48210348 one_patient_per_group
+#>                             p_adj overall_F overall_df1 overall_df2
+#> Tc__Th__Onset           0.6078397 0.1531064           2    4.946364
+#> Tc__Th__Long-duration   0.9859338 0.1531064           2    4.946364
+#> Tc__beta__Onset                NA        NA          NA          NA
+#> Tc__beta__Long-duration        NA        NA          NA          NA
+#>                         overall_p_value overall_p_adj        tau2 tau2_image
+#> Tc__Th__Onset                 0.8619533     0.8619533 0.003755877 0.04266841
+#> Tc__Th__Long-duration         0.8619533     0.8619533 0.003755877 0.04266841
+#> Tc__beta__Onset                      NA            NA          NA 0.48210348
+#> Tc__beta__Long-duration              NA            NA          NA 0.48210348
+#>                                    not_tested
+#> Tc__Th__Onset                            <NA>
+#> Tc__Th__Long-duration                    <NA>
+#> Tc__beta__Onset         one_patient_per_group
+#> Tc__beta__Long-duration one_patient_per_group
 
 # the extra number of Tc cells within 50 units of each Th cell
 resCount <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,

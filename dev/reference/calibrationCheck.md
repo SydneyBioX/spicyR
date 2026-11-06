@@ -39,8 +39,8 @@ plot(x, ...)
 
 - condition:
 
-  The column of the condition to shuffle (a factor, character or `Surv`
-  column).
+  The column of the condition to shuffle (a factor, character, number or
+  `Surv` column).
 
 - subject:
 
@@ -83,7 +83,7 @@ set.seed(1)
 shuffles <- calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
 summary(shuffles)
 #>   threshold expected   percent
-#> 1      0.05        5 1.3553909
-#> 2      0.01        1 0.1213592
+#> 1      0.05        5 1.5176290
+#> 2      0.01        1 0.2427184
 plot(shuffles)
 ```

@@ -82,7 +82,9 @@ the most significant negative ones at the bottom. `breaks` sets the
 scale; values beyond it take the end colours, and pairs without a
 p-value are grey. The values behind either plot are available from
 [`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md)
-(`n = NULL` for every pair).
+(`n = NULL` for every pair). In the bubble plot, the two halves of a
+bubble are the pair's effect in the two groups; for a continuous
+condition, one SD (across images) below and above the condition's mean.
 
 ## Examples
 

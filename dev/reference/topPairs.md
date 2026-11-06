@@ -115,7 +115,7 @@ topPairs(res, from = "Tc", to = "Th")
 #>                       from to         level excess_ref excess_difference
 #> Tc__Th__Onset           Tc Th         Onset  0.3225594       0.067948496
 #> Tc__Th__Long-duration   Tc Th Long-duration  0.3225594      -0.001655389
-#>                         p_value     p_adj
-#> Tc__Th__Onset         0.6078397 0.6078397
-#> Tc__Th__Long-duration 0.9859338 0.9859338
+#>                         p_value     p_adj overall_p_value overall_p_adj
+#> Tc__Th__Onset         0.6078397 0.6078397       0.8619533     0.8619533
+#> Tc__Th__Long-duration 0.9859338 0.9859338       0.8619533     0.8619533
 ```
