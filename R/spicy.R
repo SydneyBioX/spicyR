@@ -673,12 +673,16 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
 .show_SpicyResults <- function(df) {
   if (identical(df$method, "cell")) {
     tab <- df$cellResults
-    what <- if (!is.null(df$survivalOutcome)) "association with survival" else
+    continuous <- is.numeric(df$condition)
+    what <- if (!is.null(df$survivalOutcome)) "association with survival" else if (continuous) "slope on the condition" else
       paste0(levels(df$condition)[-1], " vs ", levels(df$condition)[1], collapse = "; ")
     scale <- if (!is.null(df$k)) paste0("k = ", df$k, " nearest neighbours") else paste0("r = ", paste(df$r, collapse = ", "))
     cat("spicyR (cell-level test): ", length(unique(paste(tab$from, tab$to))), " pairs, ", what, ", ", scale, "\n", sep = "")
     unit <- df$subject %||% df$imageID
-    groups <- if (is.null(df$condition)) "" else {
+    groups <- if (is.null(df$condition)) "" else if (continuous) {
+      x <- df$condition[!duplicated(unit)]
+      paste0(" (condition from ", signif(min(x, na.rm = TRUE), 3), " to ", signif(max(x, na.rm = TRUE), 3), ")")
+    } else {
       n <- table(df$condition[!duplicated(unit)])
       paste0(" (", paste(names(n), n, collapse = ", "), ")")
     }
@@ -704,6 +708,9 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
                       "patient, or one with too few effective patients)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
+    if (!is.null(tab$overall_p_adj))
+      cat("\nOverall test (every level against the reference), BH-adjusted p < 0.05: ",
+          sum(tab$overall_p_adj[tab$level == tab$level[1]] < 0.05, na.rm = TRUE), " pairs", sep = "")
     cat("\nSee topPairs().\n")
     return(invisible(df))
   }

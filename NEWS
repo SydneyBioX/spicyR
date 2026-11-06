@@ -1,3 +1,9 @@
+CHANGES IN VERSION 1.99.55
+--------------------------
+
+    o Printing a result of a continuous condition names the slope and the condition's range; with more than two
+      conditions it counts the pairs significant on the overall test.
+
 CHANGES IN VERSION 1.99.54
 --------------------------
 

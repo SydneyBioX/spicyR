@@ -349,6 +349,7 @@ test_that("more than two conditions: the overall test of each pair, adjusted and
                                 adjustAbundance = TRUE))$cellResults
   expect_equal(adj$unadjusted_overall_p_value[1], j$p, tolerance = 1e-10)
   expect_true(all(c("overall_p_value", "overall_p_adj") %in% names(topPairs(res))))
+  expect_output(print(res), "Overall test")
 })
 
 test_that("a numeric condition with more than two values is continuous: the slope of the excess", {
@@ -383,6 +384,8 @@ test_that("a numeric condition with more than two values is continuous: the slop
   expect_no_error(signifPlot(suppressMessages(spicy(cc, "age", subject = "patient", r = 30))))
   expect_true("excess_slope" %in% names(topPairs(res)))
   expect_equal(bind(res)$condition, res$condition)
+  expect_output(print(res), "slope on the condition")
+  expect_output(print(res), "condition from")
 })
 
 test_that("a continuous condition: two values stay groups, and what it cannot be given", {
