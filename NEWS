@@ -1,3 +1,10 @@
+CHANGES IN VERSION 1.99.56
+--------------------------
+
+    o The overall test of more than two conditions is faster: the variance of its covariance estimate is summed in
+      one pass over the patients instead of over every pair of patients (identical results). On 74 patients, a
+      three-condition analysis of 100 pairs took 4.4 s instead of 11.8 s.
+
 CHANGES IN VERSION 1.99.55
 --------------------------
 

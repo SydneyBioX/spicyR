@@ -267,21 +267,34 @@ JointResult design_joint_test(const ImageRows& rows, const std::vector<int>& uni
     const MatrixXd W = es.eigenvectors() * es.eigenvalues().cwiseSqrt().cwiseInverse().asDiagonal() *
                        es.eigenvectors().transpose();
     // normalised by W = (C B C')^-1/2, the covariance of the loadings of units u and v under the working model is
-    // Omega_uv = [u == v] P_u P_u' - T_u B T_v'; the entries of V have summed variance
-    // sum_uv tr(Omega_uv)^2 + tr(Omega_uv Omega_uv)
-    std::vector<MatrixXd> TB(m), Tn(m), PP(m);
+    // Omega_uv = [u == v] P_u P_u' - X_uv, X_uv = T_u B T_v' (normalised T); the entries of V have summed variance
+    // sum_uv f(Omega_uv), f(O) = tr(O)^2 + tr(O O). Over all u, v, f(X_uv) sums to sum_u a_u' (G + H) a_u with
+    // a_u = vec(T_u B) (index (i, a) = i q + a), G[(i,a),(j,b)] = sum_v T_v[i,a] T_v[j,b] (the tr^2 terms) and
+    // H[(i,a),(j,b)] = sum_v T_v[j,a] T_v[i,b] (the tr(O O) terms), in O(m (k q)^2); then u == v is corrected to
+    // f(P_u P_u' - X_uu).
+    const int kq = k * q;
+    std::vector<MatrixXd> TB(m), Tn(m);
+    MatrixXd G = MatrixXd::Zero(kq, kq), H = MatrixXd::Zero(kq, kq);
     for (int u = 0; u < m; ++u) {
       Tn[u] = W * T[u]; TB[u] = Tn[u] * f.B;
-      const MatrixXd Pn = W * P[u]; PP[u] = Pn * Pn.transpose();
+      for (int i = 0; i < k; ++i)
+        for (int a = 0; a < q; ++a)
+          for (int j = 0; j < k; ++j)
+            for (int b = 0; b < q; ++b) {
+              G(i * q + a, j * q + b) += Tn[u](i, a) * Tn[u](j, b);
+              H(i * q + a, j * q + b) += Tn[u](j, a) * Tn[u](i, b);
+            }
     }
+    const MatrixXd GH = G + H;
+    auto fO = [](const MatrixXd& O) { const double tr = O.trace(); return tr * tr + (O * O).trace(); };
     double total = 0;
     for (int u = 0; u < m; ++u) {
-      for (int v = 0; v < m; ++v) {
-        MatrixXd O = -TB[u] * Tn[v].transpose();
-        if (u == v) O += PP[u];
-        const double tr = O.trace();
-        total += tr * tr + (O * O).trace();
-      }
+      VectorXd au(kq);
+      for (int i = 0; i < k; ++i) for (int b = 0; b < q; ++b) au(i * q + b) = TB[u](i, b);
+      total += au.dot(GH * au);
+      const MatrixXd X = TB[u] * Tn[u].transpose();
+      const MatrixXd Pn = W * P[u];
+      total += fO(Pn * Pn.transpose() - X) - fO(X);
     }
     const double eta = k * (k + 1.0) / total;
     if (!std::isfinite(eta)) { out.reason = "too_few_df"; out.p = std::numeric_limits<double>::quiet_NaN(); return out; }
