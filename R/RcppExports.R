@@ -237,6 +237,10 @@ stats_design_joint_test <- function(rows, unit, Z, contrasts, tau2, hartung_knap
     .Call(`_spicyR_stats_design_joint_test`, rows, unit, Z, contrasts, tau2, hartung_knapp)
 }
 
+stats_adjusted_design <- function(rows, unit, Z, q0, frailty) {
+    .Call(`_spicyR_stats_adjusted_design`, rows, unit, Z, q0, frailty)
+}
+
 stats_availability_test <- function(rows, unit, group, n_units, x, tau2) {
     .Call(`_spicyR_stats_availability_test`, rows, unit, group, n_units, x, tau2)
 }

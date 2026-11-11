@@ -420,14 +420,18 @@ test_that("calibrationCheck shuffles a continuous condition", {
 })
 
 test_that("adjustAbundance = TRUE adjusts for abundance (the dense definition), with the unadjusted test alongside", {
-  # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T
+  # rows are the core's (counted T, centre tumour), i.e. the pair T -> tumour; the covariate is the share of T, which
+  # varies between a patient's images: omega2 within patients after it, its patient mean added, tau2 on the patient
+  # summaries (ref_adjusted_design, from the rows before the image random effect)
   share <- spicyR:::.cell_share(ctx, rows, "T")
   Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share))
   a <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m_units, TRUE, "cr2", FALSE)
-  b <- ref_design(rows, rows$unit, Z, c(-1, 1, 0), a$tau2, n_groups = 0)
+  ad <- ref_adjusted_design(rows_raw, rows_raw$unit, Z, 2)
+  b <- ref_design(ad$rows, rows$unit, ad$Z, c(-1, 1, 0, 0), ad$tau2, n_groups = 0)
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "T", to = "tumour",
                                 adjustAbundance = TRUE))$cellResults
   expect_equal(c(res$excess_difference, res$se, res$df, res$p_value), unname(b), tolerance = 1e-8)
+  expect_equal(c(res$tau2, res$tau2_image), c(ad$tau2, ad$omega2), tolerance = 1e-9)
   expect_equal(res$adjusted_for, "abundance")
   expect_equal(res$unadjusted_p_value, a$p, tolerance = 1e-10)
   # the default is unadjusted

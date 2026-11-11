@@ -910,6 +910,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_adjusted_design
+List stats_adjusted_design(List rows, IntegerVector unit, NumericMatrix Z, int q0, bool frailty);
+RcppExport SEXP _spicyR_stats_adjusted_design(SEXP rowsSEXP, SEXP unitSEXP, SEXP ZSEXP, SEXP q0SEXP, SEXP frailtySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type unit(unitSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< int >::type q0(q0SEXP);
+    Rcpp::traits::input_parameter< bool >::type frailty(frailtySEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_adjusted_design(rows, unit, Z, q0, frailty));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_availability_test
 List stats_availability_test(List rows, IntegerVector unit, IntegerVector group, int n_units, NumericVector x, double tau2);
 RcppExport SEXP _spicyR_stats_availability_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP groupSEXP, SEXP n_unitsSEXP, SEXP xSEXP, SEXP tau2SEXP) {
@@ -1125,6 +1140,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_design_test", (DL_FUNC) &_spicyR_stats_design_test, 6},
     {"_spicyR_stats_design_tests", (DL_FUNC) &_spicyR_stats_design_tests, 8},
     {"_spicyR_stats_design_joint_test", (DL_FUNC) &_spicyR_stats_design_joint_test, 6},
+    {"_spicyR_stats_adjusted_design", (DL_FUNC) &_spicyR_stats_adjusted_design, 5},
     {"_spicyR_stats_availability_test", (DL_FUNC) &_spicyR_stats_availability_test, 6},
     {"_spicyR_stats_cox_fit", (DL_FUNC) &_spicyR_stats_cox_fit, 3},
     {"_spicyR_stats_survival_test", (DL_FUNC) &_spicyR_stats_survival_test, 7},

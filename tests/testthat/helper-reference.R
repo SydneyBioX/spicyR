@@ -278,6 +278,38 @@ ref_joint <- function(d, unit, Z, C, tau2) {
   c(statistic = F, df2 = eta - k + 1, p = stats::pf(F, k, eta - k + 1, lower.tail = FALSE))
 }
 
+## An adjusted design with an added column that varies between a patient's images (extension A/B; DECISIONS
+## 4 Nov 2026 17:10 and 6 Nov 14:37), from the definitions. d: the design's rows BEFORE the image random effect; Z: the
+## design, its first q0 columns the condition's. The image variance omega2 is Paule-Mandel within patients after the
+## image-level columns: over patients with two or more rows, Q_w(t) is the weighted (1 / (s2 + t)) residual sum of
+## squares of y on the patient dummies and those columns, its target sum (J - 1) less the rank they add; each such
+## column gets its plain average over the patient's rows; tau2 is Paule-Mandel on the patient summaries (1 / v-weighted
+## means of y and of every column), weights G / (1 + t G), target m - rank(zbar). Returns the rows (y, s2 + omega2),
+## the design with the mean columns, omega2 and tau2; NULL when every added column is constant within patients.
+ref_adjusted_design <- function(d, unit, Z, q0) {
+  y <- (d$O - d$E) / d$n; s2 <- d$v / d$n^2; id <- match(unit, unique(unit)); m <- max(id)
+  varies <- function(z) any(tapply(z, id, function(w) length(unique(w)) > 1L))
+  within <- q0 + which(apply(Z[, -seq_len(q0), drop = FALSE], 2, varies))
+  if (!length(within)) return(NULL)
+  X <- Z[, within, drop = FALSE]
+  pm <- function(f) { if (f(0) <= 0) return(0); up <- 1e-4; while (f(up) > 0 && up < 1e6) up <- up * 4
+    stats::uniroot(f, c(0, up), tol = 1e-15)$root }
+  multi <- tabulate(id)[id] > 1L
+  Dw <- cbind(stats::model.matrix(~ factor(id[multi]) - 1), X[multi, , drop = FALSE])
+  qw <- qr(Dw)$rank - length(unique(id[multi]))
+  target_w <- sum(multi) - length(unique(id[multi])) - qw
+  Qw <- function(t) { w <- 1 / (s2[multi] + t); sum(w * stats::lm.wfit(Dw, y[multi], w)$residuals^2) }
+  omega2 <- if (target_w < 1) 0 else pm(function(t) Qw(t) - target_w)
+  v <- s2 + omega2
+  Zf <- cbind(Z, apply(X, 2, function(z) stats::ave(z, id)))
+  G <- as.vector(rowsum(1 / v, id)); yb <- as.vector(rowsum(y / v, id)) / G; zb <- rowsum(Zf / v, id) / G
+  target_b <- m - qr(zb)$rank
+  Qb <- function(t) { u <- G / (1 + t * G); sum(u * stats::lm.wfit(zb, yb, u)$residuals^2) }
+  tau2 <- if (target_b < 1) 0 else pm(function(t) Qb(t) - target_b)
+  d$O <- y; d$E <- 0; d$n <- 1; d$v <- v
+  list(rows = d, Z = Zf, omega2 = omega2, tau2 = tau2)
+}
+
 ## A small data set: n_pat patients per group, two images each, six types; in group B, a fraction of the
 ## T cells sit next to tumour cells (T cells recruited around tumour cells).
 sim_cells <- function(seed = 1, n_pat = 6, n_cells = 350, side = 400) {

@@ -143,8 +143,18 @@ List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int f
 
 // [[Rcpp::export]]
 List stats_image_heterogeneity_rows(List rows, IntegerVector unit) {
+  // the rows also keep their sampling variance s2 = v / n^2 (without tau2_image), from which an adjusted design
+  // re-estimates the image variance (stats_adjusted_design)
   double tau2 = 0;
-  List out = rows_to(image_heterogeneity_rows(rows_from(rows), ivec(unit), &tau2));
+  const ImageRows in = rows_from(rows);
+  const ImageRows h = image_heterogeneity_rows(in, ivec(unit), &tau2);
+  std::vector<double> s2(in.v.size());
+  for (std::size_t i = 0; i < s2.size(); ++i) s2[i] = in.v[i] / (in.n[i] * in.n[i]);
+  List out = List::create(_["img"] = IntegerVector(h.image.begin(), h.image.end()), _["O"] = nv(h.O), _["E"] = nv(h.E),
+                          _["n"] = nv(h.n), _["v"] = nv(h.v), _["s2"] = nv(s2));
+  const int n = static_cast<int>(s2.size());
+  out.attr("row.names") = n > 0 ? IntegerVector::create(NA_INTEGER, -n) : IntegerVector(0);
+  out.attr("class") = "data.frame";
   out.attr("tau2_image") = tau2;
   return out;
 }
@@ -245,6 +255,27 @@ List stats_design_joint_test(List rows, IntegerVector unit, NumericMatrix Z, Num
   JointResult r = design_joint_test(rows_from(rows), ivec(unit), z, q, c, k, tau2, hartung_knapp);
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["statistic"] = r.statistic, _["df1"] = r.df1,
                       _["df2"] = r.df2, _["p"] = r.p, _["wald"] = r.wald, _["tau2"] = r.tau2);
+}
+
+// [[Rcpp::export]]
+List stats_adjusted_design(List rows, IntegerVector unit, NumericMatrix Z, int q0, bool frailty) {
+  // rows: the design's rows; with a column s2 (rows after the image random effect, stats_image_heterogeneity_rows)
+  // omega2 is re-estimated by B2 from y = O and s2, else the rows are taken without an image variance. q0: the
+  // condition columns of Z (first). Returns image_level and, when TRUE, the rows (y, E = 0, n = 1, v = s2 + omega2),
+  // Z with the patient-mean columns, mean_of (1-based columns of the input Z), omega2 and tau2.
+  ImageRows r = rows_from(rows);
+  const bool het = rows.containsElementNamed("s2");
+  if (het) r.v = dvec(as<NumericVector>(rows["s2"]));
+  const int N = Z.nrow(), q = Z.ncol();
+  std::vector<double> z(static_cast<std::size_t>(N) * q);
+  for (int i = 0; i < N; ++i) for (int j = 0; j < q; ++j) z[static_cast<std::size_t>(i) * q + j] = Z(i, j);
+  AdjustedDesign a = adjusted_design(r, ivec(unit), z, q, q0, het, frailty);
+  if (!a.image_level) return List::create(_["image_level"] = false);
+  NumericMatrix Za(N, a.q);
+  for (int i = 0; i < N; ++i) for (int j = 0; j < a.q; ++j) Za(i, j) = a.Z[static_cast<std::size_t>(i) * a.q + j];
+  IntegerVector mean_of(a.mean_of.begin(), a.mean_of.end());
+  return List::create(_["image_level"] = true, _["rows"] = rows_to(a.rows), _["Z"] = Za, _["mean_of"] = mean_of + 1,
+                      _["omega2"] = a.omega2, _["tau2"] = a.tau2);
 }
 
 // [[Rcpp::export]]

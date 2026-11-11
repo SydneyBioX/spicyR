@@ -62,8 +62,8 @@ Combined combine_radii(const std::vector<RadiusTest>& tests, const std::vector<i
 
 PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                             int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
-                            int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit,
-                            bool pooled_dispersion) {
+                            int n_z, bool frailty, double, bool hartung_knapp, bool fit,
+                            bool pooled_dispersion, const ImageRows* raw) {
   PairDesign out;
   const std::size_t N = rows.O.size();
   std::vector<char> keep(N);
@@ -125,28 +125,23 @@ PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit,
     for (int j = 0; j < qx; ++j) Z[k * q + 2 + j] = X[j][k];
     unit_k[k] = unit[i];
   }
-  // tau2: re-estimated when every added column is constant within units, else held
-  double tau2_d = 0;
-  if (frailty) {
-    bool patient_level = true;
-    std::vector<double> at(n_units);
-    std::vector<char> has(n_units);
-    for (int j = 0; j < qx && patient_level; ++j) {
-      std::fill(has.begin(), has.end(), 0);
-      for (std::size_t k = 0; k < Nk; ++k) {
-        const int u = unit_k[k];
-        if (!has[u]) { has[u] = 1; at[u] = X[j][k]; }
-        else if (X[j][k] != at[u]) { patient_level = false; break; }
-      }
-    }
-    tau2_d = patient_level ? -1 : tau2;
-  }
-  // the contrasts: the difference of the conditions, then each added column
-  std::vector<double> C(static_cast<std::size_t>(q - 1) * q, 0.0);
+  // an added column that varies within units: omega2 by B2 (from the rows before the image random effect), a
+  // patient-mean column per such column and tau2 on the patient summaries (adjusted_design); else every added column
+  // is constant within units and tau2 is re-estimated under the design (-1)
+  AdjustedDesign a = adjusted_design(subset_rows(raw ? *raw : rows, idx), unit_k, Z, q, 2, raw != nullptr, frailty);
+  const int qa = a.image_level ? a.q : q;
+  // the contrasts: the difference of the conditions, then each added column (none for the mean columns)
+  std::vector<double> C(static_cast<std::size_t>(q - 1) * qa, 0.0);
   C[0] = -1; C[1] = 1;
-  for (int j = 1; j <= qx; ++j) C[static_cast<std::size_t>(j) * q + 1 + j] = 1;
-  out.tests = design_tests(subset_rows(rows, idx), unit_k, n_units, Z, q, C, q - 1, tau2_d, hartung_knapp,
-                           pooled_dispersion ? 2 : 0);
+  for (int j = 1; j <= qx; ++j) C[static_cast<std::size_t>(j) * qa + 1 + j] = 1;
+  if (a.image_level) {
+    out.omega2 = a.omega2;
+    out.tests = design_tests(a.rows, unit_k, n_units, a.Z, qa, C, q - 1, a.tau2, hartung_knapp,
+                             pooled_dispersion ? 2 : 0);
+  } else {
+    out.tests = design_tests(subset_rows(rows, idx), unit_k, n_units, Z, q, C, q - 1, frailty ? -1 : 0, hartung_knapp,
+                             pooled_dispersion ? 2 : 0);
+  }
   out.design = out.tests[0].ok ? 1 : 2;
   return out;
 }
@@ -189,8 +184,10 @@ PairTests pair_tests(const PairTestInput& in) {
         for (std::size_t i = 0; i < N; ++i) s += r.O[i] - r.E[i];
         res.side[o] = static_cast<double>(s) < 0 ? -1 : 1;
       }
+      ImageRows raw;   // the rows before the image random effect, for the adjusted design's omega2 (B2)
       if (in.image_heterogeneity && N > 0) {
         double tau2_image = 0;
+        if (adjusting) raw = r;
         r = image_heterogeneity_rows(r, unit, &tau2_image);
         res.tau2_image[o] = tau2_image;
       }
@@ -237,7 +234,8 @@ PairTests pair_tests(const PairTestInput& in) {
         // not tested: t and p stay NaN, so nothing of it enters the combination over radii.
         const bool fit = u.se > 0;
         d = pair_design_test(r, unit, group, in.n_units, in.counts, in.n_types, f, in.adjust, in.z, nz, in.frailty,
-                             u.tau2, in.variance == Variance::HartungKnapp, fit, rules.pooled_dispersion);
+                             u.tau2, in.variance == Variance::HartungKnapp, fit, rules.pooled_dispersion,
+                             in.image_heterogeneity ? &raw : nullptr);
         if (d.design == 2 && !fit) res.p[o] = kNaN;
         res.design[o] = d.design; res.abundance[o] = d.abundance;
         if (d.design == 2) res.design_reason[o] = d.tests[0].reason;
@@ -245,6 +243,7 @@ PairTests pair_tests(const PairTestInput& in) {
           const DesignResult& x = d.tests[0];
           res.coef_ref[o] = x.theta[0]; res.coef_comp[o] = x.theta[1]; res.difference[o] = x.estimate;
           res.se[o] = x.se; res.df[o] = x.df; res.p[o] = x.p; res.tau2[o] = x.tau2;
+          if (!std::isnan(d.omega2)) res.tau2_image[o] = d.omega2;
           influence = &x.influence;
           int j = 1;
           if (d.abundance) { res.effect[o * ne] = d.tests[j].estimate; res.effect_p[o * ne] = d.tests[j].p; ++j; }
