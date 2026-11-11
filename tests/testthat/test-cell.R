@@ -173,11 +173,13 @@ test_that("the survival score test is the design test on the martingale residual
   d <- spicyR:::stats_design_test(rows, rows$unit, m_units, cbind(1, M[rows$unit + 1L]), c(0, 1), -1)
   expect_true(s$ok)
   expect_equal(s$score_p, d$p, tolerance = 1e-12)
-  # adjusted for abundance: the log share added to the design, tau2 held at the unadjusted value
+  # adjusted for abundance: the log share varies within patients, so A/B's adjusted design (its patient mean, omega2
+  # by B2 from the rows before the image random effect, tau2 on the patient summaries)
   x <- spicyR:::.cell_share(ctx, rows, "T")
   sa <- spicyR:::stats_survival_test(rows, rows$unit, m_units, M, tm, ev, cbind(x), none(m_units))
-  da <- spicyR:::stats_design_test(rows, rows$unit, m_units, cbind(1, M[rows$unit + 1L], x - mean(x)), c(0, 1, 0), d$tau2)
-  expect_equal(sa$score_p, da$p, tolerance = 1e-12)
+  raw <- rows; raw$v <- rows$s2
+  a <- ref_adjusted_design(raw, rows$unit, cbind(1, M[rows$unit + 1L], x - mean(x)), 2)
+  expect_equal(sa$score_p, unname(ref_design(a$rows, rows$unit, a$Z, c(0, 1, 0, 0), a$tau2)[4]), tolerance = 1e-8)
   pheno <- unique(cells[, c("patient", "imageID")])
   cells2 <- cells; i <- match(cells2$patient, unique(cells$patient))
   cells2$os <- survival::Surv(tm[i], ev[i])
