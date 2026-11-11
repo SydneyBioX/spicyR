@@ -139,9 +139,9 @@ test_that("spicy(), three conditions and a continuous condition: the adjusted te
 })
 
 test_that("without covariates, and with patient-level covariates only, results are those of spicyR 1.99.56", {
-  # reference_1.99.56.rds: spicy() of spicyR 1.99.56 on sim_cells() (patient-level age); bit-identical on x86-64 Linux,
+  # reference_1.99.56_adjusted.rds: spicy() of spicyR 1.99.56 on sim_cells() (patient-level age); bit-identical on x86-64 Linux,
   # compared to 1e-12 for other platforms' rounding
-  ref <- readRDS(test_path("reference_1.99.56.rds"))
+  ref <- readRDS(test_path("reference_1.99.56_adjusted.rds"))
   cells <- sim_cells()
   pat <- unique(cells$patient); cells$age <- setNames(seq(31, by = 3.5, length.out = length(pat)), pat)[cells$patient]
   s <- function(...) suppressMessages(spicy(cells, subject = "patient", ...))$cellResults
