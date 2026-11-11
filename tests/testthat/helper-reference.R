@@ -294,3 +294,32 @@ sim_cells <- function(seed = 1, n_pat = 6, n_cells = 350, side = 400) {
     out[[k]] <- z }
   d <- do.call(rbind, out); d$condition <- factor(d$condition); d
 }
+
+## The overall test of more than two conditions in closed form, for the cell-means design (one indicator per level),
+## from the prototype of ProjectSpicyRCell analysis/explore/2026-11_conditions_G/cg_lib.R (omnibus_fit, omnibus_test):
+## tau2 by Paule-Mandel on the patient summaries, shared over levels, target (patients with rows) - G; per-level CR2
+## V_c with E V_c = 1/U_c, Var V_c = 2 T_c; the approximate Hotelling's T^2 (Pustejovsky and Tipton 2018, eqs.
+## 12-13): eta = q (q + 1) / sum_c 2 T_c (sum_s a_sc^2)^2, a = Omega^-1/2 C, F = (eta - q + 1) / (eta q) Q on
+## (q, eta - q + 1). h: image rows with O = y, E = 0, n = 1, v = s2 + omega2; grp: level (0..G-1) of each row.
+ref_aht_cellmeans <- function(h, grp, G) {
+  y <- h$O; w <- 1 / h$v; unit <- h$unit
+  Gam <- as.vector(rowsum(w, unit, reorder = TRUE)); yb <- as.vector(rowsum(w * y, unit, reorder = TRUE)) / Gam
+  g <- grp[!duplicated(unit)][order(unique(unit))] + 1L
+  Zt <- t(outer(g, seq_len(G), `==`) * 1); lsum <- function(x) as.vector(Zt %*% x)
+  Qb <- function(t) { u <- Gam / (1 + t * Gam); d <- lsum(u * yb) / lsum(u); sum(u * (yb - d[g])^2) }
+  df <- length(Gam) - G
+  tau2 <- if (df < 1 || Qb(0) <= df) 0 else {
+    up <- 1e-4; while (Qb(up) > df && up < 1e6) up <- up * 4
+    stats::uniroot(function(t) Qb(t) - df, c(0, up), tol = 1e-14)$root }
+  u <- Gam / (1 + tau2 * Gam); U <- lsum(u); delta <- lsum(u * yb) / U
+  hh <- u / U[g]; e <- yb - delta[g]
+  Vc <- lsum(hh^2 * e^2 / (1 - hh))
+  Tc <- (lsum(hh^2 * (1 - 2 * hh) / (1 - hh)^2) + lsum(hh^2 / (1 - hh))^2) / U^2
+  q <- G - 1L; C <- cbind(-1, diag(q)); d <- as.vector(C %*% delta)
+  Q <- as.numeric(crossprod(d, solve(C %*% (Vc * t(C)), d)))
+  es <- eigen(C %*% ((1 / U) * t(C)), symmetric = TRUE)
+  a <- es$vectors %*% (t(es$vectors) / sqrt(es$values)) %*% C
+  eta <- q * (q + 1) / sum(2 * Tc * colSums(a^2)^2)
+  Fst <- (eta - q + 1) / (eta * q) * Q
+  c(F = Fst, df2 = eta - q + 1, p = stats::pf(Fst, q, eta - q + 1, lower.tail = FALSE), tau2 = tau2)
+}
