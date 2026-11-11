@@ -18,7 +18,7 @@ spicy(
   method = c("cell", "image"),
   effect = c("allocation", "count"),
   k = NULL,
-  combine = c("maxT", "davies", "cauchy"),
+  combine = c("davies", "maxT", "cauchy"),
   adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
@@ -71,18 +71,22 @@ With \code{k}, "within \code{r}" means among the cell's \code{k} nearest neighbo
 
 \item{k}{Cell method: use the \code{k} nearest neighbours instead of a radius.}
 
-\item{combine}{Cell method with several radii: \code{"maxT"} (the default: max-T with the sandwich correlation across
-radii, any number of radii), \code{"davies"} (Davies' upper bound for the same maximum; faster, slightly
-conservative) or \code{"cauchy"} (Cauchy combination). The max-T p-value is the multivariate normal probability
+\item{combine}{Cell method with several radii: \code{"davies"} (the default: Davies' upper bound on the max-T
+p-value, a closed form that is never smaller than the exact p-value and takes microseconds for any number of
+radii; slightly conservative, about 1.1 times the exact p-value with 4 radii and 1.3 to 1.4 times with 8 to 16),
+\code{"maxT"} (the exact max-T p-value with the sandwich correlation across radii) or \code{"cauchy"} (Cauchy combination).
+Both \code{"davies"} and \code{"maxT"} use the largest |z| over the radii; Davies' bound needs only the correlations of
+neighbouring radii, the exact p-value all of them. The max-T p-value is the multivariate normal probability
 that the largest |z| over the radii is at least the one observed, computed as a sum of first-exceedance terms
-by the quasi-Monte Carlo method of Genz and Bretz to a relative error of about 0.1\% (by quadrature for two
+by the quasi-Monte Carlo method of Genz and Bretz to a relative error of about 0.1\\% (by quadrature for two
 radii); the same inputs always give the same value. A radius whose correlation with a smaller kept radius
-exceeds 0.995 is left out. We recommend about 4 radii spanning the range of interest, none below about one
-cell diameter: many closely spaced radii add little information (neighbouring radii are highly correlated),
-cost some power, make the correlation hard to estimate with few patients and are slower (with 25 radii,
-about a second per pair against a few milliseconds with 4); radii below a cell diameter can be liberal in
-large cohorts. With max-T, \verb{$cellResults} has \code{maxT_converged}: \code{TRUE} when the pair's p-value met the 0.1\%
-error target, \code{FALSE} when the integrator stopped at its limit of points first (its error may then be larger).}
+exceeds 0.995 is left out. Choose one radius from the relationship of interest when you can; when the scale is
+unknown, we recommend about 4 radii spanning the range of interest, none below about one cell diameter: many
+closely spaced radii add little information (neighbouring radii are highly correlated), cost some power, make
+the correlation hard to estimate with few patients and, with max-T, are slower (with 25 radii, about a second
+per pair against a few milliseconds with 4); radii below a cell diameter can be liberal in large cohorts. With
+max-T, \verb{$cellResults} has \code{maxT_converged}: \code{TRUE} when the pair's p-value met the 0.1\\% error target, \code{FALSE}
+when the integrator stopped at its limit of points first (its error may then be larger).}
 
 \item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
 (default \code{FALSE}), and for its patient average when patients have several images (see Details). Its effect

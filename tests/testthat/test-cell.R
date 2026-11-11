@@ -194,13 +194,18 @@ test_that("max-T: one radius gives the single-radius p, and the tail matches an 
   f <- function(x) stats::dnorm(x) * (stats::pnorm((-cv - r * x) / sqrt(1 - r^2)) + stats::pnorm((-cv + r * x) / sqrt(1 - r^2)))
   exact <- 2 * stats::pnorm(-cv) + stats::integrate(f, -cv, cv, rel.tol = 1e-12)$value
   expect_equal(spicyR:::stats_mvn_outside(c(-cv, -cv), c(cv, cv), matrix(c(1, r, r, 1), 2)), exact, tolerance = 1e-8)
-  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = c(10, 20, 40), from = "tumour", to = "T"))
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = c(10, 20, 40), from = "tumour", to = "T",
+                                combine = "maxT"))
   expect_true(is.finite(res$cellResults$p_value))
   # the integrator's convergence of the max-T p-value, as stats_max_t() reports it; not a column with davies
   expect_identical(res$cellResults$maxT_converged, TRUE)
-  expect_false("maxT_converged" %in% names(suppressMessages(spicy(cells, "condition", subject = "patient",
-                                                                  r = c(10, 20, 40), from = "tumour", to = "T",
-                                                                  combine = "davies"))$cellResults))
+  dv <- suppressMessages(spicy(cells, "condition", subject = "patient", r = c(10, 20, 40), from = "tumour", to = "T",
+                               combine = "davies"))
+  expect_false("maxT_converged" %in% names(dv$cellResults))
+  # davies is the default for several radii (1.99.58), and its bound is never below the exact max-T p-value
+  dflt <- suppressMessages(spicy(cells, "condition", subject = "patient", r = c(10, 20, 40), from = "tumour", to = "T"))
+  expect_identical(dflt$cellResults, dv$cellResults)
+  expect_gte(dv$cellResults$p_value, res$cellResults$p_value * (1 - 2e-3))
   expect_equal(nrow(res$radiusResults), 3L)
   expect_true("r" %in% names(topPairs(res)))
   rp <- radiusPlot(res, from = "tumour", to = "T")

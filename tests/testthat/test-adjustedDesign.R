@@ -145,8 +145,9 @@ test_that("without covariates, and with patient-level covariates only, results a
   cells <- sim_cells()
   pat <- unique(cells$patient); cells$age <- setNames(seq(31, by = 3.5, length.out = length(pat)), pat)[cells$patient]
   s <- function(...) suppressMessages(spicy(cells, subject = "patient", ...))$cellResults
+  # several radii: combine = "maxT", the default up to 1.99.57, as in the reference
   now <- list(allocation = s("condition", r = 30), count = s("condition", r = 30, effect = "count"),
-              radii = s("condition", r = c(15, 30)), age = s("condition", r = 30, covariates = "age"),
+              radii = s("condition", r = c(15, 30), combine = "maxT"), age = s("condition", r = 30, covariates = "age"),
               continuous = s("age", r = 30))
   for (k in names(ref)) {
     x <- now[[k]][, names(ref[[k]])]

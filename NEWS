@@ -1,3 +1,16 @@
+CHANGES IN VERSION 1.99.58
+--------------------------
+
+    o spicy(combine = "davies") is now the default for several radii (it was "maxT"). Davies' bound is a closed form
+      that is never smaller than the exact max-T p-value and takes microseconds for any number of radii; it needs only
+      the correlations of neighbouring radii, which are better estimated than all of them when there are few patients.
+      In the calibration of 7-8 Nov 2026 it stayed at or below nominal in every cohort, where max-T was slightly
+      liberal in large cohorts (Karimi, 5.9% against 4.4% at 0.05), at the cost of p-values about 1.1 times the exact
+      ones with 4 radii and 1.3 to 1.4 times with 8 to 16. combine = "maxT" gives the exact p-value as before.
+      Results with one radius, or with combine given, are unchanged.
+    o The documentation and the vignette recommend choosing one radius from the relationship of interest when it is
+      known, and several radii only when the scale is unknown.
+
 CHANGES IN VERSION 1.99.57
 --------------------------
 

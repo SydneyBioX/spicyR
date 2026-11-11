@@ -153,7 +153,7 @@ test_that("two and three conditions: the results of spicyR 1.99.56 are unchanged
   same_except(run(cells, "condition", subject = "patient", r = 30, adjustAbundance = TRUE), ref$two_adjusted, ab)
   # several radii: ext-D's max-T p-value (relative error about 1e-3; 1.99.56's had an absolute error of about 1e-4 and
   # was up to a few percent off at p near 0.003); every radius's test is unchanged
-  rr <- run(cells, "condition", subject = "patient", r = c(20, 30, 40))
+  rr <- run(cells, "condition", subject = "patient", r = c(20, 30, 40), combine = "maxT")
   same_except(rr, ref$two_radii, c("p_value", "p_adj"))
   expect_identical(rr$cellResults$maxT_converged, rep(TRUE, nrow(rr$cellResults)))
   expect_equal(rr$cellResults$p_value, ref$two_radii$cellResults$p_value, tolerance = 0.05)
