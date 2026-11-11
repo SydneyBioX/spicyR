@@ -250,22 +250,30 @@ struct CoxResult {
 CoxResult cox_fit(const std::vector<double>& time, const std::vector<int>& event, const std::vector<double>& X,
                   int p);
 
-// Survival (Supplementary Methods, Section 3) for one pair. time and event per unit (unit-code order);
-// covariates (row-major, per unit) enter the null Cox model.
+// Survival (Supplementary Methods, Section 3) for one pair. martingale, time and event per unit (unit-code order); a
+// unit with no outcome has a martingale residual that is not finite, and its rows are left out (the caller leaves them
+// out before the side and the image random effect, so the result is that of the data without them).
 struct SurvivalResult {
   bool ok = false;
   std::string reason;
-  double score_coef = 0, score_se = 0, score_df = 0, score_p = 1;  // theta_1 of delta ~ 1 + M
-  double log_hr_sd = 0, hr_sd = 1, hr_se = 0, hr_p = 1;             // Cox on the standardised BLUP
+  double score_coef = 0, score_se = 0, score_df = 0, score_p = 1;  // the M_i coefficient of delta ~ 1 + M + X
+  double log_hr_sd = 0, hr_sd = 1, hr_se = 0;   // Cox on the standardised BLUP (and W); hr_se model-based
   double log_hr_unit = 0;   // per unit of the effect (count: per extra cell per target cell; allocation: per 100% of target cells)
-  double tau2 = 0;
+  double tau2 = 0;          // of the hazard ratio's shrinkage model
+  int n_units = 0, n_deaths = 0, q = 0;   // informative units and their deaths; columns of the patient design
 };
 
-// x: optional per-row covariate (the log share of the `to` type); when given, the score test and the hazard
-// ratio are adjusted for it (empty: unadjusted).
+// X: optional covariate columns of the fraction model, row-major, one row per image row and p columns (the
+// abundance share and the covariates; a row with a NaN is left out); the score test is on (1, M, X) and the hazard
+// ratio's shrinkage model on (1, X). W: the covariates of the null Cox model, row-major per unit (pw columns); the
+// hazard ratio's Cox model has them too. Tested only when, among the informative units (an outcome and at least
+// one row), there is a death ("no_deaths") and a survivor ("no_survivors"), the units number at least q + 2
+// ("too_few_units"; q = 2 + p + the columns of X that vary within units, each of which will have its patient mean
+// in the design), and the df are at least kMinDf ("too_few_df").
 SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                              const std::vector<double>& martingale, const std::vector<double>& time,
-                             const std::vector<int>& event, const std::vector<double>& x = {});
+                             const std::vector<int>& event, const std::vector<double>& X = {}, int p = 0,
+                             const std::vector<double>& W = {}, int pw = 0);
 
 // ------------------------------------------------------ several radii ---
 

@@ -245,8 +245,8 @@ stats_cox_fit <- function(time, event, X) {
     .Call(`_spicyR_stats_cox_fit`, time, event, X)
 }
 
-stats_survival_test <- function(rows, unit, n_units, martingale, time, event, x) {
-    .Call(`_spicyR_stats_survival_test`, rows, unit, n_units, martingale, time, event, x)
+stats_survival_test <- function(rows, unit, n_units, martingale, time, event, X, W) {
+    .Call(`_spicyR_stats_survival_test`, rows, unit, n_units, martingale, time, event, X, W)
 }
 
 stats_cauchy <- function(p) {

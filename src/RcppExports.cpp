@@ -940,8 +940,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_survival_test
-List stats_survival_test(List rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time, IntegerVector event, NumericVector x);
-RcppExport SEXP _spicyR_stats_survival_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP martingaleSEXP, SEXP timeSEXP, SEXP eventSEXP, SEXP xSEXP) {
+List stats_survival_test(List rows, IntegerVector unit, int n_units, NumericVector martingale, NumericVector time, IntegerVector event, NumericMatrix X, NumericMatrix W);
+RcppExport SEXP _spicyR_stats_survival_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP martingaleSEXP, SEXP timeSEXP, SEXP eventSEXP, SEXP XSEXP, SEXP WSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -951,8 +951,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type martingale(martingaleSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type time(timeSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type event(eventSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(stats_survival_test(rows, unit, n_units, martingale, time, event, x));
+    Rcpp::traits::input_parameter< NumericMatrix >::type X(XSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type W(WSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_survival_test(rows, unit, n_units, martingale, time, event, X, W));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1127,7 +1128,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_design_joint_test", (DL_FUNC) &_spicyR_stats_design_joint_test, 6},
     {"_spicyR_stats_availability_test", (DL_FUNC) &_spicyR_stats_availability_test, 6},
     {"_spicyR_stats_cox_fit", (DL_FUNC) &_spicyR_stats_cox_fit, 3},
-    {"_spicyR_stats_survival_test", (DL_FUNC) &_spicyR_stats_survival_test, 7},
+    {"_spicyR_stats_survival_test", (DL_FUNC) &_spicyR_stats_survival_test, 8},
     {"_spicyR_stats_cauchy", (DL_FUNC) &_spicyR_stats_cauchy, 1},
     {"_spicyR_stats_max_t", (DL_FUNC) &_spicyR_stats_max_t, 3},
     {"_spicyR_stats_davies", (DL_FUNC) &_spicyR_stats_davies, 3},

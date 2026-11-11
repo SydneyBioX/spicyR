@@ -73,7 +73,7 @@ kontextualEngine <- function(cells,
                        survival = survival, dataset = TRUE)
   pheno <- ctx$pheno
   Z_extra <- NULL
-  if (!is.null(covariates) && !survival) {
+  if (!is.null(covariates)) {
     miss <- setdiff(covariates, names(pheno))
     if (length(miss)) stop("covariates not found: ", paste(miss, collapse = ", "), call. = FALSE)
     Z_extra <- stats::model.matrix(stats::reformulate(covariates), stats::model.frame(stats::reformulate(covariates), pheno,
@@ -81,7 +81,7 @@ kontextualEngine <- function(cells,
     Z_extra <- sweep(Z_extra, 2, colMeans(Z_extra, na.rm = TRUE))
   }
 
-  sv <- if (survival) .cell_survival_setup(ctx, pheno, covariates)
+  sv <- if (survival) .cell_survival_setup(ctx, pheno, Z_extra)
   dataset_build_radius_index(ctx$data, r)
   if (weighted)
     return(.kontextual_weighted(ctx, memb, trip, r, window, edgeCorrect, condition, subject, survival, sv,
@@ -105,12 +105,12 @@ kontextualEngine <- function(cells,
       rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi)
       rows$unit <- ctx$image_unit[rows$img + 1L]
       if (!survival) rows$group <- ctx$image_group[rows$img + 1L]
-      o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
+      o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, Z_extra)
            else .cell_rows_test(ctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
       o }))
   }
-  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, covariates)
+  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, !is.null(covariates))
          else .cell_table(fits, ctx, adjustAbundance || !is.null(covariates))
   out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
@@ -173,12 +173,12 @@ kontextualEngine <- function(cells,
       rows <- stats_kontextual_image_rows_weighted(s)
       rows$unit <- ctx$image_unit[rows$img + 1L]
       if (!survival) rows$group <- ctx$image_group[rows$img + 1L]
-      o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
+      o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, Z_extra)
            else .cell_rows_test(wctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
       o }))
   }
-  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, covariates)
+  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, !is.null(covariates))
          else .cell_table(fits, ctx, adjustAbundance || !is.null(covariates))
   out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)

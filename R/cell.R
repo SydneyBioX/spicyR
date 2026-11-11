@@ -280,8 +280,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## weighted random-labelling sums of every `to` label (Dataset::weighted_excess_sums); each pair's image rows then go
 ## through the side, the image random effect and the test as .cell_pair_test() takes them for cell types. With 0/1
 ## weights the results are those of the cell types. Self-pairs are not tested.
-.cell_weighted <- function(ctx, memb, pairs, r, effect, variance, adjust, Z_extra, survival = FALSE, sv = NULL,
-                           covariates = NULL) {
+.cell_weighted <- function(ctx, memb, pairs, r, effect, variance, adjust, Z_extra, survival = FALSE, sv = NULL) {
   allocation <- effect == "allocation"
   dataset_build_radius_index(ctx$data, r)
   csr <- .membership_rows(memb, ctx$ord)
@@ -308,11 +307,11 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
         rows <- h
       }
       attr(rows, "side") <- side
-      fits[[k]] <- if (survival) .cell_survival_test(wctx, rows, f, t, sv, adjust, covariates)
+      fits[[k]] <- if (survival) .cell_survival_test(wctx, rows, f, t, sv, adjust, Z_extra)
                    else .cell_rows_test(wctx, rows, f, t, TRUE, variance, adjust, Z_extra)
     }
   }
-  tab <- if (survival) .cell_survival_table(fits, adjust, covariates)
+  tab <- if (survival) .cell_survival_table(fits, adjust, !is.null(Z_extra))
          else .cell_table(fits, ctx, adjust || !is.null(Z_extra))
   list(table = tab, fits = fits)
 }
