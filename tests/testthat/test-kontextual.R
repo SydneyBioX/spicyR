@@ -1,6 +1,6 @@
 ## kontextualEngine() (the engine of Statial::kontextualTest()): the C++ core against a plain-R reference written
-## from Statial's Kontextual statistic, the
-## exactness of its random-labelling moments, and the interface.
+## from Statial's Kontextual statistic, the exactness of its random-labelling moments (self triples included), the
+## image random effect and abundance adjustment as spicy()'s, and the interface.
 
 cells <- sim_cells(seed = 4)
 parent <- c("T", "B", "macro")
@@ -53,19 +53,30 @@ test_that("the Kontextual statistic's random-labelling moments are exact (enumer
   expect_equal(unname(en[["var"]]), ref$v, tolerance = 1e-12)
 })
 
-test_that("kontextualEngine (psi and abundance off) is the frailty GEE on the reference rows", {
-  res <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient",
-                        r = 30, from = "tumour", to = "T", adjustAbundance = FALSE, labelClustering = FALSE,
-                        edgeCorrect = FALSE)$cellResults
+## The reference rows of every image (input order of the image IDs as the package sorts them), with unit and group.
+ref_kontextual_rows <- function(cells, from, to, parent, r) {
   ids <- sort(unique(cells$imageID), method = "radix")
   rows <- do.call(rbind, lapply(seq_along(ids), function(i) {
-    r <- ref_kontextual_row(cells[cells$imageID == ids[i], ], "tumour", "T", parent, 30)
-    data.frame(img = i - 1L, O = r$O, E = r$E, n = r$n, v = r$v) }))
+    z <- cells[cells$imageID == ids[i], ]
+    x <- ref_kontextual_row(z, from, to, parent, r)
+    data.frame(img = i - 1L, O = x$O, E = x$E, n = x$n, v = x$v, n_to = sum(z$cellType == to),
+               n_parent = sum(z$cellType %in% parent)) }))
   pat <- cells$patient[match(ids, cells$imageID)]; grp <- cells$condition[match(ids, cells$imageID)]
   rows$unit <- match(pat, unique(pat)) - 1L; rows$group <- as.integer(grp == "B")
-  ref <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, length(unique(pat)), TRUE, "cr2", FALSE)
-  expect_equal(res$p_value, ref$p, tolerance = 1e-10)
-  expect_equal(res$excess_difference, ref$difference, tolerance = 1e-10)
+  rows
+}
+
+test_that("kontextualEngine (psi and abundance off) is the frailty GEE on the reference rows, with the image random effect", {
+  res <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient",
+                        r = 30, from = "tumour", to = "T", labelClustering = FALSE, edgeCorrect = FALSE)$cellResults
+  rows <- ref_kontextual_rows(cells, "tumour", "T", parent, 30)
+  # each image's effect (O - E) / D with variance v / D^2 + omega2 (Paule-Mandel within patients), as spicy()
+  h <- ref_image_heterogeneity(rows, rows$unit)
+  expect_gt(attr(h, "tau2_image"), 0)
+  expect_equal(res$tau2_image, attr(h, "tau2_image"), tolerance = 1e-8)
+  ref <- spicyR:::stats_excess_test(h, h$unit, h$group, length(unique(rows$unit)), TRUE, "cr2", FALSE)
+  expect_equal(res$p_value, ref$p, tolerance = 1e-8)
+  expect_equal(res$excess_difference, ref$difference, tolerance = 1e-8)
   # T cells were moved next to tumour cells in group B: more tumour cells around T than around the other lymphoid cells
   expect_gt(res$excess_difference, 0); expect_lt(res$p_value, 0.05)
 })
@@ -99,9 +110,10 @@ test_that("survival outcomes: the score test on the reference rows", {
     r <- ref_kontextual_row(cs[cs$imageID == ids[i], ], "tumour", "T", parent, 30)
     data.frame(img = i - 1L, O = r$O, E = r$E, n = r$n, v = r$v) }))
   pat <- cs$patient[match(ids, cs$imageID)]; up <- unique(pat); rows$unit <- match(pat, up) - 1L
+  rows <- ref_image_heterogeneity(rows, rows$unit)   # the image random effect, as spicy()'s survival test
   null <- spicyR:::stats_cox_fit(unname(tm[up]), unname(ev[up]), matrix(0, length(up), 0))
   ref <- spicyR:::stats_survival_test(rows, rows$unit, length(up), null$martingale, unname(tm[up]), unname(ev[up]), numeric(0))
-  expect_equal(tab$p_value, ref$score_p, tolerance = 1e-10)
+  expect_equal(tab$p_value, ref$score_p, tolerance = 1e-8)
 })
 
 test_that("signifPlot draws survival results of the cell method", {
@@ -120,6 +132,27 @@ test_that("with labelClustering, a triple's result does not depend on the other 
                           labelClustering = TRUE)$cellResults
   expect_equal(one["tumour__T__lymphoid", "p_value"], full["tumour__T__lymphoid", "p_value"], tolerance = 1e-12)
   expect_equal(one["tumour__T__lymphoid", "excess_difference"], full["tumour__T__lymphoid", "excess_difference"], tolerance = 1e-12)
+})
+
+test_that("abundance adjustment: off by default; when on, the log share of the `to` type within the parent", {
+  expect_false(formals(kontextualEngine)$adjustAbundance)
+  res <- kontextualEngine(cells, pdf, condition = "condition", subject = "patient", r = 30, from = "tumour", to = "T",
+                          edgeCorrect = FALSE, adjustAbundance = TRUE)$cellResults
+  expect_equal(res$adjusted_for, "abundance")
+  rows <- ref_kontextual_rows(cells, "tumour", "T", parent, 30)
+  h <- ref_image_heterogeneity(rows, rows$unit)
+  share <- log(pmax(rows$n_to, 0.5) / rows$n_parent)
+  # the design of spicy(): one indicator per condition and the centred share; omega2 held, tau2 as the unadjusted test's
+  Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share)) * 1
+  tau2 <- spicyR:::stats_excess_test(h, h$unit, h$group, length(unique(h$unit)), TRUE, "cr2", FALSE)$tau2
+  ref <- spicyR:::stats_design_tests(h, h$unit, length(unique(h$unit)), Z, spicyR:::.cell_contrasts(2L, 3L), tau2, FALSE, 0L)
+  expect_equal(res$p_value, ref[[1]]$p, tolerance = 1e-8)
+  expect_equal(res$abundance_effect, ref[[2]]$estimate, tolerance = 1e-8)
+})
+
+test_that("one radius: several radii are not supported", {
+  expect_error(kontextualEngine(cells, pdf, condition = "condition", subject = "patient", r = c(20, 30)),
+               "several radii are not supported")
 })
 
 ## Every labelling of n `A` cells among the parent's cells of one small image, each labelling as its own image (same
@@ -156,4 +189,24 @@ test_that("self triples: the exact random-labelling variance of O - p L (enumera
   expect_equal(nrow(self_enumeration(x, y, par, 30, 10, "convex", TRUE)$rows), 0L)
   # n = 1: O = 0 for every labelling; no row
   expect_equal(nrow(self_enumeration(x, y, par, 30, 1, "convex", TRUE)$rows), 0L)
+})
+
+test_that("self triples through the engine: the rows with the exact variance, the test as for other triples", {
+  sp <- make_parent_df("T", parent, "lymphoid")
+  res <- kontextualEngine(cells, sp[sp$to == "T", ], condition = "condition", subject = "patient", r = 30,
+                          edgeCorrect = FALSE)$cellResults
+  expect_true("T__T__lymphoid" %in% rownames(res))
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"), dataset = TRUE)
+  code <- function(z) match(z, ctx$type_labels) - 1L
+  spicyR:::dataset_build_radius_index(ctx$data, 30)
+  spicyR:::dataset_build_context(ctx$data, code(parent), "convex", FALSE)
+  S <- spicyR:::dataset_kontextual_sums(ctx$data, code("T"), code("T"))
+  expect_error(spicyR:::stats_kontextual_image_rows(S, ctx$counts, code("T"), code("T"), matrix(numeric(0), 0, 0),
+                                                    matrix(numeric(0), 0, 0)), "self triple")
+  rows <- spicyR:::stats_kontextual_image_rows(S, ctx$counts, code("T"), code("T"), matrix(numeric(0), 0, 0),
+                                               spicyR:::dataset_kontextual_self_sums(ctx$data))
+  rows$unit <- ctx$image_unit[rows$img + 1L]; rows$group <- ctx$image_group[rows$img + 1L]
+  h <- ref_image_heterogeneity(rows, rows$unit)
+  ref <- spicyR:::stats_excess_test(h, h$unit, h$group, length(ctx$unit_labels), TRUE, "cr2", FALSE)
+  expect_equal(res["T__T__lymphoid", "p_value"], ref$p, tolerance = 1e-8)
 })
