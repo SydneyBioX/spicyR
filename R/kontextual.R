@@ -92,6 +92,8 @@ kontextualEngine <- function(cells,
     tr <- trip[trip$parent_name == pn, , drop = FALSE]
     dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
     sums <- lapply(seq_len(nrow(tr)), function(i) dataset_kontextual_sums(ctx$data, code(tr$from[i]), code(tr$to[i])))
+    # the fixed sums of the exact variance of self triples (from == to): the same for every type of the parent
+    self_sums <- if (any(tr$from == tr$to)) dataset_kontextual_self_sums(ctx$data)
     # psi of a `to` type: the median over every cell type as `from` (the `to` type itself included, as in spicy()),
     # whichever triples were requested, so a triple's result does not depend on the others asked for
     psi <- if (labelClustering) {
@@ -102,7 +104,9 @@ kontextualEngine <- function(cells,
       stats_kontextual_clustering(ctx$data, code(pp$from), code(pp$to), raw, ctx$counts, 2 * r)
     } else matrix(numeric(0), 0, 0)
     fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
-      rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi)
+      self <- tr$from[i] == tr$to[i]
+      rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi,
+                                          if (self) self_sums else matrix(numeric(0), 0, 0))
       rows$unit <- ctx$image_unit[rows$img + 1L]
       if (!survival) rows$group <- ctx$image_group[rows$img + 1L]
       o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)

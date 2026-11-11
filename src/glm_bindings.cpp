@@ -313,6 +313,15 @@ NumericMatrix dataset_kontextual_sums(SEXP ptr, int from, int to) {
 }
 
 // [[Rcpp::export]]
+NumericMatrix dataset_kontextual_self_sums(SEXP ptr) {
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->kontextual_self_sums();
+  NumericMatrix out(5, static_cast<int>(v.size() / 5));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: U, U2, A2, B2, C2 (the self triple's fixed sums); one column per image
+}
+
+// [[Rcpp::export]]
 NumericMatrix dataset_weighted_excess_sums(SEXP ptr, NumericVector a, IntegerVector mPtr, IntegerVector mLab,
                                            NumericVector mW, int n_labels, bool allocation) {
   XPtr<Dataset> d(ptr);

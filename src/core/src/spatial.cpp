@@ -657,6 +657,55 @@ std::vector<double> Dataset::kontextual_sums(int from, int to) const {
   return out;
 }
 
+std::vector<double> Dataset::kontextual_self_sums() const {
+  const double pi = 3.141592653589793238462643383279502884;
+  const double r2 = r_ * r_, disc = pi * r_ * r_;
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  if (is_context_.empty() || (context_count_.empty() && n_images() > 0))
+    throw std::logic_error("call build_context after build_radius_index");
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * 5, 0.0), rs, cs;
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], end = image_offsets_[img + 1];
+    double* o = out.data() + static_cast<std::size_t>(img) * 5;
+    rs.assign(static_cast<std::size_t>(end - start), 0.0); cs.assign(rs.size(), 0.0);
+    double W2 = 0.0, WW = 0.0;
+    const Grid& g = grids_[img];
+    // every context cell l as the REF cell of kontextual_sums(), with every other context cell j within r
+    for (int row = start; row < end; ++row) {
+      if (!is_context_[type_[row]]) continue;
+      const double la = (context_count_[row] - 1) / context_area_[row];
+      if (!(la > 0)) continue;
+      const double ea = disc / context_area_[row];
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+          std::size_t b = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[b]; p < static_cast<std::size_t>(bin_start_[b + 1]); ++p) {
+            const int j = grow_[p];
+            if (j == row || !is_context_[type_[j]]) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py;
+            if (dx * dx + dy * dy > r2) continue;
+            const double lb = (context_count_[j] - 1) / context_area_[j];
+            if (!(lb > 0)) continue;
+            const double w = ea * la / lb;               // w_lj, as kontextual_sums() adds it to c_j
+            rs[row - start] += w; cs[j - start] += w;
+            W2 += w * w;
+            WW += w * (disc / context_area_[j]) * lb / la;   // w_lj w_jl (= e_l e_j)
+          }
+        }
+    }
+    double U = 0.0, A2 = 0.0, B2 = 0.0, C2 = 0.0;
+    for (std::size_t k = 0; k < rs.size(); ++k) {
+      const double u = rs[k] + cs[k];
+      U += rs[k]; A2 += u * u; B2 += rs[k] * rs[k]; C2 += rs[k] * u;
+    }
+    o[0] = U; o[1] = W2 + WW; o[2] = A2; o[3] = B2; o[4] = C2;
+  }
+  return out;
+}
+
 std::vector<double> Dataset::kontextual_sums_weighted(const std::vector<double>& a, const std::vector<double>& b,
                                                       bool self) const {
   const double pi = 3.141592653589793238462643383279502884;
