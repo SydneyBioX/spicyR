@@ -128,56 +128,115 @@ CoxResult cox_fit(const std::vector<double>& time, const std::vector<int>& event
   return res;
 }
 
+namespace {
+
+// tau2 of a survival design (the rows' columns Z, row-major, q of them; patient_level[j]: column j is constant within
+// units): Paule-Mandel under the design when every column is patient-level (then it is the between-patient PM of
+// option (iv), DECISIONS 4 Nov 2026), else held at the Paule-Mandel tau2 of its patient-level columns (-1: estimate
+// under the design).
+// TODO(ext-AB merge): when a column varies within units, call adjusted_design() (ext-AB, design.cpp) instead of this
+// hold: for the score test on (1, M_i, X) with q0 = 2, and for the hazard ratio's shrinkage model on (1, X) with
+// q0 = 1 (no M_i), passing the rows before the image random effect so omega2 is B2 (within patients, after X); it adds
+// the patient-mean column of each image-level column and gives tau2 by option (iv). Then run design_test on its rows,
+// Z and q at its tau2 (the contrast padded with 0 for the mean columns), and use its q for the too_few_units rule
+// (already counted that way below). Without image-level columns (patient-level covariates only, or none) this
+// function is already exact and adjusted_design() does nothing different.
+double survival_tau2(const ImageRows& r, const std::vector<int>& u, int n_units, const std::vector<double>& Z, int q,
+                     const std::vector<char>& patient_level) {
+  std::vector<int> cols;
+  for (int j = 0; j < q; ++j) if (patient_level[j]) cols.push_back(j);
+  if (static_cast<int>(cols.size()) == q) return -1;
+  const int qp = static_cast<int>(cols.size());
+  const std::size_t N = r.O.size();
+  std::vector<double> Zp(N * qp), c(qp, 0.0);
+  for (std::size_t i = 0; i < N; ++i) for (int k = 0; k < qp; ++k) Zp[i * qp + k] = Z[i * q + cols[k]];
+  c[0] = 1;
+  DesignResult d = design_test(r, u, n_units, Zp, qp, c, -1);
+  return d.ok ? d.tau2 : -1;
+}
+
+}  // namespace
+
 SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                              const std::vector<double>& M, const std::vector<double>& time,
-                             const std::vector<int>& event, const std::vector<double>& xin) {
+                             const std::vector<int>& event, const std::vector<double>& X, int p,
+                             const std::vector<double>& W, int pw) {
   SurvivalResult res;
+  const double kNaN = std::numeric_limits<double>::quiet_NaN();
+  res.log_hr_sd = res.hr_sd = res.hr_se = res.log_hr_unit = kNaN;
   const std::size_t N = rows.O.size();
-  // units with an outcome
+  // rows of units with an outcome, and with every covariate
   std::vector<int> keep;
-  for (std::size_t i = 0; i < N; ++i) if (std::isfinite(M[unit[i]])) keep.push_back(static_cast<int>(i));
+  for (std::size_t i = 0; i < N; ++i) {
+    if (!std::isfinite(M[unit[i]])) continue;
+    bool ok = true;
+    for (int j = 0; j < p && ok; ++j) ok = !std::isnan(X[i * p + j]);
+    if (ok) keep.push_back(static_cast<int>(i));
+  }
   ImageRows r;
   std::vector<int> u;
-  std::vector<double> x;
-  const bool adj = !xin.empty();
-  for (int i : keep) { r.image.push_back(rows.image[i]); r.O.push_back(rows.O[i]); r.E.push_back(rows.E[i]); r.n.push_back(rows.n[i]); r.v.push_back(rows.v[i]); u.push_back(unit[i]); if (adj) x.push_back(xin[i]); }
-  if (adj) { double mx = 0; for (double v : x) mx += v; mx /= x.size(); for (double& v : x) v -= mx; }
+  std::vector<std::vector<double>> x(p);
+  for (int i : keep) {
+    r.image.push_back(rows.image[i]); r.O.push_back(rows.O[i]); r.E.push_back(rows.E[i]); r.n.push_back(rows.n[i]);
+    r.v.push_back(rows.v[i]); u.push_back(unit[i]);
+    for (int j = 0; j < p; ++j) x[j].push_back(X[static_cast<std::size_t>(i) * p + j]);
+  }
+  const std::size_t Nk = r.O.size();
+  // the covariates centred over the rows kept; which of them vary within units
+  std::vector<char> varies(p, 0);
+  for (int j = 0; j < p; ++j) {
+    double mx = 0; for (double v : x[j]) mx += v; if (Nk) mx /= static_cast<double>(Nk);
+    for (double& v : x[j]) v -= mx;
+    std::vector<double> at(n_units); std::vector<char> has(n_units, 0);
+    for (std::size_t k = 0; k < Nk && !varies[j]; ++k) {
+      if (!has[u[k]]) { has[u[k]] = 1; at[u[k]] = x[j][k]; } else if (x[j][k] != at[u[k]]) varies[j] = 1;
+    }
+  }
+  // the informative units (an outcome and at least one row) and their deaths
   std::vector<int> present(u); std::sort(present.begin(), present.end()); present.erase(std::unique(present.begin(), present.end()), present.end());
-  if (present.size() < 10) { res.reason = "fewer_than_10_patients"; return res; }
-  // score test: delta = theta0 + theta1 M_u (+ beta x, the log share of the `to` type), tau2 estimated under the
-  // patient-level design (exact Paule-Mandel) and held when the image-level share is added
-  std::vector<double> Z(2 * r.O.size());
-  for (std::size_t i = 0; i < r.O.size(); ++i) { Z[2 * i] = 1; Z[2 * i + 1] = M[u[i]]; }
-  DesignResult sc = design_test(r, u, n_units, Z, 2, {0, 1}, -1);
-  if (adj && sc.ok) {
-    std::vector<double> Z3(3 * r.O.size());
-    for (std::size_t i = 0; i < r.O.size(); ++i) { Z3[3 * i] = 1; Z3[3 * i + 1] = M[u[i]]; Z3[3 * i + 2] = x[i]; }
-    DesignResult s3 = design_test(r, u, n_units, Z3, 3, {0, 1, 0}, sc.tau2);
-    if (s3.ok) sc = s3;
+  res.n_units = static_cast<int>(present.size());
+  for (int k : present) res.n_deaths += event[k] != 0;
+  res.q = 2 + p;
+  for (int j = 0; j < p; ++j) res.q += varies[j];
+  // enough information (DECISIONS 7 Nov 2026): a death and a survivor, and at least q + 2 informative units
+  if (res.n_deaths == 0) { res.reason = "no_deaths"; return res; }
+  if (res.n_deaths == res.n_units) { res.reason = "no_survivors"; return res; }
+  if (res.n_units - res.q < 2) { res.reason = "too_few_units"; return res; }
+  // score test: delta = theta0 + theta1 M_u + X beta, CR2 on Satterthwaite df
+  const int q = 2 + p;
+  std::vector<double> Z(Nk * q), c(q, 0.0);
+  std::vector<char> pl(q, 1);
+  for (std::size_t i = 0; i < Nk; ++i) {
+    Z[i * q] = 1; Z[i * q + 1] = M[u[i]];
+    for (int j = 0; j < p; ++j) Z[i * q + 2 + j] = x[j][i];
   }
-  if (sc.ok) { res.ok = true; res.score_coef = sc.estimate; res.score_se = sc.se; res.score_df = sc.df; res.score_p = sc.p; }
-  else { res.reason = sc.reason; return res; }
-  // shrunken per-unit excess under the intercept-only frailty model (adjusted: at the average share), in a Cox model
-  std::vector<double> Z1(r.O.size(), 1.0);
-  DesignResult mu = design_test(r, u, n_units, Z1, 1, {1}, -1);
-  double beta = 0;
-  if (adj && mu.ok) {
-    std::vector<double> Z2(2 * r.O.size());
-    for (std::size_t i = 0; i < r.O.size(); ++i) { Z2[2 * i] = 1; Z2[2 * i + 1] = x[i]; }
-    DesignResult m2 = design_test(r, u, n_units, Z2, 2, {1, 0}, mu.tau2);
-    if (m2.ok) { mu.theta = {m2.theta[0]}; beta = m2.theta[1]; }
-  }
-  res.tau2 = mu.tau2;
+  for (int j = 0; j < p; ++j) pl[2 + j] = !varies[j];
+  c[1] = 1;
+  DesignResult sc = design_test(r, u, n_units, Z, q, c, survival_tau2(r, u, n_units, Z, q, pl));
+  if (!sc.ok) { res.reason = sc.reason; return res; }
+  if (too_few_df(sc.df)) { res.reason = "too_few_df"; return res; }
+  res.ok = true; res.score_coef = sc.estimate; res.score_se = sc.se; res.score_df = sc.df; res.score_p = sc.p;
+  // the hazard ratio: the shrunken per-unit excess at the average covariates, from the frailty model on (1, X)
+  // (without M, so the outcome does not enter its own predictor), in a Cox model with the null model's covariates W
+  const int qh = 1 + p;
+  std::vector<double> Zh(Nk * qh), ch(qh, 0.0);
+  std::vector<char> plh(qh, 1);
+  for (std::size_t i = 0; i < Nk; ++i) { Zh[i * qh] = 1; for (int j = 0; j < p; ++j) Zh[i * qh + 1 + j] = x[j][i]; }
+  for (int j = 0; j < p; ++j) plh[1 + j] = !varies[j];
+  ch[0] = 1;
+  DesignResult mu = design_test(r, u, n_units, Zh, qh, ch, survival_tau2(r, u, n_units, Zh, qh, plh));
+  std::vector<double> beta(p, 0.0);
+  if (mu.ok) for (int j = 0; j < p; ++j) beta[j] = mu.theta[1 + j];
+  res.tau2 = mu.ok ? mu.tau2 : kNaN;
   std::vector<double> s(n_units, 0), J(n_units, 0);
-  for (std::size_t i = 0; i < r.O.size(); ++i) {
-    double xi = adj ? x[i] : 0.0;
-    s[u[i]] += r.n[i] * (r.O[i] - r.E[i] - beta * r.n[i] * xi) / r.v[i]; J[u[i]] += r.n[i] * r.n[i] / r.v[i]; }
+  for (std::size_t i = 0; i < Nk; ++i) {
+    double fx = 0; for (int j = 0; j < p; ++j) fx += beta[j] * x[j][i];
+    s[u[i]] += r.n[i] * (r.O[i] - r.E[i] - r.n[i] * fx) / r.v[i]; J[u[i]] += r.n[i] * r.n[i] / r.v[i]; }
   // With tau2 near 0 every patient is shrunk to the mean and the shrunken excess carries no information:
   // report no hazard ratio (Supplementary Methods, Section 3, check 4).
   double wmax = 0;
   for (int k : present) wmax = std::max(wmax, mu.ok ? mu.tau2 / (mu.tau2 + 1 / J[k]) : 1.0);
-  if (wmax < 0.01) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = std::numeric_limits<double>::quiet_NaN();
-                     res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
+  if (wmax < 0.01) return res;
   std::vector<double> hx, tt; std::vector<int> ee;
   for (int k : present) {
     double raw = s[k] / J[k];
@@ -187,11 +246,17 @@ SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit
   double mean = std::accumulate(hx.begin(), hx.end(), 0.0) / hx.size(), ss = 0;
   for (double v : hx) ss += (v - mean) * (v - mean);
   double sd = std::sqrt(ss / (hx.size() - 1));
-  if (!(sd > 1e-12 * (std::fabs(mean) + 1))) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
-  for (double& v : hx) v = (v - mean) / sd;
-  CoxResult cx = cox_fit(tt, ee, hx, 1);
-  if (!cx.ok) { res.hr_sd = res.log_hr_sd = res.hr_se = res.log_hr_unit = res.hr_p = std::numeric_limits<double>::quiet_NaN(); return res; }
-  res.log_hr_sd = cx.beta[0]; res.hr_sd = std::exp(cx.beta[0]); res.hr_se = cx.se[0]; res.hr_p = cx.p[0];
+  if (!(sd > 1e-12 * (std::fabs(mean) + 1))) return res;
+  // the Cox model: the standardised shrunken excess, then the covariates of the null model
+  const int ph = 1 + pw;
+  std::vector<double> Xc(present.size() * ph);
+  for (std::size_t k = 0; k < present.size(); ++k) {
+    Xc[k * ph] = (hx[k] - mean) / sd;
+    for (int j = 0; j < pw; ++j) Xc[k * ph + 1 + j] = W[static_cast<std::size_t>(present[k]) * pw + j];
+  }
+  CoxResult cx = cox_fit(tt, ee, Xc, ph);
+  if (!cx.ok) return res;
+  res.log_hr_sd = cx.beta[0]; res.hr_sd = std::exp(cx.beta[0]); res.hr_se = cx.se[0];
   res.log_hr_unit = cx.beta[0] / sd;
   return res;
 }

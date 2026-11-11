@@ -78,6 +78,27 @@
 #' Images with a missing condition are left out of every step: the choice of the side, the between-image
 #' variance and the tests.
 #'
+#' A test (of any condition) is not done when its Satterthwaite degrees of freedom are below 1 or not finite
+#' (`not_tested` is `"too_few_df"`): its p-value is `NA` and it is left out of the BH adjustment.
+#'
+#' **Survival.** With a `survival::Surv` outcome, a null Cox model of the outcome on the `covariates` gives each
+#' patient's martingale residual M, and the effect is regressed on M (with the covariates, and with
+#' `adjustAbundance = TRUE` the log share of the `from` type) by the same frailty model, CR2 variance and
+#' Satterthwaite df; its numerator is Cox's score statistic. The covariates are on both sides: in the null Cox model
+#' (an image-level covariate as its average over the patient's images) and in the model of the effect. Patients with
+#' no outcome (or with a covariate missing in all their images) are left out before anything else, so the result is
+#' that of the data without them. A survival outcome is tested at one radius. A pair is tested when, among its
+#' informative patients (those with an outcome and an image row for the pair), there is at least one death
+#' (`"no_deaths"`) and one survivor (`"no_survivors"`), and at least q + 2 patients (`"too_few_units"`), q being the
+#' number of columns of the patient design: 2 (intercept and M), plus one per covariate column, plus one more for
+#' each column that varies between a patient's images (the abundance share always does): 4 patients without
+#' covariates, 5 with one patient-level covariate, 6 with the abundance share. `n_deaths` reports the informative
+#' patients' deaths; with fewer than 3 the test has little power. The hazard ratio (`hazard_ratio_sd`, per standard
+#' deviation of the effect; `log_hr_per_unit`, per unit) is from a Cox model of the outcome on each patient's
+#' shrunken effect (from the frailty model of the effect on the covariates, without M) and the covariates; its
+#' standard error `log_hr_se` is model-based and approximate (it ignores that the shrunken effect is estimated), so
+#' the score test's `p_value` is the only p-value of a pair.
+#'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
 #' (Canete et al. 2022). With `cellWeights` (see [getPairwise()]), cells enter each label with a weight,
@@ -99,12 +120,12 @@
 #' @param covariates Image- or patient-level columns to adjust for (cell method: added to the design of
 #'   the excess, with the patient average of an image-level one (see Details), and the effect of each is reported
 #'   as `<column>_effect` and `<column>_p_value`, for an image-level one its slope within patients; survival: added
-#'   to the null Cox model).
+#'   to the null Cox model and to the model of the effect, see Details).
 #' @param imageID,cellType,spatialCoords Column names of the image, cell type and coordinates. For a Zarr
 #'   store, `spatialCoords` is either two `obs` columns or the name of one `obsm` array (its first two columns).
 #' @param r Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
-#'   radius (default 50), or several to be combined by `combine`. Image method: the radii of the L
-#'   function (default 20, 50 and 100).
+#'   radius (default 50), or several to be combined by `combine` (two conditions only; a survival outcome takes one
+#'   radius). Image method: the radii of the L function (default 20, 50 and 100).
 #' @param from,to Cell types to test (all ordered pairs by default).
 #' @param method `"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR test).
 #' @param effect Cell method: `"allocation"` (the default), the extra fraction of `to` cells with at least
@@ -177,11 +198,15 @@
 #'   Bonferroni-corrected within the pair at the Benjamini-Bogomolov level (see [topFollowUps()]). With a continuous
 #'   condition, one row per pair: the effect at the condition's mean (`excess_mean`) and its slope per unit of the
 #'   condition (`excess_slope`), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
+#'   With a survival outcome, one row per pair: the score test (`score_coefficient`, the coefficient of M, with
+#'   `score_se`, `score_df`, `p_value`, `p_adj`), the hazard ratio (`hazard_ratio_sd`, `log_hr_sd`, `log_hr_se`,
+#'   `log_hr_per_unit`), `tau2`, the informative patients' deaths (`n_deaths`) and, with `adjustAbundance = TRUE`,
+#'   the test without the abundance share (`unadjusted_p_value`, `unadjusted_hazard_ratio_sd`, `unadjusted_p_adj`).
 #'   Every requested pair has a row: `not_tested` gives why a pair (or, in `$radiusResults`, a radius) was not tested
-#'   (`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"` or `"no_variation"`; for a continuous
-#'   condition also `"too_few_units"` or `"design_not_full_rank"` (the condition does not vary); `NA` when it
-#'   was), and its p-value is then `NA` and not counted in the BH adjustment. `$effect` records which effect was
-#'   estimated.
+#'   (`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"`, `"no_variation"` or `"too_few_df"`; for a
+#'   continuous condition also `"too_few_units"` or `"design_not_full_rank"` (the condition does not vary); for
+#'   survival also `"no_deaths"`, `"no_survivors"` or `"too_few_units"`; `NA` when it was), and its p-value is then
+#'   `NA` and not counted in the BH adjustment. `$effect` records which effect was estimated.
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
 #'   Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 #'
@@ -352,13 +377,20 @@ spicy <- function(cells,
   }
 
   radii <- if (is.null(k)) sort(unique(r)) else NA
-  if (length(radii) > 1L && !survival && (length(ctx$levels) > 2L || isTRUE(ctx$continuous)))
+  if (length(radii) > 1L && survival)
+    stop("a survival outcome is tested at one radius: give one `r`.", call. = FALSE)
+  if (length(radii) > 1L && (length(ctx$levels) > 2L || isTRUE(ctx$continuous)))
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
+  if (survival) {
+    # the null Cox model; patients with no outcome are left out of every step (the side, tau2_image and the tests)
+    sv <- .cell_survival_setup(ctx, pheno, Z_extra)
+    ctx <- .cell_survival_images(ctx, sv)
+  }
   if (weighted) {
     res <- .cell_weighted(ctx, memb, pairs, radii, effect, variance, adjustAbundance, Z_extra, survival,
-                          if (survival) .cell_survival_setup(ctx, pheno, covariates), covariates)
+                          if (survival) sv)
   } else if (survival) {
-    res <- .cell_survival(ctx, pairs, radii, k, pheno, covariates, cores, adjustAbundance, effect)
+    res <- .cell_survival(ctx, pairs, radii, k, sv, Z_extra, cores, adjustAbundance, effect)
   } else {
     # several radii: one neighbour search at the largest radius gives every radius's graph
     graphs <- if (length(radii) > 1L) .cell_graphs_radii(ctx, radii, effect) else
@@ -469,63 +501,88 @@ spicy <- function(cells,
   .cell_order_columns(tab)
 }
 
-## Survival: score test and the hazard ratio of the shrunken excess, per pair.
-.cell_survival <- function(ctx, pairs, radii, k, pheno, covariates, cores, adjust, effect = "allocation") {
-  sv <- .cell_survival_setup(ctx, pheno, covariates)
-  rr <- radii[1]
-  if (length(radii) > 1L) message("survival uses one radius; using r = ", rr, ".")
-  g <- .cell_graph(ctx, pairs, r = if (is.na(rr)) NULL else rr, k = k, label_clustering = FALSE, n_threads = cores,
+## Survival: score test and the hazard ratio of the shrunken excess, per pair, at one radius (or k).
+.cell_survival <- function(ctx, pairs, r, k, sv, Z_extra, cores, adjust, effect = "allocation") {
+  g <- .cell_graph(ctx, pairs, r = if (is.na(r)) NULL else r, k = k, label_clustering = FALSE, n_threads = cores,
                    effect = effect)
   g$image_heterogeneity <- TRUE
-  fits <- lapply(pairs, function(p) .cell_survival_test(ctx, .cell_rows(ctx, g, p[1], p[2]), p[1], p[2], sv, adjust, covariates))
-  list(table = .cell_survival_table(fits, adjust, covariates), fits = fits)
+  fits <- lapply(pairs, function(p) .cell_survival_test(ctx, .cell_rows(ctx, g, p[1], p[2]), p[1], p[2], sv, adjust, Z_extra))
+  list(table = .cell_survival_table(fits, adjust, !is.null(Z_extra)), fits = fits)
 }
 
-## The null Cox model (covariates only) and its martingale residuals, one per patient.
-.cell_survival_setup <- function(ctx, pheno, covariates) {
-  unit_first <- match(seq_along(ctx$unit_labels) - 1L, ctx$image_unit)
+## The null Cox model and its martingale residuals, one per patient. Its covariates W are the covariates' columns
+## (Z_extra, images x columns, NA where missing) averaged over each patient's images: a patient-level covariate's value,
+## and the patient's mean of an image-level one. The same W enter the hazard ratio's Cox model. A patient with no
+## outcome, or with a covariate missing in every image, has no residual and takes no part in any test (has_outcome).
+.cell_survival_setup <- function(ctx, pheno, Z_extra = NULL) {
+  m <- length(ctx$unit_labels)
+  unit_first <- match(seq_len(m) - 1L, ctx$image_unit)
   time <- pheno$.time[unit_first]; event <- as.integer(pheno$.event[unit_first])
-  if (any(tapply(pheno$.time, ctx$image_unit, function(z) length(unique(z))) > 1L))
+  if (any(tapply(pheno$.time, ctx$image_unit, function(z) length(unique(z))) > 1L) ||
+      any(tapply(pheno$.event, ctx$image_unit, function(z) length(unique(z))) > 1L))
     stop("the survival outcome must be constant within each subject.", call. = FALSE)
-  W <- if (is.null(covariates)) matrix(0, length(time), 0) else {
-    pu <- pheno[unit_first, , drop = FALSE]
-    stats::model.matrix(stats::reformulate(covariates), stats::model.frame(stats::reformulate(covariates), pu,
-                        na.action = stats::na.pass))[, -1, drop = FALSE] }
+  W <- if (is.null(Z_extra)) matrix(0, m, 0) else {
+    uf <- factor(ctx$image_unit, levels = seq_len(m) - 1L)
+    matrix(vapply(seq_len(ncol(Z_extra)), function(j) as.vector(tapply(Z_extra[, j], uf, mean, na.rm = TRUE)), numeric(m)),
+           m, ncol(Z_extra), dimnames = list(NULL, colnames(Z_extra))) }
   ok_u <- is.finite(time) & !is.na(event) & stats::complete.cases(W)
+  if (!any(ok_u)) stop("no patient has a survival outcome (and every covariate).", call. = FALSE)
   null <- stats_cox_fit(time[ok_u], event[ok_u], W[ok_u, , drop = FALSE])
   if (!null$ok) stop("the null Cox model did not converge.", call. = FALSE)
-  M <- rep(NA_real_, length(time)); M[ok_u] <- null$martingale
-  list(M = M, time = time, event = event)
+  M <- rep(NA_real_, m); M[ok_u] <- null$martingale
+  W[!ok_u, ] <- NA_real_
+  list(M = M, time = time, event = event, W = W, has_outcome = ok_u)
 }
 
-## The survival test of one pair on given image rows.
-.cell_survival_test <- function(ctx, rows, f, t, sv, adjust, covariates) {
+## The context with the images of patients with no outcome taken out (as images with a missing condition): they give
+## no row, so they play no part in a pair's side or its tau2_image.
+.cell_survival_images <- function(ctx, sv) {
+  ctx$image_group <- ifelse(sv$has_outcome[ctx$image_unit + 1L], 0L, NA_integer_)
+  ctx
+}
+
+## The survival test of one pair on given image rows: the score test on (1, M_i, the abundance share, the covariates)
+## and the hazard ratio (the core's survival_test), and the same without the abundance share (unadjusted_*). Rows of
+## patients with no outcome are left out (spicy() leaves them out before the side and the image random effect).
+.cell_survival_test <- function(ctx, rows, f, t, sv, adjust, Z_extra = NULL) {
   m <- length(ctx$unit_labels)
-  u <- stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, numeric(0))
+  keep <- sv$has_outcome[rows$unit + 1L]
+  if (!all(keep)) {
+    r0 <- rows; rows <- rows[keep, , drop = FALSE]
+    for (nm in c("side", "tau2_image", "share")) attr(rows, nm) <- attr(r0, nm)
+  }
+  ze <- if (is.null(Z_extra)) matrix(0, nrow(rows), 0) else Z_extra[rows$img + 1L, , drop = FALSE]
+  u <- stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, ze, sv$W)
   x <- if (adjust) .cell_share(ctx, rows, f) else numeric(0)
   # the adjusted test only where the unadjusted one was done (not where the excess has no variation: no_variation)
-  s <- if (u$ok && length(x) && stats::var(x) > 0) stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, x) else u
+  s <- if (u$ok && length(x) && stats::var(x) > 0)
+    stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, cbind(abundance = x, ze), sv$W) else u
   list(from = f, to = t, ok = s$ok, reason = s$reason, rows = rows, surv = s, unadjusted_surv = u,
-       adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(covariates)) "covariates"), collapse = "+"))
+       adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(Z_extra)) "covariates"), collapse = "+"))
 }
 
-.cell_survival_table <- function(fits, adjust, covariates) {
-  ok <- vapply(fits, `[[`, TRUE, "ok")
-  tab <- do.call(rbind, lapply(fits[ok], function(o) { s <- o$surv
-    row <- data.frame(from = o$from, to = o$to, score_coefficient = s$score_coef, score_se = s$score_se, score_df = s$score_df,
-               p_value = s$score_p, hazard_ratio_sd = s$hr_sd, log_hr_sd = s$log_hr_sd, log_hr_se = s$hr_se,
-               hr_p_value = s$hr_p, log_hr_per_unit = s$log_hr_unit, tau2 = s$tau2,
-               adjusted_for = if (nzchar(o$adjusted_for)) o$adjusted_for else "none",
-               unadjusted_p_value = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$score_p else NA_real_,
-               unadjusted_hazard_ratio_sd = if (isTRUE(o$unadjusted_surv$ok)) o$unadjusted_surv$hr_sd else NA_real_,
-               stringsAsFactors = FALSE)
+## One row per pair, tested or not (not_tested: why not, NA when it was; a pair not tested has every test column NA).
+.cell_survival_table <- function(fits, adjust, has_covariates) {
+  tab <- .cell_rbind_fill(lapply(fits, function(o) {
+    s <- o$surv; ok <- isTRUE(o$ok); u <- o$unadjusted_surv
+    v <- function(z) if (ok) z else NA_real_
+    row <- data.frame(from = o$from, to = o$to, score_coefficient = v(s$score_coef), score_se = v(s$score_se),
+                      score_df = v(s$score_df), p_value = v(s$score_p), hazard_ratio_sd = v(s$hr_sd),
+                      log_hr_sd = v(s$log_hr_sd), log_hr_se = v(s$hr_se), log_hr_per_unit = v(s$log_hr_unit),
+                      tau2 = v(s$tau2), n_deaths = if (is.null(s$n_deaths)) NA_integer_ else as.integer(s$n_deaths),
+                      not_tested = if (ok) NA_character_ else if (length(o$reason) && nzchar(o$reason)) o$reason else "not_tested",
+                      adjusted_for = if (nzchar(o$adjusted_for)) o$adjusted_for else "none",
+                      unadjusted_p_value = v(u$score_p), unadjusted_hazard_ratio_sd = v(u$hr_sd),
+                      stringsAsFactors = FALSE)
     if (!is.null(o$parent)) row <- cbind(row[1:2], parent = o$parent, row[-(1:2)])
-    .cell_add_side(row, o) }))
+    row <- .cell_add_side(row, o)
+    if (!ok && !is.null(row$side)) row$side <- NA_character_
+    row }))
   if (!is.null(tab)) {
     tab$p_adj <- stats::p.adjust(tab$p_value, "BH"); tab$unadjusted_p_adj <- stats::p.adjust(tab$unadjusted_p_value, "BH")
-    # the unadjusted columns are the test without the abundance adjustment (covariates enter the null Cox model of both)
+    # the unadjusted columns are the test without the abundance adjustment (covariates are on both sides of both)
     if (!adjust) tab[grep("^unadjusted_", names(tab), value = TRUE)] <- NULL
-    if (!adjust && is.null(covariates)) tab$adjusted_for <- NULL
+    if (!adjust && !has_covariates) tab$adjusted_for <- NULL
     rownames(tab) <- .cell_labels(tab)
   }
   tab

@@ -12,7 +12,8 @@
 #'     \code{<covariate>_p_value}, \code{abundance_effect}) and the unadjusted test (\code{unadjusted_difference},
 #'     \code{unadjusted_se}, \code{unadjusted_df}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}). For
 #'     survival: \code{score_coefficient}, \code{p_value}, \code{p_adj}, \code{hazard_ratio_sd},
-#'     \code{hr_p_value} and, with \code{adjustAbundance = TRUE}, the p-value and hazard ratio without it. With several radii: \code{r}, the radius with the strongest evidence, and
+#'     \code{log_hr_se} (model-based and approximate), \code{n_deaths}, \code{not_tested} and, with
+#'     \code{adjustAbundance = TRUE}, the p-value and hazard ratio without it. With several radii: \code{r}, the radius with the strongest evidence, and
 #'     \code{p_value_best_radius}.}
 #'   \item{\code{radiusResults}}{with several radii, the table at every radius.}
 #'   \item{\code{followUpResults}, \code{alpha}}{with more than two conditions, the follow-up comparisons of two

@@ -215,6 +215,8 @@ PairTests pair_tests(const PairTestInput& in) {
       if (!not_tested && rules.min_effective_units && u.se > 0 &&
           few_effective_units(u.n_eff, u.n_units))
         not_tested = "few_effective_units";
+      // Satterthwaite df below kMinDf or not finite ("too_few_df")
+      if (!not_tested && u.se > 0 && too_few_df(u.df)) not_tested = "too_few_df";
       if (!not_tested && !(u.se > 0)) res.not_tested[o] = "no_variation";
       if (not_tested) {
         res.not_tested[o] = not_tested;
@@ -238,6 +240,17 @@ PairTests pair_tests(const PairTestInput& in) {
                              in.image_heterogeneity ? &raw : nullptr);
         if (d.design == 2 && !fit) res.p[o] = kNaN;
         res.design[o] = d.design; res.abundance[o] = d.abundance;
+        if (d.design == 1 && too_few_df(d.tests[0].df)) {
+          // the adjusted design's df are too few: the radius is not tested, as for the rules above
+          res.not_tested[o] = "too_few_df"; res.p[o] = kNaN; res.u_p[o] = kNaN;
+          res.design[o] = 2; res.design_reason[o] = "too_few_df";
+          if (several) {
+            at.push_back(k);
+            main.push_back({kNaN, d.tests[0].df, kNaN, u.influence});
+            unadj.push_back({kNaN, u.df, kNaN, u.influence});
+          }
+          continue;
+        }
         if (d.design == 2) res.design_reason[o] = d.tests[0].reason;
         if (d.design == 1) {
           const DesignResult& x = d.tests[0];

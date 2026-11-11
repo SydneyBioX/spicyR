@@ -168,13 +168,14 @@ test_that("Cox (Efron ties) matches survival::coxph", {
 test_that("the survival score test is the design test on the martingale residuals", {
   set.seed(6); tm <- stats::rexp(m_units); ev <- rbinom(m_units, 1, 0.8)
   M <- spicyR:::stats_cox_fit(tm, ev, matrix(0, m_units, 0))$martingale
-  s <- spicyR:::stats_survival_test(rows, rows$unit, m_units, M, tm, ev, numeric(0))
+  none <- function(n) matrix(0, n, 0)
+  s <- spicyR:::stats_survival_test(rows, rows$unit, m_units, M, tm, ev, none(nrow(rows)), none(m_units))
   d <- spicyR:::stats_design_test(rows, rows$unit, m_units, cbind(1, M[rows$unit + 1L]), c(0, 1), -1)
   expect_true(s$ok)
   expect_equal(s$score_p, d$p, tolerance = 1e-12)
   # adjusted for abundance: the log share added to the design, tau2 held at the unadjusted value
   x <- spicyR:::.cell_share(ctx, rows, "T")
-  sa <- spicyR:::stats_survival_test(rows, rows$unit, m_units, M, tm, ev, x)
+  sa <- spicyR:::stats_survival_test(rows, rows$unit, m_units, M, tm, ev, cbind(x), none(m_units))
   da <- spicyR:::stats_design_test(rows, rows$unit, m_units, cbind(1, M[rows$unit + 1L], x - mean(x)), c(0, 1, 0), d$tau2)
   expect_equal(sa$score_p, da$p, tolerance = 1e-12)
   pheno <- unique(cells[, c("patient", "imageID")])
@@ -700,7 +701,8 @@ test_that("more than two conditions and survival do not test a pair with no vari
     expect_false(o$ok); expect_identical(o$reason, "no_variation")
     rows <- spicyR:::.cell_rows(ctx, g, "tumour", "T")
     set.seed(2); m <- length(ctx$image_labels)
-    s <- spicyR:::stats_survival_test(rows, rows$unit, m, rnorm(m), rexp(m), rbinom(m, 1, 0.7), numeric(0))
+    s <- spicyR:::stats_survival_test(rows, rows$unit, m, rnorm(m), rexp(m), rbinom(m, 1, 0.7), matrix(0, nrow(rows), 0),
+                                      matrix(0, m, 0))
     expect_false(s$ok); expect_identical(s$reason, "no_variation")
   }
   # at r = 4 the pair varies and is tested

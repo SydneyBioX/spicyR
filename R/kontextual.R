@@ -78,7 +78,7 @@ kontextualEngine <- function(cells,
                        survival = survival, dataset = TRUE)
   pheno <- ctx$pheno
   Z_extra <- NULL
-  if (!is.null(covariates) && !survival) {
+  if (!is.null(covariates)) {
     miss <- setdiff(covariates, names(pheno))
     if (length(miss)) stop("covariates not found: ", paste(miss, collapse = ", "), call. = FALSE)
     Z_extra <- stats::model.matrix(stats::reformulate(covariates), stats::model.frame(stats::reformulate(covariates), pheno,
@@ -86,7 +86,9 @@ kontextualEngine <- function(cells,
     Z_extra <- sweep(Z_extra, 2, colMeans(Z_extra, na.rm = TRUE))
   }
 
-  sv <- if (survival) .cell_survival_setup(ctx, pheno, covariates)
+  sv <- if (survival) .cell_survival_setup(ctx, pheno, Z_extra)
+  # survival: patients with no outcome are left out of every step (their images give no row), as in spicy()
+  if (survival) ctx <- .cell_survival_images(ctx, sv)
   dataset_build_radius_index(ctx$data, r)
   if (weighted)
     return(.kontextual_weighted(ctx, memb, trip, r, window, edgeCorrect, condition, subject, survival, sv,
@@ -113,12 +115,12 @@ kontextualEngine <- function(cells,
       rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi,
                                           if (self) self_sums else matrix(numeric(0), 0, 0))
       rows <- .kontextual_rows(ctx, rows, ctx$counts[, code(tr$to[i]) + 1L], sums[[i]][7, ], survival)
-      o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
+      o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, Z_extra)
            else .cell_rows_test(ctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
       o }))
   }
-  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, covariates)
+  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, !is.null(covariates))
          else .cell_table(fits, ctx, adjustAbundance || !is.null(covariates))
   out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
@@ -127,12 +129,12 @@ kontextualEngine <- function(cells,
 }
 
 ## A triple's image rows for the test, as .cell_rows() makes spicy()'s: the unit and condition of each row (images
-## with a missing condition give no row), then each row as its effect (O - E) / D with variance v / D^2 + omega2, the
+## with a missing condition, or with survival of a patient with no outcome, give no row), then each row as its effect (O - E) / D with variance v / D^2 + omega2, the
 ## image random effect within patients (Paule-Mandel). n_to, n_parent: per image, the `to` cells (or weight) and the
 ## parent's cells; their log ratio is the abundance covariate (.cell_share()).
 .kontextual_rows <- function(ctx, rows, n_to, n_parent, survival) {
   rows$unit <- ctx$image_unit[rows$img + 1L]
-  if (!survival) {
+  if (!is.null(ctx$image_group)) {
     rows$group <- ctx$image_group[rows$img + 1L]
     rows <- rows[!is.na(rows$group), , drop = FALSE]
   }
@@ -198,12 +200,12 @@ kontextualEngine <- function(cells,
     fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
       s <- dataset_kontextual_sums_weighted(ctx$data, col(tr$from[i]), col(tr$to[i]), FALSE)
       rows <- .kontextual_rows(ctx, stats_kontextual_image_rows_weighted(s), s[10, ], s[7, ], survival)
-      o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
+      o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, Z_extra)
            else .cell_rows_test(wctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
       o }))
   }
-  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, covariates)
+  tab <- if (survival) .cell_survival_table(fits, adjustAbundance, !is.null(covariates))
          else .cell_table(fits, ctx, adjustAbundance || !is.null(covariates))
   out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)

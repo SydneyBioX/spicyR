@@ -112,7 +112,8 @@ test_that("survival outcomes: the score test on the reference rows", {
   pat <- cs$patient[match(ids, cs$imageID)]; up <- unique(pat); rows$unit <- match(pat, up) - 1L
   rows <- ref_image_heterogeneity(rows, rows$unit)   # the image random effect, as spicy()'s survival test
   null <- spicyR:::stats_cox_fit(unname(tm[up]), unname(ev[up]), matrix(0, length(up), 0))
-  ref <- spicyR:::stats_survival_test(rows, rows$unit, length(up), null$martingale, unname(tm[up]), unname(ev[up]), numeric(0))
+  ref <- spicyR:::stats_survival_test(rows, rows$unit, length(up), null$martingale, unname(tm[up]), unname(ev[up]),
+                                      matrix(0, nrow(rows), 0), matrix(0, length(up), 0))
   expect_equal(tab$p_value, ref$score_p, tolerance = 1e-8)
 })
 

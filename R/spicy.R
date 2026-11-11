@@ -693,7 +693,9 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     novar <- sum(tab$adjusted_for %||% character(0) == "none (no_variation)")
     noinfo <- sum(tab$adjusted_for %||% character(0) == "none (no_information)")
     few <- sum(tab$adjusted_for %||% character(0) == "none (few_effective_units)")
-    fallback <- sum(startsWith(tab$adjusted_for %||% character(0), "none (")) - novar - noinfo - few
+    tdf <- sum(tab$adjusted_for %||% character(0) == "none (too_few_df)")
+    survival <- !is.null(df$survivalOutcome)
+    fallback <- if (survival) 0 else sum(startsWith(tab$adjusted_for %||% character(0), "none (")) - novar - noinfo - few - tdf
     adj <- adj[!startsWith(adj, "none")]
     if (length(adj)) cat("Adjusted for: ", paste(unique(unlist(strsplit(adj, "+", fixed = TRUE))), collapse = ", "),
                          if (!is.null(tab$unadjusted_p_adj)) " (unadjusted test in the unadjusted_* columns)", "\n", sep = "")
@@ -703,9 +705,12 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
                     "are not tested\n", sep = "")
     if (few) cat(few, " pairs have a condition with too few effective patients (adjusted_for ",
                  "\"none (few_effective_units)\") and are not tested\n", sep = "")
-    untested <- if (is.null(tab$adjusted_for) && is.null(df$survivalOutcome)) sum(is.na(tab$p_value)) else 0
-    if (untested) cat(untested, " pairs are not tested (p_value NA: no variation, a condition with no informative ",
-                      "patient, or one with too few effective patients)\n", sep = "")
+    if (tdf) cat(tdf, " pairs have fewer than 1 degree of freedom (adjusted_for \"none (too_few_df)\") and are not tested\n",
+                 sep = "")
+    untested <- if (survival) sum(!is.na(tab$not_tested)) else if (is.null(tab$adjusted_for)) sum(is.na(tab$p_value)) else 0
+    if (untested && survival) cat(untested, " pairs are not tested (p_value NA; see not_tested)\n", sep = "")
+    else if (untested) cat(untested, " pairs are not tested (p_value NA: no variation, a condition with no informative ",
+                           "patient, one with too few effective patients, or too few degrees of freedom)\n", sep = "")
     cat("BH-adjusted p < 0.05: ", sum(tab$p_adj < 0.05, na.rm = TRUE), " pairs", sep = "")
     if (!is.null(tab$unadjusted_p_adj)) cat(" (", sum(tab$unadjusted_p_adj < 0.05, na.rm = TRUE), " without adjustment)", sep = "")
     if (!is.null(tab$overall_p_adj))

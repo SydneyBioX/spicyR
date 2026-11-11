@@ -52,14 +52,14 @@ if omitted, every image is its own patient.}
 \item{covariates}{Image- or patient-level columns to adjust for (cell method: added to the design of
 the excess, with the patient average of an image-level one (see Details), and the effect of each is reported
 as \verb{<column>_effect} and \verb{<column>_p_value}, for an image-level one its slope within patients; survival: added
-to the null Cox model).}
+to the null Cox model and to the model of the effect, see Details).}
 
 \item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates. For a Zarr
 store, \code{spatialCoords} is either two \code{obs} columns or the name of one \code{obsm} array (its first two columns).}
 
 \item{r}{Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
-radius (default 50), or several to be combined by \code{combine}. Image method: the radii of the L
-function (default 20, 50 and 100).}
+radius (default 50), or several to be combined by \code{combine} (two conditions only; a survival outcome takes one
+radius). Image method: the radii of the L function (default 20, 50 and 100).}
 
 \item{from, to}{Cell types to test (all ordered pairs by default).}
 
@@ -150,11 +150,15 @@ passes the rules below. For the pairs called by the overall test (\code{overall_
 Bonferroni-corrected within the pair at the Benjamini-Bogomolov level (see \code{\link[=topFollowUps]{topFollowUps()}}). With a continuous
 condition, one row per pair: the effect at the condition's mean (\code{excess_mean}) and its slope per unit of the
 condition (\code{excess_slope}), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
+With a survival outcome, one row per pair: the score test (\code{score_coefficient}, the coefficient of M, with
+\code{score_se}, \code{score_df}, \code{p_value}, \code{p_adj}), the hazard ratio (\code{hazard_ratio_sd}, \code{log_hr_sd}, \code{log_hr_se},
+\code{log_hr_per_unit}), \code{tau2}, the informative patients' deaths (\code{n_deaths}) and, with \code{adjustAbundance = TRUE},
+the test without the abundance share (\code{unadjusted_p_value}, \code{unadjusted_hazard_ratio_sd}, \code{unadjusted_p_adj}).
 Every requested pair has a row: \code{not_tested} gives why a pair (or, in \verb{$radiusResults}, a radius) was not tested
-(\code{"one_patient_per_group"}, \code{"no_information"}, \code{"few_effective_units"} or \code{"no_variation"}; for a continuous
-condition also \code{"too_few_units"} or \code{"design_not_full_rank"} (the condition does not vary); \code{NA} when it
-was), and its p-value is then \code{NA} and not counted in the BH adjustment. \verb{$effect} records which effect was
-estimated.
+(\code{"one_patient_per_group"}, \code{"no_information"}, \code{"few_effective_units"}, \code{"no_variation"} or \code{"too_few_df"}; for a
+continuous condition also \code{"too_few_units"} or \code{"design_not_full_rank"} (the condition does not vary); for
+survival also \code{"no_deaths"}, \code{"no_survivors"} or \code{"too_few_units"}; \code{NA} when it was), and its p-value is then
+\code{NA} and not counted in the BH adjustment. \verb{$effect} records which effect was estimated.
 }
 \description{
 \code{spicy()} tests, for every ordered pair of cell types \code{from} → \code{to}, whether the co-localisation of
@@ -235,6 +239,27 @@ is not tested.
 
 Images with a missing condition are left out of every step: the choice of the side, the between-image
 variance and the tests.
+
+A test (of any condition) is not done when its Satterthwaite degrees of freedom are below 1 or not finite
+(\code{not_tested} is \code{"too_few_df"}): its p-value is \code{NA} and it is left out of the BH adjustment.
+
+\strong{Survival.} With a \code{survival::Surv} outcome, a null Cox model of the outcome on the \code{covariates} gives each
+patient's martingale residual M, and the effect is regressed on M (with the covariates, and with
+\code{adjustAbundance = TRUE} the log share of the \code{from} type) by the same frailty model, CR2 variance and
+Satterthwaite df; its numerator is Cox's score statistic. The covariates are on both sides: in the null Cox model
+(an image-level covariate as its average over the patient's images) and in the model of the effect. Patients with
+no outcome (or with a covariate missing in all their images) are left out before anything else, so the result is
+that of the data without them. A survival outcome is tested at one radius. A pair is tested when, among its
+informative patients (those with an outcome and an image row for the pair), there is at least one death
+(\code{"no_deaths"}) and one survivor (\code{"no_survivors"}), and at least q + 2 patients (\code{"too_few_units"}), q being the
+number of columns of the patient design: 2 (intercept and M), plus one per covariate column, plus one more for
+each column that varies between a patient's images (the abundance share always does): 4 patients without
+covariates, 5 with one patient-level covariate, 6 with the abundance share. \code{n_deaths} reports the informative
+patients' deaths; with fewer than 3 the test has little power. The hazard ratio (\code{hazard_ratio_sd}, per standard
+deviation of the effect; \code{log_hr_per_unit}, per unit) is from a Cox model of the outcome on each patient's
+shrunken effect (from the frailty model of the effect on the covariates, without M) and the covariates; its
+standard error \code{log_hr_se} is model-based and approximate (it ignores that the shrunken effect is estimated), so
+the score test's \code{p_value} is the only p-value of a pair.
 
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given
