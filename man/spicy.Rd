@@ -28,6 +28,7 @@ spicy(
   cellWeights = NULL,
   selfVariance = c("sampled", "exact", "geometricSampled", "geometric"),
   selfVarianceCells = 50,
+  alpha = 0.05,
   ...
 )
 }
@@ -115,6 +116,9 @@ neighbours shared by nearby cells: \code{"sampled"} (the default), \code{"exact"
 \item{selfVarianceCells}{The number of cells sampled in each image for \code{selfVariance = "sampled"} or
 \code{"geometricSampled"} (every cell when an image has no more).}
 
+\item{alpha}{Cell method with more than two conditions: the level of the gate for the follow-up comparisons (pairs
+whose \code{overall_p_adj} is at most \code{alpha} are followed up; see \code{\link[=topFollowUps]{topFollowUps()}}). Default 0.05.}
+
 \item{...}{Arguments of the image method: \code{sigma}, \code{alternateResult}, \code{minLambda}, \code{weights},
 \code{weightsByPair}, \code{weightFactor}, \code{weightZThreshold}, \code{window}, \code{window.length}, \code{edgeCorrect},
 \code{includeZeroCells}, \code{verbose}, \code{BPPARAM}. Supplying \code{alternateResult} selects the image method.}
@@ -129,7 +133,12 @@ between-image variance (\code{tau2_image}) and, when the test was adjusted, what
 and p-value of each adjustment, and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}).
 With more than two groups, one row per pair and level against the reference, and the overall test of the pair
 (\code{overall_F} on \code{overall_df1} and \code{overall_df2} df, \code{overall_p_value}, \code{overall_p_adj}: the CR2 Wald test of
-every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky). With a continuous
+every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky 2015; Pustejovsky and
+Tipton 2018, eqs. 12-13: the approximate Hotelling's T^2 test that all the condition means are equal, which does
+not depend on the reference; with two levels it is the t-test, F = t^2). A pair is tested only when every level
+passes the rules below. For the pairs called by the overall test (\code{overall_p_adj} at most \code{alpha}),
+\verb{$followUpResults} compares every two levels, each by the two-condition test on the patients of those two levels,
+Bonferroni-corrected within the pair at the Benjamini-Bogomolov level (see \code{\link[=topFollowUps]{topFollowUps()}}). With a continuous
 condition, one row per pair: the effect at the condition's mean (\code{excess_mean}) and its slope per unit of the
 condition (\code{excess_slope}), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
 Every requested pair has a row: \code{not_tested} gives why a pair (or, in \verb{$radiusResults}, a radius) was not tested

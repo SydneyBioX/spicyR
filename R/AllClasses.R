@@ -15,6 +15,8 @@
 #'     \code{hr_p_value} and, with \code{adjustAbundance = TRUE}, the p-value and hazard ratio without it. With several radii: \code{r}, the radius with the strongest evidence, and
 #'     \code{p_value_best_radius}.}
 #'   \item{\code{radiusResults}}{with several radii, the table at every radius.}
+#'   \item{\code{followUpResults}, \code{alpha}}{with more than two conditions, the follow-up comparisons of two
+#'     levels for the pairs called by the overall test at level \code{alpha} (see \code{\link{topFollowUps}}).}
 #'   \item{\code{pairwiseAssoc}}{a list with, for every pair, the effect in every image (\code{NA} where the pair
 #'     could not be measured).}
 #'   \item{\code{effect}}{\code{"allocation"} (the extra fraction of \code{to} cells with a \code{from} cell
