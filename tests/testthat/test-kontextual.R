@@ -215,3 +215,26 @@ test_that("self triples through the engine: the rows with the exact variance, th
   ref <- spicyR:::stats_excess_test(h, h$unit, h$group, length(ctx$unit_labels), TRUE, "cr2", FALSE)
   expect_equal(res["T__T__lymphoid", "p_value"], ref$p, tolerance = 1e-8)
 })
+
+test_that("more than two conditions: a follow-up is kontextualEngine() on the patients of its two levels", {
+  # Kontextual rows go through spicy()'s image random effect (.cell_image_effect), so each follow-up re-estimates
+  # tau2_image on its two levels' patients, and the abundance share stays Kontextual's
+  k3 <- sim_cells(n_pat = 16, seed = 4); k3$condition <- as.character(k3$condition)   # (enough power to call a pair)
+  k3$condition[k3$patient %in% sprintf("A%02d", 1:8)] <- "C"
+  p3 <- make_parent_df(unique(k3$cellType), parent, "lymphoid")
+  for (adjust in c(FALSE, TRUE)) {
+    res <- kontextualEngine(k3, p3, condition = "condition", subject = "patient", r = 30, adjustAbundance = adjust)
+    fu <- res$followUpResults
+    expect_gt(nrow(fu), 0)
+    for (lv in list(c("A", "B"), c("A", "C"), c("B", "C"))) {
+      sub <- k3[k3$condition %in% lv, ]; sub$condition <- factor(sub$condition, levels = lv)
+      two <- kontextualEngine(sub, p3, condition = "condition", subject = "patient", r = 30,
+                              adjustAbundance = adjust)$cellResults
+      f <- fu[fu$level_ref == lv[1] & fu$level_comp == lv[2], ]
+      if (!nrow(f)) next
+      t2 <- two[match(paste(f$from, f$to, f$parent), paste(two$from, two$to, two$parent)), ]
+      for (col in c("excess_difference", "se", "df", "p_value", "tau2", "tau2_image"))
+        expect_equal(f[[col]], t2[[col]], tolerance = 1e-8, label = paste(adjust, paste(lv, collapse = ""), col))
+    }
+  }
+})

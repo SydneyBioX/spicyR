@@ -266,16 +266,22 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
   # allocation: the pair's side, chosen in the core from the images (attraction scales by 1 - q, avoidance by q)
   side <- if (g$effect == "allocation") { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
-  # images within a patient: each row becomes its effect (O - E) / n with variance v / n^2 + tau2_image
-  if (isTRUE(g$image_heterogeneity) && nrow(rows)) {
-    h <- stats_image_heterogeneity_rows(rows, rows$unit)
-    h$unit <- rows$unit; h$group <- rows$group
-    # more than two conditions: the raw rows, for the follow-up comparisons (their own between-image variance)
-    if (length(ctx$levels) > 2L && !isTRUE(ctx$continuous)) attr(h, "raw") <- rows
-    rows <- h
-  }
+  if (isTRUE(g$image_heterogeneity)) rows <- .cell_image_effect(ctx, rows)
   attr(rows, "side") <- side
   rows
+}
+
+## The image random effect of a pair's rows (spicy()'s .cell_rows() and cellWeights, and kontextualEngine()'s
+## .kontextual_rows()): each row becomes its effect (O - E) / n with variance v / n^2 + tau2_image (Paule-Mandel within
+## patients), keeping the unit, the condition and the attributes "tau2_image" and the rows' sampling variance s2 (for
+## an adjusted design's B2). With more than two conditions the raw rows go along (attr "raw") for the follow-up
+## comparisons, which estimate their own between-image variance.
+.cell_image_effect <- function(ctx, rows) {
+  if (!nrow(rows)) return(rows)
+  h <- stats_image_heterogeneity_rows(rows, rows$unit)
+  h$unit <- rows$unit; h$group <- rows$group
+  if (length(ctx$levels) > 2L && !isTRUE(ctx$continuous)) attr(h, "raw") <- rows
+  h
 }
 
 ## spicy() with soft cell type membership (cellWeights): for each `from` label, one neighbour pass gives the
@@ -303,12 +309,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
       rows$unit <- ctx$image_unit[rows$img + 1L]
       if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
       side <- if (allocation) { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
-      if (nrow(rows)) {
-        h <- stats_image_heterogeneity_rows(rows, rows$unit)
-        h$unit <- rows$unit; h$group <- rows$group
-        if (length(ctx$levels) > 2L && !isTRUE(ctx$continuous)) attr(h, "raw") <- rows
-        rows <- h
-      }
+      rows <- .cell_image_effect(ctx, rows)
       attr(rows, "side") <- side
       fits[[k]] <- if (survival) .cell_survival_test(wctx, rows, f, t, sv, adjust, Z_extra)
                    else .cell_rows_test(wctx, rows, f, t, TRUE, variance, adjust, Z_extra)
@@ -533,6 +534,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     s <- h
   }
   attr(s, "side") <- attr(rows, "side")
+  attr(s, "share") <- attr(rows, "share")   # Kontextual's abundance share, per image (NULL for spicy())
   sub <- ctx; sub$levels <- ctx$levels[c(a, b) + 1L]; sub$unit_labels <- ctx$unit_labels[sel + 1L]
   .cell_rows_test(sub, s, f, t, frailty, variance, adjust, Z_extra)
 }

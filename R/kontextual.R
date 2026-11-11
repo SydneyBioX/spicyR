@@ -114,7 +114,7 @@ kontextualEngine <- function(cells,
       self <- tr$from[i] == tr$to[i]
       rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi,
                                           if (self) self_sums else matrix(numeric(0), 0, 0))
-      rows <- .kontextual_rows(ctx, rows, ctx$counts[, code(tr$to[i]) + 1L], sums[[i]][7, ], survival)
+      rows <- .kontextual_rows(ctx, rows, ctx$counts[, code(tr$to[i]) + 1L], sums[[i]][7, ])
       o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, Z_extra)
            else .cell_rows_test(ctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
@@ -129,20 +129,18 @@ kontextualEngine <- function(cells,
 }
 
 ## A triple's image rows for the test, as .cell_rows() makes spicy()'s: the unit and condition of each row (images
-## with a missing condition, or with survival of a patient with no outcome, give no row), then each row as its effect (O - E) / D with variance v / D^2 + omega2, the
-## image random effect within patients (Paule-Mandel). n_to, n_parent: per image, the `to` cells (or weight) and the
-## parent's cells; their log ratio is the abundance covariate (.cell_share()).
-.kontextual_rows <- function(ctx, rows, n_to, n_parent, survival) {
+## with a missing condition, or with survival of a patient with no outcome, give no row), then the image random effect
+## of .cell_image_effect() (each row as its effect (O - E) / D with variance v / D^2 + omega2, the raw rows kept for
+## the follow-ups of more than two conditions). The test is then spicy()'s .cell_rows_test(), with its adjusted
+## designs and rules (too_few_df included). n_to, n_parent: per image, the `to` cells (or weight) and the parent's
+## cells; their log ratio is the abundance covariate (.cell_share()).
+.kontextual_rows <- function(ctx, rows, n_to, n_parent) {
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) {
     rows$group <- ctx$image_group[rows$img + 1L]
     rows <- rows[!is.na(rows$group), , drop = FALSE]
   }
-  if (nrow(rows)) {
-    h <- stats_image_heterogeneity_rows(rows, rows$unit)
-    h$unit <- rows$unit; h$group <- rows$group
-    rows <- h
-  }
+  rows <- .cell_image_effect(ctx, rows)
   attr(rows, "share") <- log(pmax(n_to, 0.5) / pmax(n_parent, 1))
   rows
 }
@@ -199,7 +197,7 @@ kontextualEngine <- function(cells,
     dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
     fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
       s <- dataset_kontextual_sums_weighted(ctx$data, col(tr$from[i]), col(tr$to[i]), FALSE)
-      rows <- .kontextual_rows(ctx, stats_kontextual_image_rows_weighted(s), s[10, ], s[7, ], survival)
+      rows <- .kontextual_rows(ctx, stats_kontextual_image_rows_weighted(s), s[10, ], s[7, ])
       o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, Z_extra)
            else .cell_rows_test(wctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
