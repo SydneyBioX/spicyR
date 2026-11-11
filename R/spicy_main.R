@@ -99,11 +99,17 @@
 #'   one `from` cell within `r`; or `"count"`, the number of extra `from` cells within `r` of each `to` cell.
 #'   With `k`, "within `r`" means among the cell's `k` nearest neighbours.
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
-#' @param combine Cell method with several radii: `"maxT"` (max-T with the sandwich correlation across
-#'   radii; up to 6 radii), `"davies"` (Davies' bound for the same maximum, for many radii) or `"cauchy"`
-#'   (Cauchy combination). The max-T p-value is the multivariate normal probability of the largest |z|, computed
-#'   by the quasi-Monte Carlo method of Genz and Bretz with an absolute error of about 1e-4 (by quadrature for two
-#'   radii); the same inputs always give the same value.
+#' @param combine Cell method with several radii: `"maxT"` (the default: max-T with the sandwich correlation across
+#'   radii, any number of radii), `"davies"` (Davies' upper bound for the same maximum; faster, slightly
+#'   conservative) or `"cauchy"` (Cauchy combination). The max-T p-value is the multivariate normal probability
+#'   that the largest |z| over the radii is at least the one observed, computed as a sum of first-exceedance terms
+#'   by the quasi-Monte Carlo method of Genz and Bretz to a relative error of about 0.1\% (by quadrature for two
+#'   radii); the same inputs always give the same value. A radius whose correlation with a smaller kept radius
+#'   exceeds 0.995 is left out. We recommend about 4 radii spanning the range of interest, none below about one
+#'   cell diameter: many closely spaced radii add little information (neighbouring radii are highly correlated),
+#'   cost some power, make the correlation hard to estimate with few patients and are slower (with 25 radii,
+#'   about a second per pair against a few milliseconds with 4); radii below a cell diameter can be liberal in
+#'   large cohorts.
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
@@ -323,8 +329,6 @@ spicy <- function(cells,
   radii <- if (is.null(k)) sort(unique(r)) else NA
   if (length(radii) > 1L && !survival && (length(ctx$levels) > 2L || isTRUE(ctx$continuous)))
     stop("several radii are supported for two conditions; give one `r`.", call. = FALSE)
-  if (combine == "maxT" && length(radii) > 6L && !survival)
-    stop("combine = \"maxT\" supports up to 6 radii; use combine = \"davies\" for more.", call. = FALSE)
   if (weighted) {
     res <- .cell_weighted(ctx, memb, pairs, radii, effect, variance, adjustAbundance, Z_extra, survival,
                           if (survival) .cell_survival_setup(ctx, pheno, covariates), covariates)

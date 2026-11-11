@@ -389,10 +389,12 @@ Restricting `from` and `to` does not change the results for the pairs that are t
 # Which radius?
 
 The scale of an interaction is rarely known in advance. Give several radii and spicyR tests them together, using a
-max-T test that accounts for the strong correlation between neighbouring radii. The exact max-T handles up to six
-radii; for a finer grid, such as every 2 µm up to 50 µm, `combine = "davies"` uses the bound of @davies1987hypothesis
-for the maximum over a smooth range of radii, which stays close to the exact max-T when neighbouring radii are highly
-correlated. `combine = "cauchy"`, the Cauchy combination of @liu2020cauchy, is another alternative.
+max-T test that accounts for the strong correlation between neighbouring radii. The max-T p-value is exact for any
+number of radii, but about four radii spanning the range of interest, none below about one cell diameter, are enough:
+neighbouring radii are highly correlated, so many closely spaced radii add little information, cost some power and
+are slower. `combine = "davies"` uses the bound of @davies1987hypothesis for the maximum over a smooth range of radii,
+which is faster and slightly conservative; `combine = "cauchy"`, the Cauchy combination of @liu2020cauchy, is another
+alternative.
 
 ```{r radii}
 resR <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = c(10, 25, 50, 75))
