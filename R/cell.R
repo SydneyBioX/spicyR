@@ -329,9 +329,11 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 
 ## ---- the test: adjusted for abundance and covariates by default ---------------------------
 
-## The log share of the counted type in each image row (the abundance covariate).
+## The log share of the counted type in each image row (the abundance covariate); for Kontextual, the share of the
+## `to` type within the parent, given per image by the rows (.kontextual_rows()).
 .cell_share <- function(ctx, rows, f) {
   i <- rows$img + 1L
+  if (!is.null(attr(rows, "share"))) return(attr(rows, "share")[i])
   total <- if (is.null(ctx$cells_per_image)) rowSums(ctx$counts) else ctx$cells_per_image
   log(pmax(ctx$counts[cbind(i, match(f, ctx$type_labels))], 0.5) / total[i])
 }

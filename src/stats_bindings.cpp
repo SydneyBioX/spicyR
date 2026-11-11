@@ -128,8 +128,10 @@ List stats_kontextual_image_rows_weighted(NumericMatrix sums) {
 }
 
 // [[Rcpp::export]]
-List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi) {
-  // sums: 7 x images (dataset_kontextual_sums); counts: images x types; psi: types x images, or 0 x 0
+List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi,
+                                 NumericMatrix self_sums) {
+  // sums: 7 x images (dataset_kontextual_sums); counts: images x types; psi: types x images, or 0 x 0;
+  // self_sums: 5 x images (dataset_kontextual_self_sums) for a self triple, or 0 x 0
   const int n_images = counts.nrow(), T = counts.ncol();
   std::vector<double> cnt(static_cast<std::size_t>(n_images) * T);
   for (int i = 0; i < n_images; ++i) for (int t = 0; t < T; ++t) cnt[static_cast<std::size_t>(i) * T + t] = counts(i, t);
@@ -138,7 +140,8 @@ List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int f
     ps.resize(static_cast<std::size_t>(T) * n_images);
     for (int t = 0; t < T; ++t) for (int i = 0; i < n_images; ++i) ps[static_cast<std::size_t>(t) * n_images + i] = psi(t, i);
   }
-  return rows_to(kontextual_image_rows(std::vector<double>(sums.begin(), sums.end()), cnt, T, n_images, from, to, ps));
+  return rows_to(kontextual_image_rows(std::vector<double>(sums.begin(), sums.end()), cnt, T, n_images, from, to, ps,
+                                       std::vector<double>(self_sums.begin(), self_sums.end())));
 }
 
 // [[Rcpp::export]]

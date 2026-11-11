@@ -16,7 +16,7 @@ kontextualEngine(
   imageID = "imageID",
   cellType = "cellType",
   spatialCoords = c("x", "y"),
-  adjustAbundance = TRUE,
+  adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   frailty = TRUE,
   labelClustering = FALSE,
@@ -34,7 +34,10 @@ containing \code{to}) and optionally \code{parent_name}, as made by \code{Statia
 
 \item{condition}{The column with each image's condition, or a \code{Surv} column of survival outcomes.}
 
-\item{subject, covariates, r, from, to, imageID, cellType, spatialCoords, adjustAbundance, variance, frailty, ref}{As for \code{\link[=spicy]{spicy()}}; \code{r} is one radius.}
+\item{subject, covariates, r, from, to, imageID, cellType, spatialCoords, variance, frailty, ref}{As for \code{\link[=spicy]{spicy()}}; \code{r} is one radius (several radii are not supported).}
+
+\item{adjustAbundance}{Adjust the test for the log share of the \code{to} type among the parent's cells in each image
+(default \code{FALSE}), as \code{\link[=spicy]{spicy()}}'s \code{adjustAbundance}; its effect is reported as \code{abundance_effect}.}
 
 \item{labelClustering}{Whether to multiply each image's variance by a factor for clustering of the \code{to} labels.
 Off by default: the factor puts most of the weight on a few images, and without it the test stays at or below
@@ -56,8 +59,11 @@ A \link[=SpicyResults-class]{SpicyResults} object with one row per triple (\code
 The computation behind \code{Statial::kontextualTest()}; use that function, whose help page describes the method.
 For each triple of \code{parentDf} it compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the \code{to} cells are a random choice among the parent's cells, and combines the
-images as \code{\link[=spicy]{spicy()}} does (frailty GEE, each condition's CR2 variance, enough effective patients per condition,
-abundance adjustment).
+images as \code{\link[=spicy]{spicy()}} does: each image's effect (observed minus expected, over Kontextual's normaliser) with the
+image random effect within patients (Paule-Mandel), then the frailty GEE across patients with each condition's
+CR2 variance and Satterthwaite df, and enough effective patients per condition. For a triple with \code{from == to}
+the statistic is quadratic in the labels, and its variance is the exact variance of observed minus expected under
+that random choice; an image where every choice gives the same value carries no information and is left out.
 }
 \examples{
 data("diabetesData")

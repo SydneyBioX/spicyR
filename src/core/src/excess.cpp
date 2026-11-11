@@ -315,10 +315,33 @@ ImageRows kontextual_image_rows_weighted(const std::vector<double>& sums, int n_
   return out;
 }
 
+double kontextual_self_variance(const double* ss, double M, double n) {
+  // the chance pi_k that k given candidates are all TARGET cells (n of the M candidates, without replacement)
+  auto pk = [&](int k) {
+    if (k > n) return 0.0L;
+    long double x = 1;
+    for (int i = 0; i < k; ++i) x *= (n - i) / (M - i);
+    return x;
+  };
+  const long double p1 = pk(1), p2 = pk(2), p3 = pk(3), p4 = pk(4);
+  const long double U = ss[0], U2 = ss[1], A2 = ss[2], B2 = ss[3], C2 = ss[4];
+  const long double p = std::max(n - 1, 0.0) / std::max(M - 1, 1.0);
+  // E O^2 over pairs of links sharing both cells, one cell (S1) and no cell (S0)
+  const long double S1 = A2 - 2 * U2, S0 = U * U - U2 - S1;
+  const long double EO2 = p2 * U2 + p3 * S1 + p4 * S0;
+  // R = O - p L with L = sum_l I_l r_l: E[O p L] and E[(p L)^2]; E R = 0
+  const long double EOL = p3 * U * U + (p2 - p3) * C2;
+  const long double EL2 = p1 * B2 + p2 * (U * U - B2);
+  return static_cast<double>(EO2 - 2 * p * EOL + p * p * EL2);
+}
+
 ImageRows kontextual_image_rows(const std::vector<double>& sums, const std::vector<double>& counts, int n_types,
-                                int n_images, int from, int to, const std::vector<double>& psi) {
+                                int n_images, int from, int to, const std::vector<double>& psi,
+                                const std::vector<double>& self_sums) {
   const int T = n_types;
   const bool self = from == to;
+  if (self && self_sums.size() != static_cast<std::size_t>(n_images) * 5)
+    throw std::invalid_argument("kontextual_image_rows: a self triple needs Dataset::kontextual_self_sums()");
   ImageRows out;
   for (int img = 0; img < n_images; ++img) {
     const double* s = sums.data() + static_cast<std::size_t>(img) * 7;
@@ -327,9 +350,20 @@ ImageRows kontextual_image_rows(const std::vector<double>& sums, const std::vect
     const double f = nT > 0 ? s[6] / nT : 0.0;
     const double O = s[0] * f, L = s[1] * f, Q = s[2] * f * f, M = s[3], D = s[4];
     const double p = self ? std::max(nT - 1, 0.0) / std::max(M - 1, 1.0) : nT / std::max(M, 1.0);
-    double v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(Q - L * L / std::max(M, 1.0), 0.0);
+    double v;
+    bool informative;
+    if (self) {
+      // O is quadratic in the labels: the exact variance of O - p L (DECISIONS 8 Nov 2026), 0 below rounding; an
+      // image where every relabelling gives the same O - p L (v <= 1e-10 (f U)^2) carries no information
+      const double* ss = self_sums.data() + static_cast<std::size_t>(img) * 5;
+      v = std::max(kontextual_self_variance(ss, M, nT), 0.0) * f * f;
+      informative = v > 1e-10 * (f * ss[0]) * (f * ss[0]);
+    } else {
+      v = p * (1 - p) * M / std::max(M - 1, 1.0) * std::max(Q - L * L / std::max(M, 1.0), 0.0);
+      informative = v > 0;
+    }
     if (!psi.empty()) v *= psi[static_cast<std::size_t>(to) * n_images + img];
-    if (nT > 0 && D > 0 && v > 0) {
+    if (nT > 0 && D > 0 && informative && v > 0) {
       out.image.push_back(img); out.O.push_back(O); out.E.push_back(p * L); out.n.push_back(D); out.v.push_back(v);
     }
   }
@@ -408,8 +442,10 @@ ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>
   };
   double tau2 = 0;
   if (df > 0 && Q(0) > df) {
+    // widen the bracket until Q(up) <= df: Q -> 0 as tau2 grows, and the effect's scale is not fixed (Kontextual's
+    // effects are in the thousands), so no cap below the overflow guard
     double up = 1e-4;
-    while (Q(up) > df && up < 1e6) up *= 4;
+    while (Q(up) > df && up < 1e300) up *= 4;
     tau2 = brent([&](double t) { return Q(t) - df; }, 0, up, 0);
   }
   if (tau2_image) *tau2_image = tau2;
@@ -473,7 +509,7 @@ double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const st
   auto X = [&](double tau2) { return pearson_group(fit_group(rows, g0, unit, tau2)) + pearson_group(fit_group(rows, g1, unit, tau2)); };
   if (df < 1 || X(0) <= df) return 0;
   double up = 1e-4;
-  while (X(up) > df && up < 1e6) up *= 4;
+  while (X(up) > df && up < 1e300) up *= 4;   // no cap on the effect's scale (Paule-Mandel above)
   return brent([&](double t) { return X(t) - df; }, 0, up, 1e-12);
 }
 

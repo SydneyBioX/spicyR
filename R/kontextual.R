@@ -6,15 +6,20 @@
 #' The computation behind `Statial::kontextualTest()`; use that function, whose help page describes the method.
 #' For each triple of `parentDf` it compares Statial's Kontextual statistic in each image with its exact
 #' expectation and variance when the `to` cells are a random choice among the parent's cells, and combines the
-#' images as [spicy()] does (frailty GEE, each condition's CR2 variance, enough effective patients per condition,
-#' abundance adjustment).
+#' images as [spicy()] does: each image's effect (observed minus expected, over Kontextual's normaliser) with the
+#' image random effect within patients (Paule-Mandel), then the frailty GEE across patients with each condition's
+#' CR2 variance and Satterthwaite df, and enough effective patients per condition. For a triple with `from == to`
+#' the statistic is quadratic in the labels, and its variance is the exact variance of observed minus expected under
+#' that random choice; an image where every choice gives the same value carries no information and is left out.
 #'
 #' @param cells A SingleCellExperiment, SpatialExperiment or data frame with a row per cell.
 #' @param parentDf A data frame of triples with columns `from`, `to`, `parent` (a list column of cell types
 #'   containing `to`) and optionally `parent_name`, as made by `Statial::parentCombinations()`.
 #' @param condition The column with each image's condition, or a `Surv` column of survival outcomes.
-#' @param subject,covariates,r,from,to,imageID,cellType,spatialCoords,adjustAbundance,variance,frailty,ref
-#'   As for [spicy()]; `r` is one radius.
+#' @param subject,covariates,r,from,to,imageID,cellType,spatialCoords,variance,frailty,ref
+#'   As for [spicy()]; `r` is one radius (several radii are not supported).
+#' @param adjustAbundance Adjust the test for the log share of the `to` type among the parent's cells in each image
+#'   (default `FALSE`), as [spicy()]'s `adjustAbundance`; its effect is reported as `abundance_effect`.
 #' @param labelClustering Whether to multiply each image's variance by a factor for clustering of the `to` labels.
 #'   Off by default: the factor puts most of the weight on a few images, and without it the test stays at or below
 #'   its nominal level when the conditions are shuffled between patients.
@@ -46,7 +51,7 @@ kontextualEngine <- function(cells,
                              imageID = "imageID",
                              cellType = "cellType",
                              spatialCoords = c("x", "y"),
-                             adjustAbundance = TRUE,
+                             adjustAbundance = FALSE,
                              variance = c("cr2", "hartung_knapp"),
                              frailty = TRUE,
                              labelClustering = FALSE,
@@ -55,7 +60,7 @@ kontextualEngine <- function(cells,
                              ref = NULL,
                              cellWeights = NULL) {
   variance <- match.arg(variance); window <- match.arg(window)
-  if (length(r) != 1L) stop("give one radius `r`.", call. = FALSE)
+  if (length(r) != 1L) stop("give one radius `r`: several radii are not supported for Kontextual.", call. = FALSE)
   weighted <- !is.null(cellWeights)
   if (weighted && labelClustering) stop("`labelClustering` is not available with `cellWeights`.", call. = FALSE)
   # the weights follow the input order of the cells
@@ -92,6 +97,8 @@ kontextualEngine <- function(cells,
     tr <- trip[trip$parent_name == pn, , drop = FALSE]
     dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
     sums <- lapply(seq_len(nrow(tr)), function(i) dataset_kontextual_sums(ctx$data, code(tr$from[i]), code(tr$to[i])))
+    # the fixed sums of the exact variance of self triples (from == to): the same for every type of the parent
+    self_sums <- if (any(tr$from == tr$to)) dataset_kontextual_self_sums(ctx$data)
     # psi of a `to` type: the median over every cell type as `from` (the `to` type itself included, as in spicy()),
     # whichever triples were requested, so a triple's result does not depend on the others asked for
     psi <- if (labelClustering) {
@@ -102,9 +109,10 @@ kontextualEngine <- function(cells,
       stats_kontextual_clustering(ctx$data, code(pp$from), code(pp$to), raw, ctx$counts, 2 * r)
     } else matrix(numeric(0), 0, 0)
     fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
-      rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi)
-      rows$unit <- ctx$image_unit[rows$img + 1L]
-      if (!survival) rows$group <- ctx$image_group[rows$img + 1L]
+      self <- tr$from[i] == tr$to[i]
+      rows <- stats_kontextual_image_rows(sums[[i]], ctx$counts, code(tr$from[i]), code(tr$to[i]), psi,
+                                          if (self) self_sums else matrix(numeric(0), 0, 0))
+      rows <- .kontextual_rows(ctx, rows, ctx$counts[, code(tr$to[i]) + 1L], sums[[i]][7, ], survival)
       o <- if (survival) .cell_survival_test(ctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
            else .cell_rows_test(ctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn
@@ -116,6 +124,25 @@ kontextualEngine <- function(cells,
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
     trip$parent[[match(pn, trip$parent_name)]]), unique(trip$parent_name)), edgeCorrect = edgeCorrect, window = window)
   out
+}
+
+## A triple's image rows for the test, as .cell_rows() makes spicy()'s: the unit and condition of each row (images
+## with a missing condition give no row), then each row as its effect (O - E) / D with variance v / D^2 + omega2, the
+## image random effect within patients (Paule-Mandel). n_to, n_parent: per image, the `to` cells (or weight) and the
+## parent's cells; their log ratio is the abundance covariate (.cell_share()).
+.kontextual_rows <- function(ctx, rows, n_to, n_parent, survival) {
+  rows$unit <- ctx$image_unit[rows$img + 1L]
+  if (!survival) {
+    rows$group <- ctx$image_group[rows$img + 1L]
+    rows <- rows[!is.na(rows$group), , drop = FALSE]
+  }
+  if (nrow(rows)) {
+    h <- stats_image_heterogeneity_rows(rows, rows$unit)
+    h$unit <- rows$unit; h$group <- rows$group
+    rows <- h
+  }
+  attr(rows, "share") <- log(pmax(n_to, 0.5) / pmax(n_parent, 1))
+  rows
 }
 
 ## The (from, to, parent) triples of a parentDf (Statial::parentCombinations), restricted to the cell types present
@@ -170,9 +197,7 @@ kontextualEngine <- function(cells,
     dataset_build_context(ctx$data, code(tr$parent[[1]]), window, edgeCorrect)
     fits <- c(fits, lapply(seq_len(nrow(tr)), function(i) {
       s <- dataset_kontextual_sums_weighted(ctx$data, col(tr$from[i]), col(tr$to[i]), FALSE)
-      rows <- stats_kontextual_image_rows_weighted(s)
-      rows$unit <- ctx$image_unit[rows$img + 1L]
-      if (!survival) rows$group <- ctx$image_group[rows$img + 1L]
+      rows <- .kontextual_rows(ctx, stats_kontextual_image_rows_weighted(s), s[10, ], s[7, ], survival)
       o <- if (survival) .cell_survival_test(wctx, rows, tr$from[i], tr$to[i], sv, adjustAbundance, covariates)
            else .cell_rows_test(wctx, rows, tr$from[i], tr$to[i], frailty, variance, adjustAbundance, Z_extra)
       o$parent <- pn

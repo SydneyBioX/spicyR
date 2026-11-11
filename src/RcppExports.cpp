@@ -391,6 +391,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_kontextual_self_sums
+NumericMatrix dataset_kontextual_self_sums(SEXP ptr);
+RcppExport SEXP _spicyR_dataset_kontextual_self_sums(SEXP ptrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_kontextual_self_sums(ptr));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_weighted_excess_sums
 NumericMatrix dataset_weighted_excess_sums(SEXP ptr, NumericVector a, IntegerVector mPtr, IntegerVector mLab, NumericVector mW, int n_labels, bool allocation);
 RcppExport SEXP _spicyR_dataset_weighted_excess_sums(SEXP ptrSEXP, SEXP aSEXP, SEXP mPtrSEXP, SEXP mLabSEXP, SEXP mWSEXP, SEXP n_labelsSEXP, SEXP allocationSEXP) {
@@ -744,8 +755,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // stats_kontextual_image_rows
-List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi);
-RcppExport SEXP _spicyR_stats_kontextual_image_rows(SEXP sumsSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP) {
+List stats_kontextual_image_rows(NumericMatrix sums, NumericMatrix counts, int from, int to, NumericMatrix psi, NumericMatrix self_sums);
+RcppExport SEXP _spicyR_stats_kontextual_image_rows(SEXP sumsSEXP, SEXP countsSEXP, SEXP fromSEXP, SEXP toSEXP, SEXP psiSEXP, SEXP self_sumsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -754,7 +765,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type from(fromSEXP);
     Rcpp::traits::input_parameter< int >::type to(toSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type psi(psiSEXP);
-    rcpp_result_gen = Rcpp::wrap(stats_kontextual_image_rows(sums, counts, from, to, psi));
+    Rcpp::traits::input_parameter< NumericMatrix >::type self_sums(self_sumsSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_kontextual_image_rows(sums, counts, from, to, psi, self_sums));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1108,6 +1120,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_rl_model_data", (DL_FUNC) &_spicyR_dataset_rl_model_data, 3},
     {"_spicyR_dataset_weighted_phi_sums", (DL_FUNC) &_spicyR_dataset_weighted_phi_sums, 5},
     {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
+    {"_spicyR_dataset_kontextual_self_sums", (DL_FUNC) &_spicyR_dataset_kontextual_self_sums, 1},
     {"_spicyR_dataset_weighted_excess_sums", (DL_FUNC) &_spicyR_dataset_weighted_excess_sums, 7},
     {"_spicyR_dataset_kontextual_sums_weighted", (DL_FUNC) &_spicyR_dataset_kontextual_sums_weighted, 4},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
@@ -1129,7 +1142,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_allocation_image_rows", (DL_FUNC) &_spicyR_stats_allocation_image_rows, 8},
     {"_spicyR_stats_weighted_image_rows", (DL_FUNC) &_spicyR_stats_weighted_image_rows, 5},
     {"_spicyR_stats_kontextual_image_rows_weighted", (DL_FUNC) &_spicyR_stats_kontextual_image_rows_weighted, 1},
-    {"_spicyR_stats_kontextual_image_rows", (DL_FUNC) &_spicyR_stats_kontextual_image_rows, 5},
+    {"_spicyR_stats_kontextual_image_rows", (DL_FUNC) &_spicyR_stats_kontextual_image_rows, 6},
     {"_spicyR_stats_image_heterogeneity_rows", (DL_FUNC) &_spicyR_stats_image_heterogeneity_rows, 2},
     {"_spicyR_stats_informative_units", (DL_FUNC) &_spicyR_stats_informative_units, 4},
     {"_spicyR_stats_effective_units", (DL_FUNC) &_spicyR_stats_effective_units, 5},

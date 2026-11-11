@@ -81,9 +81,16 @@ std::vector<double> label_clustering_factor(const Dataset& data, const std::vect
                                             bool allocation = false);
 
 // The Kontextual excess (Dataset::kontextual_sums, 7 values per image), on Statial's scale (O, L times
-// n_context / n_to, Q times its square): image rows O, E = p L,
-// v = p (1 - p) M / (M - 1) (Q - L^2 / M) psi, n = D (the REF cells' context exposure), p = n_to / M
-// (self-pair: (n_to - 1) / (M - 1)). Images without TARGET cells, exposure or variance give no row.
+// f = n_context / n_to, Q times its square): image rows O, E = p L,
+// v = p (1 - p) M / (M - 1) (Q - L^2 / M) psi, n = D (the REF cells' context exposure), p = n_to / M.
+// A self triple (from == to; p = (n_to - 1) / (M - 1)): O is quadratic in the labels, and v = f^2 Var(O - p L) psi is
+// the exact variance under random labelling of TARGET among the M candidates, from the fixed sums of
+// Dataset::kontextual_self_sums() (self_sums, 5 values per image; empty for other triples):
+// Var = E O^2 - 2 p E[O L] + p^2 E L^2, with pi_k = n^(k) / M^(k) (falling factorials),
+// E O^2 = pi2 U2 + pi3 (A2 - 2 U2) + pi4 (U^2 + U2 - A2) (pairs of links sharing two, one, no cells),
+// E[O L] = pi3 U^2 + (pi2 - pi3) C2, E L^2 = pi1 B2 + pi2 (U^2 - B2); values below 0 (rounding) are 0, and an image
+// with v <= 1e-10 (f U)^2 (every relabelling gives the same O - p L) gives no row (DECISIONS 7-8 Nov 2026).
+// D is Kontextual's normaliser, unchanged. Images without TARGET cells, exposure or variance give no row.
 // The image rows of spicy's excess with soft membership, for TARGET label `to`, from Dataset::weighted_excess_sums
 // (sums: images x (3 + 4 n_labels), image-major): O, E = (sum b / M) L, the variance of O when the TARGET weights
 // are shuffled over the candidates, and n = sum b over the candidates (count), or for the allocation the TARGET
@@ -98,7 +105,11 @@ ImageRows weighted_image_rows(const double* sums, int n_images, int n_labels, in
 ImageRows kontextual_image_rows_weighted(const std::vector<double>& sums, int n_images);
 
 ImageRows kontextual_image_rows(const std::vector<double>& sums, const std::vector<double>& counts, int n_types,
-                                int n_images, int from, int to, const std::vector<double>& psi);
+                                int n_images, int from, int to, const std::vector<double>& psi,
+                                const std::vector<double>& self_sums);
+// The exact null variance of O - p L for a self triple, unscaled (kontextual_image_rows): ss the image's 5 values of
+// Dataset::kontextual_self_sums(), M candidates, n TARGET cells among them.
+double kontextual_self_variance(const double* ss, double M, double n);
 
 // Label-clustering factor of the Kontextual excess: as label_clustering_factor, with the HAC of the
 // Kontextual scores over the context candidates (Dataset::hac_phi_sums design 0; build_context first) and

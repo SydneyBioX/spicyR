@@ -109,6 +109,10 @@ dataset_kontextual_sums <- function(ptr, from, to) {
     .Call(`_spicyR_dataset_kontextual_sums`, ptr, from, to)
 }
 
+dataset_kontextual_self_sums <- function(ptr) {
+    .Call(`_spicyR_dataset_kontextual_self_sums`, ptr)
+}
+
 dataset_weighted_excess_sums <- function(ptr, a, mPtr, mLab, mW, n_labels, allocation) {
     .Call(`_spicyR_dataset_weighted_excess_sums`, ptr, a, mPtr, mLab, mW, n_labels, allocation)
 }
@@ -193,8 +197,8 @@ stats_kontextual_image_rows_weighted <- function(sums) {
     .Call(`_spicyR_stats_kontextual_image_rows_weighted`, sums)
 }
 
-stats_kontextual_image_rows <- function(sums, counts, from, to, psi) {
-    .Call(`_spicyR_stats_kontextual_image_rows`, sums, counts, from, to, psi)
+stats_kontextual_image_rows <- function(sums, counts, from, to, psi, self_sums) {
+    .Call(`_spicyR_stats_kontextual_image_rows`, sums, counts, from, to, psi, self_sums)
 }
 
 stats_image_heterogeneity_rows <- function(rows, unit) {

@@ -206,6 +206,13 @@ class Dataset {
   // labelling gives E O = p L and Var O = p (1 - p) M / (M - 1) (Q - L^2 / M). Needs build_context after
   // build_radius_index.
   std::vector<double> kontextual_sums(int from, int to) const;
+  // The fixed sums of the exact random-labelling variance of a Kontextual self triple (REF = TARGET, a type of the
+  // context; candidates every context cell). With w_lj the pair weight of kontextual_sums() for context cells l != j
+  // within r (w_lj = e_l lambda_l / lambda_j, lambda = (kappa - 1) / area), r_l = sum_j w_lj, u_l = r_l + sum_j w_jl:
+  // per image, 5 values U = sum w, U2 = sum w_lj^2 + sum w_lj w_jl (= sum over unordered pairs of (w_lj + w_jl)^2),
+  // A2 = sum u_l^2, B2 = sum r_l^2 and C2 = sum r_l u_l. They depend on positions and the context only, not on the
+  // labels (kontextual_image_rows). Needs build_context after build_radius_index.
+  std::vector<double> kontextual_self_sums() const;
   // kontextual_sums() with soft membership: a[row] and b[row] are each cell's REF and TARGET weights, and
   // `self` says the two are one label. A REF cell a adds a_a e_a lambda_c(a) / lambda_c(b) to s_b, the
   // candidates are the context cells other than a whose REF weight is below 1 (every context cell for a
