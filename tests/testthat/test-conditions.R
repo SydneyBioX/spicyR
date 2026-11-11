@@ -138,9 +138,24 @@ test_that("two and three conditions: the results of spicyR 1.99.56 are unchanged
   run <- function(...) { r <- suppressMessages(spicy(...)); list(cellResults = r$cellResults, radiusResults = r$radiusResults) }
   expect_identical(run(cells, "condition", subject = "patient", r = 30), ref$two_allocation)
   expect_identical(run(cells, "condition", subject = "patient", r = 30, effect = "count"), ref$two_count)
-  expect_identical(run(cells, "condition", subject = "patient", r = 30, adjustAbundance = TRUE), ref$two_adjusted)
-  expect_identical(run(cells, "condition", subject = "patient", r = c(20, 30, 40)), ref$two_radii)
+  # with the abundance share (it varies between a patient's images, so ext-AB's adjusted design changes the adjusted
+  # test): the unadjusted test and every other column are unchanged; the adjusted design is tested in
+  # test-adjustedDesign.R
+  same_except <- function(a, b, changed) {
+    expect_identical(names(a$cellResults), names(b$cellResults))
+    keep <- setdiff(names(b$cellResults), changed)
+    expect_identical(a$cellResults[keep], b$cellResults[keep])
+    expect_identical(a$radiusResults, b$radiusResults)
+  }
+  ab <- c("excess_ref", "excess_comp", "excess_difference", "se", "df", "p_value", "p_adj", "tau2", "tau2_image",
+          "abundance_effect", "abundance_p_value", "overall_F", "overall_df2", "overall_p_value", "overall_p_adj")
+  same_except(run(cells, "condition", subject = "patient", r = 30, adjustAbundance = TRUE), ref$two_adjusted, ab)
+  # several radii: ext-D's max-T p-value (relative error about 1e-3; 1.99.56's had an absolute error of about 1e-4 and
+  # was up to a few percent off at p near 0.003); every radius's test is unchanged
+  rr <- run(cells, "condition", subject = "patient", r = c(20, 30, 40))
+  same_except(rr, ref$two_radii, c("p_value", "p_adj"))
+  expect_equal(rr$cellResults$p_value, ref$two_radii$cellResults$p_value, tolerance = 0.05)
   expect_identical(run(c3, "condition", subject = "patient", r = 30), ref$three_allocation)
-  expect_identical(run(c3, "condition", subject = "patient", r = 30, effect = "count", adjustAbundance = TRUE),
-                   ref$three_count_adjusted)
+  same_except(run(c3, "condition", subject = "patient", r = 30, effect = "count", adjustAbundance = TRUE),
+              ref$three_count_adjusted, ab)
 })

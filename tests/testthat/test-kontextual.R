@@ -143,12 +143,16 @@ test_that("abundance adjustment: off by default; when on, the log share of the `
   rows <- ref_kontextual_rows(cells, "tumour", "T", parent, 30)
   h <- ref_image_heterogeneity(rows, rows$unit)
   share <- log(pmax(rows$n_to, 0.5) / rows$n_parent)
-  # the design of spicy(): one indicator per condition and the centred share; omega2 held, tau2 as the unadjusted test's
+  # the adjusted design of spicy() (ext-AB): one indicator per condition and the centred share, which varies within
+  # patients, so it gets its patient mean, omega2 by B2 and tau2 on the patient summaries
   Z <- cbind(rows$group == 0, rows$group == 1, share - mean(share)) * 1
-  tau2 <- spicyR:::stats_excess_test(h, h$unit, h$group, length(unique(h$unit)), TRUE, "cr2", FALSE)$tau2
-  ref <- spicyR:::stats_design_tests(h, h$unit, length(unique(h$unit)), Z, spicyR:::.cell_contrasts(2L, 3L), tau2, FALSE, 0L)
-  expect_equal(res$p_value, ref[[1]]$p, tolerance = 1e-8)
-  expect_equal(res$abundance_effect, ref[[2]]$estimate, tolerance = 1e-8)
+  a <- ref_adjusted_design(rows, rows$unit, Z, 2)
+  cv <- c(-1, 1, rep(0, ncol(a$Z) - 2))
+  ref <- ref_design(a$rows, rows$unit, a$Z, cv, a$tau2)
+  w <- ref_design(a$rows, rows$unit, a$Z, replace(0 * cv, 3, 1), a$tau2)
+  expect_equal(res$p_value, unname(ref[4]), tolerance = 1e-8)
+  expect_equal(res$abundance_effect, unname(w[1]), tolerance = 1e-8)
+  expect_equal(c(res$tau2, res$tau2_image), c(a$tau2, a$omega2), tolerance = 1e-8)
 })
 
 test_that("one radius: several radii are not supported", {
