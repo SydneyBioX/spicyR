@@ -167,7 +167,7 @@ NumericVector stats_effective_units(List rows, IntegerVector unit, IntegerVector
 List stats_test_rules(bool allocation) {
   TestRules r = test_rules(allocation);
   return List::create(_["pooled_dispersion"] = r.pooled_dispersion, _["min_effective_units"] = r.min_effective_units,
-                      _["min_n_eff"] = kMinEffectiveUnits);
+                      _["min_n_eff"] = kMinEffectiveUnits, _["min_df"] = kMinDf);
 }
 
 // [[Rcpp::export]]

@@ -302,7 +302,7 @@ JointResult design_joint_test(const ImageRows& rows, const std::vector<int>& uni
     out.df2 = eta - k + 1;
     out.statistic = out.df2 / (eta * k) * out.wald;
   }
-  if (!(out.df2 > 0)) { out.reason = "too_few_df"; out.p = std::numeric_limits<double>::quiet_NaN(); return out; }
+  if (too_few_df(out.df2)) { out.reason = "too_few_df"; out.p = std::numeric_limits<double>::quiet_NaN(); return out; }
   out.p = pf_upper(out.statistic, out.df1, out.df2);
   out.ok = true;
   return out;

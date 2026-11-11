@@ -406,6 +406,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   # below min(3, m_g / 2), m_g its patients with rows (its mean rests on a few of them)
   skip <- if (r$se > 0 && .cell_no_information(rows, 2L)) "no_information"
           else if (rules$min_effective_units && r$se > 0 && .cell_few_effective(r$n_eff, r$n_units, rules)) "few_effective_units"
+          else if (r$se > 0 && .cell_too_few_df(r$df, rules)) "too_few_df"
   if (!is.null(skip)) { out$test$p <- NaN; out$unadjusted$p <- NaN }
   out$not_tested <- if (!is.null(skip)) skip else if (!(r$se > 0)) "no_variation"
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
@@ -421,6 +422,10 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   # a design that is not of full rank (e.g. a covariate confounded with the condition): the unadjusted test
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
   x <- a[[1]]
+  if (.cell_too_few_df(x$df, rules)) {   # the adjusted design's df are too few: not tested
+    out$test$p <- NaN; out$unadjusted$p <- NaN; out$not_tested <- "too_few_df"; out$adjusted_for <- "none (too_few_df)"
+    return(out)
+  }
   out$test <- list(coef_ref = x$theta[1], coef_comp = x$theta[2], difference = x$estimate, se = x$se, df = x$df,
                    p = x$p, tau2 = x$tau2, influence = x$influence)
   out$effects <- stats::setNames(a[-1], d$extra)
@@ -435,6 +440,10 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## TRUE when a condition's effective patients n_eff fall below min(3, m_g / 2), m_g its patients with rows (the core's
 ## few_effective_units).
 .cell_few_effective <- function(n_eff, m, rules) any(n_eff < pmin(rules$min_n_eff, as.numeric(m) / 2))
+
+## TRUE when a test's Satterthwaite df are below the core's minimum (kMinDf, 1) or not finite: the test is not done
+## ("too_few_df").
+.cell_too_few_df <- function(df, rules) any(!is.finite(df) | df < rules$min_df)
 
 ## Allocation (image rows with a side): TRUE when a condition (of G) has no informative patient, one with at least one
 ## image whose effect (O - E) / n is not exactly -1 or +1, the bounds of the fraction.
@@ -458,6 +467,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   # adjusted design is fitted then either)
   if (!u[[1]]$ok) { out$reason <- if (u[[1]]$reason == "no_variation") "no_variation" else "design_not_full_rank"; return(out) }
   if (.cell_no_information(rows, G)) { out$reason <- "no_information"; return(out) }
+  if (.cell_too_few_df(vapply(u, `[[`, 0, "df"), rules)) { out$reason <- "too_few_df"; return(out) }
   if (rules$min_effective_units &&
       .cell_few_effective(stats_effective_units(rg, rg$unit, rg$group, G, u[[1]]$tau2), per_level, rules)) {
     out$reason <- "few_effective_units"; return(out)
@@ -472,6 +482,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(G, ncol(d$Z)),
                           .cell_design_tau2(d, G, frailty, u[[1]]$tau2), hk, ng)
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
+  if (.cell_too_few_df(vapply(a[seq_len(G - 1L)], `[[`, 0, "df"), rules)) { out$ok <- FALSE; out$reason <- "too_few_df"; return(out) }
   out$overall <- stats_design_joint_test(d$rows, d$rows$unit, d$Z, .cell_contrasts(G, ncol(d$Z))[seq_len(G - 1L), , drop = FALSE],
                                          a[[1]]$tau2, hk)
   out$levels_test <- stats::setNames(a[seq_len(G - 1L)], ctx$levels[-1])
@@ -492,6 +503,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   u <- stats_design_tests(rg, rg$unit, m, .cell_condition_block(ctx, rg), rbind(c(0, 1)), if (frailty) -1 else 0, hk, 0L)[[1]]
   if (!u$ok) { out$reason <- u$reason; return(out) }
   if (.cell_no_information(rows, 1L)) { out$reason <- "no_information"; return(out) }
+  if (.cell_too_few_df(u$df, rules)) { out$reason <- "too_few_df"; return(out) }
   if (rules$min_effective_units &&
       .cell_few_effective(stats_effective_units(rg, rg$unit, rg$group, 1L, u$tau2), length(unique(rg$unit)), rules)) {
     out$reason <- "few_effective_units"; return(out)
@@ -504,6 +516,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, diag(q)[-1, , drop = FALSE], .cell_design_tau2(d, 2L, frailty, u$tau2),
                           hk, 0L)
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
+  if (.cell_too_few_df(a[[1]]$df, rules)) { out$ok <- FALSE; out$reason <- "too_few_df"; return(out) }
   out$test <- slope(a[[1]])
   out$effects <- stats::setNames(a[-1], d$extra)
   out$adjusted_for <- d$adjusted_for

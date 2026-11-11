@@ -7,6 +7,7 @@
 // Written with AI assistance (Claude, Anthropic), directed by the authors; see NEWS.
 #pragma once
 
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -155,6 +156,12 @@ inline bool few_effective_units(const std::vector<double>& n_eff, const std::vec
 //     below min(kMinEffectiveUnits, m_g / 2), m_g its number of units with rows at the radius, is not tested.
 struct TestRules { bool pooled_dispersion = false, min_effective_units = false; };
 TestRules test_rules(bool allocation);
+
+// Every test (two conditions, more conditions, a continuous condition, survival) is not done when its Satterthwaite
+// df are below kMinDf or not finite ("too_few_df"): the df of a nearly saturated design are unreliable, and with
+// df = Inf a test with few events rejected far above its level (DECISIONS 7 Nov 2026).
+constexpr double kMinDf = 1;
+inline bool too_few_df(double df) { return !(std::isfinite(df) && df >= kMinDf); }
 
 // ------------------------------------------------------ the two-group test ---
 
