@@ -1,3 +1,86 @@
+CHANGES IN VERSION 1.99.57
+--------------------------
+
+    o Adjusted tests (covariates, adjustAbundance) when an adjustment varies between a patient's images: each such
+      column gets a second column, its plain average over the patient's images, so the conditions are compared at
+      equal patient averages and the adjustment's reported effect (<column>_effect, abundance_effect) is its slope
+      within patients. The between-image variance (tau2_image) is re-estimated within patients after the adjustments
+      (Paule-Mandel with each patient's mean free, its df the images less one per patient less the adjustments), and
+      the patient variance (tau2) by Paule-Mandel on the patients' average effects and adjustments (df the patients
+      less the rank of their averaged design). Up to 1.99.56 these were the unadjusted values: the image variance
+      absorbed the adjustment's effect and tau2 was held. Adjustments with one value per patient, and unadjusted
+      tests, give the same results as before. Applies to two or more conditions (and their follow-up comparisons), a
+      continuous condition, every radius, cellWeights, kontextualEngine() and survival (see below).
+    o More than two conditions (cell method): gated follow-up comparisons. For the pairs called by BH on the
+      overall test (overall_p_adj at most the new spicy() argument alpha, default 0.05; R of the m pairs with an
+      overall test), every two levels are compared, each by the two-condition test on the patients of those two
+      levels only (their own between-image and between-patient variances, the same rules for not testing and the
+      same adjustments; the pair's allocation side stays the one chosen from every image). A comparison is tested
+      whenever its two levels pass the rules. Within a pair the comparisons are Bonferroni-corrected at the
+      Benjamini-Bogomolov level alpha R / m (significant when p <= alpha R / (m K), K the comparisons tested in the
+      pair). The results are in $followUpResults (one row per called pair and comparison: level_ref, level_comp,
+      excess_ref, excess_comp, excess_difference, se, df, p_value, p_threshold, significant, overall_p_value,
+      overall_p_adj, n_comparisons, tau2, not_tested; side and tau2_image for the allocation effect; adjusted_for
+      and the unadjusted difference and p-value with adjustment) and from the new topFollowUps(); print() counts
+      them. kontextualEngine() with more than two conditions gives them too, at alpha = 0.05, each with its own
+      between-image variance and Kontextual's abundance share.
+    o The overall test of more than two conditions is unchanged: it was checked to be the approximate Hotelling's
+      T^2 (HTZ) test of equal condition means (Pustejovsky and Tipton 2018, eqs. 12-13), the same whichever level is
+      the reference, the t-test for two levels (F = t^2), with the patient variance shared over levels on m - G df.
+      Its documentation now says so. Several radii with more than two conditions stay refused.
+    o spicy(combine = "maxT"), the default for several radii, takes any number of radii (it stopped at 6) and its
+      p-value now has a relative error of about 0.1% at every size of p, instead of an absolute error of 1e-4. The
+      p-value P(max_k |Z_k| >= c), Z ~ N(0, R) with the radii's sandwich correlation, is computed as the sum of
+      first-exceedance terms, 2 Phi(-c) + sum_{k >= 2} 2 P(Z_k >= c, |Z_j| < c for j < k), each by the quasi-Monte
+      Carlo method of Genz and Bretz to 0.1% of itself, or, for a term too small to matter, to 0.1% of
+      2 Phi(-c) / (K - 1), so the error of the sum is at most 0.1% of p. The integrator's error estimate is
+      checked: stats_max_t() reports it (error, converged), and $cellResults has the new column maxT_converged
+      (TRUE when a pair's p-value met the target). Two radii keep the quadrature. The quasi-Monte Carlo now uses a
+      Richtmyer sequence (generators the square roots of the primes; Genz & Bretz 2009, Section 4.2.2), which works
+      in any dimension, in place of the Korobov lattice table that stopped at 6 radii (inst/scripts/korobov_search.cpp
+      is removed); the shifts still come from a fixed seed, so the same inputs give the same p-value on every call.
+      Radii whose correlation with a smaller kept radius exceeds 0.995 are still left out. Against an independent
+      mvtnorm reference, the new p-values agree to within 0.03% for 3 to 6 radii; the old ones were up to 61% off
+      (mostly too small) below p = 0.01. With 25 highly correlated radii a p-value takes about 0.3 to 5 seconds; with
+      4 radii a few milliseconds. The documentation recommends about 4 radii spanning the range of interest, none
+      below about one cell diameter: many closely spaced radii add little information, cost some power and are
+      slower. combine = "davies" and "cauchy" are unchanged.
+    o Survival outcomes (cell method; DECISIONS 5 Nov 2026 and 7 Nov 2026, approved 11 Nov 2026). Patients with no
+      outcome (or with a covariate missing in all their images) are now left out before anything else, including the
+      pair's side and the between-image variance, so the result is that of the data without them. Covariates are on
+      both sides: in the null Cox model (an image-level covariate as the patient's average) and in the model of the
+      effect, which regresses the effect on (1, M, abundance share, covariates). The hazard ratio is adjusted for the
+      same covariates (shrinkage model on (1, covariates) without M; Cox model with the covariates). A column that
+      varies within patients (the abundance share, an image-level covariate) gets its patient mean in both frailty
+      models, with the between-image and patient variances of the adjusted designs above (tau2_image is then that of
+      the adjusted design). A survival outcome takes one radius: several radii are now an error (before, the first
+      radius was used with a message). hr_p_value is removed (the score test's p_value is the pair's only p-value);
+      log_hr_se stays, documented as model-based and approximate. The rule "at least 10 patients" is replaced by:
+      among the informative patients (an outcome and an image row for the pair) at least one death
+      (not_tested = "no_deaths") and one survivor ("no_survivors"), and at least q + 2 of them ("too_few_units";
+      q = 2 + covariate columns + one per column that varies within patients). New column n_deaths: the informative
+      patients' deaths. Every requested pair now has a row in the survival table, with not_tested.
+    o Every test (two conditions, more than two and their follow-ups, continuous, survival, and the overall test) is
+      not done when its Satterthwaite df are below 1 or not finite: not_tested = "too_few_df", p-value NA, left out
+      of BH and of the combination over radii (with adjustment, adjusted_for = "none (too_few_df)").
+    o Kontextual engine (kontextualEngine(), the engine of Statial::kontextualTest()) now combines images as spicy()
+      does (DECISIONS 5-8 Nov 2026, problem F). (1) Each image's effect (O - E) / D gets the image random effect
+      within patients (omega2 by Paule-Mandel, reported as tau2_image), through spicy()'s own code. (2) Self triples
+      (from == to): the variance of O - p L is now exact under random labelling of the `to` cells among the parent's
+      cells. O is quadratic in the labels, so the earlier plug-in variance was 17-34% too small at the median. The
+      closed form uses five fixed sums per image (Dataset::kontextual_self_sums, one pass over the parent's links)
+      and matches complete enumeration to 2e-14. Values below 0 (rounding) are set to 0. An image whose exact
+      variance is at most 1e-10 (f U)^2 (every relabelling gives the same O - p L, e.g. every parent cell a `to`
+      cell) gives no row. Kontextual's statistic and its normaliser D are unchanged. (3) adjustAbundance now
+      defaults to FALSE (was TRUE). When on, the covariate is the log share of the `to` type among the parent's
+      cells (was the `from` type's share of all cells). (4) The variance is each condition's own CR2 (no pooled
+      dispersion), as for spicy(). (5) Several radii give a clearer error (not supported for Kontextual).
+    o The Paule-Mandel estimates (tau2 between patients, tau2 of an adjusted design, the between-image variance of
+      an adjusted design, tau2_image between a patient's images) no longer cap their search bracket at about 1.7e6.
+      Kontextual's effects are in the thousands and hit the cap. Results of spicy() are unchanged: its effects never
+      reach it.
+    o Two conditions without adjustment at one radius give the same results as 1.99.56.
+
 CHANGES IN VERSION 1.99.56
 --------------------------
 
