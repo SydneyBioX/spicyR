@@ -478,9 +478,11 @@ struct PairTests {
   std::vector<std::vector<double>> image_weight;
   // several radii, per pair with at least one radius tested: the radius chosen (0-based; -1 for none), the
   // combined p of the main and of the unadjusted test, and the main test's p at the chosen radius
-  // (comb_u_p only when there is something to adjust for, else NaN)
+  // (comb_u_p only when there is something to adjust for, else NaN); comb_converged: whether the main test's
+  // combined p met max_t's error target (1 or 0; always 1 for davies and cauchy; -1 for a pair tested at no radius)
   std::vector<int> best;
   std::vector<double> comb_p, comb_p_best, comb_u_p;
+  std::vector<int> comb_converged;
 };
 PairTests pair_tests(const PairTestInput& in);
 

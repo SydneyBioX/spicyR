@@ -14,7 +14,8 @@
 #'     survival: \code{score_coefficient}, \code{p_value}, \code{p_adj}, \code{hazard_ratio_sd},
 #'     \code{log_hr_se} (model-based and approximate), \code{n_deaths}, \code{not_tested} and, with
 #'     \code{adjustAbundance = TRUE}, the p-value and hazard ratio without it. With several radii: \code{r}, the radius with the strongest evidence, and
-#'     \code{p_value_best_radius}.}
+#'     \code{p_value_best_radius}; with \code{combine = "maxT"}, \code{maxT_converged} (whether the max-T p-value met
+#'     its error target of about 0.1\%).}
 #'   \item{\code{radiusResults}}{with several radii, the table at every radius.}
 #'   \item{\code{followUpResults}, \code{alpha}}{with more than two conditions, the follow-up comparisons of two
 #'     levels for the pairs called by the overall test at level \code{alpha} (see \code{\link{topFollowUps}}).}

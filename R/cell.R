@@ -762,7 +762,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_order_columns <- function(tab) {
   first <- intersect(c("from", "to", "parent", "level", "r", "side", "excess_ref", "excess_comp", "excess_difference",
                        "excess_mean", "excess_slope", "se", "df", "p_value", "p_adj", "overall_F", "overall_df1",
-                       "overall_df2", "overall_p_value", "overall_p_adj", "p_value_best_radius", "tau2", "tau2_image", "not_tested",
+                       "overall_df2", "overall_p_value", "overall_p_adj", "p_value_best_radius", "maxT_converged", "tau2", "tau2_image", "not_tested",
                        "adjusted_for"), names(tab))
   un <- grep("^unadjusted_", names(tab), value = TRUE)
   tab[, c(first, setdiff(names(tab), c(first, un)), un), drop = FALSE]

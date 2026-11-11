@@ -434,5 +434,8 @@ List stats_pair_tests(List a, List b, List self_var, bool allocation, bool knn, 
   out.push_back(rows, "rows"); out.push_back(weight, "image_weight"); out.push_back(best, "best");
   out.push_back(nv(r.comb_p), "comb_p"); out.push_back(nv(r.comb_p_best), "comb_p_best");
   out.push_back(nv(r.comb_u_p), "comb_u_p");
+  LogicalVector conv(P);
+  for (int p = 0; p < P; ++p) conv[p] = r.comb_converged[p] < 0 ? NA_LOGICAL : r.comb_converged[p];
+  out.push_back(conv, "comb_converged");
   return out;
 }

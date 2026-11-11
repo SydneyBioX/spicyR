@@ -142,7 +142,8 @@ test_that("two and three conditions: the results of spicyR 1.99.56 are unchanged
   # test): the unadjusted test and every other column are unchanged; the adjusted design is tested in
   # test-adjustedDesign.R
   same_except <- function(a, b, changed) {
-    expect_identical(names(a$cellResults), names(b$cellResults))
+    # (several radii with max-T: the new column maxT_converged)
+    expect_identical(setdiff(names(a$cellResults), "maxT_converged"), names(b$cellResults))
     keep <- setdiff(names(b$cellResults), changed)
     expect_identical(a$cellResults[keep], b$cellResults[keep])
     expect_identical(a$radiusResults, b$radiusResults)
@@ -154,6 +155,7 @@ test_that("two and three conditions: the results of spicyR 1.99.56 are unchanged
   # was up to a few percent off at p near 0.003); every radius's test is unchanged
   rr <- run(cells, "condition", subject = "patient", r = c(20, 30, 40))
   same_except(rr, ref$two_radii, c("p_value", "p_adj"))
+  expect_identical(rr$cellResults$maxT_converged, rep(TRUE, nrow(rr$cellResults)))
   expect_equal(rr$cellResults$p_value, ref$two_radii$cellResults$p_value, tolerance = 0.05)
   expect_identical(run(c3, "condition", subject = "patient", r = 30), ref$three_allocation)
   same_except(run(c3, "condition", subject = "patient", r = 30, effect = "count", adjustAbundance = TRUE),

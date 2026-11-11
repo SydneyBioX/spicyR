@@ -36,7 +36,8 @@ struct RadiusTest {
   std::vector<double> influence;
 };
 
-struct Combined { int best = -1; double p = kNaN, p_best = kNaN; };
+// converged: max-T's error target was met (max_t's converged; always true for davies and cauchy).
+struct Combined { int best = -1; double p = kNaN, p_best = kNaN; bool converged = true; };
 
 // R/spicy_main.R .cell_combine's comb(): the tests of the radii where the pair was tested (`at`: their radii).
 Combined combine_radii(const std::vector<RadiusTest>& tests, const std::vector<int>& at, Combine how) {
@@ -48,7 +49,7 @@ Combined combine_radii(const std::vector<RadiusTest>& tests, const std::vector<i
     std::vector<std::vector<double>> infl;
     for (const RadiusTest& x : tests) infl.push_back(x.influence);
     MaxTResult m = how == Combine::MaxT ? max_t(infl, t, df) : davies_max(infl, t, df);
-    c.best = at[m.best]; c.p = m.p; c.p_best = pv[m.best];
+    c.best = at[m.best]; c.p = m.p; c.p_best = pv[m.best]; c.converged = m.converged;
   } else {
     int b = -1;   // which.min: the first smallest, NaN left out
     for (std::size_t i = 0; i < pv.size(); ++i) if (!std::isnan(pv[i]) && (b < 0 || pv[i] < pv[b])) b = static_cast<int>(i);
@@ -162,6 +163,7 @@ PairTests pair_tests(const PairTestInput& in) {
   res.effect.assign(PK * ne, kNaN); res.effect_p.assign(PK * ne, kNaN);
   res.rows.assign(P, ImageRows()); res.image_weight.assign(P, std::vector<double>());
   res.best.assign(P, -1); res.comb_p.assign(P, kNaN); res.comb_p_best.assign(P, kNaN); res.comb_u_p.assign(P, kNaN);
+  res.comb_converged.assign(P, -1);
 
   auto one_pair = [&](int pr) {
     const int f = in.from[pr], t = in.to[pr];
@@ -273,7 +275,7 @@ PairTests pair_tests(const PairTestInput& in) {
     }
     if (several && !at.empty()) {
       Combined c = combine_radii(main, at, in.combine);
-      res.best[pr] = c.best; res.comb_p[pr] = c.p; res.comb_p_best[pr] = c.p_best;
+      res.best[pr] = c.best; res.comb_p[pr] = c.p; res.comb_p_best[pr] = c.p_best; res.comb_converged[pr] = c.converged;
       if (adjusting) res.comb_u_p[pr] = combine_radii(unadj, at, in.combine).p;
     }
   };

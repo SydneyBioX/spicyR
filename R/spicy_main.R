@@ -145,7 +145,8 @@
 #'   cell diameter: many closely spaced radii add little information (neighbouring radii are highly correlated),
 #'   cost some power, make the correlation hard to estimate with few patients and are slower (with 25 radii,
 #'   about a second per pair against a few milliseconds with 4); radii below a cell diameter can be liberal in
-#'   large cohorts.
+#'   large cohorts. With max-T, `$cellResults` has `maxT_converged`: `TRUE` when the pair's p-value met the 0.1\%
+#'   error target, `FALSE` when the integrator stopped at its limit of points first (its error may then be larger).
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
 #'   (default `FALSE`), and for its patient average when patients have several images (see Details). Its effect
 #'   is reported as `abundance_effect` (then the slope within patients). It does not separate more `from`
@@ -444,6 +445,8 @@ spicy <- function(cells,
   best <- x$best
   tab <- long[(ifelse(is.na(best), keep, best) - 1L) * P + seq_len(P), , drop = FALSE]
   tab$p_value <- x$comb_p; tab$p_value_best_radius <- x$comb_p_best
+  # max-T: whether its p-value met the integrator's error target (relative error about 1e-3; NA when no radius was tested)
+  if (combine == "maxT") tab$maxT_converged <- x$comb_converged
   if (adjusted) tab$unadjusted_p_value <- x$comb_u_p
   none <- is.na(best)
   if (any(none)) {

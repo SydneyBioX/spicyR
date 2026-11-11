@@ -81,7 +81,8 @@ exceeds 0.995 is left out. We recommend about 4 radii spanning the range of inte
 cell diameter: many closely spaced radii add little information (neighbouring radii are highly correlated),
 cost some power, make the correlation hard to estimate with few patients and are slower (with 25 radii,
 about a second per pair against a few milliseconds with 4); radii below a cell diameter can be liberal in
-large cohorts.}
+large cohorts. With max-T, \verb{$cellResults} has \code{maxT_converged}: \code{TRUE} when the pair's p-value met the 0.1\%
+error target, \code{FALSE} when the integrator stopped at its limit of points first (its error may then be larger).}
 
 \item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
 (default \code{FALSE}), and for its patient average when patients have several images (see Details). Its effect
