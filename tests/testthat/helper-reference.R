@@ -209,7 +209,7 @@ ref_image_heterogeneity <- function(d, unit) {
   Q <- function(t) sum(vapply(us, function(u) { w <- 1 / (s2[u] + t); m <- sum(w * y[u]) / sum(w)
     sum(w * (y[u] - m)^2) }, 0))
   tau2 <- 0
-  if (df > 0 && Q(0) > df) { up <- 1e-4; while (Q(up) > df && up < 1e6) up <- up * 4
+  if (df > 0 && Q(0) > df) { up <- 1e-4; while (Q(up) > df && up < 1e300) up <- up * 4
     tau2 <- stats::uniroot(function(t) Q(t) - df, c(0, up), tol = 1e-15)$root }
   d$O <- y; d$E <- 0; d$n <- 1; d$v <- s2 + tau2; attr(d, "tau2_image") <- tau2; d
 }

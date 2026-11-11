@@ -113,7 +113,7 @@ double design_tau2(const ImageRows& d, const Units& U, const MatrixXd& D) {
   double q0 = pearson(d, U, D, 0);
   if (df < 1 || !std::isfinite(q0) || q0 <= df) return 0;
   double up = 1e-4;
-  while (pearson(d, U, D, up) > df && up < 1e6) up *= 4;
+  while (pearson(d, U, D, up) > df && up < 1e300) up *= 4;   // no cap on the effect's scale (Kontextual's: thousands)
   return brent_root([&](double t) { return pearson(d, U, D, t) - df; }, 0, up);
 }
 

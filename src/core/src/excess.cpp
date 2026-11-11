@@ -408,8 +408,10 @@ ImageRows image_heterogeneity_rows(const ImageRows& rows, const std::vector<int>
   };
   double tau2 = 0;
   if (df > 0 && Q(0) > df) {
+    // widen the bracket until Q(up) <= df: Q -> 0 as tau2 grows, and the effect's scale is not fixed (Kontextual's
+    // effects are in the thousands), so no cap below the overflow guard
     double up = 1e-4;
-    while (Q(up) > df && up < 1e6) up *= 4;
+    while (Q(up) > df && up < 1e300) up *= 4;
     tau2 = brent([&](double t) { return Q(t) - df; }, 0, up, 0);
   }
   if (tau2_image) *tau2_image = tau2;
@@ -473,7 +475,7 @@ double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const st
   auto X = [&](double tau2) { return pearson_group(fit_group(rows, g0, unit, tau2)) + pearson_group(fit_group(rows, g1, unit, tau2)); };
   if (df < 1 || X(0) <= df) return 0;
   double up = 1e-4;
-  while (X(up) > df && up < 1e6) up *= 4;
+  while (X(up) > df && up < 1e300) up *= 4;   // no cap on the effect's scale (Paule-Mandel above)
   return brent([&](double t) { return X(t) - df; }, 0, up, 1e-12);
 }
 
