@@ -221,6 +221,45 @@ test_that("max-T: the Genz-Bretz quasi-Monte Carlo matches mvtnorm::pmvnorm and 
   }
 })
 
+test_that("max-T: the first-exceedance sum has a relative error of about 1e-3 for any number of radii", {
+  skip_if_not_installed("mvtnorm")
+  ar1 <- function(K, rho) rho^abs(outer(seq_len(K), seq_len(K), "-"))
+  # reference: the same identity with mvtnorm, each term to a relative error of 1e-5
+  ref <- function(cc, R) {
+    set.seed(1); s <- 2 * stats::pnorm(-cc)
+    alg <- mvtnorm::GenzBretz(maxpts = 5e6, abseps = 0, releps = 1e-5)
+    for (k in 2:nrow(R)) s <- s + 2 * mvtnorm::pmvnorm(c(rep(-cc, k - 1), cc), c(rep(cc, k - 1), Inf),
+                                                       corr = R[1:k, 1:k, drop = FALSE], algorithm = alg)[1]
+    s
+  }
+  for (K in c(3, 8, 12)) for (cc in c(2.5, 4.5)) {
+    R <- ar1(K, 0.9)
+    m <- spicyR:::stats_max_abs_tail(cc, R)
+    expect_true(m$converged)
+    expect_lt(m$error, 1e-3 * m$p)
+    expect_lt(abs(m$p / ref(cc, R) - 1), 1e-3)
+    expect_identical(spicyR:::stats_max_abs_tail(cc, R)$p, m$p)
+  }
+  # small p: no absolute floor on p itself (the tail at c = 5.5 is about 4e-8)
+  m <- spicyR:::stats_max_abs_tail(5.5, ar1(6, 0.8))
+  expect_gt(m$p, 2 * stats::pnorm(-5.5))
+  expect_lt(abs(m$p / ref(5.5, ar1(6, 0.8)) - 1), 1e-3)
+  # independent radii: 1 - (1 - 2 Phi(-c))^K exactly
+  m <- spicyR:::stats_max_abs_tail(3, diag(10))
+  expect_lt(abs(m$p / (1 - (1 - 2 * stats::pnorm(-3))^10) - 1), 1e-3)
+  # more than six radii in spicy(): the cap is gone; max_t takes the first-exceedance sum
+  set.seed(3); m <- 40; K <- 9
+  U <- t(apply(matrix(rnorm(m * K), m), 1, cumsum)) + 2 * rnorm(m)
+  tt <- seq(1.5, 3, length.out = K); df <- rep(30, K)
+  mt <- spicyR:::stats_max_t(U, tt, df)
+  expect_true(mt$converged)
+  expect_lte(mt$error, 1e-3 * mt$p)
+  expect_lte(mt$p, spicyR:::stats_davies(U, tt, df)$p * (1 + 1e-6))
+  res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = seq(5, 40, by = 5), from = "tumour", to = "T"))
+  expect_true(is.finite(res$cellResults$p_value))
+  expect_equal(nrow(res$radiusResults), 8L)
+})
+
 test_that("Davies: one radius gives the single-radius p, matches a plain-R reference and bounds the max-T", {
   expect_equal(spicyR:::stats_davies(matrix(rnorm(10), 10), 2.1, 7)$p, 2 * stats::pt(-2.1, 7), tolerance = 1e-12)
   set.seed(3); m <- 40; K <- 5
@@ -240,8 +279,6 @@ test_that("Davies: one radius gives the single-radius p, matches a plain-R refer
                                 from = "tumour", to = "T"))
   expect_true(is.finite(res$cellResults$p_value))
   expect_equal(nrow(res$radiusResults), 8L)
-  expect_error(spicy(cells, "condition", subject = "patient", r = seq(5, 40, by = 5), from = "tumour", to = "T"),
-               "up to 6 radii")
 })
 
 test_that("several radii from one neighbour search equal the single-radius graphs", {
