@@ -167,7 +167,7 @@ res <- spicy(spe, condition = "ER.Status", subject = "metabricId", r = 25)
 res
 #> spicyR (cell-level test): 484 pairs, pos vs neg, r = 25
 #> Units: 456 patients (neg 83, pos 373) with 456 images
-#> 13 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
+#> 13 pairs are not tested (p_value NA: no variation, a condition with no informative patient, one with too few effective patients, or too few degrees of freedom)
 #> BH-adjusted p < 0.05: 33 pairs
 #> See topPairs().
 ```
@@ -454,7 +454,7 @@ resDonors <- spicy(diabetes, condition = "stage", subject = "case", r = 50)
 resDonors
 #> spicyR (cell-level test): 256 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 8 patients (Non-diabetic 4, Onset 4) with 80 images
-#> 73 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
+#> 73 pairs are not tested (p_value NA: no variation, a condition with no informative patient, one with too few effective patients, or too few degrees of freedom)
 #> BH-adjusted p < 0.05: 0 pairs
 #> See topPairs().
 ```
@@ -468,7 +468,7 @@ resImages <- spicy(diabetes, condition = "stage", r = 50)
 resImages
 #> spicyR (cell-level test): 256 pairs, Onset vs Non-diabetic, r = 50
 #> Units: 80 images (Non-diabetic 40, Onset 40); no subject given: each image is a patient
-#> 68 pairs are not tested (p_value NA: no variation, a condition with no informative patient, or one with too few effective patients)
+#> 68 pairs are not tested (p_value NA: no variation, a condition with no informative patient, one with too few effective patients, or too few degrees of freedom)
 #> BH-adjusted p < 0.05: 7 pairs
 #> See topPairs().
 ```
@@ -533,14 +533,20 @@ that are tested.
 
 ## Which radius?
 
-The scale of an interaction is rarely known in advance. Give several
-radii and spicyR tests them together, using a max-T test that accounts
-for the strong correlation between neighbouring radii. The exact max-T
-handles up to six radii; for a finer grid, such as every 2 µm up to 50
-µm, `combine = "davies"` uses the bound of Davies (1987) for the maximum
-over a smooth range of radii, which stays close to the exact max-T when
-neighbouring radii are highly correlated. `combine = "cauchy"`, the
-Cauchy combination of Liu and Xie (2020), is another alternative.
+The radius decides which relationship is tested: a radius of one or two
+cell diameters asks whether two cell types touch, a larger one whether
+they share a neighbourhood. When you know the relationship you are
+looking for, choose the radius for it and test that one radius. When the
+scale is unknown, give several radii and spicyR tests them together by
+the largest of their test statistics, accounting for the strong
+correlation between neighbouring radii. By default the p-value is the
+bound of Davies (1987) on that maximum, which is fast for any number of
+radii and slightly conservative; `combine = "maxT"` computes the exact
+max-T p-value instead, and `combine = "cauchy"` uses the Cauchy
+combination of Liu and Xie (2020). About four radii spanning the range
+of interest, none below about one cell diameter, are enough:
+neighbouring radii are highly correlated, so many closely spaced radii
+add little information and cost some power.
 
 ``` r
 
@@ -550,8 +556,8 @@ topPairs(resR, from = c("T cells", "B cells"), to = "HR- Ki67+")
 #> T cells__HR- Ki67+ T cells HR- Ki67+ 10 -0.22433417   0.9452872
 #> B cells__HR- Ki67+ B cells HR- Ki67+ 50 -0.07222817   0.3471500
 #>                    excess_difference      p_value        p_adj
-#> T cells__HR- Ki67+         1.1696214 5.909962e-09 5.720843e-07
-#> B cells__HR- Ki67+         0.4193782 3.247922e-03 5.239981e-02
+#> T cells__HR- Ki67+         1.1696214 1.760499e-08 1.704163e-06
+#> B cells__HR- Ki67+         0.4193782 4.609014e-03 7.196009e-02
 ```
 
 `r` is the radius with the strongest evidence, and `p_value` the
@@ -584,9 +590,10 @@ survival, adjusting for age.
 spe$RFS <- Surv(spe$timeRFS, spe$eventRFS)
 resS <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = "Age.At.Diagnosis")
 resS
-#> spicyR (cell-level test): 481 pairs, association with survival, r = 25
+#> spicyR (cell-level test): 484 pairs, association with survival, r = 25
 #> Units: 456 patients with 456 images
 #> Adjusted for: covariates
+#> 2 pairs are not tested (p_value NA; see not_tested)
 #> BH-adjusted p < 0.05: 3 pairs
 #> See topPairs().
 topPairs(resS, n = 6)
@@ -604,20 +611,13 @@ topPairs(resS, n = 6)
 #> Macrophages Vim+ CD45low__Myoepithelial            Myoepithelial
 #> HR- CK7+__HRlow CKlow                                HRlow CKlow
 #> Myoepithelial__Macrophages Vim+ CD45low Macrophages Vim+ CD45low
-#>                                         hazard_ratio_sd      p_value
-#> HR+ CK7-__HR- CK7+                            0.6145379 9.146473e-06
-#> HR+ CK7-__HR+ CK7- Ki67+                      0.6672860 2.031705e-05
-#> HRlow CKlow__HR- CK7+                         0.6489038 1.560286e-04
-#> Macrophages Vim+ CD45low__Myoepithelial       0.6467204 1.121743e-03
-#> HR- CK7+__HRlow CKlow                         0.7310882 1.261833e-03
-#> Myoepithelial__Macrophages Vim+ CD45low       0.6706243 1.568620e-03
-#>                                               p_adj
-#> HR+ CK7-__HR- CK7+                      0.004399453
-#> HR+ CK7-__HR+ CK7- Ki67+                0.004886250
-#> HRlow CKlow__HR- CK7+                   0.025016580
-#> Macrophages Vim+ CD45low__Myoepithelial 0.121388361
-#> HR- CK7+__HRlow CKlow                   0.121388361
-#> Myoepithelial__Macrophages Vim+ CD45low 0.125751045
+#>                                         hazard_ratio_sd      p_value      p_adj
+#> HR+ CK7-__HR- CK7+                            0.6226731 1.139636e-05 0.00493769
+#> HR+ CK7-__HR+ CK7- Ki67+                      0.6570080 2.048834e-05 0.00493769
+#> HRlow CKlow__HR- CK7+                         0.6294801 1.374187e-04 0.02207860
+#> Macrophages Vim+ CD45low__Myoepithelial       0.6380160 9.516809e-04 0.09986150
+#> HR- CK7+__HRlow CKlow                         0.7032355 1.086715e-03 0.09986150
+#> Myoepithelial__Macrophages Vim+ CD45low       0.6531812 1.243089e-03 0.09986150
 ```
 
 The p-value comes from a score test that relates each patient’s effect
@@ -636,9 +636,10 @@ itself related to relapse, so we add it to the covariates.
 
 resSER <- spicy(spe, condition = "RFS", subject = "metabricId", r = 25, covariates = c("Age.At.Diagnosis", "ER.Status"))
 resSER
-#> spicyR (cell-level test): 481 pairs, association with survival, r = 25
+#> spicyR (cell-level test): 484 pairs, association with survival, r = 25
 #> Units: 456 patients with 456 images
 #> Adjusted for: covariates
+#> 6 pairs are not tested (p_value NA; see not_tested)
 #> BH-adjusted p < 0.05: 0 pairs
 #> See topPairs().
 ```
@@ -756,7 +757,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.56) to
+A methods sentence might read: “We used spicyR (version 1.99.58) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -959,15 +960,15 @@ sessionInfo()
 #>  [9] Seqinfo_1.3.2               IRanges_2.47.5             
 #> [11] S4Vectors_0.51.10           MatrixGenerics_1.25.0      
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
-#> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.0        
+#> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.2        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.12       
-#> [19] generics_0.1.4              spicyR_1.99.56             
+#> [19] generics_0.1.4              spicyR_1.99.58             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
-#>   [4] anndataR_1.3.3       rlang_1.3.0          magrittr_2.0.5      
-#>   [7] Rarr_2.1.53          otel_0.2.0           e1071_1.7-17        
+#>   [4] anndataR_1.3.4       rlang_1.3.0          magrittr_2.0.5      
+#>   [7] Rarr_2.1.62          otel_0.3.0           e1071_1.7-17        
 #>  [10] compiler_4.6.2       RSQLite_3.53.3       paws.storage_0.11.0 
 #>  [13] png_0.1-9            systemfonts_1.3.2    vctrs_0.7.3         
 #>  [16] wk_0.9.5             pkgconfig_2.0.3      crayon_1.5.3        
@@ -996,7 +997,7 @@ sessionInfo()
 #>  [85] S4Arrays_1.13.2      viridisLite_0.4.3    dplyr_1.2.1         
 #>  [88] gtable_0.3.6         R.methodsS3_1.8.2    sass_0.4.10         
 #>  [91] digest_0.6.39        classInt_0.4-11      SparseArray_1.13.4  
-#>  [94] ZarrArray_1.1.7      rjson_0.2.23         htmlwidgets_1.6.4   
+#>  [94] ZarrArray_1.1.8      rjson_0.2.23         htmlwidgets_1.6.4   
 #>  [97] farver_2.1.2         memoise_2.0.1        htmltools_0.5.9     
 #> [100] pkgdown_2.2.1        R.oo_1.27.1          lifecycle_1.0.5     
 #> [103] httr_1.4.9           bit64_4.8.6          MASS_7.3-66

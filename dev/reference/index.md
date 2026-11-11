@@ -17,6 +17,9 @@ Every pair of cell types, between conditions or with survival.
 - [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
   : Test for changes in the co-localisation of cell types between
   conditions
+- [`topFollowUps()`](https://sydneybiox.github.io/spicyR/dev/reference/topFollowUps.md)
+  : The follow-up comparisons of two levels, for more than two
+  conditions
 - [`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md)
   : The most significant pairs, or the results of chosen pairs
 

@@ -6,8 +6,14 @@ compares Statial's Kontextual statistic in each image with its exact
 expectation and variance when the `to` cells are a random choice among
 the parent's cells, and combines the images as
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
-does (frailty GEE, each condition's CR2 variance, enough effective
-patients per condition, abundance adjustment).
+does: each image's effect (observed minus expected, over Kontextual's
+normaliser) with the image random effect within patients (Paule-Mandel),
+then the frailty GEE across patients with each condition's CR2 variance
+and Satterthwaite df, and enough effective patients per condition. For a
+triple with `from == to` the statistic is quadratic in the labels, and
+its variance is the exact variance of observed minus expected under that
+random choice; an image where every choice gives the same value carries
+no information and is left out.
 
 ## Usage
 
@@ -24,7 +30,7 @@ kontextualEngine(
   imageID = "imageID",
   cellType = "cellType",
   spatialCoords = c("x", "y"),
-  adjustAbundance = TRUE,
+  adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   frailty = TRUE,
   labelClustering = FALSE,
@@ -54,11 +60,18 @@ kontextualEngine(
   outcomes.
 
 - subject, covariates, r, from, to, imageID, cellType, spatialCoords,
-  adjustAbundance, variance, frailty, ref:
+  variance, frailty, ref:
 
   As for
   [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md);
-  `r` is one radius.
+  `r` is one radius (several radii are not supported).
+
+- adjustAbundance:
+
+  Adjust the test for the log share of the `to` type among the parent's
+  cells in each image (default `FALSE`), as
+  [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)'s
+  `adjustAbundance`; its effect is reported as `abundance_effect`.
 
 - labelClustering:
 

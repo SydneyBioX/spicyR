@@ -22,7 +22,7 @@ spicy(
   method = c("cell", "image"),
   effect = c("allocation", "count"),
   k = NULL,
-  combine = c("maxT", "davies", "cauchy"),
+  combine = c("davies", "maxT", "cauchy"),
   adjustAbundance = FALSE,
   variance = c("cr2", "hartung_knapp"),
   ref = NULL,
@@ -32,6 +32,7 @@ spicy(
   cellWeights = NULL,
   selfVariance = c("sampled", "exact", "geometricSampled", "geometric"),
   selfVarianceCells = 50,
+  alpha = 0.05,
   ...
 )
 ```
@@ -71,9 +72,11 @@ spicy(
 - covariates:
 
   Image- or patient-level columns to adjust for (cell method: added to
-  the design of the excess, and the effect of each is reported as
-  `<column>_effect` and `<column>_p_value`; survival: added to the null
-  Cox model).
+  the design of the excess, with the patient average of an image-level
+  one (see Details), and the effect of each is reported as
+  `<column>_effect` and `<column>_p_value`, for an image-level one its
+  slope within patients; survival: added to the null Cox model and to
+  the model of the effect, see Details).
 
 - imageID, cellType, spatialCoords:
 
@@ -85,8 +88,9 @@ spicy(
 
   Radius (or radii) of the neighbourhood, in the units of the
   coordinates. Cell method: one radius (default 50), or several to be
-  combined by `combine`. Image method: the radii of the L function
-  (default 20, 50 and 100).
+  combined by `combine` (two conditions only; a survival outcome takes
+  one radius). Image method: the radii of the L function (default 20, 50
+  and 100).
 
 - from, to:
 
@@ -110,21 +114,40 @@ spicy(
 
 - combine:
 
-  Cell method with several radii: `"maxT"` (max-T with the sandwich
-  correlation across radii; up to 6 radii), `"davies"` (Davies' bound
-  for the same maximum, for many radii) or `"cauchy"` (Cauchy
-  combination). The max-T p-value is the multivariate normal probability
-  of the largest \|z\|, computed by the quasi-Monte Carlo method of Genz
-  and Bretz with an absolute error of about 1e-4 (by quadrature for two
-  radii); the same inputs always give the same value.
+  Cell method with several radii: `"davies"` (the default: Davies' upper
+  bound on the max-T p-value, a closed form that is never smaller than
+  the exact p-value and takes microseconds for any number of radii;
+  slightly conservative, about 1.1 times the exact p-value with 4 radii
+  and 1.3 to 1.4 times with 8 to 16), `"maxT"` (the exact max-T p-value
+  with the sandwich correlation across radii) or `"cauchy"` (Cauchy
+  combination). Both `"davies"` and `"maxT"` use the largest \|z\| over
+  the radii; Davies' bound needs only the correlations of neighbouring
+  radii, the exact p-value all of them. The max-T p-value is the
+  multivariate normal probability that the largest \|z\| over the radii
+  is at least the one observed, computed as a sum of first-exceedance
+  terms by the quasi-Monte Carlo method of Genz and Bretz to a relative
+  error of about 0.1\\ radii); the same inputs always give the same
+  value. A radius whose correlation with a smaller kept radius exceeds
+  0.995 is left out. Choose one radius from the relationship of interest
+  when you can; when the scale is unknown, we recommend about 4 radii
+  spanning the range of interest, none below about one cell diameter:
+  many closely spaced radii add little information (neighbouring radii
+  are highly correlated), cost some power, make the correlation hard to
+  estimate with few patients and, with max-T, are slower (with 25 radii,
+  about a second per pair against a few milliseconds with 4); radii
+  below a cell diameter can be liberal in large cohorts. With max-T,
+  `$cellResults` has `maxT_converged`: `TRUE` when the pair's p-value
+  met the 0.1\\ when the integrator stopped at its limit of points first
+  (its error may then be larger).
 
 - adjustAbundance:
 
   Cell method: adjust the test for the log share of the `from` type in
-  each image (default `FALSE`). Its effect is reported as
-  `abundance_effect`. It does not separate more `from` cells from more
-  densely packed ones, and it removes real effects when the share tracks
-  the condition.
+  each image (default `FALSE`), and for its patient average when
+  patients have several images (see Details). Its effect is reported as
+  `abundance_effect` (then the slope within patients). It does not
+  separate more `from` cells from more densely packed ones, and it
+  removes real effects when the share tracks the condition.
 
 - variance:
 
@@ -193,6 +216,14 @@ spicy(
   `selfVariance = "sampled"` or `"geometricSampled"` (every cell when an
   image has no more).
 
+- alpha:
+
+  Cell method with more than two conditions: the level of the gate for
+  the follow-up comparisons (pairs whose `overall_p_adj` is at most
+  `alpha` are followed up; see
+  [`topFollowUps()`](https://sydneybiox.github.io/spicyR/dev/reference/topFollowUps.md)).
+  Default 0.05.
+
 - ...:
 
   Arguments of the image method: `sigma`, `alternateResult`,
@@ -215,24 +246,43 @@ full table: for the allocation effect, the pair's `side` (`"attract"` or
 condition (`excess_ref`, `excess_comp`, at the average covariates), the
 difference (`excess_difference`), its standard error, df, p-value and
 BH-adjusted p-value, the frailty variance, the between-image variance
-(`tau2_image`) and, when the test was adjusted, what for
-(`adjusted_for`), the effect and p-value of each adjustment, and the
-unadjusted test (`unadjusted_difference`, `unadjusted_p_value`,
-`unadjusted_p_adj`). With more than two groups, one row per pair and
-level against the reference, and the overall test of the pair
-(`overall_F` on `overall_df1` and `overall_df2` df, `overall_p_value`,
-`overall_p_adj`: the CR2 Wald test of every level equal to the
-reference, with the HTZ small-sample F of Tipton and Pustejovsky). With
-a continuous condition, one row per pair: the effect at the condition's
-mean (`excess_mean`) and its slope per unit of the condition
+(`tau2_image`; of the adjusted test when it was adjusted for a column
+that differs between a patient's images) and, when the test was
+adjusted, what for (`adjusted_for`), the effect and p-value of each
+adjustment, and the unadjusted test (`unadjusted_difference`,
+`unadjusted_p_value`, `unadjusted_p_adj`). With more than two groups,
+one row per pair and level against the reference, and the overall test
+of the pair (`overall_F` on `overall_df1` and `overall_df2` df,
+`overall_p_value`, `overall_p_adj`: the CR2 Wald test of every level
+equal to the reference, with the HTZ small-sample F of Tipton and
+Pustejovsky 2015; Pustejovsky and Tipton 2018, eqs. 12-13: the
+approximate Hotelling's T^2 test that all the condition means are equal,
+which does not depend on the reference; with two levels it is the
+t-test, F = t^2). A pair is tested only when every level passes the
+rules below. For the pairs called by the overall test (`overall_p_adj`
+at most `alpha`), `$followUpResults` compares every two levels, each by
+the two-condition test on the patients of those two levels,
+Bonferroni-corrected within the pair at the Benjamini-Bogomolov level
+(see
+[`topFollowUps()`](https://sydneybiox.github.io/spicyR/dev/reference/topFollowUps.md)).
+With a continuous condition, one row per pair: the effect at the
+condition's mean (`excess_mean`) and its slope per unit of the condition
 (`excess_slope`), with its CR2 standard error and Satterthwaite df, in
-place of the two groups' columns. Every requested pair has a row:
-`not_tested` gives why a pair (or, in `$radiusResults`, a radius) was
-not tested (`"one_patient_per_group"`, `"no_information"`,
-`"few_effective_units"` or `"no_variation"`; for a continuous condition
-also `"too_few_units"` or `"design_not_full_rank"` (the condition does
-not vary); `NA` when it was), and its p-value is then `NA` and not
-counted in the BH adjustment. `$effect` records which effect was
+place of the two groups' columns. With a survival outcome, one row per
+pair: the score test (`score_coefficient`, the coefficient of M, with
+`score_se`, `score_df`, `p_value`, `p_adj`), the hazard ratio
+(`hazard_ratio_sd`, `log_hr_sd`, `log_hr_se`, `log_hr_per_unit`),
+`tau2`, the informative patients' deaths (`n_deaths`) and, with
+`adjustAbundance = TRUE`, the test without the abundance share
+(`unadjusted_p_value`, `unadjusted_hazard_ratio_sd`,
+`unadjusted_p_adj`). Every requested pair has a row: `not_tested` gives
+why a pair (or, in `$radiusResults`, a radius) was not tested
+(`"one_patient_per_group"`, `"no_information"`, `"few_effective_units"`,
+`"no_variation"` or `"too_few_df"`; for a continuous condition also
+`"too_few_units"` or `"design_not_full_rank"` (the condition does not
+vary); for survival also `"no_deaths"`, `"no_survivors"` or
+`"too_few_units"`; `NA` when it was), and its p-value is then `NA` and
+not counted in the BH adjustment. `$effect` records which effect was
 estimated.
 
 ## Details
@@ -266,6 +316,23 @@ difference is adjusted for any `covariates`, and, with
 `adjustAbundance = TRUE`, for the log share of the `from` type in each
 image; the unadjusted test is then reported alongside (`unadjusted_*`
 columns).
+
+An adjustment that differs between a patient's images (the `from` type's
+share, or an image-level covariate) can relate to the effect differently
+within a patient than between patients. Each such column therefore gets
+a second column, its plain average over the patient's images: the
+conditions are compared at equal patient averages, and the reported
+effect of the adjustment (`<column>_effect`) is its slope within
+patients. For example, with images of 10% and 30% `from` cells in one
+patient, the average 20% describes the patient and the 10% and 30% the
+slope within it. The between-image variance is then estimated within
+patients from what the adjustments leave (each patient's own mean free;
+`tau2_image`), and the patient variance (`tau2`) from the patients'
+average effects and adjustments, each by Paule-Mandel. An adjustment
+with one value per patient (for example age) gets no second column.
+Adjustment cannot fully remove a confounder that is measured with noise:
+when the adjustment varies mostly within patients, patients have few
+images and it differs by condition, some bias remains.
 
 When nearly every cell has a `from` cell within `r` (q close to 1),
 there is little room for attraction and an attracting pair's images
@@ -325,6 +392,43 @@ falls below this is not tested.
 
 Images with a missing condition are left out of every step: the choice
 of the side, the between-image variance and the tests.
+
+A test (of any condition) is not done when its Satterthwaite degrees of
+freedom are below 1 or not finite (`not_tested` is `"too_few_df"`): its
+p-value is `NA` and it is left out of the BH adjustment.
+
+**Survival.** With a
+[`survival::Surv`](https://rdrr.io/pkg/survival/man/Surv.html) outcome,
+a null Cox model of the outcome on the `covariates` gives each patient's
+martingale residual M, and the effect is regressed on M (with the
+covariates, and with `adjustAbundance = TRUE` the log share of the
+`from` type) by the same frailty model, CR2 variance and Satterthwaite
+df; its numerator is Cox's score statistic. The covariates are on both
+sides: in the null Cox model (an image-level covariate as its average
+over the patient's images) and in the model of the effect. Patients with
+no outcome (or with a covariate missing in all their images) are left
+out before anything else, so the result is that of the data without
+them. A survival outcome is tested at one radius. A pair is tested when,
+among its informative patients (those with an outcome and an image row
+for the pair), there is at least one death (`"no_deaths"`) and one
+survivor (`"no_survivors"`), and at least q + 2 patients
+(`"too_few_units"`), q being the number of columns of the patient
+design: 2 (intercept and M), plus one per covariate column, plus one
+more for each column that varies between a patient's images (the
+abundance share always does): 4 patients without covariates, 5 with one
+patient-level covariate, 6 with the abundance share. `n_deaths` reports
+the informative patients' deaths; with fewer than 3 the test has little
+power. The hazard ratio (`hazard_ratio_sd`, per standard deviation of
+the effect; `log_hr_per_unit`, per unit) is from a Cox model of the
+outcome on each patient's shrunken effect (from the frailty model of the
+effect on the covariates, without M) and the covariates; its standard
+error `log_hr_se` is model-based and approximate (it ignores that the
+shrunken effect is estimated), so the score test's `p_value` is the only
+p-value of a pair. A column that varies between a patient's images (the
+abundance share, or an image-level covariate) enters both frailty models
+with its patient average, as for the condition tests (see above): the
+between-image variance is then re-estimated within patients
+(`tau2_image`) and `tau2` from the patients' averages.
 
 **`method = "image"` (the original spicyR test).** A per-image
 L-function summary of each pair is compared between conditions with a

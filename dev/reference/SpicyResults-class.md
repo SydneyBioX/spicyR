@@ -24,13 +24,22 @@ Elements for the cell method (`method = "cell"`, the default):
   the unadjusted test (`unadjusted_difference`, `unadjusted_se`,
   `unadjusted_df`, `unadjusted_p_value`, `unadjusted_p_adj`). For
   survival: `score_coefficient`, `p_value`, `p_adj`, `hazard_ratio_sd`,
-  `hr_p_value` and, with `adjustAbundance = TRUE`, the p-value and
-  hazard ratio without it. With several radii: `r`, the radius with the
-  strongest evidence, and `p_value_best_radius`.
+  `log_hr_se` (model-based and approximate), `n_deaths`, `not_tested`
+  and, with `adjustAbundance = TRUE`, the p-value and hazard ratio
+  without it. With several radii: `r`, the radius with the strongest
+  evidence, and `p_value_best_radius`; with `combine = "maxT"`,
+  `maxT_converged` (whether the max-T p-value met its error target of
+  about 0.1%).
 
 - `radiusResults`:
 
   with several radii, the table at every radius.
+
+- `followUpResults`, `alpha`:
+
+  with more than two conditions, the follow-up comparisons of two levels
+  for the pairs called by the overall test at level `alpha` (see
+  [`topFollowUps`](https://sydneybiox.github.io/spicyR/dev/reference/topFollowUps.md)).
 
 - `pairwiseAssoc`:
 

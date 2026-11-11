@@ -9,7 +9,7 @@ signifPlot(), spicyBoxPlot() and bind() on it, or take elements with $."><meta n
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.56</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.58</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,11 +52,17 @@ for (<code>adjusted_for</code>), the effect and p-value of each adjustment (<cod
 <code>&lt;covariate&gt;_p_value</code>, <code>abundance_effect</code>) and the unadjusted test (<code>unadjusted_difference</code>,
 <code>unadjusted_se</code>, <code>unadjusted_df</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>). For
 survival: <code>score_coefficient</code>, <code>p_value</code>, <code>p_adj</code>, <code>hazard_ratio_sd</code>,
-<code>hr_p_value</code> and, with <code>adjustAbundance = TRUE</code>, the p-value and hazard ratio without it. With several radii: <code>r</code>, the radius with the strongest evidence, and
-<code>p_value_best_radius</code>.</p></dd>
+<code>log_hr_se</code> (model-based and approximate), <code>n_deaths</code>, <code>not_tested</code> and, with
+<code>adjustAbundance = TRUE</code>, the p-value and hazard ratio without it. With several radii: <code>r</code>, the radius with the strongest evidence, and
+<code>p_value_best_radius</code>; with <code>combine = "maxT"</code>, <code>maxT_converged</code> (whether the max-T p-value met
+its error target of about 0.1%).</p></dd>
 
 <dt><code>radiusResults</code></dt>
 <dd><p>with several radii, the table at every radius.</p></dd>
+
+<dt><code>followUpResults</code>, <code>alpha</code></dt>
+<dd><p>with more than two conditions, the follow-up comparisons of two
+levels for the pairs called by the overall test at level <code>alpha</code> (see <code><a href="topFollowUps.html">topFollowUps</a></code>).</p></dd>
 
 <dt><code>pairwiseAssoc</code></dt>
 <dd><p>a list with, for every pair, the effect in every image (<code>NA</code> where the pair

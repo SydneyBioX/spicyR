@@ -82,8 +82,8 @@ data("diabetesData")
 set.seed(1)
 shuffles <- calibrationCheck(diabetesData, condition = "stage", subject = "case", r = 50, nShuffles = 2)
 summary(shuffles)
-#>   threshold expected   percent
-#> 1      0.05        5 1.5176290
-#> 2      0.01        1 0.2427184
+#>   threshold expected  percent
+#> 1      0.05        5 1.539474
+#> 2      0.01        1 0.250000
 plot(shuffles)
 ```

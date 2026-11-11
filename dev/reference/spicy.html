@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.56</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.58</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,7 +60,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cell"</span>, <span class="st">"image"</span><span class="op">)</span>,</span>
 <span>  effect <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allocation"</span>, <span class="st">"count"</span><span class="op">)</span>,</span>
 <span>  k <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"maxT"</span>, <span class="st">"davies"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
+<span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"davies"</span>, <span class="st">"maxT"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
 <span>  adjustAbundance <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  variance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cr2"</span>, <span class="st">"hartung_knapp"</span><span class="op">)</span>,</span>
 <span>  ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -70,6 +70,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  cellWeights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  selfVariance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sampled"</span>, <span class="st">"exact"</span>, <span class="st">"geometricSampled"</span>, <span class="st">"geometric"</span><span class="op">)</span>,</span>
 <span>  selfVarianceCells <span class="op">=</span> <span class="fl">50</span>,</span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -102,8 +103,9 @@ if omitted, every image is its own patient.</p></dd>
 
 <dt id="arg-covariates">covariates<a class="anchor" aria-label="anchor" href="#arg-covariates"></a></dt>
 <dd><p>Image- or patient-level columns to adjust for (cell method: added to the design of
-the excess, and the effect of each is reported as <code>&lt;column&gt;_effect</code> and <code>&lt;column&gt;_p_value</code>;
-survival: added to the null Cox model).</p></dd>
+the excess, with the patient average of an image-level one (see Details), and the effect of each is reported
+as <code>&lt;column&gt;_effect</code> and <code>&lt;column&gt;_p_value</code>, for an image-level one its slope within patients; survival: added
+to the null Cox model and to the model of the effect, see Details).</p></dd>
 
 
 <dt id="arg-imageid-celltype-spatialcoords">imageID, cellType, spatialCoords<a class="anchor" aria-label="anchor" href="#arg-imageid-celltype-spatialcoords"></a></dt>
@@ -113,8 +115,8 @@ store, <code>spatialCoords</code> is either two <code>obs</code> columns or the 
 
 <dt id="arg-r">r<a class="anchor" aria-label="anchor" href="#arg-r"></a></dt>
 <dd><p>Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
-radius (default 50), or several to be combined by <code>combine</code>. Image method: the radii of the L
-function (default 20, 50 and 100).</p></dd>
+radius (default 50), or several to be combined by <code>combine</code> (two conditions only; a survival outcome takes one
+radius). Image method: the radii of the L function (default 20, 50 and 100).</p></dd>
 
 
 <dt id="arg-from-to">from, to<a class="anchor" aria-label="anchor" href="#arg-from-to"></a></dt>
@@ -136,16 +138,28 @@ With <code>k</code>, "within <code>r</code>" means among the cell's <code>k</cod
 
 
 <dt id="arg-combine">combine<a class="anchor" aria-label="anchor" href="#arg-combine"></a></dt>
-<dd><p>Cell method with several radii: <code>"maxT"</code> (max-T with the sandwich correlation across
-radii; up to 6 radii), <code>"davies"</code> (Davies' bound for the same maximum, for many radii) or <code>"cauchy"</code>
-(Cauchy combination). The max-T p-value is the multivariate normal probability of the largest |z|, computed
-by the quasi-Monte Carlo method of Genz and Bretz with an absolute error of about 1e-4 (by quadrature for two
-radii); the same inputs always give the same value.</p></dd>
+<dd><p>Cell method with several radii: <code>"davies"</code> (the default: Davies' upper bound on the max-T
+p-value, a closed form that is never smaller than the exact p-value and takes microseconds for any number of
+radii; slightly conservative, about 1.1 times the exact p-value with 4 radii and 1.3 to 1.4 times with 8 to 16),
+<code>"maxT"</code> (the exact max-T p-value with the sandwich correlation across radii) or <code>"cauchy"</code> (Cauchy combination).
+Both <code>"davies"</code> and <code>"maxT"</code> use the largest |z| over the radii; Davies' bound needs only the correlations of
+neighbouring radii, the exact p-value all of them. The max-T p-value is the multivariate normal probability
+that the largest |z| over the radii is at least the one observed, computed as a sum of first-exceedance terms
+by the quasi-Monte Carlo method of Genz and Bretz to a relative error of about 0.1\<!-- % (by quadrature for two -->
+radii); the same inputs always give the same value. A radius whose correlation with a smaller kept radius
+exceeds 0.995 is left out. Choose one radius from the relationship of interest when you can; when the scale is
+unknown, we recommend about 4 radii spanning the range of interest, none below about one cell diameter: many
+closely spaced radii add little information (neighbouring radii are highly correlated), cost some power, make
+the correlation hard to estimate with few patients and, with max-T, are slower (with 25 radii, about a second
+per pair against a few milliseconds with 4); radii below a cell diameter can be liberal in large cohorts. With
+max-T, <code>$cellResults</code> has <code>maxT_converged</code>: <code>TRUE</code> when the pair's p-value met the 0.1\<!-- % error target, \code{FALSE} -->
+when the integrator stopped at its limit of points first (its error may then be larger).</p></dd>
 
 
 <dt id="arg-adjustabundance">adjustAbundance<a class="anchor" aria-label="anchor" href="#arg-adjustabundance"></a></dt>
 <dd><p>Cell method: adjust the test for the log share of the <code>from</code> type in each image
-(default <code>FALSE</code>). Its effect is reported as <code>abundance_effect</code>. It does not separate more <code>from</code>
+(default <code>FALSE</code>), and for its patient average when patients have several images (see Details). Its effect
+is reported as <code>abundance_effect</code> (then the slope within patients). It does not separate more <code>from</code>
 cells from more densely packed ones, and it removes real effects when the share tracks the condition.</p></dd>
 
 
@@ -201,6 +215,11 @@ neighbours shared by nearby cells: <code>"sampled"</code> (the default), <code>"
 <code>"geometricSampled"</code> (every cell when an image has no more).</p></dd>
 
 
+<dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
+<dd><p>Cell method with more than two conditions: the level of the gate for the follow-up comparisons (pairs
+whose <code>overall_p_adj</code> is at most <code>alpha</code> are followed up; see <code><a href="topFollowUps.html">topFollowUps()</a></code>). Default 0.05.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Arguments of the image method: <code>sigma</code>, <code>alternateResult</code>, <code>minLambda</code>, <code>weights</code>,
 <code>weightsByPair</code>, <code>weightFactor</code>, <code>weightZThreshold</code>, <code>window</code>, <code>window.length</code>, <code>edgeCorrect</code>,
@@ -214,18 +233,28 @@ for both methods. For the cell method, <code>$cellResults</code> holds the full 
 the pair's <code>side</code> (<code>"attract"</code> or <code>"avoid"</code>, which sets the scale of the effect), the effect in each
 condition (<code>excess_ref</code>, <code>excess_comp</code>, at the average covariates), the difference
 (<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
-between-image variance (<code>tau2_image</code>) and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect
+between-image variance (<code>tau2_image</code>; of the adjusted test when it was adjusted for a column that differs
+between a patient's images) and, when the test was adjusted, what for (<code>adjusted_for</code>), the effect
 and p-value of each adjustment, and the unadjusted test (<code>unadjusted_difference</code>, <code>unadjusted_p_value</code>, <code>unadjusted_p_adj</code>).
 With more than two groups, one row per pair and level against the reference, and the overall test of the pair
 (<code>overall_F</code> on <code>overall_df1</code> and <code>overall_df2</code> df, <code>overall_p_value</code>, <code>overall_p_adj</code>: the CR2 Wald test of
-every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky). With a continuous
+every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky 2015; Pustejovsky and
+Tipton 2018, eqs. 12-13: the approximate Hotelling's T^2 test that all the condition means are equal, which does
+not depend on the reference; with two levels it is the t-test, F = t^2). A pair is tested only when every level
+passes the rules below. For the pairs called by the overall test (<code>overall_p_adj</code> at most <code>alpha</code>),
+<code>$followUpResults</code> compares every two levels, each by the two-condition test on the patients of those two levels,
+Bonferroni-corrected within the pair at the Benjamini-Bogomolov level (see <code><a href="topFollowUps.html">topFollowUps()</a></code>). With a continuous
 condition, one row per pair: the effect at the condition's mean (<code>excess_mean</code>) and its slope per unit of the
 condition (<code>excess_slope</code>), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
+With a survival outcome, one row per pair: the score test (<code>score_coefficient</code>, the coefficient of M, with
+<code>score_se</code>, <code>score_df</code>, <code>p_value</code>, <code>p_adj</code>), the hazard ratio (<code>hazard_ratio_sd</code>, <code>log_hr_sd</code>, <code>log_hr_se</code>,
+<code>log_hr_per_unit</code>), <code>tau2</code>, the informative patients' deaths (<code>n_deaths</code>) and, with <code>adjustAbundance = TRUE</code>,
+the test without the abundance share (<code>unadjusted_p_value</code>, <code>unadjusted_hazard_ratio_sd</code>, <code>unadjusted_p_adj</code>).
 Every requested pair has a row: <code>not_tested</code> gives why a pair (or, in <code>$radiusResults</code>, a radius) was not tested
-(<code>"one_patient_per_group"</code>, <code>"no_information"</code>, <code>"few_effective_units"</code> or <code>"no_variation"</code>; for a continuous
-condition also <code>"too_few_units"</code> or <code>"design_not_full_rank"</code> (the condition does not vary); <code>NA</code> when it
-was), and its p-value is then <code>NA</code> and not counted in the BH adjustment. <code>$effect</code> records which effect was
-estimated.</p>
+(<code>"one_patient_per_group"</code>, <code>"no_information"</code>, <code>"few_effective_units"</code>, <code>"no_variation"</code> or <code>"too_few_df"</code>; for a
+continuous condition also <code>"too_few_units"</code> or <code>"design_not_full_rank"</code> (the condition does not vary); for
+survival also <code>"no_deaths"</code>, <code>"no_survivors"</code> or <code>"too_few_units"</code>; <code>NA</code> when it was), and its p-value is then
+<code>NA</code> and not counted in the BH adjustment. <code>$effect</code> records which effect was estimated.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -249,6 +278,16 @@ CR2 cluster-robust variance on Satterthwaite degrees of freedom, with <strong>pa
 units</strong>. The difference is adjusted for any <code>covariates</code>, and, with <code>adjustAbundance = TRUE</code>, for the
 log share of the <code>from</code> type in each image; the unadjusted test is then reported alongside
 (<code>unadjusted_*</code> columns).</p>
+<p>An adjustment that differs between a patient's images (the <code>from</code> type's share, or an image-level covariate)
+can relate to the effect differently within a patient than between patients. Each such column therefore gets a
+second column, its plain average over the patient's images: the conditions are compared at equal patient averages,
+and the reported effect of the adjustment (<code>&lt;column&gt;_effect</code>) is its slope within patients. For example, with
+images of 10% and 30% <code>from</code> cells in one patient, the average 20% describes the patient and the 10% and 30%
+the slope within it. The between-image variance is then estimated within patients from what the adjustments leave
+(each patient's own mean free; <code>tau2_image</code>), and the patient variance (<code>tau2</code>) from the patients' average effects
+and adjustments, each by Paule-Mandel. An adjustment with one value per patient (for example age) gets no
+second column. Adjustment cannot fully remove a confounder that is measured with noise: when the adjustment varies
+mostly within patients, patients have few images and it differs by condition, some bias remains.</p>
 <p>When nearly every cell has a <code>from</code> cell within <code>r</code> (q close to 1), there is little room for attraction and
 an attracting pair's images carry little information; a smaller <code>r</code> is more informative.</p>
 <p>The allocation effect is bounded: an image of an avoiding pair with no <code>to</code> cell next to a <code>from</code> cell has the
@@ -284,6 +323,28 @@ equal weights can therefore be tested. With more than two conditions, a pair whe
 is not tested.</p>
 <p>Images with a missing condition are left out of every step: the choice of the side, the between-image
 variance and the tests.</p>
+<p>A test (of any condition) is not done when its Satterthwaite degrees of freedom are below 1 or not finite
+(<code>not_tested</code> is <code>"too_few_df"</code>): its p-value is <code>NA</code> and it is left out of the BH adjustment.</p>
+<p><strong>Survival.</strong> With a <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv</a></code> outcome, a null Cox model of the outcome on the <code>covariates</code> gives each
+patient's martingale residual M, and the effect is regressed on M (with the covariates, and with
+<code>adjustAbundance = TRUE</code> the log share of the <code>from</code> type) by the same frailty model, CR2 variance and
+Satterthwaite df; its numerator is Cox's score statistic. The covariates are on both sides: in the null Cox model
+(an image-level covariate as its average over the patient's images) and in the model of the effect. Patients with
+no outcome (or with a covariate missing in all their images) are left out before anything else, so the result is
+that of the data without them. A survival outcome is tested at one radius. A pair is tested when, among its
+informative patients (those with an outcome and an image row for the pair), there is at least one death
+(<code>"no_deaths"</code>) and one survivor (<code>"no_survivors"</code>), and at least q + 2 patients (<code>"too_few_units"</code>), q being the
+number of columns of the patient design: 2 (intercept and M), plus one per covariate column, plus one more for
+each column that varies between a patient's images (the abundance share always does): 4 patients without
+covariates, 5 with one patient-level covariate, 6 with the abundance share. <code>n_deaths</code> reports the informative
+patients' deaths; with fewer than 3 the test has little power. The hazard ratio (<code>hazard_ratio_sd</code>, per standard
+deviation of the effect; <code>log_hr_per_unit</code>, per unit) is from a Cox model of the outcome on each patient's
+shrunken effect (from the frailty model of the effect on the covariates, without M) and the covariates; its
+standard error <code>log_hr_se</code> is model-based and approximate (it ignores that the shrunken effect is estimated), so
+the score test's <code>p_value</code> is the only p-value of a pair.
+A column that varies between a patient's images (the abundance share, or an image-level covariate) enters
+both frailty models with its patient average, as for the condition tests (see above): the between-image
+variance is then re-estimated within patients (<code>tau2_image</code>) and <code>tau2</code> from the patients' averages.</p>
 <p><strong><code>method = "image"</code> (the original spicyR test).</strong> A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when <code>subject</code> is given
 (Canete et al. 2022). With <code>cellWeights</code> (see <code><a href="getPairwise.html">getPairwise()</a></code>), cells enter each label with a weight,
