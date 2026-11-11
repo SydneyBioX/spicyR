@@ -25,6 +25,17 @@
 #' log share of the `from` type in each image; the unadjusted test is then reported alongside
 #' (`unadjusted_*` columns).
 #'
+#' An adjustment that differs between a patient's images (the `from` type's share, or an image-level covariate)
+#' can relate to the effect differently within a patient than between patients. Each such column therefore gets a
+#' second column, its plain average over the patient's images: the conditions are compared at equal patient averages,
+#' and the reported effect of the adjustment (`<column>_effect`) is its slope within patients. For example, with
+#' images of 10% and 30% `from` cells in one patient, the average 20% describes the patient and the 10% and 30%
+#' the slope within it. The between-image variance is then estimated within patients from what the adjustments leave
+#' (each patient's own mean free; `tau2_image`), and the patient variance (`tau2`) from the patients' average effects
+#' and adjustments, each by Paule-Mandel. An adjustment with one value per patient (for example age) gets no
+#' second column. Adjustment cannot fully remove a confounder that is measured with noise: when the adjustment varies
+#' mostly within patients, patients have few images and it differs by condition, some bias remains.
+#'
 #' When nearly every cell has a `from` cell within `r` (q close to 1), there is little room for attraction and
 #' an attracting pair's images carry little information; a smaller `r` is more informative.
 #'
@@ -86,8 +97,9 @@
 #' @param subject The column of the patient (unit) of each image. Images of one patient are combined;
 #'   if omitted, every image is its own patient.
 #' @param covariates Image- or patient-level columns to adjust for (cell method: added to the design of
-#'   the excess, and the effect of each is reported as `<column>_effect` and `<column>_p_value`;
-#'   survival: added to the null Cox model).
+#'   the excess, with the patient average of an image-level one (see Details), and the effect of each is reported
+#'   as `<column>_effect` and `<column>_p_value`, for an image-level one its slope within patients; survival: added
+#'   to the null Cox model).
 #' @param imageID,cellType,spatialCoords Column names of the image, cell type and coordinates. For a Zarr
 #'   store, `spatialCoords` is either two `obs` columns or the name of one `obsm` array (its first two columns).
 #' @param r Radius (or radii) of the neighbourhood, in the units of the coordinates. Cell method: one
@@ -105,7 +117,8 @@
 #'   by the quasi-Monte Carlo method of Genz and Bretz with an absolute error of about 1e-4 (by quadrature for two
 #'   radii); the same inputs always give the same value.
 #' @param adjustAbundance Cell method: adjust the test for the log share of the `from` type in each image
-#'   (default `FALSE`). Its effect is reported as `abundance_effect`. It does not separate more `from`
+#'   (default `FALSE`), and for its patient average when patients have several images (see Details). Its effect
+#'   is reported as `abundance_effect` (then the slope within patients). It does not separate more `from`
 #'   cells from more densely packed ones, and it removes real effects when the share tracks the condition.
 #' @param variance Cell method: `"cr2"` (the default: each condition's CR2 variance, on Satterthwaite df, see
 #'   Details) or `"hartung_knapp"` (the model-based variance, scaled by
@@ -143,7 +156,8 @@
 #'   the pair's `side` (`"attract"` or `"avoid"`, which sets the scale of the effect), the effect in each
 #'   condition (`excess_ref`, `excess_comp`, at the average covariates), the difference
 #'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
-#'   between-image variance (`tau2_image`) and, when the test was adjusted, what for (`adjusted_for`), the effect
+#'   between-image variance (`tau2_image`; of the adjusted test when it was adjusted for a column that differs
+#'   between a patient's images) and, when the test was adjusted, what for (`adjusted_for`), the effect
 #'   and p-value of each adjustment, and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
 #'   With more than two groups, one row per pair and level against the reference, and the overall test of the pair
 #'   (`overall_F` on `overall_df1` and `overall_df2` df, `overall_p_value`, `overall_p_adj`: the CR2 Wald test of

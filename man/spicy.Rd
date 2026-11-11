@@ -49,8 +49,9 @@ number with more than two values, taken as continuous (cell method: the slope of
 if omitted, every image is its own patient.}
 
 \item{covariates}{Image- or patient-level columns to adjust for (cell method: added to the design of
-the excess, and the effect of each is reported as \verb{<column>_effect} and \verb{<column>_p_value};
-survival: added to the null Cox model).}
+the excess, with the patient average of an image-level one (see Details), and the effect of each is reported
+as \verb{<column>_effect} and \verb{<column>_p_value}, for an image-level one its slope within patients; survival: added
+to the null Cox model).}
 
 \item{imageID, cellType, spatialCoords}{Column names of the image, cell type and coordinates. For a Zarr
 store, \code{spatialCoords} is either two \code{obs} columns or the name of one \code{obsm} array (its first two columns).}
@@ -76,7 +77,8 @@ by the quasi-Monte Carlo method of Genz and Bretz with an absolute error of abou
 radii); the same inputs always give the same value.}
 
 \item{adjustAbundance}{Cell method: adjust the test for the log share of the \code{from} type in each image
-(default \code{FALSE}). Its effect is reported as \code{abundance_effect}. It does not separate more \code{from}
+(default \code{FALSE}), and for its patient average when patients have several images (see Details). Its effect
+is reported as \code{abundance_effect} (then the slope within patients). It does not separate more \code{from}
 cells from more densely packed ones, and it removes real effects when the share tracks the condition.}
 
 \item{variance}{Cell method: \code{"cr2"} (the default: each condition's CR2 variance, on Satterthwaite df, see
@@ -125,7 +127,8 @@ for both methods. For the cell method, \verb{$cellResults} holds the full table:
 the pair's \code{side} (\code{"attract"} or \code{"avoid"}, which sets the scale of the effect), the effect in each
 condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), the difference
 (\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
-between-image variance (\code{tau2_image}) and, when the test was adjusted, what for (\code{adjusted_for}), the effect
+between-image variance (\code{tau2_image}; of the adjusted test when it was adjusted for a column that differs
+between a patient's images) and, when the test was adjusted, what for (\code{adjusted_for}), the effect
 and p-value of each adjustment, and the unadjusted test (\code{unadjusted_difference}, \code{unadjusted_p_value}, \code{unadjusted_p_adj}).
 With more than two groups, one row per pair and level against the reference, and the overall test of the pair
 (\code{overall_F} on \code{overall_df1} and \code{overall_df2} df, \code{overall_p_value}, \code{overall_p_adj}: the CR2 Wald test of
@@ -164,6 +167,17 @@ CR2 cluster-robust variance on Satterthwaite degrees of freedom, with \strong{pa
 units}. The difference is adjusted for any \code{covariates}, and, with \code{adjustAbundance = TRUE}, for the
 log share of the \code{from} type in each image; the unadjusted test is then reported alongside
 (\verb{unadjusted_*} columns).
+
+An adjustment that differs between a patient's images (the \code{from} type's share, or an image-level covariate)
+can relate to the effect differently within a patient than between patients. Each such column therefore gets a
+second column, its plain average over the patient's images: the conditions are compared at equal patient averages,
+and the reported effect of the adjustment (\verb{<column>_effect}) is its slope within patients. For example, with
+images of 10\% and 30\% \code{from} cells in one patient, the average 20\% describes the patient and the 10\% and 30\%
+the slope within it. The between-image variance is then estimated within patients from what the adjustments leave
+(each patient's own mean free; \code{tau2_image}), and the patient variance (\code{tau2}) from the patients' average effects
+and adjustments, each by Paule-Mandel. An adjustment with one value per patient (for example age) gets no
+second column. Adjustment cannot fully remove a confounder that is measured with noise: when the adjustment varies
+mostly within patients, patients have few images and it differs by condition, some bias remains.
 
 When nearly every cell has a \code{from} cell within \code{r} (q close to 1), there is little room for attraction and
 an attracting pair's images carry little information; a smaller \code{r} is more informative.
