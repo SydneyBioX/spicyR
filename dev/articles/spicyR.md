@@ -533,7 +533,7 @@ that are tested.
 
 ## Which radius?
 
-The radius decides which relationship is tested: a radius of one or two
+The radius decides which relationship is tested. A radius of one or two
 cell diameters asks whether two cell types touch, a larger one whether
 they share a neighbourhood. When you know the relationship you are
 looking for, choose the radius for it and test that one radius. When the
