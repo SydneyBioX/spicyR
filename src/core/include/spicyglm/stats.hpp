@@ -267,10 +267,15 @@ double cauchy_combine(const std::vector<double>& p);
 
 // max-T over radii with the sandwich correlation of the CR2 influences (PLAN_multiradius_maxT.md).
 // influence: K vectors (one per radius) over the same units; t and df per radius. Returns the p
-// value and the index of the radius with the largest |z|.
+// value and the index of the radius with the largest |z|. Any number of radii: a radius whose correlation with an
+// earlier kept one exceeds 0.995 is dropped; with c the largest |z| of the rest, p = P(max_k |Z_k| >= c) for
+// Z ~ N(0, R), by quadrature for two radii and by max_abs_tail (relative error about 1e-3) for more. error: its
+// error estimate (0 for one or two radii); converged: whether the error target was met.
 struct MaxTResult {
   double p = 1;
   int best = 0;
+  double error = 0;
+  bool converged = true;
 };
 MaxTResult max_t(const std::vector<std::vector<double>>& influence, const std::vector<double>& t,
                  const std::vector<double>& df);
@@ -282,27 +287,40 @@ MaxTResult max_t(const std::vector<std::vector<double>>& influence, const std::v
 MaxTResult davies_max(const std::vector<std::vector<double>>& influence, const std::vector<double>& t,
                       const std::vector<double>& df);
 
-// P(Z outside the rectangle [lower, upper]) for Z ~ N(0, R), R a correlation matrix (row-major K x K), as max_t
-// uses it: for K <= 2 the quadrature below (accurate to about 1e-10); for K >= 3 Genz-Bretz quasi-Monte Carlo
-// (mvn_outside_qmc) with an absolute error target of 1e-4.
+// P(Z outside the rectangle [lower, upper]) for Z ~ N(0, R), R a correlation matrix (row-major K x K): for K <= 2
+// the quadrature below (accurate to about 1e-10); for K >= 3 Genz-Bretz quasi-Monte Carlo (mvn_outside_qmc) with an
+// absolute error target of 1e-4. (max_t uses max_abs_tail for K >= 3.)
 double mvn_outside(const std::vector<double>& lower, const std::vector<double>& upper,
                    const std::vector<double>& R, int K);
 
 // Genz (1992) and Genz & Bretz (2009, Computation of Multivariate Normal and t Probabilities, Springer, Chapter 4)
-// quasi-Monte Carlo for the same probability (K <= 6): separation of variables on the Cholesky factor, with the
-// variables reordered so the narrowest expected interval comes first, integrated over the unit cube by Korobov
-// lattice rules of growing size with the baker's transformation and antithetic points, each rule under 12 random
-// shifts. The shifts come from a fixed-seed generator, so the result is the same on every call. The rules are
-// combined by inverse-variance weights until 3.5 standard errors are below `abseps`, or at most `max_points` points
-// (per shift, over all rules). Coordinates with conditional variance below 1e-10 (a singular R) are deterministic
-// given the others and enter as indicators.
+// quasi-Monte Carlo for the same probability, in any dimension: separation of variables on the Cholesky factor, with
+// the variables reordered so the narrowest expected interval comes first, integrated over the unit cube by a
+// Richtmyer sequence (generators the square roots of the primes; Genz & Bretz 2009, Section 4.2.2) of growing
+// length with the baker's transformation and antithetic points, under 12 random shifts. The shifts come from a fixed-
+// seed generator, so the result is the same on every call. Points are added (about 1.5 times as many each step, from
+// 64) until 3.5 standard errors of the mean over the shifts are below `abseps`, or at most `max_points` points per
+// shift. Coordinates with conditional variance below 1e-10 (a singular R) are deterministic given the others and
+// enter as indicators.
 struct MvnResult {
   double p = 0;
-  double error = 0;   // 3.5 standard errors of p over the shifts
-  long points = 0;    // lattice points used, per shift
+  double error = 0;        // 3.5 standard errors of p over the shifts
+  long points = 0;         // points used, per shift
+  bool converged = true;   // the error target was met
 };
 MvnResult mvn_outside_qmc(const std::vector<double>& lower, const std::vector<double>& upper,
                           const std::vector<double>& R, int K, double abseps = 1e-4, long max_points = 100000);
+
+// The same quasi-Monte Carlo for P(lower < Z < upper), Z ~ N(0, R) (limits may be infinite), until the error is at
+// most max(abseps, releps * p).
+MvnResult mvn_inside_qmc(const std::vector<double>& lower, const std::vector<double>& upper,
+                         const std::vector<double>& R, int K, double abseps, double releps, long max_points = 1000000);
+
+// The max-T tail P(max_k |Z_k| >= c), Z ~ N(0, R) (R row-major K x K), to a relative error of about `releps`, as the
+// sum of first-exceedance terms: 2 Phi(-c) + sum_{k >= 2} 2 P(Z_k >= c, |Z_j| < c for j < k), each term by
+// mvn_inside_qmc to `releps` of itself or, when smaller, to releps * 2 Phi(-c) / (K - 1). error: the sum of the
+// terms' errors (at most releps * p when converged); points: summed over the terms. Any K.
+MvnResult max_abs_tail(double c, const std::vector<double>& R, int K, double releps = 1e-3, long max_points = 1000000);
 
 // The quadrature max_t used up to spicyR 1.99.24, kept for comparison: recursive conditioning with Gauss-Legendre
 // quadrature (about 2e6 evaluations; K <= 6), relative accuracy kept in the tail.

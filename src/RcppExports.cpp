@@ -1021,6 +1021,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_max_abs_tail
+List stats_max_abs_tail(double c, NumericMatrix R, double releps, double max_points);
+RcppExport SEXP _spicyR_stats_max_abs_tail(SEXP cSEXP, SEXP RSEXP, SEXP relepsSEXP, SEXP max_pointsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type c(cSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type R(RSEXP);
+    Rcpp::traits::input_parameter< double >::type releps(relepsSEXP);
+    Rcpp::traits::input_parameter< double >::type max_points(max_pointsSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_max_abs_tail(c, R, releps, max_points));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_mvn_outside_quadrature
 double stats_mvn_outside_quadrature(NumericVector lower, NumericVector upper, NumericMatrix R);
 RcppExport SEXP _spicyR_stats_mvn_outside_quadrature(SEXP lowerSEXP, SEXP upperSEXP, SEXP RSEXP) {
@@ -1133,6 +1147,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_davies", (DL_FUNC) &_spicyR_stats_davies, 3},
     {"_spicyR_stats_mvn_outside", (DL_FUNC) &_spicyR_stats_mvn_outside, 3},
     {"_spicyR_stats_mvn_outside_qmc", (DL_FUNC) &_spicyR_stats_mvn_outside_qmc, 5},
+    {"_spicyR_stats_max_abs_tail", (DL_FUNC) &_spicyR_stats_max_abs_tail, 4},
     {"_spicyR_stats_mvn_outside_quadrature", (DL_FUNC) &_spicyR_stats_mvn_outside_quadrature, 3},
     {"_spicyR_stats_pair_tests", (DL_FUNC) &_spicyR_stats_pair_tests, 20},
     {NULL, NULL, 0}

@@ -1,7 +1,8 @@
 // Several radii: the Cauchy combination and the max-T test with the sandwich correlation of the
 // per-unit CR2 influences (Supplementary Methods, Section 4). The multivariate normal probability of the max-T is
 // computed by the quasi-Monte Carlo method of Genz (1992, J. Comput. Graph. Stat. 1, 141-149) and Genz & Bretz
-// (2009, Computation of Multivariate Normal and t Probabilities, Springer), written from the published algorithm.
+// (2009, Computation of Multivariate Normal and t Probabilities, Springer), written from the published algorithm,
+// as a sum of first-exceedance terms each to a relative tolerance, for any number of radii.
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
@@ -86,12 +87,20 @@ double interval_prob(double lo, double hi) {
   return 1 - pnorm_upper(-lo) - pnorm_upper(hi);
 }
 
-// Korobov lattice rules {n, a}: n points with generating vector (1, a, a^2, a^3, a^4) mod n, n prime and growing by
-// about 1.5; a minimises the weighted P2 criterion, by an exhaustive search (spicyR inst/scripts/korobov_search.cpp).
-const long long kLattice[][2] = {{67, 16}, {97, 18}, {149, 29}, {223, 38}, {331, 88}, {487, 190}, {733, 87},
-                                 {1093, 120}, {1657, 393}, {2459, 414}, {3691, 781}, {5531, 2049}, {8297, 3294},
-                                 {12451, 1375}, {18671, 1948}, {27997, 9012}, {41999, 1316}, {62987, 5820}};
-const std::size_t kRules = sizeof(kLattice) / sizeof(kLattice[0]);
+// The generating vector of a Richtmyer (Kronecker) sequence in D dimensions: the fractional parts of the square roots
+// of the first D primes (Genz & Bretz 2009, Section 4.2.2). Point j is frac(j alpha + shift); it extends to any
+// number of points and any dimension, so the rule grows by adding points rather than by switching tables.
+std::vector<double> richtmyer(int D) {
+  std::vector<double> alpha;
+  for (long q = 2; static_cast<int>(alpha.size()) < D; ++q) {
+    bool prime = true;
+    for (long f = 2; f * f <= q; ++f) if (q % f == 0) { prime = false; break; }
+    if (!prime) continue;
+    const double r = std::sqrt(static_cast<double>(q));
+    alpha.push_back(r - std::floor(r));
+  }
+  return alpha;
+}
 
 // SplitMix64 (Steele, Lea & Flood 2014): a fixed, portable stream for the random shifts.
 struct SplitMix64 {
@@ -149,13 +158,15 @@ struct Separated {
     log0 = f0 > 0 ? log_inside(below0, above0, f0) : 0;
   }
 
-  double outside(const double* w) const {
+  // log P(every coordinate inside | the cube point w); -inf when a coordinate cannot be inside
+  double log_inside_at(const double* w) const {
+    const double none = -std::numeric_limits<double>::infinity();
     double log_in = 0;
     for (int i = 0; i < K; ++i) {
       double s = 0;
       for (int j = 0; j < i; ++j) s += L[i * K + j] * y[j];
       if (det[i]) {
-        if (s < a[i] || s > b[i]) return 1.0;
+        if (s < a[i] || s > b[i]) return none;
         y[i] = 0;
         continue;
       }
@@ -166,13 +177,15 @@ struct Separated {
         const double l = L[i * K + i];
         probs((a[i] - s) / l, (b[i] - s) / l, below, above, f);
       }
-      if (!(f > 0)) return 1.0;
+      if (!(f > 0)) return none;
       log_in += i == 0 ? log0 : log_inside(below, above, f);
       if (i == K - 1) break;
       y[i] = draw(below, above, f, w[i]);
     }
-    return -std::expm1(log_in);
+    return log_in;
   }
+  double outside(const double* w) const { return -std::expm1(log_inside_at(w)); }
+  double inside(const double* w) const { return std::exp(log_inside_at(w)); }
 };
 
 // The Cholesky factor with the variable reordering of Genz & Bretz (2009, Section 4.1.3): at each step the
@@ -219,6 +232,50 @@ Separated separate(const std::vector<double>& lower, const std::vector<double>& 
   return sp;
 }
 
+// The randomised quasi-Monte Carlo integral over the unit cube of D dimensions of f (Separated::outside or ::inside):
+// the Richtmyer sequence under 12 random shifts, with the baker's transformation and antithetic points. Each step
+// adds points to every shift (about 1.5 times as many as before, from 64) and the estimate is the mean over the
+// shifts, its error 3.5 standard errors of that mean. It stops when done(estimate, error) holds or before
+// max_points points per shift; `converged` says which. The shifts come from a fixed seed, so a call always gives
+// the same result.
+template <class F, class Done>
+MvnResult qmc_cube(int D, F f, Done done, long max_points) {
+  MvnResult res;
+  const int kShifts = 12;
+  const std::vector<double> alpha = richtmyer(D);
+  std::vector<double> shift(static_cast<std::size_t>(kShifts) * D), w(D), wa(D);
+  SplitMix64 rng{0x5EED5EED2026ULL};
+  for (double& x : shift) x = rng.next();
+  double sums[kShifts] = {0};
+  long n = 0, next = 64;
+  for (;;) {
+    for (int m = 0; m < kShifts; ++m) {
+      const double* sh = &shift[static_cast<std::size_t>(m) * D];
+      for (long j = n; j < next; ++j) {
+        for (int d = 0; d < D; ++d) {
+          double x = static_cast<double>(j + 1) * alpha[d] + sh[d];
+          x -= std::floor(x);
+          w[d] = std::fabs(2 * x - 1);   // the baker's transformation
+          wa[d] = 1 - w[d];              // its antithetic point
+        }
+        sums[m] += 0.5 * (f(w.data()) + f(wa.data()));
+      }
+    }
+    n = next;
+    double mean = 0, ss = 0;
+    for (double x : sums) mean += x / static_cast<double>(n);
+    mean /= kShifts;
+    for (double x : sums) ss += (x / static_cast<double>(n) - mean) * (x / static_cast<double>(n) - mean);
+    res.p = mean;
+    res.error = 3.5 * std::sqrt(ss / (kShifts * (kShifts - 1.0)));   // 3.5 standard errors of the mean over the shifts
+    res.points = n;
+    res.converged = done(res.p, res.error);
+    next = n + n / 2;
+    if (res.converged || next > max_points) break;
+  }
+  return res;
+}
+
 }  // namespace
 
 MvnResult mvn_outside_qmc(const std::vector<double>& lower, const std::vector<double>& upper, const std::vector<double>& R,
@@ -228,45 +285,49 @@ MvnResult mvn_outside_qmc(const std::vector<double>& lower, const std::vector<do
   Separated sp = separate(lower, upper, R, K);
   sp.prepare();
   const int D = std::max(1, K - 1);      // cube dimension (the last coordinate needs no point)
-  const int kShifts = 12;
-  if (D > 5) throw std::invalid_argument("mvn_outside_qmc supports at most 6 dimensions");
-  std::vector<double> w(D), wa(D), shift(D);
-  std::vector<long long> z(D);
-  SplitMix64 rng{0x5EED5EED2026ULL};
-  double est = 0, var = -1;
-  for (std::size_t it = 0;; ++it) {
-    // one lattice rule of n points under each shift: the shift means and their spread
-    const long long n = kLattice[it][0];
-    z[0] = 1;
-    for (int d = 1; d < D; ++d) z[d] = (z[d - 1] * kLattice[it][1]) % n;
-    double means[kShifts], sum = 0;
-    for (int m = 0; m < kShifts; ++m) {
-      for (int d = 0; d < D; ++d) shift[d] = rng.next();
-      double tot = 0;
-      for (long long j = 0; j < n; ++j) {
-        for (int d = 0; d < D; ++d) {
-          double x = static_cast<double>((j * z[d]) % n) / static_cast<double>(n) + shift[d];
-          if (x >= 1) x -= 1;
-          w[d] = std::fabs(2 * x - 1);   // the baker's transformation
-          wa[d] = 1 - w[d];              // its antithetic point
-        }
-        tot += 0.5 * (sp.outside(w.data()) + sp.outside(wa.data()));
-      }
-      means[m] = tot / static_cast<double>(n);
-      sum += means[m];
-    }
-    res.points += n;
-    const double mean = sum / kShifts;
-    double ss = 0;
-    for (double x : means) ss += (x - mean) * (x - mean);
-    const double v = ss / (kShifts * (kShifts - 1.0));   // the variance of the mean over the shifts
-    if (var < 0) { est = mean; var = v; }
-    else if (var + v > 0) { est += (mean - est) * var / (var + v); var = var * v / (var + v); }
-    else est = mean;
-    res.error = 3.5 * std::sqrt(var);
-    if (res.error < abseps || it + 1 == kRules || res.points + kLattice[it + 1][0] > max_points) break;
+  res = qmc_cube(D, [&](const double* w) { return sp.outside(w); },
+                 [&](double, double err) { return err < abseps; }, max_points);
+  res.p = std::min(1.0, std::max(0.0, res.p));
+  return res;
+}
+
+MvnResult mvn_inside_qmc(const std::vector<double>& lower, const std::vector<double>& upper, const std::vector<double>& R,
+                         int K, double abseps, double releps, long max_points) {
+  MvnResult res;
+  if (K < 1) return res;
+  Separated sp = separate(lower, upper, R, K);
+  sp.prepare();
+  const int D = std::max(1, K - 1);
+  res = qmc_cube(D, [&](const double* w) { return sp.inside(w); },
+                 [&](double p, double err) { return err <= std::max(abseps, releps * std::fabs(p)); }, max_points);
+  res.p = std::min(1.0, std::max(0.0, res.p));
+  return res;
+}
+
+MvnResult max_abs_tail(double c, const std::vector<double>& R, int K, double releps, long max_points) {
+  MvnResult res;
+  if (K < 1) return res;
+  const double s = 2 * pnorm_upper(c);
+  res.p = s;
+  if (K == 1) return res;
+  // P(max_k |Z_k| >= c) = sum_k P(|Z_k| >= c, |Z_j| < c for j < k): 2 Phi(-c), then for each later radius twice the
+  // probability that it is the first above c (by symmetry). Each term is held to `releps` of itself or, for a term
+  // too small to matter, of 2 Phi(-c) / (K - 1); the sum of these targets is at most releps * p.
+  const double floor_abs = releps * s / (K - 1);
+  const double inf = std::numeric_limits<double>::infinity();
+  for (int k = 1; k < K; ++k) {
+    const int n = k + 1;
+    std::vector<double> lo(n, -c), hi(n, c), Rk(static_cast<std::size_t>(n) * n);
+    lo[k] = c; hi[k] = inf;
+    for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) Rk[static_cast<std::size_t>(i) * n + j] = R[static_cast<std::size_t>(i) * K + j];
+    // the term is twice the probability, so each half gets half the target
+    MvnResult t = mvn_inside_qmc(lo, hi, Rk, n, 0.5 * floor_abs, releps, max_points);
+    res.p += 2 * t.p;
+    res.error += 2 * t.error;
+    res.points += t.points;
+    res.converged = res.converged && t.converged;
   }
-  res.p = std::min(1.0, std::max(0.0, est));
+  res.p = std::min(1.0, res.p);
   return res;
 }
 
@@ -313,7 +374,9 @@ MaxTResult max_t(const std::vector<std::vector<double>>& infl, const std::vector
     if (z[i] > c) { c = z[i]; res.best = keep[i]; }
   }
   if (K == 1) { res.p = pt_two_sided(t[keep[0]], df[keep[0]]); return res; }
-  res.p = mvn_outside(std::vector<double>(K, -c), std::vector<double>(K, c), R, K);
+  if (K == 2) { res.p = mvn_outside_quadrature(std::vector<double>(K, -c), std::vector<double>(K, c), R, K); return res; }
+  const MvnResult tail = max_abs_tail(c, R, K);
+  res.p = tail.p; res.error = tail.error; res.converged = tail.converged;
   return res;
 }
 

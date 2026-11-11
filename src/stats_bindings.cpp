@@ -282,7 +282,7 @@ List stats_max_t(NumericMatrix influence, NumericVector t, NumericVector df) {
   std::vector<std::vector<double>> inf(influence.ncol(), std::vector<double>(influence.nrow()));
   for (int k = 0; k < influence.ncol(); ++k) for (int u = 0; u < influence.nrow(); ++u) inf[k][u] = influence(u, k);
   MaxTResult r = max_t(inf, dvec(t), dvec(df));
-  return List::create(_["p"] = r.p, _["best"] = r.best + 1);
+  return List::create(_["p"] = r.p, _["best"] = r.best + 1, _["error"] = r.error, _["converged"] = r.converged);
 }
 
 // [[Rcpp::export]]
@@ -309,7 +309,18 @@ List stats_mvn_outside_qmc(NumericVector lower, NumericVector upper, NumericMatr
   std::vector<double> r(static_cast<std::size_t>(K) * K);
   for (int i = 0; i < K; ++i) for (int j = 0; j < K; ++j) r[static_cast<std::size_t>(i) * K + j] = R(i, j);
   MvnResult m = mvn_outside_qmc(dvec(lower), dvec(upper), r, K, abseps, static_cast<long>(max_points));
-  return List::create(_["p"] = m.p, _["error"] = m.error, _["points"] = static_cast<double>(m.points));
+  return List::create(_["p"] = m.p, _["error"] = m.error, _["points"] = static_cast<double>(m.points),
+                      _["converged"] = m.converged);
+}
+
+// [[Rcpp::export]]
+List stats_max_abs_tail(double c, NumericMatrix R, double releps = 1e-3, double max_points = 1e6) {
+  const int K = R.nrow();
+  std::vector<double> r(static_cast<std::size_t>(K) * K);
+  for (int i = 0; i < K; ++i) for (int j = 0; j < K; ++j) r[static_cast<std::size_t>(i) * K + j] = R(i, j);
+  MvnResult m = max_abs_tail(c, r, K, releps, static_cast<long>(max_points));
+  return List::create(_["p"] = m.p, _["error"] = m.error, _["points"] = static_cast<double>(m.points),
+                      _["converged"] = m.converged);
 }
 
 // [[Rcpp::export]]

@@ -269,6 +269,10 @@ stats_mvn_outside_qmc <- function(lower, upper, R, abseps = 1e-4, max_points = 1
     .Call(`_spicyR_stats_mvn_outside_qmc`, lower, upper, R, abseps, max_points)
 }
 
+stats_max_abs_tail <- function(c, R, releps = 1e-3, max_points = 1e6) {
+    .Call(`_spicyR_stats_max_abs_tail`, c, R, releps, max_points)
+}
+
 stats_mvn_outside_quadrature <- function(lower, upper, R) {
     .Call(`_spicyR_stats_mvn_outside_quadrature`, lower, upper, R)
 }
