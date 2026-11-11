@@ -292,7 +292,7 @@ ref_adjusted_design <- function(d, unit, Z, q0) {
   within <- q0 + which(apply(Z[, -seq_len(q0), drop = FALSE], 2, varies))
   if (!length(within)) return(NULL)
   X <- Z[, within, drop = FALSE]
-  pm <- function(f) { if (f(0) <= 0) return(0); up <- 1e-4; while (f(up) > 0 && up < 1e6) up <- up * 4
+  pm <- function(f) { if (f(0) <= 0) return(0); up <- 1e-4; while (f(up) > 0 && up < 1e300) up <- up * 4
     stats::uniroot(f, c(0, up), tol = 1e-15)$root }
   multi <- tabulate(id)[id] > 1L
   Dw <- cbind(stats::model.matrix(~ factor(id[multi]) - 1), X[multi, , drop = FALSE])

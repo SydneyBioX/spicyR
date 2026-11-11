@@ -149,12 +149,12 @@ bool no_variation(const Fit& f, const std::vector<VectorXd>& E, int N) {
 // ---- the variance components of an adjusted design (adjusted_design; extension A/B) ----
 
 // Paule-Mandel's root of a falling f(t) - target: 0 when f(0) <= 0, else the root on [0, up], up found by quadrupling
-// from 1e-4 (at most 1e6), as design_tau2 brackets it.
+// from 1e-4 with no cap on the effect's scale (overflow guard only), as design_tau2 brackets it.
 double pm_root(const std::function<double(double)>& f) {
   const double f0 = f(0);
   if (!std::isfinite(f0) || f0 <= 0) return 0;
   double up = 1e-4;
-  while (f(up) > 0 && up < 1e6) up *= 4;
+  while (f(up) > 0 && up < 1e300) up *= 4;
   return brent_root(f, 0, up);
 }
 
