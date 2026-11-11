@@ -135,6 +135,8 @@
 #'   replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
 #'   `from` label's summed weight over the image's cells. One radius and cells in memory; pairs of a label with
 #'   itself are not tested. Image method: see [getPairwise()].
+#' @param alpha Cell method with more than two conditions: the level of the gate for the follow-up comparisons (pairs
+#'   whose `overall_p_adj` is at most `alpha` are followed up; see [topFollowUps()]). Default 0.05.
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
@@ -147,7 +149,12 @@
 #'   and p-value of each adjustment, and the unadjusted test (`unadjusted_difference`, `unadjusted_p_value`, `unadjusted_p_adj`).
 #'   With more than two groups, one row per pair and level against the reference, and the overall test of the pair
 #'   (`overall_F` on `overall_df1` and `overall_df2` df, `overall_p_value`, `overall_p_adj`: the CR2 Wald test of
-#'   every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky). With a continuous
+#'   every level equal to the reference, with the HTZ small-sample F of Tipton and Pustejovsky 2015; Pustejovsky and
+#'   Tipton 2018, eqs. 12-13: the approximate Hotelling's T^2 test that all the condition means are equal, which does
+#'   not depend on the reference; with two levels it is the t-test, F = t^2). A pair is tested only when every level
+#'   passes the rules below. For the pairs called by the overall test (`overall_p_adj` at most `alpha`),
+#'   `$followUpResults` compares every two levels, each by the two-condition test on the patients of those two levels,
+#'   Bonferroni-corrected within the pair at the Benjamini-Bogomolov level (see [topFollowUps()]). With a continuous
 #'   condition, one row per pair: the effect at the condition's mean (`excess_mean`) and its slope per unit of the
 #'   condition (`excess_slope`), with its CR2 standard error and Satterthwaite df, in place of the two groups' columns.
 #'   Every requested pair has a row: `not_tested` gives why a pair (or, in `$radiusResults`, a radius) was not tested
@@ -221,6 +228,7 @@ spicy <- function(cells,
                   cellWeights = NULL,
                   selfVariance = c("sampled", "exact", "geometricSampled", "geometric"),
                   selfVarianceCells = 50,
+                  alpha = 0.05,
                   ...) {
   dots <- list(...)
   if (.is_class(cells, "SpatialData")) {   # spatialdataR: its table's store, or the table in memory
@@ -300,6 +308,9 @@ spicy <- function(cells,
   if (!is.numeric(selfVarianceCells) || length(selfVarianceCells) != 1L || !is.finite(selfVarianceCells) || selfVarianceCells < 1)
     stop("`selfVarianceCells` must be a positive number of cells.", call. = FALSE)
   ctx$self_var <- list(method = selfVariance, cells = as.integer(selfVarianceCells))
+  if (!is.numeric(alpha) || length(alpha) != 1L || !is.finite(alpha) || alpha <= 0 || alpha >= 1)
+    stop("`alpha` must be a number between 0 and 1.", call. = FALSE)
+  ctx$alpha <- alpha
   pheno <- ctx$pheno
   types <- if (weighted) memb$labels else ctx$type_labels
   bad <- setdiff(c(from, to), types)
@@ -505,6 +516,7 @@ spicy <- function(cells,
 ## Assemble a SpicyResults object that topPairs(), signifPlot(), spicyBoxPlot() and bind() understand.
 .cell_results <- function(res, ctx, pheno, condition, subject, survival, radii, k, effect = "count") {
   tab <- res$table
+  follow_ups <- attr(tab, "follow_ups"); if (!is.null(tab)) attr(tab, "follow_ups") <- NULL
   num <- vapply(tab, is.double, TRUE); tab[num] <- lapply(tab[num], function(z) { z[is.nan(z)] <- NA_real_; z })
   if (is.null(tab)) stop("no pair could be tested (each condition needs at least two patients with both cell types, ",
                          "and enough effective patients).",
@@ -520,6 +532,9 @@ spicy <- function(cells,
     out$coefficient <- wide("excess_difference"); out$p.value <- wide("p_value"); out$se <- wide("se"); out$df <- wide("df")
     out$statistic <- out$coefficient; out$statistic[, -1] <- out$coefficient[, -1] / out$se[, -1]; out$statistic[, 1] <- NA
     out$condition <- factor(ctx$levels[ctx$image_group + 1L], levels = ctx$levels)
+    # the gated follow-up comparisons of the pairs called by the overall test
+    out$followUpResults <- follow_ups
+    out$alpha <- if (is.null(ctx$alpha)) 0.05 else ctx$alpha
     tab <- tab[match(labels, key), ]
   } else {
   labels <- rownames(tab)

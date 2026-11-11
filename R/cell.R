@@ -270,6 +270,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   if (isTRUE(g$image_heterogeneity) && nrow(rows)) {
     h <- stats_image_heterogeneity_rows(rows, rows$unit)
     h$unit <- rows$unit; h$group <- rows$group
+    # more than two conditions: the raw rows, for the follow-up comparisons (their own between-image variance)
+    if (length(ctx$levels) > 2L && !isTRUE(ctx$continuous)) attr(h, "raw") <- rows
     rows <- h
   }
   attr(rows, "side") <- side
@@ -305,6 +307,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
       if (nrow(rows)) {
         h <- stats_image_heterogeneity_rows(rows, rows$unit)
         h$unit <- rows$unit; h$group <- rows$group
+        if (length(ctx$levels) > 2L && !isTRUE(ctx$continuous)) attr(h, "raw") <- rows
         rows <- h
       }
       attr(rows, "side") <- side
@@ -464,6 +467,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   }
   names(u) <- ctx$levels[-1]
   out$ok <- TRUE; out$levels_test <- out$unadjusted_levels <- u
+  # the follow-up comparison of levels a and b (0-based), run only for pairs the overall test calls (.cell_follow_ups)
+  out$compare <- function(a, b) .cell_level_comparison(ctx, rows, f, t, a, b, frailty, variance, adjust, Z_extra)
   out$test <- list(coef_ref = u[[1]]$theta[1], tau2 = u[[1]]$tau2)
   # the overall test: every level equal to the reference, jointly (HTZ)
   out$overall <- out$unadjusted_overall <- stats_design_joint_test(rg, rg$unit, Zg, .cell_contrasts(G, G), u[[1]]$tau2, hk)
@@ -479,6 +484,82 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out$test <- list(coef_ref = a[[1]]$theta[1], tau2 = a[[1]]$tau2)
   out$adjusted_for <- d$adjusted_for
   out
+}
+
+## The follow-up comparison of levels a and b (0-based) of a pair: the two-condition test (.cell_rows_test, with its
+## rules and adjustments) on the patients of those two levels only, as if the data held only them. The between-image
+## variance is estimated again on those patients (from the raw rows, when the rows carry the image random effect); the
+## pair's side stays the one chosen from every image, as for the overall test. Level a is the reference.
+.cell_level_comparison <- function(ctx, rows, f, t, a, b, frailty, variance, adjust, Z_extra) {
+  lev_unit <- ctx$image_group[match(seq_along(ctx$unit_labels) - 1L, ctx$image_unit)]   # each patient's level
+  sel <- which(lev_unit %in% c(a, b)) - 1L
+  src <- if (is.null(attr(rows, "raw"))) rows else attr(rows, "raw")
+  s <- src[!is.na(src$group) & src$group %in% c(a, b), , drop = FALSE]
+  s$unit <- match(s$unit, sel) - 1L; s$group <- as.integer(s$group == b)
+  if (!is.null(attr(rows, "raw")) && nrow(s)) {
+    h <- stats_image_heterogeneity_rows(s, s$unit)
+    h$unit <- s$unit; h$group <- s$group
+    s <- h
+  }
+  attr(s, "side") <- attr(rows, "side")
+  sub <- ctx; sub$levels <- ctx$levels[c(a, b) + 1L]; sub$unit_labels <- ctx$unit_labels[sel + 1L]
+  .cell_rows_test(sub, s, f, t, frailty, variance, adjust, Z_extra)
+}
+
+## The gated follow-ups of more than two conditions (DECISIONS 4 Nov 2026, problem C). For each pair called by BH on
+## the overall test at level `alpha` (R of the m pairs with an overall test), all G(G - 1) / 2 comparisons of two
+## levels, each the two-condition test of those levels (.cell_level_comparison), tested whenever its two levels pass
+## the rules. Bonferroni within the pair at the Benjamini-Bogomolov level alpha R / m: a comparison is significant
+## when p <= alpha R / (m K), K the comparisons tested in its pair. tab: the levels table with overall_p_adj, one block
+## of rows per fit. One row per called pair and comparison (none: zero rows).
+.cell_follow_ups <- function(fits, tab, ctx, adjusted, alpha) {
+  first <- which(tab$level == tab$level[1])
+  m <- sum(!is.na(tab$overall_p_value[first]))
+  called <- which(!is.na(tab$overall_p_adj[first]) & tab$overall_p_adj[first] <= alpha)
+  R <- length(called)
+  cmb <- utils::combn(length(ctx$levels), 2L) - 1L
+  rows <- lapply(called, function(i) {
+    o <- fits[[i]]
+    cmp <- lapply(seq_len(ncol(cmb)), function(j) o$compare(cmb[1, j], cmb[2, j]))
+    tested <- vapply(cmp, function(x) isTRUE(x$ok) && is.na(x$not_tested %||% NA_character_) && is.finite(x$test$p), TRUE)
+    K <- sum(tested)
+    .cell_rbind_fill(lapply(seq_len(ncol(cmb)), function(j) {
+      x <- cmp[[j]]; z <- if (tested[j]) x$test else list()
+      row <- data.frame(from = o$from, to = o$to, level_ref = ctx$levels[cmb[1, j] + 1L],
+                        level_comp = ctx$levels[cmb[2, j] + 1L], excess_ref = z$coef_ref %||% NA_real_,
+                        excess_comp = z$coef_comp %||% NA_real_, excess_difference = z$difference %||% NA_real_,
+                        se = z$se %||% NA_real_, df = z$df %||% NA_real_, p_value = z$p %||% NA_real_,
+                        p_threshold = if (tested[j]) alpha * R / (m * K) else NA_real_, stringsAsFactors = FALSE)
+      row$significant <- if (tested[j]) row$p_value <= row$p_threshold else NA
+      if (!is.null(o$parent)) row$parent <- o$parent
+      row$overall_p_value <- tab$overall_p_value[first[i]]; row$overall_p_adj <- tab$overall_p_adj[first[i]]
+      row$n_comparisons <- K
+      row$tau2 <- z$tau2 %||% NA_real_
+      row <- .cell_add_side(row, x)
+      row$not_tested <- if (tested[j]) NA_character_
+                        else if (!isTRUE(x$ok)) (if (length(x$reason) && nzchar(x$reason)) x$reason else "not_tested")
+                        else if (!is.null(x$not_tested)) x$not_tested else "not_tested"
+      if (adjusted) {
+        row$adjusted_for <- x$adjusted_for
+        u <- if (tested[j]) x$unadjusted else list()
+        row$unadjusted_difference <- u$difference %||% NA_real_; row$unadjusted_p_value <- u$p %||% NA_real_
+      }
+      row }))
+  })
+  fu <- .cell_rbind_fill(rows)
+  if (is.null(fu)) {   # no pair called: the columns, no rows
+    fu <- data.frame(from = character(0), to = character(0), level_ref = character(0), level_comp = character(0),
+                     excess_ref = numeric(0), excess_comp = numeric(0), excess_difference = numeric(0), se = numeric(0),
+                     df = numeric(0), p_value = numeric(0), p_threshold = numeric(0), significant = logical(0),
+                     overall_p_value = numeric(0), overall_p_adj = numeric(0), n_comparisons = integer(0),
+                     tau2 = numeric(0), not_tested = character(0), stringsAsFactors = FALSE)
+    return(fu)
+  }
+  num <- vapply(fu, is.double, TRUE); fu[num] <- lapply(fu[num], function(z) { z[is.nan(z)] <- NA_real_; z })
+  lead <- intersect(c("from", "to", "parent", "level_ref", "level_comp", "side"), names(fu))
+  fu <- fu[, c(lead, setdiff(names(fu), lead)), drop = FALSE]
+  rownames(fu) <- paste(.cell_labels(fu), fu$level_comp, fu$level_ref, sep = "__")
+  fu
 }
 
 ## A continuous condition: the slope of the excess on the condition, in the design of the intercept and the centred
@@ -602,8 +683,11 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   adj_overall <- function(p) stats::p.adjust(p[first], "BH")[match(.cell_labels(tab), .cell_labels(tab)[first])]
   tab$overall_p_adj <- adj_overall(tab$overall_p_value)
   if (adjusted) tab$unadjusted_overall_p_adj <- adj_overall(tab$unadjusted_overall_p_value)
+  fu <- .cell_follow_ups(fits, tab, ctx, adjusted, if (is.null(ctx$alpha)) 0.05 else ctx$alpha)
   rownames(tab) <- paste(.cell_labels(tab), tab$level, sep = "__")
-  .cell_order_columns(tab)
+  tab <- .cell_order_columns(tab)
+  attr(tab, "follow_ups") <- fu
+  tab
 }
 
 ## The overall test of a fit (NA when it was not tested).

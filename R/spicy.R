@@ -711,6 +711,11 @@ getProp <- function(cells, feature = "cellType", imageID = "imageID") {
     if (!is.null(tab$overall_p_adj))
       cat("\nOverall test (every level against the reference), BH-adjusted p < 0.05: ",
           sum(tab$overall_p_adj[tab$level == tab$level[1]] < 0.05, na.rm = TRUE), " pairs", sep = "")
+    fu <- df$followUpResults
+    if (!is.null(fu) && nrow(fu))
+      cat("\nFollow-up comparisons of the ", length(unique(.cell_labels(fu))), " pairs called at alpha = ", df$alpha,
+          ": ", sum(fu$significant, na.rm = TRUE), " of ", sum(!is.na(fu$p_value)),
+          " significant at the Benjamini-Bogomolov level. See topFollowUps().", sep = "")
     cat("\nSee topPairs().\n")
     return(invisible(df))
   }
