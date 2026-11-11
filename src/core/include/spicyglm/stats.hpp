@@ -7,6 +7,7 @@
 // Written with AI assistance (Claude, Anthropic), directed by the authors; see NEWS.
 #pragma once
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -224,6 +225,36 @@ struct JointResult {
 JointResult design_joint_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<double>& Z, int q,
                               const std::vector<double>& contrasts, int k, double tau2, bool hartung_knapp = false);
 
+// An adjusted design whose added columns (after the q0 condition columns) include one that varies between a unit's
+// images: its variance components and patient-mean columns (spicyR extension A/B; DECISIONS 4 Nov 2026 17:10 and
+// 6 Nov 14:37). `rows` are the rows BEFORE the image random effect (y = (O - E) / n, s2 = v / n^2), the design's rows
+// only (a missing condition or covariate already left out); Z is row-major with q columns. Then:
+//   - omega2 (B2; with image_heterogeneity, else 0): Paule-Mandel within units after the image-level columns. Over
+//     the units with two or more rows, Q_w(t) = min over (alpha_u, beta) of sum (y - alpha_u - x' beta)^2 / (s2 + t),
+//     the unit intercepts free and beta for the image-level columns only; target sum_u (J_u - 1) - q_w, q_w the rank
+//     of the within-unit design; 0 when Q_w(0) <= target or target < 1. Q_w falls in t: one root.
+//   - the rows become y with variance s2 + omega2 (O = y, E = 0, n = 1), as image_heterogeneity_rows makes them.
+//   - Mundlak: every image-level column gets a second column, its unweighted mean over the unit's rows, so that its
+//     own coefficient is the within-unit slope and the conditions are compared at equal patient means. Columns
+//     constant within every unit get none.
+//   - tau2 (option iv; with frailty, else 0): Paule-Mandel on the unit summaries, Q_b(t) = min over theta of
+//     sum_u w_u (ybar_u - zbar_u' theta)^2, w_u = G_u / (1 + t G_u), G_u = sum 1 / v, and ybar_u, zbar_u the unit's
+//     1 / v-weighted means of y and of every column (the mean columns included); target m - rank(zbar); 0 when
+//     Q_b(0) <= target or the target is below 1.
+// The test is then design_tests on these rows and columns at this tau2. image_level = false (every added column is
+// constant within units): nothing is computed; the design is the patient-level one (design_tests with tau2 < 0, its
+// own exact Paule-Mandel) on the rows as they were.
+struct AdjustedDesign {
+  bool image_level = false;
+  ImageRows rows;                    // y, E = 0, n = 1, v = s2 + omega2
+  std::vector<double> Z;             // row-major, q columns: the input's, then one mean column per image-level column
+  int q = 0;
+  std::vector<int> mean_of;          // per mean column: the column of the input it averages (0-based)
+  double omega2 = 0, tau2 = 0;
+};
+AdjustedDesign adjusted_design(const ImageRows& rows, const std::vector<int>& unit, const std::vector<double>& Z, int q,
+                               int q0, bool image_heterogeneity, bool frailty);
+
 // Option 2 (Supplementary Methods, Section 2): the two-group test with a slope on the centred covariate x
 // (the log share of the REF type), tau2 held at the unadjusted value. Rows with a negative group are left out.
 DesignResult availability_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
@@ -347,20 +378,24 @@ struct PairTestInput {
 // The adjusted test of one pair (R/cell.R .cell_design, .cell_design_tau2 and .cell_contrasts of spicyR 1.99.23, two
 // conditions): rows (after the image random effect) with a group of 0 or 1 (negative: missing; left out) and
 // complete covariates (NaN: missing), the design of the two group indicators, the centred log share of the `from`
-// type (adjust; when not constant) and the centred covariates; tau2 re-estimated (-1) when every added column is
-// constant within units, else held at `tau2` (frailty; 0 without). design = 0: nothing to adjust for (no column
-// added); 1: adjusted, `tests` = the condition contrast, then one per added column (abundance first); 2: the design
+// type (adjust; when not constant) and the centred covariates. With frailty (else tau2 = 0): when every added column
+// is constant within units, tau2 is re-estimated under the design (-1); else the design is adjusted_design's (omega2
+// by B2 from `raw`, the rows before the image random effect, or no omega2 when `raw` is null; a patient-mean column
+// per image-level column; tau2 on the patient summaries). `tau2` (the unadjusted value, held up to spicyR 1.99.56)
+// is no longer used. design = 0: nothing to adjust for (no column added); 1: adjusted, `tests` = the condition
+// contrast, then one per added column (abundance first; with a mean column, its within-unit slope); 2: the design
 // failed (`tests[0].reason`). fit = false: the design is not fitted (the response has no variation); design 2 with
 // reason "no_variation" when there is something to adjust for, else 0.
 struct PairDesign {
   int design = 0;
   bool abundance = false;             // the abundance column entered the design
+  double omega2 = std::numeric_limits<double>::quiet_NaN();   // adjusted_design's omega2 (NaN when not re-estimated)
   std::vector<DesignResult> tests;
 };
 PairDesign pair_design_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                             int n_units, const double* counts, int n_types, int from, bool adjust, const double* z,
                             int n_z, bool frailty, double tau2, bool hartung_knapp, bool fit = true,
-                            bool pooled_dispersion = false);
+                            bool pooled_dispersion = false, const ImageRows* raw = nullptr);
 
 // Results, per pair and radius at index p * K + k (K radii); the main test is the adjusted one when design == 1,
 // else the unadjusted one. Where the unadjusted test has no variation (se 0: 0 / 0) no design is fitted: design 2,
@@ -376,7 +411,8 @@ struct PairTests {
   std::vector<int> ok;                // the unadjusted test was done
   std::vector<int> side;              // allocation: 1 attraction, -1 avoidance; count: 0
   std::vector<int> n_rows;            // image rows tested
-  std::vector<double> tau2_image;     // NaN without the image random effect or rows
+  std::vector<double> tau2_image;     // the main test's (adjusted_design's B2 when it re-estimated it); NaN without
+                                      // the image random effect or rows
   std::vector<double> coef_ref, coef_comp, difference, se, df, p, tau2;   // the main test
   std::vector<double> u_difference, u_se, u_df, u_p;   // the unadjusted test
   std::vector<int> design;            // PairDesign::design

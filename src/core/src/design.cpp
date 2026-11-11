@@ -1,5 +1,7 @@
 // The excess with a general design (Supplementary Methods, Section 1), the availability adjustment
-// (Section 2) and their CR2 tests. Ported from the R prototypes excess_design.R / adjust_cov.R.
+// (Section 2) and their CR2 tests. Ported from the R prototypes excess_design.R / adjust_cov.R. The variance
+// components of a design with an image-level column (adjusted_design) are ported from the A/B prototypes
+// (analysis/explore/2026-11_tau2_adjusted/tau2_lib.R and 2026-11_mundlak/mundlak_lib.R of ProjectSpicyRCell).
 //
 // Per unit k (patient) with whitened design X_k = L_k^{-1} D_k (V_k = L_k L_k'), bread B = (sum X'X)^-1
 // and b = B c, the Bell-McCaffrey adjustment A_k = (I - X_k B X_k')^{-1/2} gives the unit's CR2
@@ -144,7 +146,155 @@ bool no_variation(const Fit& f, const std::vector<VectorXd>& E, int N) {
   return rss <= tol * tol * yss;
 }
 
+// ---- the variance components of an adjusted design (adjusted_design; extension A/B) ----
+
+// Paule-Mandel's root of a falling f(t) - target: 0 when f(0) <= 0, else the root on [0, up], up found by quadrupling
+// from 1e-4 (at most 1e6), as design_tau2 brackets it.
+double pm_root(const std::function<double(double)>& f) {
+  const double f0 = f(0);
+  if (!std::isfinite(f0) || f0 <= 0) return 0;
+  double up = 1e-4;
+  while (f(up) > 0 && up < 1e6) up *= 4;
+  return brent_root(f, 0, up);
+}
+
+// The number of singular values of A above tol times the largest (0 for a zero matrix).
+int svd_rank(const MatrixXd& A, double tol) {
+  if (A.size() == 0) return 0;
+  const VectorXd d = Eigen::JacobiSVD<MatrixXd>(A).singularValues();
+  if (!(d(0) > 0)) return 0;
+  int r = 0;
+  for (Eigen::Index j = 0; j < d.size(); ++j) if (d(j) > tol * d(0)) ++r;
+  return r;
+}
+
+// The weighted residual sum of squares of b on the columns of A, rows already scaled by the square roots of their
+// weights: least squares by a complete orthogonal decomposition of the columns scaled to unit length, a pivot below
+// 1e-10 of the largest counted as 0, so that a rank-deficient A (collinear columns) gives the projection's residual.
+// (ColPivHouseholderQR's solve would divide by such a pivot: its threshold sets only rank().)
+double residual_ss(const MatrixXd& A, const VectorXd& b) {
+  if (A.cols() == 0) return b.squaredNorm();
+  MatrixXd As = A;
+  for (Eigen::Index j = 0; j < As.cols(); ++j) { const double s = As.col(j).norm(); if (s > 0) As.col(j) /= s; }
+  Eigen::CompleteOrthogonalDecomposition<MatrixXd> cod;
+  cod.setThreshold(1e-10);
+  cod.compute(As);
+  return (b - As * cod.solve(b)).squaredNorm();
+}
+
+// omega2 by B2: Paule-Mandel within units, over the units with two or more rows, after the image-level columns
+// `cols` of Z (the unit intercepts free). Rows centred within their unit by the weights w = 1 / (s2 + t) and scaled by
+// sqrt(w) make Q_w(t) the residual sum of squares of y on those columns. The target is sum_u (J_u - 1) - q_w, q_w the
+// rank of the centred columns (singular values above 1e-10 of the largest, at t = 0; the rank is the same at every t).
+double b2_omega2(const std::vector<double>& y, const std::vector<double>& s2, const Units& U,
+                 const std::vector<double>& Z, int q, const std::vector<int>& cols) {
+  std::vector<const std::vector<int>*> multi;
+  double target = 0;
+  int n = 0;
+  for (const auto& r : U.rows)
+    if (r.size() > 1) {
+      multi.push_back(&r); target += static_cast<double>(r.size()) - 1; n += static_cast<int>(r.size());
+    }
+  const int k = static_cast<int>(cols.size());
+  MatrixXd X(n, k);
+  VectorXd yc(n);
+  auto centre = [&](double t) {
+    int a = 0;
+    for (const auto* r : multi) {
+      double sw = 0, sy = 0;
+      VectorXd sx = VectorXd::Zero(k);
+      for (int i : *r) {
+        const double w = 1 / (s2[i] + t);
+        sw += w; sy += w * y[i];
+        for (int j = 0; j < k; ++j) sx(j) += w * Z[static_cast<std::size_t>(i) * q + cols[j]];
+      }
+      for (int i : *r) {
+        const double rw = std::sqrt(1 / (s2[i] + t));
+        yc(a) = rw * (y[i] - sy / sw);
+        for (int j = 0; j < k; ++j) X(a, j) = rw * (Z[static_cast<std::size_t>(i) * q + cols[j]] - sx(j) / sw);
+        ++a;
+      }
+    }
+  };
+  centre(0);
+  target -= svd_rank(X, 1e-10);
+  if (target < 1) return 0;
+  return pm_root([&](double t) { centre(t); return residual_ss(X, yc) - target; });
+}
+
+// tau2 by option (iv): Paule-Mandel on the unit summaries (ybar_u, zbar_u, G_u at the rows' v), target m - rank(zbar),
+// the rank from the singular values of zbar with its columns scaled to unit length (above 1e-8 of the largest).
+double between_tau2(const ImageRows& d, const Units& U, const std::vector<double>& Z, int q) {
+  const int m = static_cast<int>(U.rows.size());
+  VectorXd G = VectorXd::Zero(m), yb = VectorXd::Zero(m);
+  MatrixXd zb = MatrixXd::Zero(m, q);
+  for (int u = 0; u < m; ++u) {
+    for (int i : U.rows[u]) {
+      const double w = 1 / d.v[i];
+      G(u) += w; yb(u) += w * d.O[i];
+      for (int j = 0; j < q; ++j) zb(u, j) += w * Z[static_cast<std::size_t>(i) * q + j];
+    }
+    yb(u) /= G(u); zb.row(u) /= G(u);
+  }
+  MatrixXd zs = zb;
+  for (int j = 0; j < q; ++j) { const double s = zb.col(j).norm(); if (s > 0) zs.col(j) /= s; }
+  const double target = m - svd_rank(zs, 1e-8);
+  if (target < 1) return 0;
+  MatrixXd A(m, q);
+  VectorXd b(m);
+  return pm_root([&](double t) {
+    for (int u = 0; u < m; ++u) {
+      const double r = std::sqrt(G(u) / (1 + t * G(u)));
+      A.row(u) = r * zb.row(u); b(u) = r * yb(u);
+    }
+    return residual_ss(A, b) - target;
+  });
+}
+
 }  // namespace
+
+AdjustedDesign adjusted_design(const ImageRows& rows, const std::vector<int>& unit, const std::vector<double>& Z, int q,
+                               int q0, bool image_heterogeneity, bool frailty) {
+  AdjustedDesign out;
+  const std::size_t N = rows.O.size();
+  Units U = group_units(unit);
+  // the added columns that vary within a unit (compared exactly, as the patient-level check before them)
+  std::vector<int> within;
+  for (int j = q0; j < q; ++j) {
+    bool varies = false;
+    for (const auto& r : U.rows) {
+      const double first = Z[static_cast<std::size_t>(r[0]) * q + j];
+      for (int i : r) if (Z[static_cast<std::size_t>(i) * q + j] != first) { varies = true; break; }
+      if (varies) break;
+    }
+    if (varies) within.push_back(j);
+  }
+  if (within.empty()) return out;
+  out.image_level = true;
+  std::vector<double> y(N), s2(N);
+  for (std::size_t i = 0; i < N; ++i) {
+    y[i] = (rows.O[i] - rows.E[i]) / rows.n[i]; s2[i] = rows.v[i] / (rows.n[i] * rows.n[i]);
+  }
+  out.omega2 = image_heterogeneity ? b2_omega2(y, s2, U, Z, q, within) : 0;
+  out.rows.image = rows.image; out.rows.O = y; out.rows.E.assign(N, 0.0); out.rows.n.assign(N, 1.0);
+  out.rows.v.resize(N);
+  for (std::size_t i = 0; i < N; ++i) out.rows.v[i] = s2[i] + out.omega2;
+  // the design with the unweighted unit mean of each image-level column
+  const int k = static_cast<int>(within.size());
+  out.q = q + k; out.mean_of = within;
+  out.Z.assign(N * out.q, 0.0);
+  for (std::size_t i = 0; i < N; ++i)
+    for (int j = 0; j < q; ++j) out.Z[i * out.q + j] = Z[i * q + j];
+  for (const auto& r : U.rows)
+    for (int c = 0; c < k; ++c) {
+      double s = 0;
+      for (int i : r) s += Z[static_cast<std::size_t>(i) * q + within[c]];
+      s /= static_cast<double>(r.size());
+      for (int i : r) out.Z[static_cast<std::size_t>(i) * out.q + q + c] = s;
+    }
+  out.tau2 = frailty ? between_tau2(out.rows, U, out.Z, out.q) : 0;
+  return out;
+}
 
 std::vector<DesignResult> design_tests(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                                        const std::vector<double>& Z, int q, const std::vector<double>& contrasts,

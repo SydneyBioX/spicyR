@@ -321,7 +321,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_add_side <- function(row, o) {
   s <- attr(o$rows, "side")
   if (!is.null(s)) row$side <- s
-  h <- attr(o$rows, "tau2_image")
+  # the image variance of the main test: B2's in an adjusted design with an image-level column, else the rows'
+  h <- if (!is.null(o$tau2_image)) o$tau2_image else attr(o$rows, "tau2_image")
   if (!is.null(h)) row$tau2_image <- h
   row
 }
@@ -372,21 +373,36 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   outer(rows$group, seq_along(ctx$levels) - 1L, `==`) * 1
 }
 
-## tau2 of the adjusted design: re-estimated (exact Paule-Mandel) when every added column is constant within
-## patients, else held at the unadjusted value (Supplementary Methods, Remark 3).
-.cell_design_tau2 <- function(d, G, frailty, tau2) {
-  if (!frailty) return(0)
-  X <- d$Z[, -seq_len(G), drop = FALSE]
-  patient_level <- all(apply(X, 2, function(z) all(tapply(z, d$rows$unit, function(w) length(unique(w)) == 1L))))
-  if (patient_level) -1 else tau2
+## The variance components of the adjusted design (the core's adjusted_design; DECISIONS 4 Nov 2026 17:10 and 6 Nov
+## 14:37). When every added column is constant within patients, tau2 is re-estimated under the design (exact
+## Paule-Mandel; tau2 = -1). When one varies between a patient's images: the image variance is re-estimated within
+## patients after the image-level columns (B2, from the rows' s2), each such column gets a second column, its average
+## over the patient's images (its own coefficient is then the within-patient slope), and tau2 is Paule-Mandel on the
+## patient summaries. G: the condition's columns (first in d$Z). Adds to d q_added (its columns before any mean
+## column), tau2 and, for rows with the image random effect, omega2; the rows and Z become those of the fit.
+.cell_adjusted <- function(d, G, frailty) {
+  d$q_added <- ncol(d$Z)
+  a <- stats_adjusted_design(d$rows, d$rows$unit, d$Z, as.integer(G), frailty)
+  if (!a$image_level) { d$tau2 <- if (frailty) -1 else 0; return(d) }
+  if (!is.null(d$rows$s2)) d$omega2 <- a$omega2   # (rows without the image random effect have none)
+  rows <- a$rows; rows$unit <- d$rows$unit; rows$group <- d$rows$group
+  d$rows <- rows; d$Z <- a$Z; d$tau2 <- a$tau2
+  d
 }
 
-## Contrasts of the adjusted design: the level differences, then one row per added column (its effect).
-.cell_contrasts <- function(G, q) {
+## Contrasts of the adjusted design: the level differences, then one row per added column (its effect). With
+## d (.cell_adjusted), zero columns for the patient-mean columns.
+.cell_contrasts <- function(G, q, d = NULL) {
   C <- matrix(0, G - 1L + q - G, q)
   for (l in 2:G) { C[l - 1L, 1] <- -1; C[l - 1L, l] <- 1 }
   if (q > G) for (j in seq_len(q - G)) C[G - 1L + j, G + j] <- 1
-  C
+  .cell_pad(C, d)
+}
+
+## Zero columns for the patient-mean columns of an adjusted design d (none when there are none).
+.cell_pad <- function(C, d = NULL) {
+  if (is.null(d) || ncol(d$Z) == ncol(C)) return(C)
+  cbind(C, matrix(0, nrow(C), ncol(d$Z) - ncol(C)))
 }
 
 .cell_pair_test <- function(ctx, g, f, t, frailty, variance, adjust, Z_extra = NULL)
@@ -416,7 +432,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     out$test$p <- NaN; out$adjusted_for <- "none (no_variation)"
     return(out)
   }
-  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(2L, ncol(d$Z)), .cell_design_tau2(d, 2L, frailty, r$tau2),
+  d <- .cell_adjusted(d, 2L, frailty)
+  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(2L, d$q_added, d), d$tau2,
                           variance == "hartung_knapp", if (rules$pooled_dispersion) 2L else 0L)
   # a design that is not of full rank (e.g. a covariate confounded with the condition): the unadjusted test
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
@@ -425,6 +442,7 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                    p = x$p, tau2 = x$tau2, influence = x$influence)
   out$effects <- stats::setNames(a[-1], d$extra)
   out$adjusted_for <- d$adjusted_for
+  out$tau2_image <- d$omega2
   out
 }
 
@@ -469,15 +487,16 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out$overall <- out$unadjusted_overall <- stats_design_joint_test(rg, rg$unit, Zg, .cell_contrasts(G, G), u[[1]]$tau2, hk)
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
-  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(G, ncol(d$Z)),
-                          .cell_design_tau2(d, G, frailty, u[[1]]$tau2), hk, ng)
+  d <- .cell_adjusted(d, G, frailty)
+  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_contrasts(G, d$q_added, d), d$tau2, hk, ng)
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
-  out$overall <- stats_design_joint_test(d$rows, d$rows$unit, d$Z, .cell_contrasts(G, ncol(d$Z))[seq_len(G - 1L), , drop = FALSE],
-                                         a[[1]]$tau2, hk)
+  out$overall <- stats_design_joint_test(d$rows, d$rows$unit, d$Z,
+                                         .cell_contrasts(G, d$q_added, d)[seq_len(G - 1L), , drop = FALSE], a[[1]]$tau2, hk)
   out$levels_test <- stats::setNames(a[seq_len(G - 1L)], ctx$levels[-1])
   out$effects <- stats::setNames(a[-seq_len(G - 1L)], d$extra)
   out$test <- list(coef_ref = a[[1]]$theta[1], tau2 = a[[1]]$tau2)
   out$adjusted_for <- d$adjusted_for
+  out$tau2_image <- d$omega2
   out
 }
 
@@ -500,13 +519,14 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out$ok <- TRUE; out$test <- out$unadjusted <- slope(u)
   d <- .cell_design(ctx, rows, f, adjust, Z_extra)
   if (is.null(d)) return(out)
-  q <- ncol(d$Z)
-  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, diag(q)[-1, , drop = FALSE], .cell_design_tau2(d, 2L, frailty, u$tau2),
+  d <- .cell_adjusted(d, 2L, frailty)
+  a <- stats_design_tests(d$rows, d$rows$unit, m, d$Z, .cell_pad(diag(d$q_added)[-1, , drop = FALSE], d), d$tau2,
                           hk, 0L)
   if (!a[[1]]$ok) { out$adjusted_for <- paste0("none (", a[[1]]$reason, ")"); return(out) }
   out$test <- slope(a[[1]])
   out$effects <- stats::setNames(a[-1], d$extra)
   out$adjusted_for <- d$adjusted_for
+  out$tau2_image <- d$omega2
   out
 }
 
