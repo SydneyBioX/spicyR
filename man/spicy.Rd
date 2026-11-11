@@ -260,6 +260,9 @@ deviation of the effect; \code{log_hr_per_unit}, per unit) is from a Cox model o
 shrunken effect (from the frailty model of the effect on the covariates, without M) and the covariates; its
 standard error \code{log_hr_se} is model-based and approximate (it ignores that the shrunken effect is estimated), so
 the score test's \code{p_value} is the only p-value of a pair.
+A column that varies between a patient's images (the abundance share, or an image-level covariate) enters
+both frailty models with its patient average, as for the condition tests (see above): the between-image
+variance is then re-estimated within patients (\code{tau2_image}) and \code{tau2} from the patients' averages.
 
 \strong{\code{method = "image"} (the original spicyR test).} A per-image L-function summary of each pair is
 compared between conditions with a weighted linear model, or a mixed model when \code{subject} is given

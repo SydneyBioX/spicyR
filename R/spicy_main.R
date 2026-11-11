@@ -98,6 +98,9 @@
 #' shrunken effect (from the frailty model of the effect on the covariates, without M) and the covariates; its
 #' standard error `log_hr_se` is model-based and approximate (it ignores that the shrunken effect is estimated), so
 #' the score test's `p_value` is the only p-value of a pair.
+#' A column that varies between a patient's images (the abundance share, or an image-level covariate) enters
+#' both frailty models with its patient average, as for the condition tests (see above): the between-image
+#' variance is then re-estimated within patients (`tau2_image`) and `tau2` from the patients' averages.
 #'
 #' **`method = "image"` (the original spicyR test).** A per-image L-function summary of each pair is
 #' compared between conditions with a weighted linear model, or a mixed model when `subject` is given
@@ -557,8 +560,11 @@ spicy <- function(cells,
   # the adjusted test only where the unadjusted one was done (not where the excess has no variation: no_variation)
   s <- if (u$ok && length(x) && stats::var(x) > 0)
     stats_survival_test(rows, rows$unit, m, sv$M, sv$time, sv$event, cbind(abundance = x, ze), sv$W) else u
+  # with a covariate that varies within patients the core fits A/B's adjusted design: its image variance (B2) is the
+  # test's tau2_image (.cell_add_side), as for the condition tests
   list(from = f, to = t, ok = s$ok, reason = s$reason, rows = rows, surv = s, unadjusted_surv = u,
-       adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(Z_extra)) "covariates"), collapse = "+"))
+       adjusted_for = paste(c(if (!identical(s, u)) "abundance", if (!is.null(Z_extra)) "covariates"), collapse = "+"),
+       tau2_image = if (isTRUE(is.finite(s$omega2))) s$omega2)
 }
 
 ## One row per pair, tested or not (not_tested: why not, NA when it was; a pair not tested has every test column NA).

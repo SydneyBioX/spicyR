@@ -303,6 +303,8 @@ struct SurvivalResult {
   double log_hr_unit = 0;   // per unit of the effect (count: per extra cell per target cell; allocation: per 100% of target cells)
   double tau2 = 0;          // of the hazard ratio's shrinkage model
   int n_units = 0, n_deaths = 0, q = 0;   // informative units and their deaths; columns of the patient design
+  double omega2 = std::numeric_limits<double>::quiet_NaN();   // B2's image variance when a covariate varies within
+                                                              // units and s2 was given (else NaN)
 };
 
 // X: optional covariate columns of the fraction model, row-major, one row per image row and p columns (the
@@ -310,12 +312,15 @@ struct SurvivalResult {
 // ratio's shrinkage model on (1, X). W: the covariates of the null Cox model, row-major per unit (pw columns); the
 // hazard ratio's Cox model has them too. Tested only when, among the informative units (an outcome and at least
 // one row), there is a death ("no_deaths") and a survivor ("no_survivors"), the units number at least q + 2
-// ("too_few_units"; q = 2 + p + the columns of X that vary within units, each of which will have its patient mean
-// in the design), and the df are at least kMinDf ("too_few_df").
+// ("too_few_units"; q = 2 + p + the columns of X that vary within units, each of which has its patient mean in the
+// design), and the df are at least kMinDf ("too_few_df"). When a column of X varies within units, both models are
+// A/B's adjusted_design() (its patient-mean columns, omega2 by B2, tau2 on the patient summaries); s2: the rows'
+// sampling variances before the image random effect (rows from image_heterogeneity_rows), from which B2 re-estimates
+// omega2 (empty: the rows are taken without an image variance).
 SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                              const std::vector<double>& martingale, const std::vector<double>& time,
                              const std::vector<int>& event, const std::vector<double>& X = {}, int p = 0,
-                             const std::vector<double>& W = {}, int pw = 0);
+                             const std::vector<double>& W = {}, int pw = 0, const std::vector<double>& s2 = {});
 
 // ------------------------------------------------------ several radii ---
 

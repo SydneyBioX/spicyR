@@ -86,13 +86,27 @@ test_that("covariates are on both sides: in the null Cox model and in the fracti
   expect_equal(z$hr_se, unname(sqrt(stats::vcov(cx)[1, 1])), tolerance = 1e-6)
   expect_equal(z$tau2, h$tau2, tolerance = 1e-12)
   expect_gt(z$tau2, 0)
-  # an image-level covariate: tau2 held at that of the patient-level columns (1, M); TODO(ext-AB): option (iv)
+  # an image-level covariate: A/B's adjusted design (ref_adjusted_design) for both models. The score test on
+  # (1, M, depth, mean depth), omega2 by B2 from the rows before the image random effect, tau2 on the patient
+  # summaries; the hazard ratio's shrinkage model on (1, depth, mean depth), without M
   dep <- scells$depth[match(s$ctx$image_labels[rows$img + 1L], scells$imageID)]
   z2 <- spicyR:::stats_survival_test(rows, rows$unit, m, M, s$time, s$event, cbind(dep), matrix(0, m, 0))
-  d0 <- spicyR:::stats_design_test(rows, rows$unit, m, cbind(1, M[rows$unit + 1L]), c(0, 1), -1)
-  d2 <- spicyR:::stats_design_test(rows, rows$unit, m, cbind(1, M[rows$unit + 1L], dep - mean(dep)), c(0, 1, 0), d0$tau2)
-  expect_equal(z2$score_p, d2$p, tolerance = 1e-12)
-  expect_identical(z2$q, 4L)   # 1, M, depth, and the patient mean depth will have
+  raw <- rows; raw$v <- rows$s2   # (O = the effect, E = 0, n = 1 after the image random effect)
+  dc <- dep - mean(dep)
+  a <- ref_adjusted_design(raw, rows$unit, cbind(1, M[rows$unit + 1L], dc), 2)
+  expect_equal(z2$score_p, unname(ref_design(a$rows, rows$unit, a$Z, c(0, 1, 0, 0), a$tau2)[4]), tolerance = 1e-8)
+  expect_equal(z2$omega2, a$omega2, tolerance = 1e-9)
+  ah <- ref_adjusted_design(raw, rows$unit, cbind(1, dc), 1)
+  expect_equal(z2$tau2, ah$tau2, tolerance = 1e-9)
+  expect_identical(z2$q, 4L)   # 1, M, depth and its patient mean
+  # through spicy(): the null Cox model on each patient's mean depth, the same test, and tau2_image is B2's
+  Wd <- cbind(depth = as.vector(tapply(dep, rows$unit, mean)))
+  Md <- spicyR:::stats_cox_fit(s$time, s$event, Wd)$martingale
+  zd <- spicyR:::stats_survival_test(rows, rows$unit, m, Md, s$time, s$event, cbind(dep), Wd)
+  rd <- spicy(scells, condition = "os", subject = "patient", r = 30, from = "T", to = "tumour",
+              covariates = "depth")$cellResults
+  expect_equal(rd$p_value, zd$score_p, tolerance = 1e-10)
+  expect_equal(rd$tau2_image, zd$omega2, tolerance = 1e-10)
   # through spicy(): the same test
   res <- spicy(scells, condition = "os", subject = "patient", r = 30, from = "T", to = "tumour",
                covariates = "age")$cellResults

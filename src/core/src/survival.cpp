@@ -130,29 +130,36 @@ CoxResult cox_fit(const std::vector<double>& time, const std::vector<int>& event
 
 namespace {
 
-// tau2 of a survival design (the rows' columns Z, row-major, q of them; patient_level[j]: column j is constant within
-// units): Paule-Mandel under the design when every column is patient-level (then it is the between-patient PM of
-// option (iv), DECISIONS 4 Nov 2026), else held at the Paule-Mandel tau2 of its patient-level columns (-1: estimate
-// under the design).
-// TODO(ext-AB merge): when a column varies within units, call adjusted_design() (ext-AB, design.cpp) instead of this
-// hold: for the score test on (1, M_i, X) with q0 = 2, and for the hazard ratio's shrinkage model on (1, X) with
-// q0 = 1 (no M_i), passing the rows before the image random effect so omega2 is B2 (within patients, after X); it adds
-// the patient-mean column of each image-level column and gives tau2 by option (iv). Then run design_test on its rows,
-// Z and q at its tau2 (the contrast padded with 0 for the mean columns), and use its q for the too_few_units rule
-// (already counted that way below). Without image-level columns (patient-level covariates only, or none) this
-// function is already exact and adjusted_design() does nothing different.
-double survival_tau2(const ImageRows& r, const std::vector<int>& u, int n_units, const std::vector<double>& Z, int q,
-                     const std::vector<char>& patient_level) {
-  std::vector<int> cols;
-  for (int j = 0; j < q; ++j) if (patient_level[j]) cols.push_back(j);
-  if (static_cast<int>(cols.size()) == q) return -1;
-  const int qp = static_cast<int>(cols.size());
-  const std::size_t N = r.O.size();
-  std::vector<double> Zp(N * qp), c(qp, 0.0);
-  for (std::size_t i = 0; i < N; ++i) for (int k = 0; k < qp; ++k) Zp[i * qp + k] = Z[i * q + cols[k]];
-  c[0] = 1;
-  DesignResult d = design_test(r, u, n_units, Zp, qp, c, -1);
-  return d.ok ? d.tau2 : -1;
+// The fit of a survival design: rows r, design Z (row-major, q columns), contrast c; the first q0 columns are the
+// model's own (1 and M_i for the score test, 1 for the hazard ratio's shrinkage model), the rest the covariates.
+// When a covariate column varies within units, the design is A/B's adjusted_design() (DECISIONS 4 Nov 2026 17:10 and
+// 6 Nov 14:37): omega2 by B2 from `raw` (the rows before the image random effect; without them, no image variance),
+// each image-level column's patient mean added, and tau2 by Paule-Mandel on the patient summaries (option (iv)); the
+// test is design_test on its rows and design at its tau2, the contrast padded with 0 for the mean columns. Else the
+// rows and design as given, with tau2 by Paule-Mandel under the design (option (iv), exact for patient-level columns).
+struct SurvivalFit {
+  DesignResult d;
+  ImageRows rows;              // the rows fitted
+  std::vector<double> Z;       // the design fitted (row-major, q columns)
+  int q = 0;
+  double omega2 = std::numeric_limits<double>::quiet_NaN();   // B2's omega2 when adjusted_design re-estimated it
+};
+
+SurvivalFit survival_fit(const ImageRows& r, const ImageRows* raw, const std::vector<int>& u, int n_units,
+                         const std::vector<double>& Z, int q, int q0, const std::vector<double>& c) {
+  SurvivalFit f;
+  AdjustedDesign a = adjusted_design(raw ? *raw : r, u, Z, q, q0, raw != nullptr, true);
+  if (!a.image_level) {
+    f.rows = r; f.Z = Z; f.q = q;
+    f.d = design_test(r, u, n_units, Z, q, c, -1);
+    return f;
+  }
+  std::vector<double> ca(c);
+  ca.resize(static_cast<std::size_t>(a.q), 0.0);
+  f.d = design_test(a.rows, u, n_units, a.Z, a.q, ca, a.tau2);
+  if (raw) f.omega2 = a.omega2;
+  f.rows = std::move(a.rows); f.Z = std::move(a.Z); f.q = a.q;
+  return f;
 }
 
 }  // namespace
@@ -160,7 +167,7 @@ double survival_tau2(const ImageRows& r, const std::vector<int>& u, int n_units,
 SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit, int n_units,
                              const std::vector<double>& M, const std::vector<double>& time,
                              const std::vector<int>& event, const std::vector<double>& X, int p,
-                             const std::vector<double>& W, int pw) {
+                             const std::vector<double>& W, int pw, const std::vector<double>& s2) {
   SurvivalResult res;
   const double kNaN = std::numeric_limits<double>::quiet_NaN();
   res.log_hr_sd = res.hr_sd = res.hr_se = res.log_hr_unit = kNaN;
@@ -176,10 +183,16 @@ SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit
   ImageRows r;
   std::vector<int> u;
   std::vector<std::vector<double>> x(p);
+  const bool has_raw = !s2.empty();
+  ImageRows raw;   // the rows before the image random effect (variance s2 n^2), for B2's omega2
   for (int i : keep) {
     r.image.push_back(rows.image[i]); r.O.push_back(rows.O[i]); r.E.push_back(rows.E[i]); r.n.push_back(rows.n[i]);
     r.v.push_back(rows.v[i]); u.push_back(unit[i]);
     for (int j = 0; j < p; ++j) x[j].push_back(X[static_cast<std::size_t>(i) * p + j]);
+  }
+  if (has_raw) {
+    raw = r;
+    for (std::size_t k = 0; k < keep.size(); ++k) raw.v[k] = s2[keep[k]] * r.n[k] * r.n[k];
   }
   const std::size_t Nk = r.O.size();
   // the covariates centred over the rows kept; which of them vary within units
@@ -203,35 +216,39 @@ SurvivalResult survival_test(const ImageRows& rows, const std::vector<int>& unit
   if (res.n_deaths == res.n_units) { res.reason = "no_survivors"; return res; }
   if (res.n_units - res.q < 2) { res.reason = "too_few_units"; return res; }
   // score test: delta = theta0 + theta1 M_u + X beta, CR2 on Satterthwaite df
+  // (a covariate that varies within units: adjusted_design, with its patient mean; survival_fit)
   const int q = 2 + p;
   std::vector<double> Z(Nk * q), c(q, 0.0);
-  std::vector<char> pl(q, 1);
   for (std::size_t i = 0; i < Nk; ++i) {
     Z[i * q] = 1; Z[i * q + 1] = M[u[i]];
     for (int j = 0; j < p; ++j) Z[i * q + 2 + j] = x[j][i];
   }
-  for (int j = 0; j < p; ++j) pl[2 + j] = !varies[j];
   c[1] = 1;
-  DesignResult sc = design_test(r, u, n_units, Z, q, c, survival_tau2(r, u, n_units, Z, q, pl));
+  const ImageRows* rawp = has_raw ? &raw : nullptr;
+  SurvivalFit sf = survival_fit(r, rawp, u, n_units, Z, q, 2, c);
+  const DesignResult& sc = sf.d;
+  res.omega2 = sf.omega2;
   if (!sc.ok) { res.reason = sc.reason; return res; }
   if (too_few_df(sc.df)) { res.reason = "too_few_df"; return res; }
   res.ok = true; res.score_coef = sc.estimate; res.score_se = sc.se; res.score_df = sc.df; res.score_p = sc.p;
   // the hazard ratio: the shrunken per-unit excess at the average covariates, from the frailty model on (1, X)
   // (without M, so the outcome does not enter its own predictor), in a Cox model with the null model's covariates W
+  // (with an image-level covariate, adjusted_design's rows and design, the patient means included: the shrunken
+  // excess is then at the average covariates and their patient means)
   const int qh = 1 + p;
   std::vector<double> Zh(Nk * qh), ch(qh, 0.0);
-  std::vector<char> plh(qh, 1);
   for (std::size_t i = 0; i < Nk; ++i) { Zh[i * qh] = 1; for (int j = 0; j < p; ++j) Zh[i * qh + 1 + j] = x[j][i]; }
-  for (int j = 0; j < p; ++j) plh[1 + j] = !varies[j];
   ch[0] = 1;
-  DesignResult mu = design_test(r, u, n_units, Zh, qh, ch, survival_tau2(r, u, n_units, Zh, qh, plh));
-  std::vector<double> beta(p, 0.0);
-  if (mu.ok) for (int j = 0; j < p; ++j) beta[j] = mu.theta[1 + j];
+  SurvivalFit hf = survival_fit(r, rawp, u, n_units, Zh, qh, 1, ch);
+  const DesignResult& mu = hf.d;
+  const ImageRows& rh = hf.rows;
+  std::vector<double> beta(hf.q - 1, 0.0);
+  if (mu.ok) for (int j = 0; j < hf.q - 1; ++j) beta[j] = mu.theta[1 + j];
   res.tau2 = mu.ok ? mu.tau2 : kNaN;
   std::vector<double> s(n_units, 0), J(n_units, 0);
   for (std::size_t i = 0; i < Nk; ++i) {
-    double fx = 0; for (int j = 0; j < p; ++j) fx += beta[j] * x[j][i];
-    s[u[i]] += r.n[i] * (r.O[i] - r.E[i] - r.n[i] * fx) / r.v[i]; J[u[i]] += r.n[i] * r.n[i] / r.v[i]; }
+    double fx = 0; for (int j = 0; j < hf.q - 1; ++j) fx += beta[j] * hf.Z[i * hf.q + 1 + j];
+    s[u[i]] += rh.n[i] * (rh.O[i] - rh.E[i] - rh.n[i] * fx) / rh.v[i]; J[u[i]] += rh.n[i] * rh.n[i] / rh.v[i]; }
   // With tau2 near 0 every patient is shrunk to the mean and the shrunken excess carries no information:
   // report no hazard ratio (Supplementary Methods, Section 3, check 4).
   double wmax = 0;

@@ -305,12 +305,15 @@ List stats_survival_test(List rows, IntegerVector unit, int n_units, NumericVect
   std::vector<double> x(static_cast<std::size_t>(N) * p), w(static_cast<std::size_t>(n) * pw);
   for (int i = 0; i < N; ++i) for (int j = 0; j < p; ++j) x[static_cast<std::size_t>(i) * p + j] = X(i, j);
   for (int i = 0; i < n; ++i) for (int j = 0; j < pw; ++j) w[static_cast<std::size_t>(i) * pw + j] = W(i, j);
+  // rows after the image random effect (stats_image_heterogeneity_rows) carry s2, for B2's omega2 of an adjusted design
+  const std::vector<double> s2 = rows.containsElementNamed("s2") ? dvec(as<NumericVector>(rows["s2"])) : std::vector<double>();
   SurvivalResult r = survival_test(rows_from(rows), ivec(unit), n_units, dvec(martingale), dvec(time), ivec(event), x, p,
-                                   w, pw);
+                                   w, pw, s2);
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["score_coef"] = r.score_coef, _["score_se"] = r.score_se,
                       _["score_df"] = r.score_df, _["score_p"] = r.score_p, _["log_hr_sd"] = r.log_hr_sd,
                       _["hr_sd"] = r.hr_sd, _["hr_se"] = r.hr_se, _["log_hr_unit"] = r.log_hr_unit,
-                      _["tau2"] = r.tau2, _["n_units"] = r.n_units, _["n_deaths"] = r.n_deaths, _["q"] = r.q);
+                      _["tau2"] = r.tau2, _["n_units"] = r.n_units, _["n_deaths"] = r.n_deaths, _["q"] = r.q,
+                      _["omega2"] = r.omega2);
 }
 
 // [[Rcpp::export]]
