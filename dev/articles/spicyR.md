@@ -533,16 +533,16 @@ that are tested.
 
 ## Which radius?
 
-The radius decides which relationship is tested. A radius of one or two
-cell diameters asks whether two cell types touch, a larger one whether
-they share a neighbourhood. When you know the relationship you are
-looking for, choose the radius for it and test that one radius. When the
-scale is unknown, give several radii and spicyR tests them together by
-the largest of their test statistics, accounting for the strong
-correlation between neighbouring radii. By default the p-value is the
-bound of Davies (1987) on that maximum, which is fast for any number of
-radii and slightly conservative; `combine = "maxT"` computes the exact
-max-T p-value instead, and `combine = "cauchy"` uses the Cauchy
+The choice of radius determines which relationship is tested. A radius
+of one or two cell diameters asks whether two cell types touch, a larger
+one whether they share a neighbourhood. When you know the relationship
+you are looking for, choose the radius for it and test that one radius.
+When the scale is unknown, give several radii and spicyR tests them
+together by the largest of their test statistics, accounting for the
+strong correlation between neighbouring radii. By default the p-value is
+the bound of Davies (1987) on that maximum, which is fast for any number
+of radii and slightly conservative; `combine = "maxT"` computes the
+exact max-T p-value instead, and `combine = "cauchy"` uses the Cauchy
 combination of Liu and Xie (2020). About four radii spanning the range
 of interest, none below about one cell diameter, are enough:
 neighbouring radii are highly correlated, so many closely spaced radii
