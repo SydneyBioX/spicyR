@@ -162,6 +162,7 @@ PairTests pair_tests(const PairTestInput& in) {
   res.not_tested.assign(PK, std::string());
   res.effect.assign(PK * ne, kNaN); res.effect_p.assign(PK * ne, kNaN);
   res.rows.assign(P, ImageRows()); res.image_weight.assign(P, std::vector<double>());
+  res.group_weight.assign(P, std::vector<double>());
   res.best.assign(P, -1); res.comb_p.assign(P, kNaN); res.comb_p_best.assign(P, kNaN); res.comb_u_p.assign(P, kNaN);
   res.comb_converged.assign(P, -1);
 
@@ -195,7 +196,7 @@ PairTests pair_tests(const PairTestInput& in) {
       }
       res.n_rows[o] = static_cast<int>(N);
       ExcessResult u = excess_test(r, unit, group, in.n_units, in.frailty, in.variance, rules.pooled_dispersion);
-      if (k == in.keep_radius) { res.rows[pr] = r; res.image_weight[pr] = u.image_weight; }
+      if (k == in.keep_radius) { res.rows[pr] = r; res.image_weight[pr] = u.image_weight; res.group_weight[pr] = u.group_weight; }
       if (!u.ok) { res.not_tested[o] = u.reason.empty() ? "not_tested" : u.reason; continue; }
       res.ok[o] = 1;
       res.u_difference[o] = u.difference; res.u_se[o] = u.se; res.u_df[o] = u.df; res.u_p[o] = u.p;

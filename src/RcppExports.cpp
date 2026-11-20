@@ -872,6 +872,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// stats_test_correlation
+List stats_test_correlation(NumericMatrix y, NumericMatrix w, IntegerVector image_unit, IntegerVector image_group, int n_units, NumericMatrix group_weight, int n_perms, IntegerMatrix perms, int n_threads);
+RcppExport SEXP _spicyR_stats_test_correlation(SEXP ySEXP, SEXP wSEXP, SEXP image_unitSEXP, SEXP image_groupSEXP, SEXP n_unitsSEXP, SEXP group_weightSEXP, SEXP n_permsSEXP, SEXP permsSEXP, SEXP n_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type w(wSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image_unit(image_unitSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type image_group(image_groupSEXP);
+    Rcpp::traits::input_parameter< int >::type n_units(n_unitsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type group_weight(group_weightSEXP);
+    Rcpp::traits::input_parameter< int >::type n_perms(n_permsSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type perms(permsSEXP);
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(stats_test_correlation(y, w, image_unit, image_group, n_units, group_weight, n_perms, perms, n_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // stats_design_test
 List stats_design_test(List rows, IntegerVector unit, int n_units, NumericMatrix Z, NumericVector contrast, double tau2);
 RcppExport SEXP _spicyR_stats_design_test(SEXP rowsSEXP, SEXP unitSEXP, SEXP n_unitsSEXP, SEXP ZSEXP, SEXP contrastSEXP, SEXP tau2SEXP) {
@@ -1165,6 +1184,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_stats_kontextual_clustering", (DL_FUNC) &_spicyR_stats_kontextual_clustering, 6},
     {"_spicyR_stats_label_clustering", (DL_FUNC) &_spicyR_stats_label_clustering, 7},
     {"_spicyR_stats_excess_test", (DL_FUNC) &_spicyR_stats_excess_test, 7},
+    {"_spicyR_stats_test_correlation", (DL_FUNC) &_spicyR_stats_test_correlation, 9},
     {"_spicyR_stats_design_test", (DL_FUNC) &_spicyR_stats_design_test, 6},
     {"_spicyR_stats_design_tests", (DL_FUNC) &_spicyR_stats_design_tests, 8},
     {"_spicyR_stats_design_joint_test", (DL_FUNC) &_spicyR_stats_design_joint_test, 6},

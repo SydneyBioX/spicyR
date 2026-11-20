@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <string>
 #include <vector>
@@ -23,6 +24,19 @@ double norm_quantile(double p);                       // Wichura AS241
 double pt_upper(double t, double df);         // P(T > t), Student t (df = inf: normal)
 double pt_two_sided(double t, double df);     // P(|T| > |t|)
 double pf_upper(double f, double df1, double df2);  // P(F > f), F distribution
+
+// SplitMix64 (Steele, Lea & Flood 2014): a fixed, portable stream of uniforms in [0, 1), the same in R and Python
+// (the max-T integrator's random shifts, the relabellings of test_correlation).
+struct SplitMix64 {
+  std::uint64_t s;
+  double next() {
+    std::uint64_t z = (s += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    z ^= z >> 31;
+    return static_cast<double>(z >> 11) * 0x1.0p-53;   // in [0, 1)
+  }
+};
 
 // ------------------------------------------------------------ image rows ---
 
@@ -188,6 +202,7 @@ struct ExcessResult {
   std::vector<double> unit_summary; // the patient summary delta~_i
   std::vector<double> unit_info;    // I_i
   std::vector<double> image_weight; // per image row: its share of its group's information (sums to 1 in each group)
+  std::vector<double> group_weight; // per group (0, 1): its information, the sum of its units' weights (S_g)
   std::vector<double> n_eff;        // per group (0, 1): its effective number of units at tau2 (effective_units)
   std::vector<double> n_units;      // per group (0, 1): its number of units with rows
 };
@@ -197,6 +212,30 @@ struct ExcessResult {
 // variance of the difference pools the dispersion of the two groups (TestRules); the influences stay those of CR2.
 ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                          int n_units, bool frailty, Variance variance, bool pooled_dispersion = false);
+
+// The correlation between the two-condition tests (excess_test, CR2) of n_tests pairs on the same units, from what
+// the tests return: each test's image effects y and image weights w (image_weight; test-major n_tests x n_images,
+// NaN where an image has no row or for a test left out) and the information of its two conditions (group_weight;
+// test-major n_tests x 2). A unit's share of its condition's information is h = the sum of its images' w, its summary
+// ybar = sum(w y) / h, its weight W = h S_g, and a condition's mean beta_g = the sum of w y over its images.
+//   - n_perms == 0: the CR2 cross-products, R_ab = sum_u psi_u(a) psi_u(b) / (|psi(a)| |psi(b)|), with
+//     psi_u = h (ybar - beta_g) / sqrt(1 - h), negated in condition 0 (excess_test's influence; |psi|^2 = se^2).
+//   - n_perms > 0: the permutation correlation over n_perms relabellings, each a random permutation of the units'
+//     conditions over the units with one (from SplitMix64 with a fixed seed, so a call always gives the same R), or
+//     those in perms (n_units x n_perms, column-major: each unit's condition, 0 or 1; negative: none). Holding every unit's ybar and W fixed, each test is recomputed in closed form as
+//     excess_test does (each condition's weighted mean, its CR2 variance, Satterthwaite df), its two-sided p turned
+//     into a z with the sign of the difference (0 where not finite, or where a condition has fewer than two of the
+//     test's units, which excess_test does not test), and R is the correlation of the tests' z over the
+//     relabellings. z (n_tests x n_perms, test-major) is returned too.
+// image_group: each image's condition (0 or 1; negative: none). R is n_tests x n_tests (symmetric, unit diagonal);
+// its rows and columns are NaN for a test with no unit (or, by permutation, whose z do not vary). difference and se:
+// each test's beta_1 - beta_0 and |psi| rebuilt from y and w (the front ends check them against the fit).
+struct TestCorrelation {
+  std::vector<double> R, difference, se, z;
+};
+TestCorrelation test_correlation(const double* y, const double* w, int n_tests, int n_images, const int* image_unit,
+                                 const int* image_group, int n_units, const double* group_weight,
+                                 const int* perms = nullptr, int n_perms = 0, int n_threads = 1);
 
 // Paule-Mandel tau^2 of the two-group model (exposed for the tests).
 double excess_tau2(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
@@ -473,9 +512,11 @@ struct PairTests {
   // the added columns (abundance, then the n_z covariates) at ((p * K + k) * (1 + n_z) + j): estimate and p, NaN
   // where not in the design
   std::vector<double> effect, effect_p;
-  // at keep_radius, per pair: the image rows tested and the unadjusted test's image weights (empty when not done)
+  // at keep_radius, per pair: the image rows tested and the unadjusted test's image weights and information of each
+  // condition (empty when not done)
   std::vector<ImageRows> rows;
   std::vector<std::vector<double>> image_weight;
+  std::vector<std::vector<double>> group_weight;   // the unadjusted test's group_weight (empty when not done)
   // several radii, per pair with at least one radius tested: the radius chosen (0-based; -1 for none), the
   // combined p of the main and of the unadjusted test, and the main test's p at the chosen radius
   // (comb_u_p only when there is something to adjust for, else NaN); comb_converged: whether the main test's

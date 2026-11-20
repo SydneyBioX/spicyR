@@ -164,6 +164,11 @@ Every requested pair has a row: \code{not_tested} gives why a pair (or, in \verb
 continuous condition also \code{"too_few_units"} or \code{"design_not_full_rank"} (the condition does not vary); for
 survival also \code{"no_deaths"}, \code{"no_survivors"} or \code{"too_few_units"}; \code{NA} when it was), and its p-value is then
 \code{NA} and not counted in the BH adjustment. \verb{$effect} records which effect was estimated.
+\verb{$pairwiseAssoc} holds each pair's effect in every image and \verb{$imageWeights} each image's share of its
+condition's information in the pair's test; with two conditions, \verb{$conditionInformation} holds that information
+for each pair (one column per condition: the sum of the weights of its patients). With adjustment or several radii these
+three are those of the unadjusted test at the radius nearest the median. \code{\link[=testCorrelation]{testCorrelation()}} uses them to
+estimate the correlation between the pairs' tests.
 }
 \description{
 \code{spicy()} tests, for every ordered pair of cell types \code{from} → \code{to}, whether the co-localisation of

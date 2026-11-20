@@ -3,10 +3,15 @@
 // Ported from the R front end (R/excess.R, R/frailty.R of spicyR 1.99), which the plain-R reference
 // checks to 1e-9.
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <stdexcept>
+#include <thread>
+
+#include <Eigen/Dense>
 
 #include "spicyglm/stats.hpp"
 
@@ -539,6 +544,7 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
   res.influence.assign(n_units, 0); res.unit_summary.assign(n_units, kNaN); res.unit_info.assign(n_units, 0);
   res.image_weight.assign(rows.O.size(), 0.0);
   res.n_eff.assign(2, 0.0); res.n_units.assign(2, 0.0);
+  res.group_weight = {f0.B, f1.B};
   for (int g = 0; g < 2; ++g) {
     const GroupFit& f = g == 0 ? f0 : f1;
     double sw = 0, sw2 = 0;
@@ -568,6 +574,148 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
     }
   }
   return res;
+}
+
+TestCorrelation test_correlation(const double* y, const double* w, int n_tests, int n_images, const int* image_unit,
+                                 const int* image_group, int n_units, const double* group_weight, const int* perms,
+                                 int n_perms, int n_threads) {
+  if (n_tests < 0 || n_images < 0 || n_units < 0 || n_perms < 0) throw std::invalid_argument("test_correlation: negative size");
+  for (int i = 0; i < n_images; ++i)
+    if (image_unit[i] < 0 || image_unit[i] >= n_units) throw std::invalid_argument("test_correlation: unit out of range");
+  const std::size_t T = static_cast<std::size_t>(n_tests), N = static_cast<std::size_t>(n_images);
+  TestCorrelation out;
+  out.difference.assign(T, kNaN); out.se.assign(T, kNaN);
+  // per test, its units: the unit, its condition, h, ybar, W = h S_g, and psi
+  struct Unit { int unit, group; double h, ybar, W, psi; };
+  std::vector<std::vector<Unit>> units(T);
+  std::vector<double> h(n_units), sy(n_units);
+  std::vector<int> ug(n_units);
+  for (std::size_t t = 0; t < T; ++t) {
+    std::fill(h.begin(), h.end(), 0.0); std::fill(sy.begin(), sy.end(), 0.0); std::fill(ug.begin(), ug.end(), -1);
+    double beta[2] = {0, 0};
+    bool any[2] = {false, false};
+    for (std::size_t i = 0; i < N; ++i) {
+      const double wi = w[t * N + i], yi = y[t * N + i];
+      const int g = image_group[i];
+      if (!(std::isfinite(wi) && std::isfinite(yi) && wi > 0) || g < 0 || g > 1) continue;
+      h[image_unit[i]] += wi; sy[image_unit[i]] += wi * yi; ug[image_unit[i]] = g;
+      beta[g] += wi * yi; any[g] = true;
+    }
+    if (!any[0] || !any[1]) continue;
+    const double S[2] = {group_weight[2 * t], group_weight[2 * t + 1]};
+    double ss = 0;
+    for (int u = 0; u < n_units; ++u) {
+      if (!(h[u] > 0)) continue;
+      const int g = ug[u];
+      const double psi = (g == 0 ? -1 : 1) * (sy[u] - h[u] * beta[g]) / std::sqrt(1 - h[u]);
+      units[t].push_back({u, g, h[u], sy[u] / h[u], h[u] * S[g], psi});
+      ss += psi * psi;
+    }
+    out.difference[t] = beta[1] - beta[0]; out.se[t] = std::sqrt(ss);
+  }
+  // R from a tests x columns matrix whose rows are each normalised to unit length (NaN rows: no test)
+  auto gram = [&](std::vector<double>& M, std::size_t C) {
+    std::vector<char> valid(T, 0);
+    for (std::size_t t = 0; t < T; ++t) {
+      double s = 0;
+      for (std::size_t c = 0; c < C; ++c) s += M[t * C + c] * M[t * C + c];
+      valid[t] = s > 0 && std::isfinite(s);
+      for (std::size_t c = 0; c < C; ++c) M[t * C + c] = valid[t] ? M[t * C + c] / std::sqrt(s) : 0.0;
+    }
+    using RowMat = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    Eigen::Map<const RowMat> X(M.data(), static_cast<Eigen::Index>(T), static_cast<Eigen::Index>(C));
+    RowMat G = X * X.transpose();
+    out.R.assign(T * T, kNaN);
+    for (std::size_t a = 0; a < T; ++a) {
+      if (!valid[a]) continue;
+      out.R[a * T + a] = 1;
+      for (std::size_t b = a + 1; b < T; ++b) if (valid[b]) out.R[a * T + b] = out.R[b * T + a] = G(a, b);
+    }
+  };
+  if (n_perms == 0) {
+    std::vector<double> M(T * static_cast<std::size_t>(n_units), 0.0);
+    for (std::size_t t = 0; t < T; ++t) for (const Unit& x : units[t]) M[t * n_units + x.unit] = x.psi;
+    gram(M, static_cast<std::size_t>(n_units));
+    return out;
+  }
+  // relabellings: each test in closed form (fit_group and cr2_group on the units' summaries at fixed weights)
+  const std::size_t B = static_cast<std::size_t>(n_perms);
+  std::vector<int> generated;
+  if (!perms) {
+    // each relabelling permutes the units' conditions over the units with one (Fisher-Yates)
+    std::vector<int> cond(n_units, -1), with;
+    for (int i = 0; i < n_images; ++i) if (image_group[i] == 0 || image_group[i] == 1) cond[image_unit[i]] = image_group[i];
+    for (int u = 0; u < n_units; ++u) if (cond[u] >= 0) with.push_back(u);
+    std::vector<int> c(with.size());
+    for (std::size_t k = 0; k < with.size(); ++k) c[k] = cond[with[k]];
+    generated.assign(B * static_cast<std::size_t>(n_units), -1);
+    SplitMix64 rng{0x5EED5EED2026ULL};
+    for (std::size_t b = 0; b < B; ++b) {
+      for (std::size_t k = c.size(); k > 1; --k) {
+        const std::size_t j = std::min(k - 1, static_cast<std::size_t>(rng.next() * static_cast<double>(k)));
+        std::swap(c[k - 1], c[j]);
+      }
+      for (std::size_t k = 0; k < with.size(); ++k) generated[b * n_units + with[k]] = c[k];
+    }
+    perms = generated.data();
+  }
+  out.z.assign(T * B, 0.0);
+  auto one_test = [&](std::size_t t) {
+    const std::vector<Unit>& us = units[t];
+    if (us.empty()) return;
+    for (std::size_t b = 0; b < B; ++b) {
+      const int* pg = perms + b * static_cast<std::size_t>(n_units);
+      double Wg[2] = {0, 0}, Wy[2] = {0, 0};
+      int m[2] = {0, 0};
+      for (const Unit& x : us) {
+        const int g = pg[x.unit];
+        if (g == 0 || g == 1) { Wg[g] += x.W; Wy[g] += x.W * x.ybar; ++m[g]; }
+      }
+      if (m[0] < 2 || m[1] < 2) continue;   // as excess_test, not tested ("one_patient_per_group"): z = 0
+      const double beta[2] = {Wy[0] / Wg[0], Wy[1] / Wg[1]};
+      double V[2] = {0, 0}, tr[2] = {0, 0}, t1[2] = {0, 0};
+      for (const Unit& x : us) {
+        const int g = pg[x.unit];
+        if (g != 0 && g != 1) continue;
+        const double hh = x.W / Wg[g], e = x.ybar - beta[g];
+        V[g] += hh * hh * e * e / (1 - hh);
+        tr[g] += hh * hh * (1 - 2 * hh) / ((1 - hh) * (1 - hh));
+        t1[g] += hh * hh / (1 - hh);
+      }
+      double ev = 0, trsq = 0;
+      for (int g = 0; g < 2; ++g) { ev += 1 / Wg[g]; trsq += (tr[g] + t1[g] * t1[g]) / (Wg[g] * Wg[g]); }
+      const double D = beta[1] - beta[0], df = ev * ev / trsq;
+      const double p = pt_two_sided(D / std::sqrt(V[0] + V[1]), df);
+      const double z = (D < 0 ? 1 : -1) * norm_quantile(std::max(p, 1e-300) / 2);
+      out.z[t * B + b] = std::isfinite(z) ? z : 0.0;
+    }
+  };
+  const int G = std::max(1, std::min(n_threads, n_tests));
+  std::atomic<int> next(0);
+  std::vector<std::exception_ptr> err(G);
+  auto work = [&](int g) {
+    try {
+      for (int t = next++; t < n_tests; t = next++) one_test(static_cast<std::size_t>(t));
+    } catch (...) {
+      err[g] = std::current_exception();
+      next = n_tests;
+    }
+  };
+  std::vector<std::thread> pool;
+  for (int g = 1; g < G; ++g) pool.emplace_back(work, g);
+  work(0);
+  for (std::thread& th : pool) th.join();
+  for (const std::exception_ptr& e : err) if (e) std::rethrow_exception(e);
+  // the correlation over the relabellings: each test's z centred
+  std::vector<double> M(out.z);
+  for (std::size_t t = 0; t < T; ++t) {
+    double m = 0;
+    for (std::size_t b = 0; b < B; ++b) m += M[t * B + b];
+    m /= std::max<std::size_t>(B, 1);
+    for (std::size_t b = 0; b < B; ++b) M[t * B + b] -= m;
+  }
+  gram(M, B);
+  return out;
 }
 
 }  // namespace spicyglm

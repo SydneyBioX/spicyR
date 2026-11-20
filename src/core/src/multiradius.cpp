@@ -102,18 +102,6 @@ std::vector<double> richtmyer(int D) {
   return alpha;
 }
 
-// SplitMix64 (Steele, Lea & Flood 2014): a fixed, portable stream for the random shifts.
-struct SplitMix64 {
-  std::uint64_t s;
-  double next() {
-    std::uint64_t z = (s += 0x9E3779B97F4A7C15ULL);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-    z ^= z >> 31;
-    return static_cast<double>(z >> 11) * 0x1.0p-53;   // in [0, 1)
-  }
-};
-
 const double kTol = 1e-10;   // conditional variance below this: the coordinate is deterministic given the others
 
 // The integrand after separation of variables: for the cube point w (K - 1 coordinates in [0, 1]), the probability

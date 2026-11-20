@@ -1,3 +1,17 @@
+CHANGES IN VERSION 1.99.59
+--------------------------
+
+    o New testCorrelation(): the correlation between the tests of a spicy() result (two conditions, one radius or k,
+      no adjustment, CR2 variance), estimated from the one fit, for a correction for multiple testing that uses it.
+      method = "cr2" (the default) gives the CR2 cross-products: each patient's influence on each pair's difference,
+      whose squares sum to the test's se^2; method = "permutation" permutes the conditions over the patients
+      (nPermutations, from a fixed seed) and recomputes every test in closed form from the patients' summaries and
+      weights, and gives the correlation of the tests' z. Both are built from what spicy() returns.
+    o spicy() with two conditions returns $conditionInformation: for each pair, each condition's information in its
+      test (the sum of the patients' weights), which with $pairwiseAssoc and $imageWeights gives every patient's
+      summary and weight. kontextualEngine() returns it too, and now also $variance, as spicy() does. Every other
+      element, and every result, is unchanged.
+
 CHANGES IN VERSION 1.99.58
 --------------------------
 

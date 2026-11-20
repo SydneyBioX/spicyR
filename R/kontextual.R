@@ -125,6 +125,7 @@ kontextualEngine <- function(cells,
   out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
     trip$parent[[match(pn, trip$parent_name)]]), unique(trip$parent_name)), edgeCorrect = edgeCorrect, window = window)
+  if (!survival) out$variance <- variance
   out
 }
 
@@ -208,5 +209,6 @@ kontextualEngine <- function(cells,
   out <- .cell_results(list(table = tab, fits = fits), ctx, pheno, condition, subject, survival, r, NULL, effect = "kontextual")
   out$kontextual <- list(parents = stats::setNames(lapply(unique(trip$parent_name), function(pn)
     trip$parent[[match(pn, trip$parent_name)]]), unique(trip$parent_name)), edgeCorrect = edgeCorrect, window = window)
+  if (!survival) out$variance <- variance
   out
 }

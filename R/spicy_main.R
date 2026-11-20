@@ -215,6 +215,11 @@
 #'   continuous condition also `"too_few_units"` or `"design_not_full_rank"` (the condition does not vary); for
 #'   survival also `"no_deaths"`, `"no_survivors"` or `"too_few_units"`; `NA` when it was), and its p-value is then
 #'   `NA` and not counted in the BH adjustment. `$effect` records which effect was estimated.
+#'   `$pairwiseAssoc` holds each pair's effect in every image and `$imageWeights` each image's share of its
+#'   condition's information in the pair's test; with two conditions, `$conditionInformation` holds that information
+#'   for each pair (one column per condition: the sum of the weights of its patients). With adjustment or several radii these
+#'   three are those of the unadjusted test at the radius nearest the median. [testCorrelation()] uses them to
+#'   estimate the correlation between the pairs' tests.
 #' @references Canete NP et al. (2022). spicyR: spatial analysis of in situ cytometry data in R.
 #'   Bioinformatics 38(11), 3099-3105. \doi{10.1093/bioinformatics/btac268}
 #'
@@ -440,7 +445,8 @@ spicy <- function(cells,
   tabs <- lapply(seq_len(K), function(k) .cell_pairs_table(x, k, from, to, allocation, adjust, colnames(Z_extra),
                                                          if (is.null(en[[k]])) en0 else en[[k]]))
   fits <- lapply(seq_along(pairs), function(i) list(from = from[i], to = to[i], rows = x$rows[[i]],
-                                                    unadjusted = list(image_weight = x$image_weight[[i]])))
+                                                    unadjusted = list(image_weight = x$image_weight[[i]],
+                                                                      group_weight = x$group_weight[[i]])))
   if (K == 1L) return(list(table = tabs[[1]], fits = fits))
   long <- do.call(rbind, Map(function(t, rr) if (!is.null(t)) cbind(r = rr, t), tabs, radii))
   # the rows of `long`: radius by radius, every pair; one row per pair, that of its chosen radius. A pair tested at
@@ -652,6 +658,8 @@ spicy <- function(cells,
   if (!is.null(tab$parent)) { out$comparisons$parent <- tab$parent; out$isKontextual <- TRUE }
   out$pairwiseAssoc <- .cell_image_excess(res$fits, ctx)[labels]
   out$imageWeights <- .cell_image_weight(res$fits, ctx)[labels]
+  if (!survival && !isTRUE(ctx$continuous) && length(ctx$levels) == 2L)
+    out$conditionInformation <- .cell_condition_information(res$fits, ctx)[labels, , drop = FALSE]
   out$imageIDs <- ctx$image_labels
   out$imageID <- ctx$image_labels
   if (!is.null(subject)) out$subject <- as.character(pheno[[subject]])

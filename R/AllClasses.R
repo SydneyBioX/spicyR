@@ -26,6 +26,9 @@
 #'     \code{"kontextual"} (Statial's Kontextual test).}
 #'   \item{\code{imageWeights}}{a list with, for every pair, each image's weight in the test: its share of its
 #'     condition's information (sums to 1 within each condition).}
+#'   \item{\code{conditionInformation}}{with two conditions, a matrix with one row per pair and one column per
+#'     condition: the condition's information in the pair's test (the sum of the weights of its patients), so that an image's
+#'     weight times it is the image's weight on the scale of the model (see \code{\link{testCorrelation}}).}
 #'   \item{\code{coefficient}, \code{p.value}, \code{se}, \code{statistic}, \code{df}}{matrices with one row per
 #'     pair, as for the image method: the reference excess and the differences, and their tests.}
 #'   \item{\code{condition}, \code{imageID}, \code{subject}, \code{nCells}, \code{r}, \code{k}}{the condition and

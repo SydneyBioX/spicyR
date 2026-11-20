@@ -782,6 +782,17 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   out
 }
 
+## Two conditions: the information of each condition in every pair's test (the sum of its patients' weights in the
+## frailty model; an image's weight in .cell_image_weight() is its share of it): pairs x conditions, NA where the pair
+## was not tested.
+.cell_condition_information <- function(fits, ctx) {
+  m <- t(vapply(fits, function(o) {
+    v <- o$unadjusted$group_weight
+    if (length(v) == 2L) v else c(NA_real_, NA_real_) }, numeric(2)))
+  dimnames(m) <- list(vapply(fits, .cell_labels, ""), ctx$levels)
+  m
+}
+
 ## Per-image weight of every pair: the image's share of its condition's information in the frailty model
 ## (sums to 1 within each condition); NA where the pair was not tested.
 .cell_image_weight <- function(fits, ctx) {

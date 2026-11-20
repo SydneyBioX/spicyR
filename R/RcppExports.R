@@ -229,6 +229,10 @@ stats_excess_test <- function(rows, unit, group, n_units, frailty, variance, poo
     .Call(`_spicyR_stats_excess_test`, rows, unit, group, n_units, frailty, variance, pooled_dispersion)
 }
 
+stats_test_correlation <- function(y, w, image_unit, image_group, n_units, group_weight, n_perms, perms, n_threads = 1L) {
+    .Call(`_spicyR_stats_test_correlation`, y, w, image_unit, image_group, n_units, group_weight, n_perms, perms, n_threads)
+}
+
 stats_design_test <- function(rows, unit, n_units, Z, contrast, tau2) {
     .Call(`_spicyR_stats_design_test`, rows, unit, n_units, Z, contrast, tau2)
 }

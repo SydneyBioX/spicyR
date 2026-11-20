@@ -220,7 +220,28 @@ List stats_excess_test(List rows, IntegerVector unit, IntegerVector group, int n
                       _["difference"] = r.difference, _["se"] = r.se, _["df"] = r.df, _["p"] = r.p, _["tau2"] = r.tau2,
                       _["influence"] = nv(r.influence), _["unit_summary"] = nv(r.unit_summary),
                       _["unit_info"] = nv(r.unit_info), _["image_weight"] = nv(r.image_weight),
-                      _["n_eff"] = nv(r.n_eff), _["n_units"] = nv(r.n_units));
+                      _["n_eff"] = nv(r.n_eff), _["n_units"] = nv(r.n_units), _["group_weight"] = nv(r.group_weight));
+}
+
+// [[Rcpp::export]]
+List stats_test_correlation(NumericMatrix y, NumericMatrix w, IntegerVector image_unit, IntegerVector image_group,
+                            int n_units, NumericMatrix group_weight, int n_perms, IntegerMatrix perms,
+                            int n_threads = 1) {
+  // y, w: images x tests (each test's column is contiguous, the core's test-major layout); group_weight: 2 x tests;
+  // n_perms = 0: the CR2 cross-products; else n_perms relabellings, generated in the core when perms is 0 x 0, or
+  // perms: units x n_perms conditions (0, 1; NA for none). R: tests x tests; z: tests x relabellings.
+  const int N = y.nrow(), T = y.ncol(), B = n_perms;
+  if (perms.ncol() > 0 && perms.ncol() != B) stop("stats_test_correlation: perms must have n_perms columns");
+  if (w.nrow() != N || w.ncol() != T || image_unit.size() != N || image_group.size() != N || group_weight.nrow() != 2 ||
+      group_weight.ncol() != T || (perms.ncol() > 0 && perms.nrow() != n_units) || B < 0)
+    stop("stats_test_correlation: inputs of the wrong size");
+  TestCorrelation r = test_correlation(y.begin(), w.begin(), T, N, image_unit.begin(), image_group.begin(), n_units,
+                                       group_weight.begin(), perms.ncol() > 0 ? perms.begin() : nullptr, B, n_threads);
+  NumericMatrix R(T, T);
+  std::copy(r.R.begin(), r.R.end(), R.begin());
+  NumericMatrix z(T, B);
+  for (int t = 0; t < T; ++t) for (int b = 0; b < B; ++b) z(t, b) = r.z[static_cast<std::size_t>(t) * B + b];
+  return List::create(_["R"] = R, _["difference"] = nv(r.difference), _["se"] = nv(r.se), _["z"] = z);
 }
 
 // [[Rcpp::export]]
@@ -416,8 +437,10 @@ List stats_pair_tests(List a, List b, List self_var, bool allocation, bool knn, 
   auto ke = [&](const std::vector<double>& v) { NumericVector x(v.begin(), v.end()); x.attr("dim") = Dimension(ne, K, P); return x; };
   CharacterVector reason(r.design_reason.begin(), r.design_reason.end());
   reason.attr("dim") = Dimension(K, P);
-  List rows(P), weight(P);
-  for (int p = 0; p < P; ++p) { rows[p] = rows_list(r.rows[p]); weight[p] = nv(r.image_weight[p]); }
+  List rows(P), weight(P), group_weight(P);
+  for (int p = 0; p < P; ++p) {
+    rows[p] = rows_list(r.rows[p]); weight[p] = nv(r.image_weight[p]); group_weight[p] = nv(r.group_weight[p]);
+  }
   IntegerVector best(P);
   for (int p = 0; p < P; ++p) best[p] = r.best[p] < 0 ? NA_INTEGER : r.best[p] + 1;
   List out;   // (more elements than List::create takes)
@@ -431,7 +454,8 @@ List stats_pair_tests(List a, List b, List self_var, bool allocation, bool knn, 
   CharacterVector not_tested(r.not_tested.begin(), r.not_tested.end());
   not_tested.attr("dim") = Dimension(K, P);
   out.push_back(reason, "design_reason"); out.push_back(not_tested, "not_tested"); out.push_back(ke(r.effect), "effect"); out.push_back(ke(r.effect_p), "effect_p");
-  out.push_back(rows, "rows"); out.push_back(weight, "image_weight"); out.push_back(best, "best");
+  out.push_back(rows, "rows"); out.push_back(weight, "image_weight"); out.push_back(group_weight, "group_weight");
+  out.push_back(best, "best");
   out.push_back(nv(r.comb_p), "comb_p"); out.push_back(nv(r.comb_p_best), "comb_p_best");
   out.push_back(nv(r.comb_u_p), "comb_u_p");
   LogicalVector conv(P);
