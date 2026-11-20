@@ -283,7 +283,14 @@ why a pair (or, in `$radiusResults`, a radius) was not tested
 vary); for survival also `"no_deaths"`, `"no_survivors"` or
 `"too_few_units"`; `NA` when it was), and its p-value is then `NA` and
 not counted in the BH adjustment. `$effect` records which effect was
-estimated.
+estimated. `$pairwiseAssoc` holds each pair's effect in every image and
+`$imageWeights` each image's share of its condition's information in the
+pair's test; with two conditions, `$conditionInformation` holds that
+information for each pair (one column per condition: the sum of the
+weights of its patients). With adjustment or several radii these three
+are those of the unadjusted test at the radius nearest the median.
+[`testCorrelation()`](https://sydneybiox.github.io/spicyR/dev/reference/testCorrelation.md)
+uses them to estimate the correlation between the pairs' tests.
 
 ## Details
 

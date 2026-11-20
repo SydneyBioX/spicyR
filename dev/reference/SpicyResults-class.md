@@ -58,6 +58,14 @@ Elements for the cell method (`method = "cell"`, the default):
   share of its condition's information (sums to 1 within each
   condition).
 
+- `conditionInformation`:
+
+  with two conditions, a matrix with one row per pair and one column per
+  condition: the condition's information in the pair's test (the sum of
+  the weights of its patients), so that an image's weight times it is
+  the image's weight on the scale of the model (see
+  [`testCorrelation`](https://sydneybiox.github.io/spicyR/dev/reference/testCorrelation.md)).
+
 - `coefficient`, `p.value`, `se`, `statistic`, `df`:
 
   matrices with one row per pair, as for the image method: the reference
