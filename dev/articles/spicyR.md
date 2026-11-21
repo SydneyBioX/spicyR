@@ -757,7 +757,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.59) to
+A methods sentence might read: “We used spicyR (version 1.99.60) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -962,7 +962,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.3        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.13       
-#> [19] generics_0.1.4              spicyR_1.99.59             
+#> [19] generics_0.1.4              spicyR_1.99.60             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
@@ -984,7 +984,7 @@ sessionInfo()
 #>  [46] Matrix_1.7-6         splines_4.6.2        tidyselect_1.2.1    
 #>  [49] duckspatial_1.4.0    abind_1.4-8          yaml_2.3.12         
 #>  [52] curl_8.1.0           lattice_0.23-1       tibble_3.3.1        
-#>  [55] withr_3.0.3          KEGGREST_1.53.6      S7_0.2.2            
+#>  [55] withr_3.0.3          KEGGREST_1.53.6      S7_1.0.0            
 #>  [58] evaluate_1.0.5       sf_1.1-3             desc_1.4.3          
 #>  [61] units_1.0-1          proxy_0.4-29         Biostrings_2.81.9   
 #>  [64] pillar_1.11.1        BiocManager_1.30.27  filelock_1.0.3      

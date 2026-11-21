@@ -424,13 +424,13 @@ topPairs(spicyMixedTest)
 #>                          intercept coefficient      p.value adj.pvalue
 #> beta__delta           6.081501e+01  -15.433246 0.0006616399 0.09171146
 #> delta__beta           6.090722e+01  -15.276362 0.0007164958 0.09171146
-#> B__Th                 0.000000e+00   10.480124 0.0127535308 0.42316679
+#> B__Th                 3.552714e-15   10.480124 0.0127535308 0.42316679
 #> delta__delta          7.021912e+01  -16.358091 0.0155005361 0.42316679
-#> Th__B                -3.996803e-15   10.003453 0.0173028316 0.42316679
-#> B__unknown            1.165734e-15    4.584275 0.0182158608 0.42316679
-#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199647001 0.42316679
+#> Th__B                 2.664535e-15   10.003453 0.0173028316 0.42316679
+#> B__unknown            4.440892e-16    4.584274 0.0182158642 0.42316679
+#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646993 0.42316679
 #> unknown__macrophage   4.339587e+00   -5.274674 0.0222619390 0.42316679
-#> unknown__B            1.942890e-15    4.680750 0.0244004282 0.42316679
+#> unknown__B            4.440892e-16    4.680750 0.0244004279 0.42316679
 #> macrophage__unknown   4.305429e+00   -4.886438 0.0249693473 0.42316679
 #>                             from         to
 #> beta__delta                 beta      delta
@@ -481,7 +481,7 @@ sessionInfo()
 #> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [15] BiocFileCache_3.3.3         dbplyr_2.6.0               
 #> [17] BiocGenerics_0.59.13        generics_0.1.4             
-#> [19] spicyR_1.99.59              BiocStyle_2.41.0           
+#> [19] spicyR_1.99.60              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           
@@ -502,7 +502,7 @@ sessionInfo()
 #> [46] abind_1.4-8            yaml_2.3.12            spatstat.random_3.5-2 
 #> [49] codetools_0.2-20       spatstat.explore_3.8-3 curl_8.1.0            
 #> [52] lattice_0.23-1         tibble_3.3.1           withr_3.0.3           
-#> [55] KEGGREST_1.53.6        S7_0.2.2               evaluate_1.0.5        
+#> [55] KEGGREST_1.53.6        S7_1.0.0               evaluate_1.0.5        
 #> [58] desc_1.4.3             polyclip_1.10-7        Biostrings_2.81.9     
 #> [61] pillar_1.11.1          BiocManager_1.30.27    filelock_1.0.3        
 #> [64] BiocVersion_3.24.0     ggplot2_4.0.4          scales_1.4.0          
