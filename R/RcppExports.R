@@ -117,6 +117,18 @@ dataset_weighted_excess_sums <- function(ptr, a, mPtr, mLab, mW, n_labels, alloc
     .Call(`_spicyR_dataset_weighted_excess_sums`, ptr, a, mPtr, mLab, mW, n_labels, allocation)
 }
 
+dataset_weighted_score_sums <- function(ptr, a, mPtr, mLab, mW, n_labels, allocation) {
+    .Call(`_spicyR_dataset_weighted_score_sums`, ptr, a, mPtr, mLab, mW, n_labels, allocation)
+}
+
+dataset_overlap_moments <- function(ptr, nF, nT, nFT, self, self_var_method, self_var_cells) {
+    .Call(`_spicyR_dataset_overlap_moments`, ptr, nF, nT, nFT, self, self_var_method, self_var_cells)
+}
+
+dataset_overlap_soft_rows <- function(ptr, a, b, allocation) {
+    .Call(`_spicyR_dataset_overlap_soft_rows`, ptr, a, b, allocation)
+}
+
 dataset_kontextual_sums_weighted <- function(ptr, a, b, self) {
     .Call(`_spicyR_dataset_kontextual_sums_weighted`, ptr, a, b, self)
 }

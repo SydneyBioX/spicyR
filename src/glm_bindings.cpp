@@ -337,6 +337,45 @@ NumericMatrix dataset_weighted_excess_sums(SEXP ptr, NumericVector a, IntegerVec
 }
 
 // [[Rcpp::export]]
+NumericMatrix dataset_weighted_score_sums(SEXP ptr, NumericVector a, IntegerVector mPtr, IntegerVector mLab,
+                                          NumericVector mW, int n_labels, bool allocation) {
+  XPtr<Dataset> d(ptr);
+  std::vector<int> lab(mLab.size());
+  for (R_xlen_t m = 0; m < mLab.size(); ++m) lab[m] = mLab[m] - 1;   // 1-based labels from R
+  std::vector<double> v = d->weighted_score_sums(std::vector<double>(a.begin(), a.end()),
+                                                 std::vector<int>(mPtr.begin(), mPtr.end()), lab,
+                                                 std::vector<double>(mW.begin(), mW.end()), n_labels, allocation);
+  NumericMatrix out(n_labels, static_cast<int>(v.size() / n_labels));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: per label, sum of b h over all the image's cells; one column per image
+}
+
+// [[Rcpp::export]]
+List dataset_overlap_moments(SEXP ptr, NumericMatrix nF, NumericMatrix nT, NumericMatrix nFT, LogicalVector self,
+                             int self_var_method, int self_var_cells) {
+  // nF, nT, nFT: pairs x images (so image-major in memory); self: one flag per pair, a label with itself
+  XPtr<Dataset> d(ptr);
+  std::vector<double> E, V;
+  d->overlap_moments(std::vector<double>(nF.begin(), nF.end()), std::vector<double>(nT.begin(), nT.end()),
+                     std::vector<double>(nFT.begin(), nFT.end()), std::vector<int>(self.begin(), self.end()),
+                     nF.nrow(), self_var_method, self_var_cells, E, V);
+  NumericMatrix Em(nF.nrow(), nF.ncol()), Vm(nF.nrow(), nF.ncol());
+  std::copy(E.begin(), E.end(), Em.begin()); std::copy(V.begin(), V.end(), Vm.begin());
+  return List::create(_["E"] = Em, _["V"] = Vm);
+}
+
+// [[Rcpp::export]]
+NumericMatrix dataset_overlap_soft_rows(SEXP ptr, NumericVector a, NumericMatrix b, bool allocation) {
+  // a: the FROM weight of each cell; b: cells x pairs, the TO weights
+  XPtr<Dataset> d(ptr);
+  std::vector<double> v = d->overlap_soft_rows(std::vector<double>(a.begin(), a.end()),
+                                               std::vector<double>(b.begin(), b.end()), b.ncol(), allocation);
+  NumericMatrix out(4, static_cast<int>(v.size() / 4));
+  std::copy(v.begin(), v.end(), out.begin());
+  return out;   // rows: O, E, variance, sum b; columns: image-major, one per image and pair
+}
+
+// [[Rcpp::export]]
 NumericMatrix dataset_kontextual_sums_weighted(SEXP ptr, NumericVector a, NumericVector b, bool self) {
   XPtr<Dataset> d(ptr);
   std::vector<double> v = d->kontextual_sums_weighted(std::vector<double>(a.begin(), a.end()),

@@ -1,3 +1,22 @@
+CHANGES IN VERSION 1.99.60
+--------------------------
+
+    o spicy() with cellWeights: a label with itself, and a pair where some `to` cells have `from` weight 1 (a group
+      and one of its subtypes, as in a tree of cell populations), are tested under random labelling of all the image's
+      cells, each cell keeping its pair of `from` and `to` weights and never its own neighbour, with the exact mean
+      and variance of the score under that permutation. Before, pairs of a label with itself were left out, and the
+      cells with `from` weight 1 were never candidates for the `to` weights, so CD8 -> T compared CD8 cells with the
+      T cells that are not CD8, and T -> CD8 had no `to` cells. With 0/1 weights a label with itself gives the
+      self-pair of that cell type, for the allocation and the count effect. Applies to both effects, soft weights,
+      two or more conditions, a continuous condition and survival outcomes. Every other pair (labels that share no
+      cells, and soft pairs whose `to` cells all have `from` weight below 1) gives the same results as before.
+    o Self-pairs are now among the tested pairs by default, so the adjusted p-values (p_adj, overall_p_adj) and the
+      gate of the follow-up comparisons of more than two conditions are over more pairs.
+    o With soft weights and the allocation effect these exact moments take time that grows with the number of cells
+      and the square of the largest number of neighbours of a cell: about 0.04 s per pair and image of 3000 cells
+      with 4 neighbours each and 0.4 s with 22, and about 20 s for an image of 20,000 cells with a pile of 150 cells
+      within r of each other. The count effect and 0/1 weights take about 0.005 to 0.02 s.
+
 CHANGES IN VERSION 1.99.59
 --------------------------
 

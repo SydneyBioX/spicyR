@@ -6,6 +6,9 @@
 #include <cstring>
 #include <numeric>
 #include <stdexcept>
+#include <functional>
+#include <limits>
+#include <unordered_map>
 
 namespace spicyglm {
 
@@ -300,6 +303,325 @@ double self_graph_variance(const SelfGraph& g, int n, bool allocation) {
   }
   const long double V = E - E * E + pk[2] * sum;
   return V > 1e-11L * (1 + E * E) ? static_cast<double>(V) : 0.0;
+}
+
+// Exact random-labelling moments of O = sum_l X_l, X_l = [l in TO] [some k in N(l) is in FROM], for 0/1 FROM and TO
+// sets that may share cells (a group and its subtype; a self-pair is the case FROM = TO, where this is
+// self_graph_variance with the exact shared-neighbour term). For an ordered pair l != k whose FROM membership is
+// (cl, ck), given both are TO cells,
+//   E[X_l X_k] = 1 - t1 - t2 + t3, t1 = P(no FROM in N(l) \ {k}) unless k in N(l) and ck (then 0),
+//   t2 = P(no FROM in N(k) \ {l}) unless l in N(k) and cl, t3 = P(no FROM in (N(l) u N(k)) \ {l, k}) unless either,
+// each P(none of s given cells) = C(N - 2 - s, f) / C(N - 2, f), f the FROM cells left among the other N - 2. The sums of
+// these over all ordered pairs are kept, per class (both FROM, one FROM, neither), as coefficients of that function of s:
+// every pair as if unlinked and sharing no neighbour (from the degree distribution), then corrections for the pairs
+// that are linked or share a neighbour (as self_graph()).
+struct OverlapGraph {
+  int N = 0;
+  std::vector<double> deg_count, A11, Amix, A00;
+};
+
+OverlapGraph overlap_graph(int N, const std::vector<int>& ptr, const std::vector<int>& nb) {
+  OverlapGraph g; g.N = N;
+  std::vector<int> d(N);
+  int dmax = 0;
+  for (int l = 0; l < N; ++l) { d[l] = ptr[l + 1] - ptr[l]; dmax = std::max(dmax, d[l]); }
+  std::vector<int> iptr(N + 1, 0), inb(ptr[N]);
+  for (int e = 0; e < ptr[N]; ++e) ++iptr[nb[e] + 1];
+  for (int l = 0; l < N; ++l) iptr[l + 1] += iptr[l];
+  { std::vector<int> pos(iptr.begin(), iptr.end() - 1);
+    for (int l = 0; l < N; ++l) for (int e = ptr[l]; e < ptr[l + 1]; ++e) inb[pos[nb[e]]++] = l; }
+  g.deg_count.assign(dmax + 1, 0.0);
+  for (int l = 0; l < N; ++l) g.deg_count[d[l]] += 1;
+  std::vector<double> base(2 * dmax + 1, 0.0);
+  for (int x = 0; x <= dmax; ++x) {
+    if (!g.deg_count[x]) continue;
+    base[x] -= 2.0 * (N - 1) * g.deg_count[x];
+    base[2 * x] -= g.deg_count[x];
+    for (int y = 0; y <= dmax; ++y) if (g.deg_count[y]) base[x + y] += g.deg_count[x] * g.deg_count[y];
+  }
+  g.A11 = base; g.A00 = base; g.Amix = base;
+  for (double& v : g.Amix) v *= 2;   // both orders of the FROM / non-FROM pair
+  std::vector<char> out_mark(N, 0), in_mark(N, 0);
+  std::vector<int> common(N, 0), touched;
+  for (int l = 0; l < N; ++l) {
+    touched.clear();
+    auto touch = [&](int k) { if (!out_mark[k] && !in_mark[k] && !common[k]) touched.push_back(k); };
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) if (nb[e] > l) { touch(nb[e]); out_mark[nb[e]] = 1; }
+    for (int e = iptr[l]; e < iptr[l + 1]; ++e) if (inb[e] > l) { touch(inb[e]); in_mark[inb[e]] = 1; }
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) {
+      const int v = nb[e];
+      const int* first = std::upper_bound(inb.data() + iptr[v], inb.data() + iptr[v + 1], l);
+      for (const int* f = first; f < inb.data() + iptr[v + 1]; ++f) { touch(*f); ++common[*f]; }
+    }
+    for (int k : touched) {
+      const bool L1 = out_mark[k], L2 = in_mark[k];
+      const int sl = d[l] - L1, sk = d[k] - L2, u = d[l] + d[k] - common[k] - L1 - L2, s = d[l] + d[k];
+      // T_lk of class (cl, ck) minus its unlinked, no-shared-neighbour value, weight w
+      auto add = [&](std::vector<double>& A, bool cl, bool ck, double w) {
+        const bool z1 = L1 && ck, z2 = L2 && cl;
+        if (!z1) A[sl] -= w;
+        if (!z2) A[sk] -= w;
+        if (!z1 && !z2) A[u] += w;
+        A[d[l]] += w; A[d[k]] += w; A[s] -= w;
+      };
+      // each unordered pair once, for both orders (T_lk(cl, ck) = T_kl(ck, cl))
+      add(g.A11, true, true, 2); add(g.A00, false, false, 2); add(g.Amix, true, false, 2); add(g.Amix, false, true, 2);
+    }
+    for (int k : touched) { out_mark[k] = 0; in_mark[k] = 0; common[k] = 0; }
+  }
+  return g;
+}
+
+// C(M - x, f) / C(M, f) = prod_{i < x} (M - i - f) / (M - i) for x = 0 .. len - 1 (0 once fewer than f cells are left),
+// as running products: exact to rounding for any M, where differences of lgamma lose about lgamma(M) * 1e-16.
+std::vector<long double> choose_ratios(long double M, long double f, std::size_t len) {
+  std::vector<long double> h(len, 0.0L);
+  long double v = 1.0L;
+  for (std::size_t x = 0; x < len; ++x) {
+    h[x] = v;
+    const long double den = M - static_cast<long double>(x), num = den - f;
+    v = num > 0 && den > 0 ? v * (num / den) : 0.0L;
+  }
+  return h;
+}
+
+// E and Var of O (see OverlapGraph) for nF FROM, nT TO and nFT shared cells among the image's N.
+void overlap_graph_moments(const OverlapGraph& g, long long nF, long long nT, long long nFT, double& Eo, double& Vo) {
+  Eo = 0; Vo = 0;
+  const int N = g.N;
+  if (nT < 1 || N < 2) return;
+  const long long nT0 = nT - nFT;
+  // P(a cell with x given others has a FROM one among them) = 1 - C(N - 1 - x, f) / C(N - 1, f), f FROM cells among
+  // the other N - 1
+  const std::size_t dl = g.deg_count.size();
+  long double E = 0;
+  if (nFT > 0) {
+    const std::vector<long double> h = choose_ratios(N - 1, static_cast<long double>(nF - 1), dl);
+    for (std::size_t x = 0; x < dl; ++x) if (g.deg_count[x])
+      E += g.deg_count[x] * (static_cast<long double>(nFT) / N) * (1.0L - h[x]);
+  }
+  if (nT0 > 0) {
+    const std::vector<long double> h = choose_ratios(N - 1, static_cast<long double>(nF), dl);
+    for (std::size_t x = 0; x < dl; ++x) if (g.deg_count[x])
+      E += g.deg_count[x] * (static_cast<long double>(nT0) / N) * (1.0L - h[x]);
+  }
+  const long double NN = static_cast<long double>(N) * (N - 1);
+  // P(none of x given cells is FROM), f FROM cells among the other N - 2: C(N - 2 - x, f) / C(N - 2, f)
+  auto part = [&](const std::vector<double>& A, long double f, long double c) {
+    const std::vector<long double> h2 = choose_ratios(N - 2, f, A.size());
+    long double sum = c * NN;
+    for (std::size_t x = 0; x < A.size(); ++x) if (A[x] != 0) sum += A[x] * h2[x];
+    return sum;
+  };
+  long double S = 0;
+  const long double p11 = static_cast<long double>(nFT) * (nFT - 1) / NN, p10 = static_cast<long double>(nFT) * nT0 / NN,
+                    p00 = static_cast<long double>(nT0) * (nT0 - 1) / NN;
+  if (p11 > 0) S += p11 * part(g.A11, static_cast<long double>(nF - 2), 1);
+  if (p10 > 0) S += p10 * part(g.Amix, static_cast<long double>(nF - 1), 2);
+  if (p00 > 0) S += p00 * part(g.A00, static_cast<long double>(nF), 1);
+  const long double V = E + S - E * E;
+  Eo = static_cast<double>(E);
+  Vo = V > 1e-11L * (1 + E * E) ? static_cast<double>(V) : 0.0;
+}
+
+// Soft (or 0/1) FROM and TO weights a, b that are permuted together over the image's cells (each cell keeps its pair
+// (a, b)): the structure of the radius graph that their moments need. For every ordered pair of cells l != k, its key
+// (L, u, v): L = 1 when k is a neighbour of l (the radius graph is symmetric, so then l is one of k), v the neighbours
+// they share and u the other neighbours of either; the number of ordered pairs with each key. Every pair counts first
+// as unlinked with no shared neighbour (u = d_l + d_k, v = 0, from the degree distribution), then the pairs that are
+// linked or share a neighbour are moved to their own key. Also the counts of the count effect's quadratic form.
+struct SoftGraph {
+  int N = 0, dmax = 0, vmax = 0;
+  std::vector<int> ub;   // ub[v]: the largest u of a key with v' >= v (the DP's states, down-closed)
+  std::vector<int> deg;
+  std::vector<double> deg_count;
+  std::unordered_map<std::uint64_t, double> keys;
+  long double m = 0, recip = 0, out2 = 0, in2 = 0, inout = 0;
+};
+
+std::uint64_t soft_key(int L, int u, int v) {
+  return (static_cast<std::uint64_t>(L) << 50) | (static_cast<std::uint64_t>(u) << 25) | static_cast<std::uint64_t>(v);
+}
+
+SoftGraph soft_graph(int N, const std::vector<int>& ptr, const std::vector<int>& nb) {
+  SoftGraph g; g.N = N;
+  g.deg.assign(N, 0);
+  std::vector<int> din(N, 0);
+  for (int l = 0; l < N; ++l) { g.deg[l] = ptr[l + 1] - ptr[l]; g.dmax = std::max(g.dmax, g.deg[l]); }
+  std::vector<int> iptr(N + 1, 0), inb(ptr[N]);
+  for (int e = 0; e < ptr[N]; ++e) { ++iptr[nb[e] + 1]; ++din[nb[e]]; }
+  for (int l = 0; l < N; ++l) iptr[l + 1] += iptr[l];
+  { std::vector<int> pos(iptr.begin(), iptr.end() - 1);
+    for (int l = 0; l < N; ++l) for (int e = ptr[l]; e < ptr[l + 1]; ++e) inb[pos[nb[e]]++] = l; }
+  g.deg_count.assign(g.dmax + 1, 0.0);
+  for (int l = 0; l < N; ++l) {
+    g.deg_count[g.deg[l]] += 1;
+    g.m += g.deg[l];
+    g.out2 += static_cast<long double>(g.deg[l]) * (g.deg[l] - 1);
+    g.in2 += static_cast<long double>(din[l]) * (din[l] - 1);
+    g.inout += static_cast<long double>(g.deg[l]) * din[l];
+  }
+  for (int x = 0; x <= g.dmax; ++x) {
+    if (!g.deg_count[x]) continue;
+    g.keys[soft_key(0, 2 * x, 0)] -= g.deg_count[x];
+    for (int y = 0; y <= g.dmax; ++y) if (g.deg_count[y]) g.keys[soft_key(0, x + y, 0)] += g.deg_count[x] * g.deg_count[y];
+  }
+  std::vector<char> out_mark(N, 0), in_mark(N, 0);
+  std::vector<int> common(N, 0), touched;
+  for (int l = 0; l < N; ++l) {
+    touched.clear();
+    auto touch = [&](int k) { if (!out_mark[k] && !in_mark[k] && !common[k]) touched.push_back(k); };
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) if (nb[e] > l) { touch(nb[e]); out_mark[nb[e]] = 1; }
+    for (int e = iptr[l]; e < iptr[l + 1]; ++e) if (inb[e] > l) { touch(inb[e]); in_mark[inb[e]] = 1; }
+    for (int e = ptr[l]; e < ptr[l + 1]; ++e) {
+      const int v = nb[e];
+      const int* first = std::upper_bound(inb.data() + iptr[v], inb.data() + iptr[v + 1], l);
+      for (const int* f = first; f < inb.data() + iptr[v + 1]; ++f) { touch(*f); ++common[*f]; }
+    }
+    for (int k : touched) {
+      const int L1 = out_mark[k], L2 = in_mark[k];
+      if (L1 != L2) throw std::logic_error("soft_graph: the radius graph must be symmetric");
+      const int u = g.deg[l] + g.deg[k] - 2 * common[k] - L1 - L2, v = common[k];
+      g.keys[soft_key(0, g.deg[l] + g.deg[k], 0)] -= 2;   // both orders
+      g.keys[soft_key(L1, u, v)] += 2;
+      g.vmax = std::max(g.vmax, v);
+      if (L1 && L2) g.recip += 2;
+    }
+    for (int k : touched) { out_mark[k] = 0; in_mark[k] = 0; common[k] = 0; }
+  }
+  g.ub.assign(g.vmax + 1, -1);
+  for (const auto& kv : g.keys) {
+    if (kv.second == 0) continue;
+    const int u = static_cast<int>((kv.first >> 25) & ((1u << 25) - 1)), v = static_cast<int>(kv.first & ((1u << 25) - 1));
+    g.ub[v] = std::max(g.ub[v], u);
+  }
+  for (int v = g.vmax - 1; v >= 0; --v) g.ub[v] = std::max(g.ub[v], g.ub[v + 1]);
+  return g;
+}
+
+// The sum over ordered tuples of distinct cells of prod_t f_t(i_t) (r = f.size() <= 4), by Moebius inversion over the
+// set partitions of the positions.
+long double distinct_sum(const std::vector<const std::vector<long double>*>& f, int N) {
+  const int r = static_cast<int>(f.size());
+  long double total = 0;
+  std::vector<int> block(r, 0);
+  // restricted growth strings enumerate the set partitions
+  std::function<void(int, int)> rec = [&](int t, int nblocks) {
+    if (t == r) {
+      long double prod = 1;
+      for (int B = 0; B < nblocks; ++B) {
+        long double s = 0;
+        int size = 0;
+        for (int i = 0; i < N; ++i) {
+          long double x = 1;
+          for (int q = 0; q < r; ++q) if (block[q] == B) x *= (*f[q])[i];
+          s += x;
+        }
+        for (int q = 0; q < r; ++q) size += block[q] == B;
+        long double mu = (size % 2 == 1) ? 1 : -1;
+        for (int z = 2; z < size; ++z) mu *= z;
+        prod *= mu * s;
+      }
+      total += prod;
+      return;
+    }
+    for (int B = 0; B <= nblocks; ++B) { block[t] = B; rec(t + 1, std::max(nblocks, B + 1)); }
+  };
+  rec(0, 0);
+  return total;
+}
+
+long double falling(int N, int r) { long double x = 1; for (int q = 0; q < r; ++q) x *= N - q; return x; }
+
+// Count effect: D = sum_l (b_l - p) h_l, h_l the summed FROM weight of l's neighbours, with p such that E D = 0 under
+// the permutation ((sum b sum a - sum ab) / ((N - 1) sum a); (nA - 1) / (N - 1) for a self-pair of a cell type, as
+// spicy()'s O - pL). Var D is that of the quadratic form sum_{l != k} W_lk g_l a_k, g = b - p, over the seven ways two
+// edges can share cells. Returns p (NaN when there is no FROM weight) and Var D.
+void soft_count_moments(const SoftGraph& g, const std::vector<long double>& a, const std::vector<long double>& b,
+                        long double& p, long double& V, long double& scale) {
+  const int N = g.N;
+  long double sa = 0, sb = 0, sab = 0;
+  for (int i = 0; i < N; ++i) { sa += a[i]; sb += b[i]; sab += a[i] * b[i]; }
+  V = 0; scale = 0; p = std::numeric_limits<long double>::quiet_NaN();
+  if (N < 2 || !(sa > 0)) return;
+  p = (sb * sa - sab) / ((N - 1) * sa);
+  std::vector<long double> gg(N), g2(N), a2(N), ga(N);
+  for (int i = 0; i < N; ++i) { gg[i] = b[i] - p; g2[i] = gg[i] * gg[i]; a2[i] = a[i] * a[i]; ga[i] = gg[i] * a[i]; }
+  auto avg = [&](std::vector<const std::vector<long double>*> f) {
+    const int r = static_cast<int>(f.size());
+    return N >= r ? distinct_sum(f, N) / falling(N, r) : 0.0L; };
+  const long double c5 = g.inout - g.recip, c7 = g.m * g.m - (g.m + g.recip + g.out2 + g.in2 + 2 * c5);
+  const long double ED = g.m * avg({&gg, &a});
+  const long double terms[7] = {g.m * avg({&g2, &a2}), g.recip * avg({&ga, &ga}), g.out2 * avg({&g2, &a, &a}),
+                                g.in2 * avg({&gg, &a2, &gg}), c5 * avg({&ga, &a, &gg}), c5 * avg({&gg, &ga, &a}),
+                                c7 != 0 ? c7 * avg({&gg, &a, &gg, &a}) : 0.0L};
+  long double ED2 = 0;
+  for (long double t : terms) { ED2 += t; scale += std::fabs(t); }
+  V = ED2 - ED * ED;
+  scale += ED * ED;
+}
+
+// Allocation: G = sum_l b_l prod_{k in N(l)} c_k with c = 1 - a, so O = sum b - G. Under the permutation, E G and
+// E G^2 need the mean, over random disjoint sets of the other cells, of prod c over u cells times prod c^2 over v cells,
+// with one or two cells (l, k) marked: P(u, v, m marks). It is computed exactly as a normalised mean that grows one
+// cell at a time (each step a convex combination of nonnegative terms, so no cancellation).
+// Returns P[(u * (V + 1) + v) * (kmax + 1) + k] for v <= V, u <= ub[v] (ub non-increasing in v, so the states a
+// state depends on are kept), k <= kmax marks of weight w; U = ub[0].
+std::vector<long double> soft_means(const std::vector<long double>& c1, const std::vector<long double>& c2,
+                                    const std::vector<long double>& w, const std::vector<int>& ub, int kmax) {
+  const int V = static_cast<int>(ub.size()) - 1, U = ub[0];
+  const int N = static_cast<int>(c1.size());
+  if (U < 0) return {};
+  const int K = kmax + 1;
+  std::vector<long double> P(static_cast<std::size_t>(U + 1) * (V + 1) * K, 0.0L);
+  auto at = [&](int u, int v, int k) -> long double& { return P[(static_cast<std::size_t>(u) * (V + 1) + v) * K + k]; };
+  at(0, 0, 0) = 1;
+  for (int m = 1; m <= N; ++m) {
+    const long double x1 = c1[m - 1], x2 = c2[m - 1], wm = w[m - 1], inv = 1.0L / m;
+    for (int u = U; u >= 0; --u) for (int v = V; v >= 0; --v) for (int k = kmax; k >= 0; --k) {
+      if (u > ub[v]) continue;
+      const int s = u + v + k;
+      if (s > m) continue;
+      long double val = 0;
+      if (s < m) val += (m - s) * at(u, v, k);
+      if (u) val += u * x1 * at(u - 1, v, k);
+      if (v) val += v * x2 * at(u, v - 1, k);
+      if (k) val += k * wm * at(u, v, k - 1);
+      at(u, v, k) = val * inv;
+    }
+  }
+  return P;
+}
+
+// E and Var of O = sum_l b_l (1 - prod_{k in N(l)} (1 - a_k)) when the pairs (a_i, b_i) are permuted over the cells.
+void soft_allocation_moments(const SoftGraph& g, const std::vector<long double>& a, const std::vector<long double>& b,
+                             long double& E, long double& V, long double& scale) {
+  const int N = g.N;
+  E = 0; V = 0; scale = 0;
+  long double sb = 0;
+  for (int i = 0; i < N; ++i) sb += b[i];
+  if (N < 2 || !(sb > 0)) return;
+  std::vector<long double> c(N), csq(N), bsq(N), bc(N), one(N, 1.0L);
+  for (int i = 0; i < N; ++i) { c[i] = 1 - a[i]; csq[i] = c[i] * c[i]; bsq[i] = b[i] * b[i]; bc[i] = b[i] * c[i]; }
+  const int D = g.dmax;
+  // E G = sum_l E[b_l prod_{d_l others} c]; the diagonal of E G^2: E[b_l^2 prod c^2]
+  const std::vector<int> diag(1, D);
+  const std::vector<long double> R = soft_means(c, csq, b, diag, 1), Q = soft_means(csq, csq, bsq, diag, 1);
+  long double EG = 0, EG2 = 0;
+  for (int x = 0; x <= D; ++x) if (g.deg_count[x]) { EG += g.deg_count[x] * R[x * 2 + 1]; EG2 += g.deg_count[x] * Q[x * 2 + 1]; }
+  // ordered pairs l != k: marks b_l c_k^L and b_k c_l^L
+  const int Vv = g.vmax;
+  const std::vector<long double> P0 = soft_means(c, csq, b, g.ub, 2), P1 = soft_means(c, csq, bc, g.ub, 2);
+  for (const auto& kv : g.keys) {
+    if (kv.second == 0) continue;
+    const int L = static_cast<int>(kv.first >> 50), u = static_cast<int>((kv.first >> 25) & ((1u << 25) - 1)),
+              v = static_cast<int>(kv.first & ((1u << 25) - 1));
+    const std::vector<long double>& P = L ? P1 : P0;
+    EG2 += kv.second * P[(static_cast<std::size_t>(u) * (Vv + 1) + v) * 3 + 2];
+  }
+  E = sb - EG;
+  V = EG2 - EG * EG;
+  scale = EG2;
 }
 
 }  // namespace
@@ -1241,10 +1563,17 @@ void Dataset::self_variance_from_lists(int img, const std::vector<int>& ptr, con
 void Dataset::self_variance_approx(int img, const std::vector<int>& ptr, const std::vector<int>& nb, double r,
                                    int method, int cells, double* out_img) const {
   const std::size_t T = static_cast<std::size_t>(n_types_);
-  const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
+  const int N = image_offsets_[img + 1] - image_offsets_[img];
   bool any = false;
-  for (std::size_t a = 0; a < T; ++a) { const int na = type_count(img, static_cast<int>(a)); if (na >= 2 && na < N) any = true; }
+  std::vector<int> n(T);
+  for (std::size_t a = 0; a < T; ++a) { n[a] = type_count(img, static_cast<int>(a)); if (n[a] >= 2 && n[a] < N) any = true; }
   if (!any) return;
+  self_variance_approx_n(img, ptr, nb, r, method, cells, n.data(), static_cast<int>(T), out_img);
+}
+
+void Dataset::self_variance_approx_n(int img, const std::vector<int>& ptr, const std::vector<int>& nb, double r,
+                                     int method, int cells, const int* n, int count, double* out) const {
+  const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
   SelfGraph g; g.N = N;
   std::vector<int> d(N);
   int dmax = 0;
@@ -1334,7 +1663,7 @@ void Dataset::self_variance_approx(int img, const std::vector<int>& ptr, const s
     }
     for (std::size_t x = 0; x < hits.size(); ++x) if (hits[x]) A[x] += scale * static_cast<double>(hits[x]);
   }
-  for (std::size_t a = 0; a < T; ++a) out_img[a] = self_graph_variance(g, type_count(img, static_cast<int>(a)), true);
+  for (int i = 0; i < count; ++i) out[i] = self_graph_variance(g, n[i], true);
 }
 
 std::vector<double> Dataset::self_variances(bool knn, bool allocation, int self_var_method, int self_var_cells) const {
@@ -1706,6 +2035,155 @@ BinomialTrialsModelData Dataset::kontextual_binomial_model_data(int from, int to
       out.n.push_back(count);
       out.trials.push_back(trials);
       out.p0.push_back(p0);
+    }
+  }
+  return out;
+}
+
+std::vector<double> Dataset::weighted_score_sums(const std::vector<double>& a, const std::vector<int>& ptr,
+                                                 const std::vector<int>& lab, const std::vector<double>& w,
+                                                 int n_labels, bool allocation) const {
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t N = x_.size();
+  if (a.size() != N || ptr.size() != N + 1 || lab.size() != w.size() || static_cast<std::size_t>(ptr[N]) != lab.size())
+    throw std::invalid_argument("weighted_score_sums: one REF weight and one membership row per cell");
+  const double r2 = r_ * r_;
+  const std::size_t K = static_cast<std::size_t>(n_labels);
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * K, 0.0);
+  for (int img = 0; img < n_images(); ++img) {
+    double* o = out.data() + static_cast<std::size_t>(img) * K;
+    const Grid& g = grids_[img];
+    for (int row = image_offsets_[img]; row < image_offsets_[img + 1]; ++row) {
+      if (ptr[row] == ptr[row + 1]) continue;
+      const double px = x_[row], py = y_[row];
+      long long bx = static_cast<long long>((px - g.xmin) / g.side);
+      long long by = static_cast<long long>((py - g.ymin) / g.side);
+      double prod = 1.0, sum = 0.0;
+      for (long long yy = std::max(0LL, by - 1); yy <= std::min(g.nby - 1, by + 1); ++yy)
+        for (long long xx = std::max(0LL, bx - 1); xx <= std::min(g.nbx - 1, bx + 1); ++xx) {
+          std::size_t bin = g.bin_offset + static_cast<std::size_t>(yy * g.nbx + xx);
+          for (std::size_t p = bin_start_[bin]; p < static_cast<std::size_t>(bin_start_[bin + 1]); ++p) {
+            const int j = grow_[p];
+            if (j == row) continue;
+            const double wa = a[j];
+            if (!(wa > 0)) continue;
+            double dx = gx_[p] - px, dy = gy_[p] - py;
+            if (dx * dx + dy * dy > r2) continue;
+            prod *= 1.0 - wa;
+            sum += wa;
+          }
+        }
+      const double h = allocation ? 1.0 - prod : sum;
+      for (int m = ptr[row]; m < ptr[row + 1]; ++m) o[lab[m]] += w[m] * h;
+    }
+  }
+  return out;
+}
+
+void Dataset::overlap_moments(const std::vector<double>& nF, const std::vector<double>& nT, const std::vector<double>& nFT,
+                              const std::vector<int>& self, int n_pairs, int self_var_method, int self_var_cells,
+                              std::vector<double>& E, std::vector<double>& V) const {
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t P = static_cast<std::size_t>(n_pairs), total = static_cast<std::size_t>(n_images()) * P;
+  if (nF.size() != total || nT.size() != total || nFT.size() != total || self.size() != P)
+    throw std::invalid_argument("overlap_moments: one count per image and pair, one self flag per pair");
+  E.assign(total, 0.0); V.assign(total, 0.0);
+  auto lchoose = [](double n, double k) { return std::lgamma(n + 1) - std::lgamma(k + 1) - std::lgamma(n - k + 1); };
+  std::vector<int> ptr, nb, self_n, self_p;
+  std::vector<double> self_v;
+  for (int img = 0; img < n_images(); ++img) {
+    const int N = image_offsets_[img + 1] - image_offsets_[img];
+    const std::size_t at = static_cast<std::size_t>(img) * P;
+    self_n.clear(); self_p.clear();
+    bool other = false;
+    for (std::size_t p = 0; p < P; ++p) {
+      const long long f = std::llround(nF[at + p]), t = std::llround(nT[at + p]), ft = std::llround(nFT[at + p]);
+      if (t < 1) continue;
+      if (self[p]) { self_n.push_back(static_cast<int>(t)); self_p.push_back(static_cast<int>(p)); }
+      else other = true;
+    }
+    if (self_n.empty() && !other) continue;
+    own_neighbour_lists(img, false, ptr, nb);
+    if (!self_n.empty() && N >= 2) {
+      // as self_any_from_counts and self_variances (the radius graph, allocation)
+      std::vector<double> deg_count(static_cast<std::size_t>(N), 0.0);
+      for (int b = 0; b < N; ++b) deg_count[static_cast<std::size_t>(ptr[b + 1] - ptr[b])] += 1.0;
+      for (std::size_t i = 0; i < self_n.size(); ++i) {
+        const int na = self_n[i];
+        if (na < 2) continue;
+        const double m = na - 1, K = N - 1, lden = lchoose(K, m);
+        double S = 0;
+        for (int d = 1; d < N; ++d) {
+          if (deg_count[d] == 0) continue;
+          S += deg_count[d] * (K - d >= m ? -std::expm1(lchoose(K - d, m) - lden) : 1.0);
+        }
+        E[at + self_p[i]] = static_cast<double>(na) / N * S;
+      }
+      if (N >= 3) {
+        self_v.assign(self_n.size(), 0.0);
+        if (self_var_method != 0)
+          self_variance_approx_n(img, ptr, nb, r_, self_var_method, self_var_cells, self_n.data(),
+                                 static_cast<int>(self_n.size()), self_v.data());
+        else {
+          SelfGraph g = self_graph(N, ptr, nb, true);
+          for (std::size_t i = 0; i < self_n.size(); ++i) self_v[i] = self_graph_variance(g, self_n[i], true);
+        }
+        for (std::size_t i = 0; i < self_n.size(); ++i) V[at + self_p[i]] = self_v[i];
+      }
+    }
+    if (other) {
+      OverlapGraph g = overlap_graph(N, ptr, nb);
+      for (std::size_t p = 0; p < P; ++p) {
+        const long long f = std::llround(nF[at + p]), t = std::llround(nT[at + p]), ft = std::llround(nFT[at + p]);
+        if (t < 1 || self[p]) continue;
+        overlap_graph_moments(g, f, t, ft, E[at + p], V[at + p]);
+      }
+    }
+  }
+}
+
+
+std::vector<double> Dataset::overlap_soft_rows(const std::vector<double>& a, const std::vector<double>& b,
+                                               int n_pairs, bool allocation) const {
+  if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
+  const std::size_t Ncells = x_.size(), P = static_cast<std::size_t>(n_pairs);
+  if (a.size() != Ncells || b.size() != Ncells * P)
+    throw std::invalid_argument("overlap_soft_rows: one FROM weight per cell and one TO weight per cell and pair");
+  std::vector<double> out(static_cast<std::size_t>(n_images()) * P * 4, 0.0);
+  std::vector<int> ptr, nb;
+  for (int img = 0; img < n_images(); ++img) {
+    const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
+    std::vector<long double> ai(N), bi(N);
+    long double sa = 0;
+    for (int i = 0; i < N; ++i) { ai[i] = a[start + i]; sa += ai[i]; }
+    bool graph = false;
+    SoftGraph g;
+    std::vector<long double> h(N);
+    long double L = 0;
+    for (std::size_t q = 0; q < P; ++q) {
+      double* o = out.data() + (static_cast<std::size_t>(img) * P + q) * 4;
+      long double sb = 0;
+      for (int i = 0; i < N; ++i) { bi[i] = b[q * Ncells + start + i]; sb += bi[i]; }
+      o[3] = static_cast<double>(sb);
+      if (N < 2 || !(sb > 0) || !(sa > 0)) continue;
+      if (!graph) {   // the image's graph, its scores and its structure, once for every pair
+        own_neighbour_lists(img, false, ptr, nb);
+        for (int l = 0; l < N; ++l) {
+          long double prod = 1, sum = 0;
+          for (int e = ptr[l]; e < ptr[l + 1]; ++e) { prod *= 1 - ai[nb[e]]; sum += ai[nb[e]]; }
+          h[l] = allocation ? 1 - prod : sum;
+          L += h[l];
+        }
+        g = soft_graph(N, ptr, nb);
+        graph = true;
+      }
+      long double O = 0;
+      for (int l = 0; l < N; ++l) O += bi[l] * h[l];
+      long double E = 0, V = 0, scale = 0;
+      if (allocation) soft_allocation_moments(g, ai, bi, E, V, scale);
+      else { long double p; soft_count_moments(g, ai, bi, p, V, scale); E = p * L; }
+      o[0] = static_cast<double>(O); o[1] = static_cast<double>(E);
+      o[2] = V > 1e-11L * (1 + scale) ? static_cast<double>(V) : 0.0;
     }
   }
   return out;

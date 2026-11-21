@@ -419,6 +419,54 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dataset_weighted_score_sums
+NumericMatrix dataset_weighted_score_sums(SEXP ptr, NumericVector a, IntegerVector mPtr, IntegerVector mLab, NumericVector mW, int n_labels, bool allocation);
+RcppExport SEXP _spicyR_dataset_weighted_score_sums(SEXP ptrSEXP, SEXP aSEXP, SEXP mPtrSEXP, SEXP mLabSEXP, SEXP mWSEXP, SEXP n_labelsSEXP, SEXP allocationSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type mPtr(mPtrSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type mLab(mLabSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mW(mWSEXP);
+    Rcpp::traits::input_parameter< int >::type n_labels(n_labelsSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_weighted_score_sums(ptr, a, mPtr, mLab, mW, n_labels, allocation));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_overlap_moments
+List dataset_overlap_moments(SEXP ptr, NumericMatrix nF, NumericMatrix nT, NumericMatrix nFT, LogicalVector self, int self_var_method, int self_var_cells);
+RcppExport SEXP _spicyR_dataset_overlap_moments(SEXP ptrSEXP, SEXP nFSEXP, SEXP nTSEXP, SEXP nFTSEXP, SEXP selfSEXP, SEXP self_var_methodSEXP, SEXP self_var_cellsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type nF(nFSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type nT(nTSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type nFT(nFTSEXP);
+    Rcpp::traits::input_parameter< LogicalVector >::type self(selfSEXP);
+    Rcpp::traits::input_parameter< int >::type self_var_method(self_var_methodSEXP);
+    Rcpp::traits::input_parameter< int >::type self_var_cells(self_var_cellsSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_overlap_moments(ptr, nF, nT, nFT, self, self_var_method, self_var_cells));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dataset_overlap_soft_rows
+NumericMatrix dataset_overlap_soft_rows(SEXP ptr, NumericVector a, NumericMatrix b, bool allocation);
+RcppExport SEXP _spicyR_dataset_overlap_soft_rows(SEXP ptrSEXP, SEXP aSEXP, SEXP bSEXP, SEXP allocationSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type ptr(ptrSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_overlap_soft_rows(ptr, a, b, allocation));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dataset_kontextual_sums_weighted
 NumericMatrix dataset_kontextual_sums_weighted(SEXP ptr, NumericVector a, NumericVector b, bool self);
 RcppExport SEXP _spicyR_dataset_kontextual_sums_weighted(SEXP ptrSEXP, SEXP aSEXP, SEXP bSEXP, SEXP selfSEXP) {
@@ -1156,6 +1204,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_kontextual_sums", (DL_FUNC) &_spicyR_dataset_kontextual_sums, 3},
     {"_spicyR_dataset_kontextual_self_sums", (DL_FUNC) &_spicyR_dataset_kontextual_self_sums, 1},
     {"_spicyR_dataset_weighted_excess_sums", (DL_FUNC) &_spicyR_dataset_weighted_excess_sums, 7},
+    {"_spicyR_dataset_weighted_score_sums", (DL_FUNC) &_spicyR_dataset_weighted_score_sums, 7},
+    {"_spicyR_dataset_overlap_moments", (DL_FUNC) &_spicyR_dataset_overlap_moments, 7},
+    {"_spicyR_dataset_overlap_soft_rows", (DL_FUNC) &_spicyR_dataset_overlap_soft_rows, 4},
     {"_spicyR_dataset_kontextual_sums_weighted", (DL_FUNC) &_spicyR_dataset_kontextual_sums_weighted, 4},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
     {"_spicyR_dataset_hac_phi_sums", (DL_FUNC) &_spicyR_dataset_hac_phi_sums, 5},

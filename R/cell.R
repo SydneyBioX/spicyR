@@ -287,25 +287,47 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## spicy() with soft cell type membership (cellWeights): for each `from` label, one neighbour pass gives the
 ## weighted random-labelling sums of every `to` label (Dataset::weighted_excess_sums); each pair's image rows then go
 ## through the side, the image random effect and the test as .cell_pair_test() takes them for cell types. With 0/1
-## weights the results are those of the cell types. Self-pairs are not tested.
+## weights the results are those of the cell types. The null shuffles the `to` weights over the candidates (the cells
+## whose `from` weight is below 1). A label with itself, and a pair where some `to` cells have `from` weight 1 (a group
+## and one of its subtypes), are instead tested under random labelling of all the image's cells, each cell keeping its
+## pair of weights: allocation with 0/1 weights by Dataset::overlap_moments (a self-pair of a cell type then gives the
+## cell-type self-pair), every other case by Dataset::overlap_soft_rows.
 .cell_weighted <- function(ctx, memb, pairs, r, effect, variance, adjust, Z_extra, survival = FALSE, sv = NULL) {
   allocation <- effect == "allocation"
   dataset_build_radius_index(ctx$data, r)
   csr <- .membership_rows(memb, ctx$ord)
   K <- length(memb$labels)
-  pairs <- Filter(function(p) p[1] != p[2], pairs)
-  if (!length(pairs)) stop("with `cellWeights`, `from` and `to` must give at least one pair of different labels.",
+  ov <- .membership_overlap(memb, pairs)
+  key <- function(p) paste(match(p[1], memb$labels), match(p[2], memb$labels))
+  pairs <- Filter(function(p) p[1] != p[2] || ov$relabel[[key(p)]], pairs)
+  if (!length(pairs)) stop("with `cellWeights`, `from` and `to` must give at least one pair that can be tested.",
                            call. = FALSE)
   from <- vapply(pairs, `[`, "", 1L); to <- vapply(pairs, `[`, "", 2L)
+  relabel <- vapply(pairs, function(p) ov$relabel[[key(p)]], TRUE)
+  # 0/1 weights with the allocation effect: the moments from the counts alone
+  counts <- relabel & allocation & ov$binary[match(from, memb$labels)] & ov$binary[match(to, memb$labels)]
+  mom <- if (any(counts)) .overlap_moments(ctx, memb, ov, from[counts], to[counts])
   fits <- vector("list", length(pairs))
   wctx <- .weighted_context(ctx, memb)
+  weights_of <- function(j) { w <- numeric(memb$nCells); sel <- memb$j == j; w[memb$i[sel]] <- memb$x[sel]; w[ctx$ord] }
   for (f in unique(from)) {
     jf <- match(f, memb$labels)
-    a <- numeric(memb$nCells); sel <- memb$j == jf; a[memb$i[sel]] <- memb$x[sel]
-    sums <- dataset_weighted_excess_sums(ctx$data, a[ctx$ord], csr$ptr, csr$lab, csr$w, K, allocation)
+    a <- weights_of(jf)
+    sums <- dataset_weighted_excess_sums(ctx$data, a, csr$ptr, csr$lab, csr$w, K, allocation)
+    all_sums <- if (any(counts & from == f)) dataset_weighted_score_sums(ctx$data, a, csr$ptr, csr$lab, csr$w, K, allocation)
+    # the other relabelled pairs of this `from` label in one pass over each image's graph
+    soft <- which(from == f & relabel & !counts)
+    S <- if (length(soft)) dataset_overlap_soft_rows(ctx$data, a, vapply(match(to[soft], memb$labels), weights_of,
+                                                                           numeric(memb$nCells)), allocation)
     for (k in which(from == f)) {
       t <- to[k]
-      rows <- stats_weighted_image_rows(sums, K, match(t, memb$labels) - 1L, allocation, ctx$image_group)
+      rows <- if (counts[k]) {
+        q <- sum(counts[seq_len(k)])
+        .overlap_rows(all_sums[match(t, memb$labels), ], mom$E[q, ], mom$V[q, ], mom$nT[q, ], ctx$image_group, TRUE)
+      } else if (relabel[k]) {
+        s <- S[, seq(match(k, soft), by = length(soft), length.out = ctx$n_images), drop = FALSE]
+        .overlap_rows(s[1, ], s[2, ], s[3, ], s[4, ], ctx$image_group, allocation)
+      } else stats_weighted_image_rows(sums, K, match(t, memb$labels) - 1L, allocation, ctx$image_group)
       rows$unit <- ctx$image_unit[rows$img + 1L]
       if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
       side <- if (allocation) { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
@@ -318,6 +340,58 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
   tab <- if (survival) .cell_survival_table(fits, adjust, !is.null(Z_extra))
          else .cell_table(fits, ctx, adjust || !is.null(Z_extra))
   list(table = tab, fits = fits)
+}
+
+## Labels with 0/1 weights only (binary), the cells of each label, and for each requested pair whether it is tested
+## under random labelling of all the cells (relabel): a label with cells paired with itself, or a pair where some `to`
+## cells have `from` weight 1 (they are not candidates of the shuffle of the `to` weights).
+.membership_overlap <- function(memb, pairs) {
+  K <- length(memb$labels)
+  binary <- rep(TRUE, K); binary[unique(memb$j[memb$x != 1])] <- FALSE
+  cells_of <- split(memb$i, factor(memb$j, levels = seq_len(K)))
+  full_of <- split(memb$i[memb$x == 1], factor(memb$j[memb$x == 1], levels = seq_len(K)))
+  jf <- match(vapply(pairs, `[`, "", 1L), memb$labels); jt <- match(vapply(pairs, `[`, "", 2L), memb$labels)
+  relabel <- list()
+  for (a in unique(jf)) {
+    mark <- logical(memb$nCells); mark[full_of[[a]]] <- TRUE
+    for (b in unique(jt[jf == a]))
+      relabel[[paste(a, b)]] <- if (a == b) length(cells_of[[a]]) > 0 else any(mark[cells_of[[b]]])
+  }
+  list(binary = binary, cells_of = cells_of, relabel = relabel)
+}
+
+## Random-labelling moments (Dataset::overlap_moments) of the labels that share cells, pairs x images; self-pairs with
+## spicy()'s selfVariance.
+.overlap_moments <- function(ctx, memb, ov, from, to) {
+  jf <- match(from, memb$labels); jt <- match(to, memb$labels)
+  img <- ctx$cells$image_map[as.integer(ctx$cells$image)] + 1L
+  P <- length(jf)
+  nF <- nT <- nFT <- matrix(0, P, ctx$n_images)
+  for (q in seq_len(P)) {
+    cf <- ov$cells_of[[jf[q]]]; ct <- ov$cells_of[[jt[q]]]
+    mark <- logical(memb$nCells); mark[cf] <- TRUE
+    nF[q, ] <- tabulate(img[cf], ctx$n_images); nT[q, ] <- tabulate(img[ct], ctx$n_images)
+    nFT[q, ] <- tabulate(img[ct[mark[ct]]], ctx$n_images)
+  }
+  sv <- .self_var_opts(ctx)
+  m <- dataset_overlap_moments(ctx$data, nF, nT, nFT, jf == jt, sv$method, sv$cells)
+  m$nT <- nT
+  m
+}
+
+## The image rows of a pair tested under random labelling of all the cells (as stats_weighted_image_rows): O over all
+## the image's cells, its mean E and variance v, n the summed `to` weight; with allocation, the side and room guard as
+## allocation_image_rows.
+.overlap_rows <- function(O, E, v, nB, image_group, allocation) {
+  keep <- nB > 0 & v > 0
+  if (!is.null(image_group)) keep <- keep & !is.na(image_group) & image_group >= 0
+  d <- data.frame(img = which(keep) - 1L, O = O[keep], E = E[keep], n = nB[keep], v = v[keep])
+  if (!allocation) return(d)
+  avoid <- sum(d$O - d$E) < 0
+  d$n <- if (avoid) d$E else d$n - d$E
+  d <- d[d$n >= 1, , drop = FALSE]
+  rownames(d) <- NULL
+  d
 }
 
 ## Add the allocation side and the between-image variance of a fit to its table row(s).

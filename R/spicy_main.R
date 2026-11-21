@@ -181,8 +181,15 @@
 #'   neighbours (count). The null shuffles the `to` weights over the cells whose `from` weight is below 1 (so a cell
 #'   of the `from` type with weight 0.6 is a candidate with the remaining 0.4), and its exact mean and variance
 #'   replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
-#'   `from` label's summed weight over the image's cells. One radius and cells in memory; pairs of a label with
-#'   itself are not tested. Image method: see [getPairwise()].
+#'   `from` label's summed weight over the image's cells. A label with itself, and a pair where some `to` cells have
+#'   `from` weight 1 (for example a group and one of its subtypes), are tested instead under random labelling of all the
+#'   image's cells, each cell keeping its pair of `from` and `to` weights and never its own neighbour, with the exact
+#'   mean and variance of the score under that permutation (for the count effect, as for a self-pair of cell types,
+#'   the expected score is a share of the summed `from` weight around all the cells, the share that gives the
+#'   difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (allocation:
+#'   with the variance of `selfVariance`). One cell with `from` weight 1 and a `to` weight above 0 in any image is
+#'   enough to test a pair this way in every image. One radius and cells in memory. Image method: see
+#'   [getPairwise()].
 #' @param alpha Cell method with more than two conditions: the level of the gate for the follow-up comparisons (pairs
 #'   whose `overall_p_adj` is at most `alpha` are followed up; see [topFollowUps()]). Default 0.05.
 #' @param ... Arguments of the image method: `sigma`, `alternateResult`, `minLambda`, `weights`,

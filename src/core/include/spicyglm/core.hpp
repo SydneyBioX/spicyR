@@ -233,6 +233,30 @@ class Dataset {
   std::vector<double> weighted_excess_sums(const std::vector<double>& a, const std::vector<int>& ptr,
                                            const std::vector<int>& lab, const std::vector<double>& w, int n_labels,
                                            bool allocation) const;
+  // Labels that share cells (a self-pair, or a group and one of its subtypes): per image and label
+  // (img * n_labels + label), the sum of b h over ALL the image's cells, h as in weighted_excess_sums (the cell itself
+  // excluded), not only over the candidates. Needs build_radius_index.
+  std::vector<double> weighted_score_sums(const std::vector<double>& a, const std::vector<int>& ptr,
+                                          const std::vector<int>& lab, const std::vector<double>& w, int n_labels,
+                                          bool allocation) const;
+  // Allocation, 0/1 REF and TARGET sets that may share cells: the mean and variance, under random labelling of all
+  // the image's cells (the labels permuted, positions kept), of O = the number of TARGET cells with a REF cell other
+  // than themselves within r. Per image and pair (img * n_pairs + p): nF, nT, nFT the image's REF, TARGET and shared
+  // cells; self[p] nonzero for a label with itself (nF = nT = nFT). A self-pair gives self_any_expected and
+  // self_variances(false, true, self_var_method, self_var_cells) for a type of nF cells; other pairs the exact
+  // variance. Needs build_radius_index.
+  void overlap_moments(const std::vector<double>& nF, const std::vector<double>& nT, const std::vector<double>& nFT,
+                       const std::vector<int>& self, int n_pairs, int self_var_method, int self_var_cells,
+                       std::vector<double>& E, std::vector<double>& V) const;
+  // FROM and TO weights a, b (any values in [0, 1], one per cell; b holds n_pairs TO labels, pair-major) that share
+  // cells, permuted together over each image's cells (every cell keeps its pair), each cell not its own neighbour (the
+  // radius graph). Per image and pair ((img * n_pairs + p) * 4): O, its
+  // mean E, its variance under the permutation, and sum b. Allocation: O = sum_l b_l (1 - prod_{k in N(l)} (1 - a_k)),
+  // E = E O. Count: O = sum_l b_l sum_{k in N(l)} a_k, E = p L with L = sum_l sum_{k in N(l)} a_k and p such that
+  // E (O - p L) = 0, and the variance is that of O - p L ((nA - 1) / (N - 1) for 0/1 self-pairs, as spicy()). Needs
+  // build_radius_index.
+  std::vector<double> overlap_soft_rows(const std::vector<double>& a, const std::vector<double>& b, int n_pairs,
+                                        bool allocation) const;
 
  private:
   struct Grid {
@@ -262,6 +286,9 @@ class Dataset {
   // the allocation self-pair variances of a radius graph (symmetric lists) with an approximate shared-neighbour term
   void self_variance_approx(int img, const std::vector<int>& ptr, const std::vector<int>& nb, double r, int method,
                             int cells, double* out_img) const;
+  // the same for any type counts: out[i] for n[i] cells, i < count
+  void self_variance_approx_n(int img, const std::vector<int>& ptr, const std::vector<int>& nb, double r, int method,
+                              int cells, const int* n, int count, double* out) const;
 
   std::vector<double> x_, y_;
   std::vector<int> type_, image_offsets_;
