@@ -233,7 +233,10 @@ test_that("soft pairs whose `to` cells all are candidates give the results of sp
                  to = c("T", "B", "macro"), cellWeights = s[[nm[1]]], effect = nm[2])$cellResults
     # p_adj is over every tested pair, and the self-pairs are now among them
     cols <- setdiff(names(ref[[k]]), "p_adj")
-    expect_equal(now[now$from != now$to, cols], ref[[k]][, cols], tolerance = 1e-12, label = k)
+    # (the skewness correction of the two-condition CR2 t changes p-values only: helper-skewness.R)
+    x <- now[now$from != now$to, ]; rownames(x) <- rownames(ref[[k]])
+    expect_unchanged_but_skewness(x[, unique(c(cols, intersect(c("excess_difference", "se", "df"), names(x))))],
+                                  ref[[k]][, cols], label = k)
   }
 })
 

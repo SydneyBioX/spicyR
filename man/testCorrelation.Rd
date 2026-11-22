@@ -46,7 +46,7 @@ patients carry most of a pair's weight and one condition is small.
 permutation every test is recomputed in closed form from the patients' summaries and weights (each condition's
 weighted mean, its CR2 variance and Satterthwaite df, as \code{\link[=spicy]{spicy()}} computes them; the between-patient variance
 is held at the fit's, and of \code{\link[=spicy]{spicy()}}'s rules for not testing a pair only the need for two patients in each
-condition is applied), and its p-value is turned into a z with the sign of the difference (0 when a condition
+condition is applied), and its p-value is turned into a z with the sign of its (skewness-corrected) t (0 when a condition
 has fewer than two of the pair's patients). The correlation of
 the tests' z over the permutations is returned. The permutations come from a fixed seed, so a result always
 gives the same matrix, in R and in Python.

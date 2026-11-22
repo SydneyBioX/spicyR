@@ -197,6 +197,9 @@ struct ExcessResult {
   bool ok = false;
   std::string reason;               // why a pair was not tested
   double coef_ref = 0, coef_comp = 0, difference = 0, se = 0, df = 0, p = 1, tau2 = 0;
+  // the skewness kappa of the difference (excess_skewness) and the corrected t that gives p: (difference / se)
+  // through skew_corrected_t with the CR2 variance, difference / se otherwise (Hartung-Knapp, pooled dispersion)
+  double skewness = 0, t = 0;
   // per unit (in unit-code order, units absent from the pair have a 0 influence):
   std::vector<double> influence;    // CR2-adjusted influence on the difference (sum of squares = se^2)
   std::vector<double> unit_summary; // the patient summary delta~_i
@@ -213,6 +216,25 @@ struct ExcessResult {
 ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, const std::vector<int>& group,
                          int n_units, bool frailty, Variance variance, bool pooled_dispersion = false);
 
+// The skewness correction of the two-condition CR2 t (one-term Edgeworth expansion, Hall 1992). With unequal
+// conditions, skewed unit effects leave a skewed t: a one-condition-mean-like heavy tail on one side. From the
+// units of both conditions (condition g in {0, 1}, weight W_u, residual e_u = ybar_u - beta_g, condition
+// information S_g = sum of its W, leverage h_u = W_u / S_g): the standardised residuals z_u = sqrt(W_u) e_u give
+// sigma^2 = sum z^2 / sum (1 - h) and mu_3 = sum z^3 / sum (1 - h)(1 - 2h), pooled over both conditions, the
+// skewness g = mu_3 / sigma^3 shrunk by its own uncertainty, gamma = g g^2 / (g^2 + V) with V = mean_u IF_u^2 / n the
+// delta-method (influence function) variance of the skewness, IF_u = t^3 - 3t - g - (3/2) g (t^2 - 1), t = z / sigma,
+// n = sum (1 - h) + 1 (6 / n for normal residuals), and
+//   kappa = gamma (sum_1 W^1.5 / S_1^3 - sum_0 W^1.5 / S_0^3) / (1 / S_0 + 1 / S_1)^1.5,
+// the skewness of beta_1 - beta_0 under the working model Var(ybar_u) = sigma^2 / W_u. kappa is 0 when a condition
+// has fewer than 3 usable units or the moments are not finite; it vanishes for equal conditions (equal W, equal sizes).
+double excess_skewness(const std::vector<int>& g, const std::vector<double>& W, const std::vector<double>& e,
+                       const double S[2]);
+// Hall's monotone transformation of t for skewness kappa: t + kappa t^2 / 3 + kappa^2 t^3 / 27 + kappa / 6 (the
+// corrected t is referred to the same t distribution).
+inline double skew_corrected_t(double t, double kappa) {
+  return t + kappa * t * t / 3 + kappa * kappa * t * t * t / 27 + kappa / 6;
+}
+
 // The correlation between the two-condition tests (excess_test, CR2) of n_tests pairs on the same units, from what
 // the tests return: each test's image effects y and image weights w (image_weight; test-major n_tests x n_images,
 // NaN where an image has no row or for a test left out) and the information of its two conditions (group_weight;
@@ -224,7 +246,7 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
 //     conditions over the units with one (from SplitMix64 with a fixed seed, so a call always gives the same R), or
 //     those in perms (n_units x n_perms, column-major: each unit's condition, 0 or 1; negative: none). Holding every unit's ybar and W fixed, each test is recomputed in closed form as
 //     excess_test does (each condition's weighted mean, its CR2 variance, Satterthwaite df), its two-sided p turned
-//     into a z with the sign of the difference (0 where not finite, or where a condition has fewer than two of the
+//     into a z with the sign of its (skewness-corrected) t (0 where not finite, or where a condition has fewer than two of the
 //     test's units, which excess_test does not test), and R is the correlation of the tests' z over the
 //     relabellings. z (n_tests x n_perms, test-major) is returned too.
 // image_group: each image's condition (0 or 1; negative: none). R is n_tests x n_tests (symmetric, unit diagonal);

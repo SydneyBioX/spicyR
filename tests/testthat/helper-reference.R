@@ -183,6 +183,25 @@ ref_n_eff <- function(f) vapply(1:2, function(g) {
   w <- vapply(seq_along(f$idx)[f$g_u == g - 1], function(k) (t(f$D[[k]]) %*% f$W[[k]] %*% f$D[[k]])[g, g], 0)
   sum(w)^2 / sum(w^2) }, 0)
 
+## The skewness kappa of delta_2 - delta_1 (the skewness correction of the CR2 t): each unit's weight
+## w_i = D_i' W_i D_i and residual e_i = D_i' W_i e_i / w_i (its summary minus its group's mean), leverage h_i = w_i / S_g,
+## S_g = sum of the group's w; standardised residuals z_i = sqrt(w_i) e_i give sigma^2 = sum z^2 / sum (1 - h) and
+## mu_3 = sum z^3 / sum (1 - h)(1 - 2h) over both groups, g = mu_3 / sigma^3 is shrunk to g^3 / (g^2 + V), V its
+## delta-method variance (ref_shrunk_skewness), and
+## kappa = (shrunk g) (sum_1 w^1.5 / S_1^3 - sum_0 w^1.5 / S_0^3) / (1 / S_0 + 1 / S_1)^1.5.
+ref_skewness <- function(f) {
+  g <- f$g_u
+  w <- vapply(seq_along(f$idx), function(k) (t(f$D[[k]]) %*% f$W[[k]] %*% f$D[[k]])[g[k] + 1, g[k] + 1], 0)
+  e <- vapply(seq_along(f$idx), function(k) (t(f$D[[k]]) %*% f$W[[k]] %*% f$e[[k]])[g[k] + 1] / w[k], 0)
+  S <- tapply(w, g, sum); h <- w / S[as.character(g)]; z <- sqrt(w) * e
+  w15 <- tapply(w^1.5, g, sum)
+  # shrunk by its own uncertainty (ref_shrunk_skewness, helper-skewness.R)
+  unname(ref_shrunk_skewness(z, h) * (w15[2] / S[2]^3 - w15[1] / S[1]^3) / (1 / S[1] + 1 / S[2])^1.5)
+}
+
+## Hall's transformation of t for skewness kappa
+ref_hall <- function(t, k) t + k * t^2 / 3 + k^2 * t^3 / 27 + k / 6
+
 ## One pair: the test of delta_2 = delta_1 (Section 4.4), each condition's own CR2 variance, and the Hartung-Knapp
 ## option (Section 4.5); no test when a group's effective units fall below min(3, m_g / 2), m_g its units.
 ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp"), effect = "count") {
@@ -193,7 +212,9 @@ ref_excess_test <- function(d, unit, group, variance = c("cr2", "hartung_knapp")
     m <- length(f$idx); X <- ref_pearson(d, unit, group, tau2); Vm <- f$B[1, 1] + f$B[2, 2]
     V <- max(V, Vm * max(1, X / (m - 2))); df <- m - 2
   }
-  p <- 2 * stats::pt(-abs(est / sqrt(V)), df)
+  t <- est / sqrt(V)
+  if (variance == "cr2") t <- ref_hall(t, ref_skewness(f))   # the skewness correction of the CR2 t
+  p <- 2 * stats::pt(-abs(t), df)
   if (cr$V > 0 && any(ref_n_eff(f) < pmin(3, as.vector(table(factor(f$g_u, 0:1))) / 2))) p <- NA_real_
   c(delta_ref = f$beta[1], delta_comp = f$beta[2], excess_difference = est, tau2 = tau2, se = sqrt(V), df = df,
     p_value = p)

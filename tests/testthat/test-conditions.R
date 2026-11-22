@@ -37,7 +37,8 @@ test_that("the overall test is the approximate Hotelling's T^2 of equal means, w
   two <- suppressMessages(spicy(sim_cells(), "condition", subject = "patient", r = 30, from = "tumour", to = "T"))$cellResults
   x <- rows3(sim_cells(), "tumour", "T")$rows
   a <- ref_aht_cellmeans(x, x$group, 2L)
-  expect_equal(unname(a["p"]), two$p_value, tolerance = 1e-8)
+  # (the two-condition test's p has the skewness correction of its CR2 t; the AHT with two levels has none)
+  expect_equal(unname(a["p"]), 2 * pt(-abs(two$excess_difference / two$se), two$df), tolerance = 1e-8)
   expect_equal(unname(a["F"]), (two$excess_difference / two$se)^2, tolerance = 1e-8)
   expect_equal(unname(a["df2"]), two$df, tolerance = 1e-8)
 })
@@ -136,8 +137,13 @@ test_that("two and three conditions: the results of spicyR 1.99.56 are unchanged
   ref <- readRDS(test_path("reference_1.99.56_conditions.rds"))
   cells <- sim_cells()
   run <- function(...) { r <- suppressMessages(spicy(...)); list(cellResults = r$cellResults, radiusResults = r$radiusResults) }
-  expect_identical(run(cells, "condition", subject = "patient", r = 30), ref$two_allocation)
-  expect_identical(run(cells, "condition", subject = "patient", r = 30, effect = "count"), ref$two_count)
+  # (the skewness correction of the two-condition CR2 t changes p-values only: helper-skewness.R)
+  same_all <- function(a, b) {
+    expect_unchanged_but_skewness(a$cellResults, b$cellResults, "cellResults")
+    expect_unchanged_but_skewness(a$radiusResults, b$radiusResults, "radiusResults")
+  }
+  same_all(run(cells, "condition", subject = "patient", r = 30), ref$two_allocation)
+  same_all(run(cells, "condition", subject = "patient", r = 30, effect = "count"), ref$two_count)
   # with the abundance share (it varies between a patient's images, so ext-AB's adjusted design changes the adjusted
   # test): the unadjusted test and every other column are unchanged; the adjusted design is tested in
   # test-adjustedDesign.R
@@ -145,8 +151,8 @@ test_that("two and three conditions: the results of spicyR 1.99.56 are unchanged
     # (several radii with max-T: the new column maxT_converged)
     expect_identical(setdiff(names(a$cellResults), "maxT_converged"), names(b$cellResults))
     keep <- setdiff(names(b$cellResults), changed)
-    expect_identical(a$cellResults[keep], b$cellResults[keep])
-    expect_identical(a$radiusResults, b$radiusResults)
+    expect_unchanged_but_skewness(a$cellResults[keep], b$cellResults[keep], "cellResults")
+    expect_unchanged_but_skewness(a$radiusResults, b$radiusResults, "radiusResults")
   }
   ab <- c("excess_ref", "excess_comp", "excess_difference", "se", "df", "p_value", "p_adj", "tau2", "tau2_image",
           "abundance_effect", "abundance_p_value", "overall_F", "overall_df2", "overall_p_value", "overall_p_adj")

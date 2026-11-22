@@ -150,7 +150,7 @@ test_that("without covariates, and with patient-level covariates only, results a
               radii = s("condition", r = c(15, 30), combine = "maxT"), age = s("condition", r = 30, covariates = "age"),
               continuous = s("age", r = 30))
   for (k in names(ref)) {
-    x <- now[[k]][, names(ref[[k]])]
-    expect_equal(x, ref[[k]], tolerance = 1e-12, label = k)
+    # (the skewness correction of the two-condition CR2 t changes p-values only: helper-skewness.R)
+    expect_unchanged_but_skewness(now[[k]], ref[[k]], label = k, combined = k == "radii")
   }
 })

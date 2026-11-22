@@ -218,6 +218,7 @@ List stats_excess_test(List rows, IntegerVector unit, IntegerVector group, int n
                                variance == "hartung_knapp" ? Variance::HartungKnapp : Variance::CR2, pooled_dispersion);
   return List::create(_["ok"] = r.ok, _["reason"] = r.reason, _["coef_ref"] = r.coef_ref, _["coef_comp"] = r.coef_comp,
                       _["difference"] = r.difference, _["se"] = r.se, _["df"] = r.df, _["p"] = r.p, _["tau2"] = r.tau2,
+                      _["skewness"] = r.skewness, _["t"] = r.t,
                       _["influence"] = nv(r.influence), _["unit_summary"] = nv(r.unit_summary),
                       _["unit_info"] = nv(r.unit_info), _["image_weight"] = nv(r.image_weight),
                       _["n_eff"] = nv(r.n_eff), _["n_units"] = nv(r.n_units), _["group_weight"] = nv(r.group_weight));

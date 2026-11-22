@@ -270,8 +270,10 @@ PairTests pair_tests(const PairTestInput& in) {
       }
       if (several) {
         at.push_back(k);
-        main.push_back({res.difference[o] / res.se[o], res.df[o], res.p[o], *influence});
-        if (adjusting) unadj.push_back({u.difference / u.se, u.df, u.p, u.influence});
+        // the unadjusted test's t is its skewness-corrected t (excess_test), so that t and p agree
+        const bool adjusted = adjusting && d.design == 1;
+        main.push_back({adjusted ? res.difference[o] / res.se[o] : u.t, res.df[o], res.p[o], *influence});
+        if (adjusting) unadj.push_back({u.t, u.df, u.p, u.influence});
       }
     }
     if (several && !at.empty()) {

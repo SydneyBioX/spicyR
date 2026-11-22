@@ -540,7 +540,21 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
   }
   res.ok = true; res.tau2 = tau2;
   res.coef_ref = f0.beta; res.coef_comp = f1.beta; res.difference = f1.beta - f0.beta;
-  res.se = std::sqrt(v); res.df = df; res.p = pt_two_sided(res.difference / res.se, df);
+  res.se = std::sqrt(v); res.df = df; res.t = res.difference / res.se;
+  if (variance == Variance::CR2 && !pooled_dispersion) {
+    // the skewness correction of the per-condition CR2 t (excess_skewness)
+    std::vector<int> gu; std::vector<double> Wu, eu;
+    for (int g = 0; g < 2; ++g) {
+      const GroupFit& f = g == 0 ? f0 : f1;
+      for (std::size_t u = 0; u < f.units.size(); ++u) {
+        gu.push_back(g); Wu.push_back(f.a[u] * f.J[u]); eu.push_back(f.r[u] / f.J[u]);
+      }
+    }
+    const double S[2] = {f0.B, f1.B};
+    res.skewness = excess_skewness(gu, Wu, eu, S);
+    if (std::isfinite(res.t)) res.t = skew_corrected_t(res.t, res.skewness);
+  }
+  res.p = pt_two_sided(res.t, df);
   res.influence.assign(n_units, 0); res.unit_summary.assign(n_units, kNaN); res.unit_info.assign(n_units, 0);
   res.image_weight.assign(rows.O.size(), 0.0);
   res.n_eff.assign(2, 0.0); res.n_units.assign(2, 0.0);
@@ -574,6 +588,41 @@ ExcessResult excess_test(const ImageRows& rows, const std::vector<int>& unit, co
     }
   }
   return res;
+}
+
+double excess_skewness(const std::vector<int>& g, const std::vector<double>& W, const std::vector<double>& e,
+                       const double S[2]) {
+  if (!(S[0] > 0 && S[1] > 0)) return 0;
+  double z2 = 0, z3 = 0, d2 = 0, d3 = 0, w15[2] = {0, 0};
+  int M = 0, n_g[2] = {0, 0};
+  std::vector<double> z(W.size(), kNaN);
+  for (std::size_t u = 0; u < W.size(); ++u) {
+    if ((g[u] != 0 && g[u] != 1) || !(W[u] > 0)) continue;
+    const double h = W[u] / S[g[u]];
+    z[u] = std::sqrt(W[u]) * e[u];
+    z2 += z[u] * z[u]; z3 += z[u] * z[u] * z[u]; d2 += 1 - h; d3 += (1 - h) * (1 - 2 * h); ++M;
+    w15[g[u]] += W[u] * std::sqrt(W[u]); ++n_g[g[u]];
+  }
+  // a condition with fewer than 3 units leaves its third moment without residual df: with two units, sum (1 - h)(1 - 2h)
+  // is second order in their weight difference while sum z^3 is first order, so g would be unbounded
+  if (n_g[0] < 3 || n_g[1] < 3) return 0;
+  if (!(d2 > 0 && d3 > 0 && z2 > 0)) return 0;
+  const double s2 = z2 / d2, s = std::sqrt(s2), g1 = (z3 / d3) / (s2 * s);
+  // shrunk by its own uncertainty: g1 g1^2 / (g1^2 + V), V the delta-method (influence function) variance of the
+  // skewness, mean_u IF_u^2 / n with IF_u = t^3 - 3t - g1 - (3/2) g1 (t^2 - 1), t = z / sigma, n = sum (1 - h) + 1
+  // (6 / n for normal residuals; larger when a few units carry the third moment)
+  double if2 = 0;
+  for (std::size_t u = 0; u < W.size(); ++u) {
+    if (std::isnan(z[u])) continue;
+    const double t = z[u] / s, IF = t * t * t - 3 * t - g1 - 1.5 * g1 * (t * t - 1);
+    if2 += IF * IF;
+  }
+  const double V = if2 / M / (d2 + 1);
+  if (!(V > 0)) return 0;
+  const double gamma = g1 * g1 * g1 / (g1 * g1 + V);
+  const double k = gamma * (w15[1] / (S[1] * S[1] * S[1]) - w15[0] / (S[0] * S[0] * S[0])) /
+                   std::pow(1 / S[0] + 1 / S[1], 1.5);
+  return std::isfinite(k) ? k : 0;
 }
 
 TestCorrelation test_correlation(const double* y, const double* w, int n_tests, int n_images, const int* image_unit,
@@ -685,8 +734,17 @@ TestCorrelation test_correlation(const double* y, const double* w, int n_tests, 
       double ev = 0, trsq = 0;
       for (int g = 0; g < 2; ++g) { ev += 1 / Wg[g]; trsq += (tr[g] + t1[g] * t1[g]) / (Wg[g] * Wg[g]); }
       const double D = beta[1] - beta[0], df = ev * ev / trsq;
-      const double p = pt_two_sided(D / std::sqrt(V[0] + V[1]), df);
-      const double z = (D < 0 ? 1 : -1) * norm_quantile(std::max(p, 1e-300) / 2);
+      // the skewness correction, as excess_test
+      std::vector<int> gu; std::vector<double> Wu, eu;
+      for (const Unit& x : us) {
+        const int g = pg[x.unit];
+        if (g != 0 && g != 1) continue;
+        gu.push_back(g); Wu.push_back(x.W); eu.push_back(x.ybar - beta[g]);
+      }
+      const double kappa = excess_skewness(gu, Wu, eu, Wg);
+      const double tc = skew_corrected_t(D / std::sqrt(V[0] + V[1]), kappa);
+      const double p = pt_two_sided(tc, df);
+      const double z = (tc < 0 ? 1 : -1) * norm_quantile(std::max(p, 1e-300) / 2);
       out.z[t * B + b] = std::isfinite(z) ? z : 0.0;
     }
   };

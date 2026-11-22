@@ -910,9 +910,16 @@ test_that("the allocation test uses each condition's own CR2 variance (hand calc
     c(beta = beta, V = sum(a^2 * r^2 / (B^2 * (1 - h))), EV = 1 / B, m = sum(i)) }, numeric(4))
   expect_equal(u0$se^2, sum(per["V", ]), tolerance = 1e-10)
   se <- sqrt(sum(per["V", ])); dif <- per["beta", 2] - per["beta", 1]
+  # the skewness correction: units' weights W = a J and residuals e = r / J, pooled over both conditions
+  W <- J / (1 + u0$tau2 * J); e <- (s - per["beta", gu + 1] * J) / J
+  S <- per["EV", gu + 1]^-1; h <- W / S; z <- sqrt(W) * e
+  kap <- ref_shrunk_skewness(z, h) *   # shrunk by its own uncertainty (helper-skewness.R)
+    (sum(W[gu == 1]^1.5) / (1 / per["EV", 2])^3 - sum(W[gu == 0]^1.5) / (1 / per["EV", 1])^3) / sum(per["EV", ])^1.5
+  expect_equal(u0$skewness, unname(kap), tolerance = 1e-10)
+  tt <- dif / se; tt <- tt + kap * tt^2 / 3 + kap^2 * tt^3 / 27 + kap / 6
   x <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T"))$cellResults
   expect_equal(c(x$excess_difference, x$se, x$df, x$p_value),
-               unname(c(dif, se, u0$df, 2 * pt(-abs(dif / se), u0$df))), tolerance = 1e-10)
+               unname(c(dif, se, u0$df, 2 * pt(-abs(tt), u0$df))), tolerance = 1e-10)
   # Hartung-Knapp keeps its own variance
   hk <- suppressMessages(spicy(d, "condition", r = 12, from = "tumour", to = "T", variance = "hartung_knapp"))$cellResults
   uh <- spicyR:::stats_excess_test(rows, rows$unit, rows$group, m, TRUE, "hartung_knapp", FALSE)
