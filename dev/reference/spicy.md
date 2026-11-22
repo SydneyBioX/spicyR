@@ -373,6 +373,17 @@ CR2 variance, on Satterthwaite degrees of freedom; with adjustment, the
 CR2 variance of the adjusted design. `variance = "hartung_knapp"` keeps
 its own variance.
 
+Without adjustment, the CR2 t of two conditions is corrected for
+skewness (a one-term Edgeworth expansion, Hall's transformation) before
+its p-value is taken: with conditions of unequal size, right-skewed
+patient effects make the t of the smaller condition's mean skewed, with
+too many small p-values on one side. The skewness comes from the
+patients' residuals, pooled over both conditions and weighted as in the
+test, and is shrunk by its own uncertainty, so that the correction fades
+out in small studies; it also vanishes for conditions of equal size and
+weight, and is not applied when a condition has fewer than 3 patients.
+The difference, standard error and df are unchanged.
+
 For a self-pair (`from` = `to`) every cell can carry the label, so
 random labelling moves both the cells counted and their neighbours. Its
 variance is the random-labelling variance of the self-pair (for the

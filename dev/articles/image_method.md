@@ -424,13 +424,13 @@ topPairs(spicyMixedTest)
 #>                          intercept coefficient      p.value adj.pvalue
 #> beta__delta           6.081501e+01  -15.433246 0.0006616399 0.09171146
 #> delta__beta           6.090722e+01  -15.276362 0.0007164958 0.09171146
-#> B__Th                 3.552714e-15   10.480124 0.0127535308 0.42316679
+#> B__Th                 0.000000e+00   10.480124 0.0127535308 0.42316679
 #> delta__delta          7.021912e+01  -16.358091 0.0155005361 0.42316679
-#> Th__B                 2.664535e-15   10.003453 0.0173028316 0.42316679
-#> B__unknown            4.440892e-16    4.584274 0.0182158642 0.42316679
-#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199646993 0.42316679
+#> Th__B                -3.996803e-15   10.003453 0.0173028316 0.42316679
+#> B__unknown            1.165734e-15    4.584275 0.0182158608 0.42316679
+#> otherimmune__naiveTc -3.179087e+00   11.944639 0.0199647001 0.42316679
 #> unknown__macrophage   4.339587e+00   -5.274674 0.0222619390 0.42316679
-#> unknown__B            4.440892e-16    4.680750 0.0244004279 0.42316679
+#> unknown__B            1.942890e-15    4.680750 0.0244004282 0.42316679
 #> macrophage__unknown   4.305429e+00   -4.886438 0.0249693473 0.42316679
 #>                             from         to
 #> beta__delta                 beta      delta
@@ -481,13 +481,13 @@ sessionInfo()
 #> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [15] BiocFileCache_3.3.3         dbplyr_2.6.0               
 #> [17] BiocGenerics_0.59.13        generics_0.1.4             
-#> [19] spicyR_1.99.60              BiocStyle_2.41.0           
+#> [19] spicyR_1.99.61              BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           
 #>  [4] rlang_1.3.0            magrittr_2.0.5         otel_0.3.0            
 #>  [7] compiler_4.6.2         RSQLite_3.53.3         spatstat.geom_3.8-3   
-#> [10] png_0.1-9              systemfonts_1.3.3      vctrs_0.7.3           
+#> [10] png_0.1-9              systemfonts_1.3.4      vctrs_0.7.3           
 #> [13] pkgconfig_2.0.3        crayon_1.5.3           fastmap_1.2.0         
 #> [16] magick_2.9.1           XVector_0.53.0         labeling_0.4.3        
 #> [19] rmarkdown_2.32         ragg_1.5.2             purrr_1.2.2           
@@ -509,8 +509,8 @@ sessionInfo()
 #> [67] glue_1.8.1             tools_4.6.2            fs_2.1.0              
 #> [70] grid_4.6.2             AnnotationDbi_1.75.2   nlme_3.1-171          
 #> [73] cli_3.6.6              spatstat.sparse_3.2-0  rappdirs_0.3.4        
-#> [76] textshaping_1.0.5      S4Arrays_1.13.2        dplyr_1.2.1           
-#> [79] gtable_0.3.6           sass_0.4.10            digest_0.6.39         
+#> [76] textshaping_1.1.0      S4Arrays_1.13.3        dplyr_1.2.1           
+#> [79] gtable_0.3.6           sass_0.5.0             digest_0.6.39         
 #> [82] SparseArray_1.13.5     rjson_0.2.23           htmlwidgets_1.6.4     
 #> [85] farver_2.1.2           memoise_2.0.1          htmltools_0.5.9       
 #> [88] pkgdown_2.2.1          lifecycle_1.0.5        httr_1.4.9            

@@ -73,10 +73,10 @@ computes them; the between-patient variance is held at the fit's, and of
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)'s
 rules for not testing a pair only the need for two patients in each
 condition is applied), and its p-value is turned into a z with the sign
-of the difference (0 when a condition has fewer than two of the pair's
-patients). The correlation of the tests' z over the permutations is
-returned. The permutations come from a fixed seed, so a result always
-gives the same matrix, in R and in Python.
+of its (skewness-corrected) t (0 when a condition has fewer than two of
+the pair's patients). The correlation of the tests' z over the
+permutations is returned. The permutations come from a fixed seed, so a
+result always gives the same matrix, in R and in Python.
 
 ## See also
 
@@ -96,8 +96,8 @@ testCorrelation(res)
 #> Th__alpha 0.7501011 0.8537341 0.8805660 1.0000000
 testCorrelation(res, method = "permutation", nPermutations = 200)
 #>            Tc__beta Tc__alpha  Th__beta Th__alpha
-#> Tc__beta  1.0000000 0.9214592 0.7267367 0.7895594
-#> Tc__alpha 0.9214592 1.0000000 0.8768567 0.8923144
-#> Th__beta  0.7267367 0.8768567 1.0000000 0.8700752
-#> Th__alpha 0.7895594 0.8923144 0.8700752 1.0000000
+#> Tc__beta  1.0000000 0.9237687 0.7286594 0.7908283
+#> Tc__alpha 0.9237687 1.0000000 0.8738504 0.8915030
+#> Th__beta  0.7286594 0.8738504 1.0000000 0.8671063
+#> Th__alpha 0.7908283 0.8915030 0.8671063 1.0000000
 ```
