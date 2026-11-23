@@ -11,7 +11,7 @@ cells are placed near from cells more than other cells are."><meta name="robots"
 
     <a class="navbar-brand me-2" href="../index.html">spicyR</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.61</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">1.99.62</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,7 @@ cells are placed near <code>from</code> cells more than other cells are.</p>
 <span>  from <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  to <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cell"</span>, <span class="st">"image"</span><span class="op">)</span>,</span>
-<span>  effect <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allocation"</span>, <span class="st">"count"</span><span class="op">)</span>,</span>
+<span>  effect <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fraction"</span>, <span class="st">"count"</span>, <span class="st">"allocation"</span><span class="op">)</span>,</span>
 <span>  k <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  combine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"davies"</span>, <span class="st">"maxT"</span>, <span class="st">"cauchy"</span><span class="op">)</span>,</span>
 <span>  adjustAbundance <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -124,12 +124,13 @@ radius). Image method: the radii of the L function (default 20, 50 and 100).</p>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p><code>"cell"</code> (spicyR Cell, the default) or <code>"image"</code> (the original spicyR test).</p></dd>
+<dd><p><code>"cell"</code> (spicyR v2, the default) or <code>"image"</code> (spicyR v1, the original spicyR test).</p></dd>
 
 
 <dt id="arg-effect">effect<a class="anchor" aria-label="anchor" href="#arg-effect"></a></dt>
-<dd><p>Cell method: <code>"allocation"</code> (the default), the extra fraction of <code>to</code> cells with at least
+<dd><p>Cell method: <code>"fraction"</code> (the default), the extra fraction of <code>to</code> cells with at least
 one <code>from</code> cell within <code>r</code>; or <code>"count"</code>, the number of extra <code>from</code> cells within <code>r</code> of each <code>to</code> cell.
+<code>"allocation"</code>, the earlier name of <code>"fraction"</code>, is also accepted.
 With <code>k</code>, "within <code>r</code>" means among the cell's <code>k</code> nearest neighbours.</p></dd>
 
 
@@ -205,14 +206,14 @@ replace those of random labelling; weights of 1 give the results of the cell typ
 image's cells, each cell keeping its pair of <code>from</code> and <code>to</code> weights and never its own neighbour, with the exact
 mean and variance of the score under that permutation (for the count effect, as for a self-pair of cell types,
 the expected score is a share of the summed <code>from</code> weight around all the cells, the share that gives the
-difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (allocation:
+difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (fraction:
 with the variance of <code>selfVariance</code>). One cell with <code>from</code> weight 1 and a <code>to</code> weight above 0 in any image is
 enough to test a pair this way in every image. One radius and cells in memory. Image method: see
 <code><a href="getPairwise.html">getPairwise()</a></code>.</p></dd>
 
 
 <dt id="arg-selfvariance">selfVariance<a class="anchor" aria-label="anchor" href="#arg-selfvariance"></a></dt>
-<dd><p>Cell method, allocation effect with a radius: how a self-pair's variance counts the
+<dd><p>Cell method, extra fraction with a radius: how a self-pair's variance counts the
 neighbours shared by nearby cells: <code>"sampled"</code> (the default), <code>"exact"</code>, <code>"geometricSampled"</code> or <code>"geometric"</code>
 (see Details).</p></dd>
 
@@ -236,7 +237,7 @@ whose <code>overall_p_adj</code> is at most <code>alpha</code> are followed up; 
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>SpicyResults</code> object. <code><a href="topPairs.html">topPairs()</a></code>, <code><a href="signifPlot.html">signifPlot()</a></code>, <code><a href="spicyBoxPlot.html">spicyBoxPlot()</a></code> and <code><a href="bind.html">bind()</a></code> work
-for both methods. For the cell method, <code>$cellResults</code> holds the full table: for the allocation effect,
+for both methods. For the cell method, <code>$cellResults</code> holds the full table: for the extra fraction,
 the pair's <code>side</code> (<code>"attract"</code> or <code>"avoid"</code>, which sets the scale of the effect), the effect in each
 condition (<code>excess_ref</code>, <code>excess_comp</code>, at the average covariates), the difference
 (<code>excess_difference</code>), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
@@ -272,7 +273,7 @@ estimate the correlation between the pairs' tests.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><strong><code>method = "cell"</code> (the default).</strong> In each image, the share of <code>to</code> cells with at least one <code>from</code>
 cell within radius <code>r</code> is compared with its exact expectation q if the <code>to</code> cells were a random choice
-among the cells that are not <code>from</code> cells. The effect (<code>effect = "allocation"</code>, the default) is the
+among the cells that are not <code>from</code> cells. The effect (<code>effect = "fraction"</code>, the default) is the
 <strong>fraction of <code>to</code> cells placed next to (or kept away from) <code>from</code> cells</strong>. For a pair that attracts
 (more <code>to</code> cells next to <code>from</code> cells than q over all images together) it is (observed share - q) / (1 - q):
 if a fraction f of the <code>to</code> cells were moved next to <code>from</code> cells, the effect is f. For a pair that avoids
@@ -302,7 +303,7 @@ second column. Adjustment cannot fully remove a confounder that is measured with
 mostly within patients, patients have few images and it differs by condition, some bias remains.</p>
 <p>When nearly every cell has a <code>from</code> cell within <code>r</code> (q close to 1), there is little room for attraction and
 an attracting pair's images carry little information; a smaller <code>r</code> is more informative.</p>
-<p>The allocation effect is bounded: an image of an avoiding pair with no <code>to</code> cell next to a <code>from</code> cell has the
+<p>The extra fraction is bounded: an image of an avoiding pair with no <code>to</code> cell next to a <code>from</code> cell has the
 effect -1, and an image of an attracting pair with every <code>to</code> cell next to one has +1. A patient is informative at
 a radius when at least one of its images is not at -1 or +1. A radius where one condition has no informative
 patient is not tested: that condition's patients all have the same effect, so its spread is exactly 0 and the
@@ -320,7 +321,7 @@ uncertainty, so that the correction fades out in small studies; it also vanishes
 conditions of equal size and weight, and is not applied when a condition has fewer than 3 patients. The difference, standard error and df are unchanged.</p>
 <p>For a self-pair (<code>from</code> = <code>to</code>) every cell can carry the label, so random labelling moves both the cells counted
 and their neighbours. Its variance is the random-labelling variance of the self-pair (for the radius graph and for
-the k nearest neighbours), not the variance of a pair of two types. For the allocation effect this variance
+the k nearest neighbours), not the variance of a pair of two types. For the extra fraction this variance
 depends on how many neighbours each pair of nearby cells shares, which takes time in proportion to the number of
 cells times the square of the number of neighbours per cell. With a radius, the shared neighbours are by default
 counted from <code>selfVarianceCells</code> randomly chosen cells of each image and scaled up (<code>selfVariance = "sampled"</code>),
@@ -328,7 +329,7 @@ an unbiased estimate of the variance; the sample is fixed by the image, so resul
 <code>selfVariance = "exact"</code> counts them for every cell; <code>"geometric"</code> takes two cells to share their local density
 times the area where their two discs overlap; <code>"geometricSampled"</code> corrects that with the sampled cells. The count
 effect and the k nearest neighbours always use the exact variance.</p>
-<p>With the allocation effect, an image whose room on the pair's side (the <code>to</code> cells without a <code>from</code> neighbour
+<p>With the extra fraction, an image whose room on the pair's side (the <code>to</code> cells without a <code>from</code> neighbour
 expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
 its effect could not show the pair's side, and could be large in the other direction. The side is chosen first,
 from every image.</p>
@@ -392,7 +393,7 @@ arbitrary dependency structures. Journal of the American Statistical Association
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"diabetesData"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co"># spicyR Cell: patients ("case") are the units</span></span></span>
+<span class="r-in"><span><span class="co"># spicyR v2: patients ("case") are the units</span></span></span>
 <span class="r-in"><span><span class="co"># the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">spicy</span><span class="op">(</span><span class="va">diabetesData</span>, condition <span class="op">=</span> <span class="st">"stage"</span>, subject <span class="op">=</span> <span class="st">"case"</span>, r <span class="op">=</span> <span class="fl">50</span>,</span></span>
 <span class="r-in"><span>             from <span class="op">=</span> <span class="st">"Tc"</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Th"</span>, <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span></span>

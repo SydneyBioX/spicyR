@@ -20,7 +20,7 @@ spicy(
   from = NULL,
   to = NULL,
   method = c("cell", "image"),
-  effect = c("allocation", "count"),
+  effect = c("fraction", "count", "allocation"),
   k = NULL,
   combine = c("davies", "maxT", "cauchy"),
   adjustAbundance = FALSE,
@@ -98,15 +98,16 @@ spicy(
 
 - method:
 
-  `"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR
-  test).
+  `"cell"` (spicyR v2, the default) or `"image"` (spicyR v1, the
+  original spicyR test).
 
 - effect:
 
-  Cell method: `"allocation"` (the default), the extra fraction of `to`
+  Cell method: `"fraction"` (the default), the extra fraction of `to`
   cells with at least one `from` cell within `r`; or `"count"`, the
-  number of extra `from` cells within `r` of each `to` cell. With `k`,
-  "within `r`" means among the cell's `k` nearest neighbours.
+  number of extra `from` cells within `r` of each `to` cell.
+  `"allocation"`, the earlier name of `"fraction"`, is also accepted.
+  With `k`, "within `r`" means among the cell's `k` nearest neighbours.
 
 - k:
 
@@ -208,17 +209,17 @@ spicy(
   the expected score is a share of the summed `from` weight around all
   the cells, the share that gives the difference a mean of 0). With 0/1
   weights a label with itself gives the self-pair of that cell type
-  (allocation: with the variance of `selfVariance`). One cell with
-  `from` weight 1 and a `to` weight above 0 in any image is enough to
-  test a pair this way in every image. One radius and cells in memory.
-  Image method: see
+  (fraction: with the variance of `selfVariance`). One cell with `from`
+  weight 1 and a `to` weight above 0 in any image is enough to test a
+  pair this way in every image. One radius and cells in memory. Image
+  method: see
   [`getPairwise()`](https://sydneybiox.github.io/spicyR/dev/reference/getPairwise.md).
 
 - selfVariance:
 
-  Cell method, allocation effect with a radius: how a self-pair's
-  variance counts the neighbours shared by nearby cells: `"sampled"`
-  (the default), `"exact"`, `"geometricSampled"` or `"geometric"` (see
+  Cell method, extra fraction with a radius: how a self-pair's variance
+  counts the neighbours shared by nearby cells: `"sampled"` (the
+  default), `"exact"`, `"geometricSampled"` or `"geometric"` (see
   Details).
 
 - selfVarianceCells:
@@ -252,7 +253,7 @@ A `SpicyResults` object.
 and
 [`bind()`](https://sydneybiox.github.io/spicyR/dev/reference/bind.md)
 work for both methods. For the cell method, `$cellResults` holds the
-full table: for the allocation effect, the pair's `side` (`"attract"` or
+full table: for the extra fraction, the pair's `side` (`"attract"` or
 `"avoid"`, which sets the scale of the effect), the effect in each
 condition (`excess_ref`, `excess_comp`, at the average covariates), the
 difference (`excess_difference`), its standard error, df, p-value and
@@ -308,32 +309,31 @@ uses them to estimate the correlation between the pairs' tests.
 **`method = "cell"` (the default).** In each image, the share of `to`
 cells with at least one `from` cell within radius `r` is compared with
 its exact expectation q if the `to` cells were a random choice among the
-cells that are not `from` cells. The effect (`effect = "allocation"`,
-the default) is the **fraction of `to` cells placed next to (or kept
-away from) `from` cells**. For a pair that attracts (more `to` cells
-next to `from` cells than q over all images together) it is (observed
-share - q) / (1 - q): if a fraction f of the `to` cells were moved next
-to `from` cells, the effect is f. For a pair that avoids it is (observed
-share - q) / q: if a fraction f of the `to` cells that would have a
-`from` cell nearby were moved away, the effect is -f. Either way it does
-not depend on how many `from` cells there are or how densely they are
-packed. The side is chosen once per pair from all images with a
-condition, without the conditions, and is reported in the `side` column.
-`effect = "count"` gives the number of extra `from` cells within `r` of
-each `to` cell instead; it also reflects how many `from` cells surround
-a `to` cell (depth of infiltration), but it grows with how densely the
-`from` cells are packed, so a change in packing alone can appear as a
-change in co-localisation. Images are combined within patients and
-patients within conditions by a frailty GEE with a second random effect
-for the images of a patient (each image is weighted by 1 / (its sampling
-variance + the between-image variance), so one large image cannot
-outweigh the patient's other images), and the difference between
-conditions is tested with a CR2 cluster-robust variance on Satterthwaite
-degrees of freedom, with **patients (`subject`) as the units**. The
-difference is adjusted for any `covariates`, and, with
-`adjustAbundance = TRUE`, for the log share of the `from` type in each
-image; the unadjusted test is then reported alongside (`unadjusted_*`
-columns).
+cells that are not `from` cells. The effect (`effect = "fraction"`, the
+default) is the **fraction of `to` cells placed next to (or kept away
+from) `from` cells**. For a pair that attracts (more `to` cells next to
+`from` cells than q over all images together) it is (observed share - q)
+/ (1 - q): if a fraction f of the `to` cells were moved next to `from`
+cells, the effect is f. For a pair that avoids it is (observed share -
+q) / q: if a fraction f of the `to` cells that would have a `from` cell
+nearby were moved away, the effect is -f. Either way it does not depend
+on how many `from` cells there are or how densely they are packed. The
+side is chosen once per pair from all images with a condition, without
+the conditions, and is reported in the `side` column. `effect = "count"`
+gives the number of extra `from` cells within `r` of each `to` cell
+instead; it also reflects how many `from` cells surround a `to` cell
+(depth of infiltration), but it grows with how densely the `from` cells
+are packed, so a change in packing alone can appear as a change in
+co-localisation. Images are combined within patients and patients within
+conditions by a frailty GEE with a second random effect for the images
+of a patient (each image is weighted by 1 / (its sampling variance + the
+between-image variance), so one large image cannot outweigh the
+patient's other images), and the difference between conditions is tested
+with a CR2 cluster-robust variance on Satterthwaite degrees of freedom,
+with **patients (`subject`) as the units**. The difference is adjusted
+for any `covariates`, and, with `adjustAbundance = TRUE`, for the log
+share of the `from` type in each image; the unadjusted test is then
+reported alongside (`unadjusted_*` columns).
 
 An adjustment that differs between a patient's images (the `from` type's
 share, or an image-level covariate) can relate to the effect differently
@@ -356,8 +356,8 @@ When nearly every cell has a `from` cell within `r` (q close to 1),
 there is little room for attraction and an attracting pair's images
 carry little information; a smaller `r` is more informative.
 
-The allocation effect is bounded: an image of an avoiding pair with no
-`to` cell next to a `from` cell has the effect -1, and an image of an
+The extra fraction is bounded: an image of an avoiding pair with no `to`
+cell next to a `from` cell has the effect -1, and an image of an
 attracting pair with every `to` cell next to one has +1. A patient is
 informative at a radius when at least one of its images is not at -1 or
 +1. A radius where one condition has no informative patient is not
@@ -388,9 +388,9 @@ For a self-pair (`from` = `to`) every cell can carry the label, so
 random labelling moves both the cells counted and their neighbours. Its
 variance is the random-labelling variance of the self-pair (for the
 radius graph and for the k nearest neighbours), not the variance of a
-pair of two types. For the allocation effect this variance depends on
-how many neighbours each pair of nearby cells shares, which takes time
-in proportion to the number of cells times the square of the number of
+pair of two types. For the extra fraction this variance depends on how
+many neighbours each pair of nearby cells shares, which takes time in
+proportion to the number of cells times the square of the number of
 neighbours per cell. With a radius, the shared neighbours are by default
 counted from `selfVarianceCells` randomly chosen cells of each image and
 scaled up (`selfVariance = "sampled"`), an unbiased estimate of the
@@ -401,7 +401,7 @@ discs overlap; `"geometricSampled"` corrects that with the sampled
 cells. The count effect and the k nearest neighbours always use the
 exact variance.
 
-With the allocation effect, an image whose room on the pair's side (the
+With the extra fraction, an image whose room on the pair's side (the
 `to` cells without a `from` neighbour expected by chance for an
 attracting pair, those with one for an avoiding pair) is below one cell
 is not used: its effect could not show the pair's side, and could be
@@ -506,7 +506,7 @@ Journal of the American Statistical Association 115(529), 393-402.
 
 ``` r
 data("diabetesData")
-# spicyR Cell: patients ("case") are the units
+# spicyR v2: patients ("case") are the units
 # the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))

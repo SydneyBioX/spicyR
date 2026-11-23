@@ -84,10 +84,10 @@ installs spicyR 1.x.
 
 ## Coming from spicyR 1.x
 
-spicyR 2.0 changes the default test. The image-level test of earlier
-versions, which compares a per-image summary of the L-function with a
-mixed model, is still available, with the same results, as
-`spicy(..., method = "image")`.
+spicyR 2.0 changes the default test to spicyR v2. The image-level test
+of earlier versions (spicyR v1), which compares a per-image summary of
+the L-function with a mixed model, is still available, with the same
+results, as `spicy(..., method = "image")`.
 [`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md),
 [`signifPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/signifPlot.md),
 [`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md)

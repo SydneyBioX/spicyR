@@ -48,7 +48,7 @@ Elements for the cell method (`method = "cell"`, the default):
 
 - `effect`:
 
-  `"allocation"` (the extra fraction of `to` cells with a `from` cell
+  `"fraction"` (the extra fraction of `to` cells with a `from` cell
   within `r`), `"count"` (the extra `from` cells within `r` of each `to`
   cell), or `"kontextual"` (Statial's Kontextual test).
 

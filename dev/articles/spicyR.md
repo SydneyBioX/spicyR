@@ -402,7 +402,7 @@ proliferating tumour cells sit closer to `HR+ CK7-` cells than other
 tumour cells do, compare with random labelling among the tumour cells
 only. The Kontextual test in the *Statial* package does this.
 
-## Allocation or count?
+## Extra fraction or count?
 
 By default spicyR asks whether each `to` cell has a `from` cell nearby.
 With `effect = "count"` it asks how many: the effect is then the number
@@ -730,12 +730,12 @@ as the clusters, using the small-sample cluster-robust (CR2) variance
 contributes its own CR2 variance. For a self-pair (`from` the same as
 `to`), whose cells and neighbours are both moved by random labelling,
 the variance is the random-labelling variance of the self-pair. For the
-allocation effect with a radius, the neighbours shared by nearby cells
-are counted from 50 randomly chosen cells of each image
+extra fraction with a radius, the neighbours shared by nearby cells are
+counted from 50 randomly chosen cells of each image
 (`selfVarianceCells`) and scaled up, an unbiased and reproducible
 estimate that keeps large radii fast; `selfVariance = "exact"` counts
-them for every cell. With the allocation effect, an image whose room on
-the pair’s side is below one cell is not used. A radius where a group’s
+them for every cell. With the extra fraction, an image whose room on the
+pair’s side is below one cell is not used. A radius where a group’s
 effective patients fall below the smaller of three and half its patients
 at that radius, because a few patients carry nearly all of its weight,
 is not tested. This is designed to keep false positives near the nominal
@@ -757,7 +757,7 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.61) to
+A methods sentence might read: “We used spicyR (version 1.99.62) to
 test, for every ordered pair of cell types, whether the fraction of `to`
 cells with at least one `from` cell within 25 µm, relative to random
 labelling of the cells in each image, differed between ER+ and ER−
@@ -798,11 +798,12 @@ citation("spicyR")
 spicyR 2.0 changes the default test. Before 2.0,
 [`spicy()`](https://sydneybiox.github.io/spicyR/dev/reference/spicy.md)
 compared a per-image summary of the L-function between groups with a
-weighted mixed model (Canete et al. 2022). That test is still available,
-and gives the same results as before, with `method = "image"`; it is
-described in the vignette “The original image-level test in spicyR”. It
-is also the method to use with your own per-image statistics
-(`alternateResult`), for example from the Statial package.
+weighted mixed model (Canete et al. 2022). That test, spicyR v1, is
+still available, and gives the same results as before, with
+`method = "image"`; it is described in the vignette “The original
+image-level test in spicyR”. It is also the method to use with your own
+per-image statistics (`alternateResult`), for example from the Statial
+package.
 [`topPairs()`](https://sydneybiox.github.io/spicyR/dev/reference/topPairs.md),
 [`signifPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/signifPlot.md),
 [`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md)
@@ -962,7 +963,7 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.3        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.13       
-#> [19] generics_0.1.4              spicyR_1.99.61             
+#> [19] generics_0.1.4              spicyR_1.99.62             
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
