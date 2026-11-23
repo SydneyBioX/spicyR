@@ -125,8 +125,8 @@ dataset_overlap_moments <- function(ptr, nF, nT, nFT, self, self_var_method, sel
     .Call(`_spicyR_dataset_overlap_moments`, ptr, nF, nT, nFT, self, self_var_method, self_var_cells)
 }
 
-dataset_overlap_soft_rows <- function(ptr, a, b, allocation) {
-    .Call(`_spicyR_dataset_overlap_soft_rows`, ptr, a, b, allocation)
+dataset_overlap_soft_rows <- function(ptr, a, b, allocation, exact = TRUE) {
+    .Call(`_spicyR_dataset_overlap_soft_rows`, ptr, a, b, allocation, exact)
 }
 
 dataset_kontextual_sums_weighted <- function(ptr, a, b, self) {

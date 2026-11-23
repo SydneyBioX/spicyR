@@ -321,7 +321,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
     # the other relabelled pairs of this `from` label in one pass over each image's graph
     soft <- which(from == f & relabel & !counts)
     S <- if (length(soft)) dataset_overlap_soft_rows(ctx$data, a, vapply(match(to[soft], memb$labels), weights_of,
-                                                                           numeric(memb$nCells)), allocation)
+                                                                           numeric(memb$nCells)), allocation,
+                                                     exact = identical(ctx$self_var$method, "exact"))
     for (k in which(from == f)) {
       t <- to[k]
       rows <- if (counts[k]) {

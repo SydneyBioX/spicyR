@@ -254,9 +254,10 @@ class Dataset {
   // mean E, its variance under the permutation, and sum b. Allocation: O = sum_l b_l (1 - prod_{k in N(l)} (1 - a_k)),
   // E = E O. Count: O = sum_l b_l sum_{k in N(l)} a_k, E = p L with L = sum_l sum_{k in N(l)} a_k and p such that
   // E (O - p L) = 0, and the variance is that of O - p L ((nA - 1) / (N - 1) for 0/1 self-pairs, as spicy()). Needs
-  // build_radius_index.
+  // build_radius_index. exact = false: the allocation moments from the closed-form second-order means
+  // (soft_means_pairwise) instead of the exact ones, which cost cells x neighbourhood size^2 per image.
   std::vector<double> overlap_soft_rows(const std::vector<double>& a, const std::vector<double>& b, int n_pairs,
-                                        bool allocation) const;
+                                        bool allocation, bool exact = true) const;
 
  private:
   struct Grid {

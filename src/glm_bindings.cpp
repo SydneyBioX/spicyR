@@ -365,11 +365,11 @@ List dataset_overlap_moments(SEXP ptr, NumericMatrix nF, NumericMatrix nT, Numer
 }
 
 // [[Rcpp::export]]
-NumericMatrix dataset_overlap_soft_rows(SEXP ptr, NumericVector a, NumericMatrix b, bool allocation) {
+NumericMatrix dataset_overlap_soft_rows(SEXP ptr, NumericVector a, NumericMatrix b, bool allocation, bool exact = true) {
   // a: the FROM weight of each cell; b: cells x pairs, the TO weights
   XPtr<Dataset> d(ptr);
   std::vector<double> v = d->overlap_soft_rows(std::vector<double>(a.begin(), a.end()),
-                                               std::vector<double>(b.begin(), b.end()), b.ncol(), allocation);
+                                               std::vector<double>(b.begin(), b.end()), b.ncol(), allocation, exact);
   NumericMatrix out(4, static_cast<int>(v.size() / 4));
   std::copy(v.begin(), v.end(), out.begin());
   return out;   // rows: O, E, variance, sum b; columns: image-major, one per image and pair

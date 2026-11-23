@@ -454,8 +454,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // dataset_overlap_soft_rows
-NumericMatrix dataset_overlap_soft_rows(SEXP ptr, NumericVector a, NumericMatrix b, bool allocation);
-RcppExport SEXP _spicyR_dataset_overlap_soft_rows(SEXP ptrSEXP, SEXP aSEXP, SEXP bSEXP, SEXP allocationSEXP) {
+NumericMatrix dataset_overlap_soft_rows(SEXP ptr, NumericVector a, NumericMatrix b, bool allocation, bool exact);
+RcppExport SEXP _spicyR_dataset_overlap_soft_rows(SEXP ptrSEXP, SEXP aSEXP, SEXP bSEXP, SEXP allocationSEXP, SEXP exactSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -463,7 +463,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type a(aSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type b(bSEXP);
     Rcpp::traits::input_parameter< bool >::type allocation(allocationSEXP);
-    rcpp_result_gen = Rcpp::wrap(dataset_overlap_soft_rows(ptr, a, b, allocation));
+    Rcpp::traits::input_parameter< bool >::type exact(exactSEXP);
+    rcpp_result_gen = Rcpp::wrap(dataset_overlap_soft_rows(ptr, a, b, allocation, exact));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1206,7 +1207,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spicyR_dataset_weighted_excess_sums", (DL_FUNC) &_spicyR_dataset_weighted_excess_sums, 7},
     {"_spicyR_dataset_weighted_score_sums", (DL_FUNC) &_spicyR_dataset_weighted_score_sums, 7},
     {"_spicyR_dataset_overlap_moments", (DL_FUNC) &_spicyR_dataset_overlap_moments, 7},
-    {"_spicyR_dataset_overlap_soft_rows", (DL_FUNC) &_spicyR_dataset_overlap_soft_rows, 4},
+    {"_spicyR_dataset_overlap_soft_rows", (DL_FUNC) &_spicyR_dataset_overlap_soft_rows, 5},
     {"_spicyR_dataset_kontextual_sums_weighted", (DL_FUNC) &_spicyR_dataset_kontextual_sums_weighted, 4},
     {"_spicyR_dataset_hac_phi_sums_ref", (DL_FUNC) &_spicyR_dataset_hac_phi_sums_ref, 5},
     {"_spicyR_dataset_hac_phi_sums", (DL_FUNC) &_spicyR_dataset_hac_phi_sums, 5},

@@ -593,9 +593,61 @@ std::vector<long double> soft_means(const std::vector<long double>& c1, const st
   return P;
 }
 
+// soft_means() in closed form: the mean over random distinct cells of a product of s values is the product of the
+// means, with each of the s(s - 1)/2 pairs of positions corrected as an exact pair of distinct cells is,
+// E[f(I) g(J)] = mf mg (1 - cov(f, g) / ((N - 1) mf mg)) (second order in 1 / N, exact for s <= 2). Its cost does not
+// grow with the number of cells; the relative error grows with s^2 / N. Returns false (and leaves P alone) when a
+// correction factor is not positive, so the caller can fall back to the exact soft_means().
+bool soft_means_pairwise(const std::vector<long double>& c1, const std::vector<long double>& c2,
+                         const std::vector<long double>& w, const std::vector<int>& ub, int kmax,
+                         std::vector<long double>& P) {
+  const int V = static_cast<int>(ub.size()) - 1, U = ub[0];
+  const int N = static_cast<int>(c1.size());
+  if (U < 0) { P.clear(); return true; }
+  const int K = kmax + 1;
+  long double m1 = 0, m2 = 0, mw = 0, s11 = 0, s22 = 0, s12 = 0, s1w = 0, s2w = 0, sww = 0;
+  for (int i = 0; i < N; ++i) {
+    m1 += c1[i]; m2 += c2[i]; mw += w[i];
+    s11 += c1[i] * c1[i]; s22 += c2[i] * c2[i]; s12 += c1[i] * c2[i];
+    s1w += c1[i] * w[i]; s2w += c2[i] * w[i]; sww += w[i] * w[i];
+  }
+  m1 /= N; m2 /= N; mw /= N; s11 /= N; s22 /= N; s12 /= N; s1w /= N; s2w /= N; sww /= N;
+  // log of the pair factor 1 - cov / ((N - 1) mx my); 0 when a mean is 0 (its powers are then 0 anyway)
+  bool ok = true;
+  auto pairlog = [&](long double mxy, long double mx, long double my) -> long double {
+    if (!(mx > 0) || !(my > 0) || N < 2) return 0;
+    const long double f = 1 - (mxy - mx * my) / ((N - 1) * mx * my);
+    if (!(f > 0)) { ok = false; return 0; }
+    return std::log(f);
+  };
+  const long double l11 = pairlog(s11, m1, m1), l22 = pairlog(s22, m2, m2), l12 = pairlog(s12, m1, m2),
+                    l1w = pairlog(s1w, m1, mw), l2w = pairlog(s2w, m2, mw), lww = pairlog(sww, mw, mw);
+  if (!ok) return false;
+  const long double lm1 = m1 > 0 ? std::log(m1) : 0, lm2 = m2 > 0 ? std::log(m2) : 0, lmw = mw > 0 ? std::log(mw) : 0;
+  P.assign(static_cast<std::size_t>(U + 1) * (V + 1) * K, 0.0L);
+  for (int u = 0; u <= U; ++u) for (int v = 0; v <= V; ++v) for (int k = 0; k <= kmax; ++k) {
+    if (u > ub[v] || u + v + k > N) continue;
+    if ((u && !(m1 > 0)) || (v && !(m2 > 0)) || (k && !(mw > 0))) continue;
+    const long double lu = u, lv = v, lk = k;
+    const long double lp = lu * lm1 + lv * lm2 + lk * lmw + lu * (lu - 1) / 2 * l11 + lv * (lv - 1) / 2 * l22 +
+                           lu * lv * l12 + lu * lk * l1w + lv * lk * l2w + lk * (lk - 1) / 2 * lww;
+    P[(static_cast<std::size_t>(u) * (V + 1) + v) * K + k] = std::exp(lp);
+  }
+  return true;
+}
+
+// soft_means(), or its closed form soft_means_pairwise() unless `exact` (falling back to the exact means when the
+// closed form does not apply).
+std::vector<long double> soft_means_choose(const std::vector<long double>& c1, const std::vector<long double>& c2,
+                                           const std::vector<long double>& w, const std::vector<int>& ub, int kmax,
+                                           bool exact) {
+  if (!exact) { std::vector<long double> P; if (soft_means_pairwise(c1, c2, w, ub, kmax, P)) return P; }
+  return soft_means(c1, c2, w, ub, kmax);
+}
+
 // E and Var of O = sum_l b_l (1 - prod_{k in N(l)} (1 - a_k)) when the pairs (a_i, b_i) are permuted over the cells.
 void soft_allocation_moments(const SoftGraph& g, const std::vector<long double>& a, const std::vector<long double>& b,
-                             long double& E, long double& V, long double& scale) {
+                             long double& E, long double& V, long double& scale, bool exact = true) {
   const int N = g.N;
   E = 0; V = 0; scale = 0;
   long double sb = 0;
@@ -606,12 +658,14 @@ void soft_allocation_moments(const SoftGraph& g, const std::vector<long double>&
   const int D = g.dmax;
   // E G = sum_l E[b_l prod_{d_l others} c]; the diagonal of E G^2: E[b_l^2 prod c^2]
   const std::vector<int> diag(1, D);
-  const std::vector<long double> R = soft_means(c, csq, b, diag, 1), Q = soft_means(csq, csq, bsq, diag, 1);
+  const std::vector<long double> R = soft_means_choose(c, csq, b, diag, 1, exact),
+                                  Q = soft_means_choose(csq, csq, bsq, diag, 1, exact);
   long double EG = 0, EG2 = 0;
   for (int x = 0; x <= D; ++x) if (g.deg_count[x]) { EG += g.deg_count[x] * R[x * 2 + 1]; EG2 += g.deg_count[x] * Q[x * 2 + 1]; }
   // ordered pairs l != k: marks b_l c_k^L and b_k c_l^L
   const int Vv = g.vmax;
-  const std::vector<long double> P0 = soft_means(c, csq, b, g.ub, 2), P1 = soft_means(c, csq, bc, g.ub, 2);
+  const std::vector<long double> P0 = soft_means_choose(c, csq, b, g.ub, 2, exact),
+                                  P1 = soft_means_choose(c, csq, bc, g.ub, 2, exact);
   for (const auto& kv : g.keys) {
     if (kv.second == 0) continue;
     const int L = static_cast<int>(kv.first >> 50), u = static_cast<int>((kv.first >> 25) & ((1u << 25) - 1)),
@@ -2144,7 +2198,7 @@ void Dataset::overlap_moments(const std::vector<double>& nF, const std::vector<d
 
 
 std::vector<double> Dataset::overlap_soft_rows(const std::vector<double>& a, const std::vector<double>& b,
-                                               int n_pairs, bool allocation) const {
+                                               int n_pairs, bool allocation, bool exact) const {
   if (grids_.empty() && n_images() > 0) throw std::logic_error("call build_radius_index first");
   const std::size_t Ncells = x_.size(), P = static_cast<std::size_t>(n_pairs);
   if (a.size() != Ncells || b.size() != Ncells * P)
@@ -2180,7 +2234,7 @@ std::vector<double> Dataset::overlap_soft_rows(const std::vector<double>& a, con
       long double O = 0;
       for (int l = 0; l < N; ++l) O += bi[l] * h[l];
       long double E = 0, V = 0, scale = 0;
-      if (allocation) soft_allocation_moments(g, ai, bi, E, V, scale);
+      if (allocation) soft_allocation_moments(g, ai, bi, E, V, scale, exact);
       else { long double p; soft_count_moments(g, ai, bi, p, V, scale); E = p * L; }
       o[0] = static_cast<double>(O); o[1] = static_cast<double>(E);
       o[2] = V > 1e-11L * (1 + scale) ? static_cast<double>(V) : 0.0;
