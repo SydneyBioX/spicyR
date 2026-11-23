@@ -6,7 +6,7 @@ res <- spicy(cells, condition = "condition", subject = "patient", r = 30)
 
 ## Every pair's two-condition test through the internal steps, as spicy() fits it, keeping the core's per-patient
 ## quantities
-core_fits <- function(cells, res, effect = "allocation") {
+core_fits <- function(cells, res, effect = "fraction") {
   ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
   pairs <- unname(Map(c, res$cellResults$from, res$cellResults$to))
   g <- spicyR:::.cell_graph(ctx, pairs, r = 30, label_clustering = FALSE, effect = effect)

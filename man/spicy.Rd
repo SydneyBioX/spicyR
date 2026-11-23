@@ -16,7 +16,7 @@ spicy(
   from = NULL,
   to = NULL,
   method = c("cell", "image"),
-  effect = c("allocation", "count"),
+  effect = c("fraction", "count", "allocation"),
   k = NULL,
   combine = c("davies", "maxT", "cauchy"),
   adjustAbundance = FALSE,
@@ -63,10 +63,11 @@ radius). Image method: the radii of the L function (default 20, 50 and 100).}
 
 \item{from, to}{Cell types to test (all ordered pairs by default).}
 
-\item{method}{\code{"cell"} (spicyR Cell, the default) or \code{"image"} (the original spicyR test).}
+\item{method}{\code{"cell"} (spicyR v2, the default) or \code{"image"} (spicyR v1, the original spicyR test).}
 
-\item{effect}{Cell method: \code{"allocation"} (the default), the extra fraction of \code{to} cells with at least
+\item{effect}{Cell method: \code{"fraction"} (the default), the extra fraction of \code{to} cells with at least
 one \code{from} cell within \code{r}; or \code{"count"}, the number of extra \code{from} cells within \code{r} of each \code{to} cell.
+\code{"allocation"}, the earlier name of \code{"fraction"}, is also accepted.
 With \code{k}, "within \code{r}" means among the cell's \code{k} nearest neighbours.}
 
 \item{k}{Cell method: use the \code{k} nearest neighbours instead of a radius.}
@@ -124,12 +125,12 @@ replace those of random labelling; weights of 1 give the results of the cell typ
 image's cells, each cell keeping its pair of \code{from} and \code{to} weights and never its own neighbour, with the exact
 mean and variance of the score under that permutation (for the count effect, as for a self-pair of cell types,
 the expected score is a share of the summed \code{from} weight around all the cells, the share that gives the
-difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (allocation:
+difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (fraction:
 with the variance of \code{selfVariance}). One cell with \code{from} weight 1 and a \code{to} weight above 0 in any image is
 enough to test a pair this way in every image. One radius and cells in memory. Image method: see
 \code{\link[=getPairwise]{getPairwise()}}.}
 
-\item{selfVariance}{Cell method, allocation effect with a radius: how a self-pair's variance counts the
+\item{selfVariance}{Cell method, extra fraction with a radius: how a self-pair's variance counts the
 neighbours shared by nearby cells: \code{"sampled"} (the default), \code{"exact"}, \code{"geometricSampled"} or \code{"geometric"}
 (see Details).}
 
@@ -145,7 +146,7 @@ whose \code{overall_p_adj} is at most \code{alpha} are followed up; see \code{\l
 }
 \value{
 A \code{SpicyResults} object. \code{topPairs()}, \code{signifPlot()}, \code{spicyBoxPlot()} and \code{bind()} work
-for both methods. For the cell method, \verb{$cellResults} holds the full table: for the allocation effect,
+for both methods. For the cell method, \verb{$cellResults} holds the full table: for the extra fraction,
 the pair's \code{side} (\code{"attract"} or \code{"avoid"}, which sets the scale of the effect), the effect in each
 condition (\code{excess_ref}, \code{excess_comp}, at the average covariates), the difference
 (\code{excess_difference}), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
@@ -185,7 +186,7 @@ cells are placed near \code{from} cells more than other cells are.
 \details{
 \strong{\code{method = "cell"} (the default).} In each image, the share of \code{to} cells with at least one \code{from}
 cell within radius \code{r} is compared with its exact expectation q if the \code{to} cells were a random choice
-among the cells that are not \code{from} cells. The effect (\code{effect = "allocation"}, the default) is the
+among the cells that are not \code{from} cells. The effect (\code{effect = "fraction"}, the default) is the
 \strong{fraction of \code{to} cells placed next to (or kept away from) \code{from} cells}. For a pair that attracts
 (more \code{to} cells next to \code{from} cells than q over all images together) it is (observed share - q) / (1 - q):
 if a fraction f of the \code{to} cells were moved next to \code{from} cells, the effect is f. For a pair that avoids
@@ -218,7 +219,7 @@ mostly within patients, patients have few images and it differs by condition, so
 When nearly every cell has a \code{from} cell within \code{r} (q close to 1), there is little room for attraction and
 an attracting pair's images carry little information; a smaller \code{r} is more informative.
 
-The allocation effect is bounded: an image of an avoiding pair with no \code{to} cell next to a \code{from} cell has the
+The extra fraction is bounded: an image of an avoiding pair with no \code{to} cell next to a \code{from} cell has the
 effect -1, and an image of an attracting pair with every \code{to} cell next to one has +1. A patient is informative at
 a radius when at least one of its images is not at -1 or +1. A radius where one condition has no informative
 patient is not tested: that condition's patients all have the same effect, so its spread is exactly 0 and the
@@ -239,7 +240,7 @@ conditions of equal size and weight, and is not applied when a condition has few
 
 For a self-pair (\code{from} = \code{to}) every cell can carry the label, so random labelling moves both the cells counted
 and their neighbours. Its variance is the random-labelling variance of the self-pair (for the radius graph and for
-the k nearest neighbours), not the variance of a pair of two types. For the allocation effect this variance
+the k nearest neighbours), not the variance of a pair of two types. For the extra fraction this variance
 depends on how many neighbours each pair of nearby cells shares, which takes time in proportion to the number of
 cells times the square of the number of neighbours per cell. With a radius, the shared neighbours are by default
 counted from \code{selfVarianceCells} randomly chosen cells of each image and scaled up (\code{selfVariance = "sampled"}),
@@ -248,7 +249,7 @@ an unbiased estimate of the variance; the sample is fixed by the image, so resul
 times the area where their two discs overlap; \code{"geometricSampled"} corrects that with the sampled cells. The count
 effect and the k nearest neighbours always use the exact variance.
 
-With the allocation effect, an image whose room on the pair's side (the \code{to} cells without a \code{from} neighbour
+With the extra fraction, an image whose room on the pair's side (the \code{to} cells without a \code{from} neighbour
 expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
 its effect could not show the pair's side, and could be large in the other direction. The side is chosen first,
 from every image.
@@ -295,7 +296,7 @@ for example the confidence of a classifier, instead of through a single cell typ
 }
 \examples{
 data("diabetesData")
-# spicyR Cell: patients ("case") are the units
+# spicyR v2: patients ("case") are the units
 # the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
              from = "Tc", to = c("Th", "beta"))

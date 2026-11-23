@@ -17,7 +17,7 @@ cell_internal <- function(cells, r, effect, label_clustering, variance, image_he
 }
 
 test_that("spicy() is the internal cell method with the frailty and image random effect, without inflation", {
-  for (ef in c("allocation", "count")) {
+  for (ef in c("fraction", "count")) {
     res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef,
                                     selfVariance = "exact"))$cellResults
     int <- cell_internal(cells, 30, ef, FALSE, "cr2")
@@ -29,7 +29,7 @@ test_that("spicy() is the internal cell method with the frailty and image random
 })
 
 test_that("the cell method matches the plain-R reference for every pair", {
-  for (ef in c("allocation", "count")) for (lc in c(FALSE, TRUE)) for (vr in c("cr2", "hartung_knapp")) {
+  for (ef in c("fraction", "count")) for (lc in c(FALSE, TRUE)) for (vr in c("cr2", "hartung_knapp")) {
     res <- cell_internal(cells, 30, ef, lc, vr)
     # the reference is in (counted, centre) order, which is the user's from -> to
     ref <- ref_spicy_cell(transform(cells, subject = patient), grid, 30, lc, vr, effect = ef)
@@ -43,7 +43,7 @@ test_that("the cell method matches the plain-R reference for every pair", {
 })
 
 test_that("to is the centre (relabelled) type and from the counted type", {
-  for (ef in c("allocation", "count")) {
+  for (ef in c("fraction", "count")) {
     res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
                                   effect = ef))$cellResults
     # T cells were moved next to tumour cells in group B: more T cells have a tumour cell nearby, and there are more
@@ -58,10 +58,26 @@ test_that("allocation: the effect is the fraction of T cells moved next to tumou
   # within r, so the extra fraction is a little under 0.4 (the moved cells that already had a tumour cell nearby are
   # not extra)
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))
-  expect_identical(res$effect, "allocation")
+  expect_identical(res$effect, "fraction")
   x <- res$cellResults["tumour__T", ]
   expect_lt(abs(x$excess_ref), 0.05)
   expect_gt(x$excess_comp, 0.25); expect_lt(x$excess_comp, 0.45)
+})
+
+test_that("effect = \"allocation\" is the extra fraction under its earlier name", {
+  a <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T"))
+  b <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
+                              effect = "fraction"))
+  d <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 15, from = "tumour", to = "T",
+                              effect = "allocation"))
+  expect_identical(b$effect, "fraction"); expect_identical(d$effect, "fraction")
+  expect_identical(a$cellResults, b$cellResults); expect_identical(d$cellResults, b$cellResults)
+  old <- d; old$effect <- "allocation"
+  expect_s3_class(spicyBoxPlot(old, from = "tumour", to = "T"), "ggplot")
+  ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"), dataset = TRUE)
+  pr <- list(c("tumour", "T"))
+  expect_identical(spicyR:::.cell_graph(ctx, pr, r = 15, label_clustering = FALSE, effect = "allocation"),
+                   spicyR:::.cell_graph(ctx, pr, r = 15, label_clustering = FALSE, effect = "fraction"))
 })
 
 test_that("allocation moments are exact: cross-pairs by enumeration, self-pairs by enumeration of every labelling", {
@@ -88,7 +104,7 @@ test_that("allocation moments are exact: cross-pairs by enumeration, self-pairs 
 test_that("k nearest neighbours: both effects run, and images with at most k cells are skipped", {
   ck <- rbind(cells, data.frame(x = c(1, 2, 3), y = c(1, 2, 3), cellType = c("tumour", "T", "B"),
                                 imageID = "tiny", patient = "A01", condition = factor("A", levels = c("A", "B"))))
-  for (ef in c("allocation", "count")) {
+  for (ef in c("fraction", "count")) {
     res <- suppressMessages(spicy(ck, "condition", subject = "patient", k = 5, from = "tumour", to = "T",
                                   effect = ef))$cellResults
     expect_gt(res["tumour__T", "excess_difference"], 0)
@@ -125,8 +141,8 @@ test_that("images within a patient: the core's rows match the reference", {
 
 test_that("with one image per patient, the image random effect changes nothing", {
   one <- cells[grepl("_1$", cells$imageID), ]
-  a <- cell_internal(one, 30, "allocation", FALSE, "cr2", TRUE)
-  b <- cell_internal(one, 30, "allocation", FALSE, "cr2", FALSE)
+  a <- cell_internal(one, 30, "fraction", FALSE, "cr2", TRUE)
+  b <- cell_internal(one, 30, "fraction", FALSE, "cr2", FALSE)
   expect_equal(a$p_value, b$p_value, tolerance = 1e-10)
   expect_equal(a$excess_difference, b$excess_difference, tolerance = 1e-10)
   expect_true(all(a$tau2_image == 0))
@@ -297,11 +313,11 @@ test_that("Davies: one radius gives the single-radius p, matches a plain-R refer
 test_that("several radii from one neighbour search equal the single-radius graphs", {
   ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"))
   radii <- c(5, 12.5, 20, 40)
-  for (eff in c("allocation", "count")) {
+  for (eff in c("fraction", "count")) {
     G <- spicyR:::.cell_graphs_radii(ctx, radii, eff)
     for (i in seq_along(radii)) {
       g1 <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = radii[i], label_clustering = FALSE, effect = eff)
-      for (nm in if (eff == "allocation") c("any", "self_expected") else c("totals", "sq")) expect_identical(G[[i]][[nm]], g1[[nm]])
+      for (nm in if (eff == "fraction") c("any", "self_expected") else c("totals", "sq")) expect_identical(G[[i]][[nm]], g1[[nm]])
     }
   }
   res <- suppressMessages(spicy(cells, "condition", subject = "patient", r = radii, combine = "davies", from = "tumour", to = c("T", "B")))
@@ -390,7 +406,7 @@ test_that("more than two conditions: the overall test of each pair, adjusted and
   expect_equal(tab$overall_p_adj[first], stats::p.adjust(tab$overall_p_value[first], "BH"))
   # the overall test is the joint test of the core on the pair's rows
   ctx3 <- spicyR:::.cell_context(c3, "condition", "patient", "imageID", "cellType", c("x", "y"))
-  g3 <- spicyR:::.cell_graph(ctx3, list(c("tumour", "T")), r = 30, label_clustering = FALSE, effect = "allocation"); g3$image_heterogeneity <- TRUE
+  g3 <- spicyR:::.cell_graph(ctx3, list(c("tumour", "T")), r = 30, label_clustering = FALSE, effect = "fraction"); g3$image_heterogeneity <- TRUE
   r3 <- spicyR:::.cell_rows(ctx3, g3, "tumour", "T")
   Zg <- outer(r3$group, 0:2, `==`) * 1
   j <- spicyR:::stats_design_joint_test(r3, r3$unit, Zg, spicyR:::.cell_contrasts(3, 3), -1, FALSE)
@@ -412,7 +428,7 @@ test_that("a numeric condition with more than two values is continuous: the slop
   # the design test with the intercept and the centred condition, on the pair's rows
   cx <- spicyR:::.cell_context(cc, "age", "patient", "imageID", "cellType", c("x", "y"))
   expect_true(cx$continuous)
-  gx <- spicyR:::.cell_graph(cx, list(c("tumour", "T")), r = 30, label_clustering = FALSE, effect = "allocation"); gx$image_heterogeneity <- TRUE
+  gx <- spicyR:::.cell_graph(cx, list(c("tumour", "T")), r = 30, label_clustering = FALSE, effect = "fraction"); gx$image_heterogeneity <- TRUE
   rx <- spicyR:::.cell_rows(cx, gx, "tumour", "T"); x <- cx$x[rx$img + 1L]
   d <- spicyR:::stats_design_test(rx, rx$unit, length(cx$unit_labels), cbind(1, x - mean(x)), c(0, 1), -1)
   expect_equal(c(tab$excess_mean, tab$excess_slope, tab$se, tab$df, tab$p_value), c(d$theta[1], d$estimate, d$se, d$df, d$p),
@@ -519,7 +535,7 @@ test_that("image weights sum to one within each condition", {
 })
 
 test_that("a pair's result does not depend on the other pairs requested (psi over every counted type)", {
-  for (ef in c("allocation", "count")) {
+  for (ef in c("fraction", "count")) {
     full <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, effect = ef,
                                    adjustAbundance = TRUE))$cellResults
     one <- suppressMessages(spicy(cells, "condition", subject = "patient", r = 30, from = "tumour", to = "T", effect = ef,
@@ -598,7 +614,7 @@ mc_same <- function(x) {
 
 test_that("images with a missing condition are left out of every step, as if removed", {
   d <- mc_data(); keep <- !is.na(d$im$cond)
-  for (effect in c("count", "allocation")) {
+  for (effect in c("count", "fraction")) {
     mc_same(mc_pair(d, keep, condition = "cond", effect = effect))
     mc_same(mc_pair(d, keep, condition = "cond", subject = "patient", effect = effect))
     mc_same(mc_pair(d, keep, condition = "cond", subject = "patient", r = c(10, 20, 30), combine = "davies",
@@ -608,7 +624,7 @@ test_that("images with a missing condition are left out of every step, as if rem
 
 test_that("images with a missing condition are left out of the adjusted design, several images per patient", {
   d <- mc_data(); keep <- !is.na(d$im$cond)
-  for (effect in c("count", "allocation")) {
+  for (effect in c("count", "fraction")) {
     x <- mc_pair(d, keep, condition = "cond", subject = "patient", covariates = "cv", effect = effect)
     expect_true(any(x$full$adjusted_for == "covariates"))
     mc_same(x)
@@ -622,7 +638,7 @@ test_that("images with a missing condition are left out of the adjusted design, 
 
 test_that("images with a missing condition are left out of the test of three conditions", {
   d <- mc_data(); keep <- !is.na(d$im$cond3)
-  for (effect in c("count", "allocation")) {
+  for (effect in c("count", "fraction")) {
     mc_same(mc_pair(d, keep, condition = "cond3", subject = "patient", effect = effect))
     mc_same(mc_pair(d, keep, condition = "cond3", subject = "patient", covariates = "cv", effect = effect))
   }
@@ -813,7 +829,7 @@ ne_cells <- function(seed = 4, n_img = 16, big = 30, n0 = 300, levels = c("A", "
     z$imageID <- sprintf("img%02d", i); z$condition <- levels[(i - 1) %% length(levels) + 1]; z$age <- 40 + (i * 7) %% 13
     z }))
 }
-ne_rows <- function(ctx, r, effect = "allocation") {
+ne_rows <- function(ctx, r, effect = "fraction") {
   g <- spicyR:::.cell_graph(ctx, list(c("tumour", "T")), r = r, label_clustering = FALSE, effect = effect)
   g$image_heterogeneity <- TRUE
   spicyR:::.cell_rows(ctx, g, "tumour", "T")
@@ -939,7 +955,7 @@ test_that("every requested pair is in the table, with why it was not tested", {
   d <- sim_cells()
   d$cellType[which(d$patient == "A01")[1:6]] <- "solo"   # a type in one patient of one condition only
   n_types <- length(unique(d$cellType))
-  for (rr in list(30, c(15, 30))) for (ef in c("allocation", "count")) for (adj in c(FALSE, TRUE)) {
+  for (rr in list(30, c(15, 30))) for (ef in c("fraction", "count")) for (adj in c(FALSE, TRUE)) {
     x <- suppressMessages(spicy(d, "condition", subject = "patient", r = rr, effect = ef,
                                 adjustAbundance = adj))$cellResults
     expect_equal(nrow(x), n_types^2)

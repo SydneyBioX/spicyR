@@ -30,7 +30,7 @@ the comparison's: \code{from}, \code{to}, the two levels (\code{level_ref}, \cod
 (\code{excess_ref}, \code{excess_comp}), their difference (\code{excess_difference}, comp minus ref), its standard error, df and
 p-value, \code{p_threshold}, \code{significant}, the pair's \code{overall_p_value} and \code{overall_p_adj}, the number of comparisons
 tested in the pair (\code{n_comparisons}), the frailty variance of the comparison (\code{tau2}) and \code{not_tested} (why a
-comparison was not tested; \code{NA} when it was). For the allocation effect, the pair's \code{side} and the between-image
+comparison was not tested; \code{NA} when it was). For the extra fraction, the pair's \code{side} and the between-image
 variance of the comparison (\code{tau2_image}); with adjustment, \code{adjusted_for} and the unadjusted difference and
 p-value. Row names are \code{"from__to__comp__ref"}. The same table is \code{x$followUpResults}.
 }

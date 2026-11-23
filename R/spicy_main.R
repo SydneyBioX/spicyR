@@ -6,7 +6,7 @@
 #'
 #' **`method = "cell"` (the default).** In each image, the share of `to` cells with at least one `from`
 #' cell within radius `r` is compared with its exact expectation q if the `to` cells were a random choice
-#' among the cells that are not `from` cells. The effect (`effect = "allocation"`, the default) is the
+#' among the cells that are not `from` cells. The effect (`effect = "fraction"`, the default) is the
 #' **fraction of `to` cells placed next to (or kept away from) `from` cells**. For a pair that attracts
 #' (more `to` cells next to `from` cells than q over all images together) it is (observed share - q) / (1 - q):
 #' if a fraction f of the `to` cells were moved next to `from` cells, the effect is f. For a pair that avoids
@@ -39,7 +39,7 @@
 #' When nearly every cell has a `from` cell within `r` (q close to 1), there is little room for attraction and
 #' an attracting pair's images carry little information; a smaller `r` is more informative.
 #'
-#' The allocation effect is bounded: an image of an avoiding pair with no `to` cell next to a `from` cell has the
+#' The extra fraction is bounded: an image of an avoiding pair with no `to` cell next to a `from` cell has the
 #' effect -1, and an image of an attracting pair with every `to` cell next to one has +1. A patient is informative at
 #' a radius when at least one of its images is not at -1 or +1. A radius where one condition has no informative
 #' patient is not tested: that condition's patients all have the same effect, so its spread is exactly 0 and the
@@ -60,7 +60,7 @@
 #'
 #' For a self-pair (`from` = `to`) every cell can carry the label, so random labelling moves both the cells counted
 #' and their neighbours. Its variance is the random-labelling variance of the self-pair (for the radius graph and for
-#' the k nearest neighbours), not the variance of a pair of two types. For the allocation effect this variance
+#' the k nearest neighbours), not the variance of a pair of two types. For the extra fraction this variance
 #' depends on how many neighbours each pair of nearby cells shares, which takes time in proportion to the number of
 #' cells times the square of the number of neighbours per cell. With a radius, the shared neighbours are by default
 #' counted from `selfVarianceCells` randomly chosen cells of each image and scaled up (`selfVariance = "sampled"`),
@@ -69,7 +69,7 @@
 #' times the area where their two discs overlap; `"geometricSampled"` corrects that with the sampled cells. The count
 #' effect and the k nearest neighbours always use the exact variance.
 #'
-#' With the allocation effect, an image whose room on the pair's side (the `to` cells without a `from` neighbour
+#' With the extra fraction, an image whose room on the pair's side (the `to` cells without a `from` neighbour
 #' expected by chance for an attracting pair, those with one for an avoiding pair) is below one cell is not used:
 #' its effect could not show the pair's side, and could be large in the other direction. The side is chosen first,
 #' from every image.
@@ -137,9 +137,10 @@
 #'   radius (default 50), or several to be combined by `combine` (two conditions only; a survival outcome takes one
 #'   radius). Image method: the radii of the L function (default 20, 50 and 100).
 #' @param from,to Cell types to test (all ordered pairs by default).
-#' @param method `"cell"` (spicyR Cell, the default) or `"image"` (the original spicyR test).
-#' @param effect Cell method: `"allocation"` (the default), the extra fraction of `to` cells with at least
+#' @param method `"cell"` (spicyR v2, the default) or `"image"` (spicyR v1, the original spicyR test).
+#' @param effect Cell method: `"fraction"` (the default), the extra fraction of `to` cells with at least
 #'   one `from` cell within `r`; or `"count"`, the number of extra `from` cells within `r` of each `to` cell.
+#'   `"allocation"`, the earlier name of `"fraction"`, is also accepted.
 #'   With `k`, "within `r`" means among the cell's `k` nearest neighbours.
 #' @param k Cell method: use the `k` nearest neighbours instead of a radius.
 #' @param combine Cell method with several radii: `"davies"` (the default: Davies' upper bound on the max-T
@@ -174,7 +175,7 @@
 #'   row names, gives the image IDs, or the name of a table of the SpatialData store or object. Every image of the
 #'   cells needs a row, and every row an image. A `survival::Surv` column given as `condition` makes a survival
 #'   analysis, also from a store.
-#' @param selfVariance Cell method, allocation effect with a radius: how a self-pair's variance counts the
+#' @param selfVariance Cell method, extra fraction with a radius: how a self-pair's variance counts the
 #'   neighbours shared by nearby cells: `"sampled"` (the default), `"exact"`, `"geometricSampled"` or `"geometric"`
 #'   (see Details).
 #' @param selfVarianceCells The number of cells sampled in each image for `selfVariance = "sampled"` or
@@ -193,7 +194,7 @@
 #'   image's cells, each cell keeping its pair of `from` and `to` weights and never its own neighbour, with the exact
 #'   mean and variance of the score under that permutation (for the count effect, as for a self-pair of cell types,
 #'   the expected score is a share of the summed `from` weight around all the cells, the share that gives the
-#'   difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (allocation:
+#'   difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (fraction:
 #'   with the variance of `selfVariance`). One cell with `from` weight 1 and a `to` weight above 0 in any image is
 #'   enough to test a pair this way in every image. One radius and cells in memory. Image method: see
 #'   [getPairwise()].
@@ -203,7 +204,7 @@
 #'   `weightsByPair`, `weightFactor`, `weightZThreshold`, `window`, `window.length`, `edgeCorrect`,
 #'   `includeZeroCells`, `verbose`, `BPPARAM`. Supplying `alternateResult` selects the image method.
 #' @return A `SpicyResults` object. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work
-#'   for both methods. For the cell method, `$cellResults` holds the full table: for the allocation effect,
+#'   for both methods. For the cell method, `$cellResults` holds the full table: for the extra fraction,
 #'   the pair's `side` (`"attract"` or `"avoid"`, which sets the scale of the effect), the effect in each
 #'   condition (`excess_ref`, `excess_comp`, at the average covariates), the difference
 #'   (`excess_difference`), its standard error, df, p-value and BH-adjusted p-value, the frailty variance, the
@@ -259,7 +260,7 @@
 #'   \doi{10.1080/01621459.2018.1554485}
 #' @examples
 #' data("diabetesData")
-#' # spicyR Cell: patients ("case") are the units
+#' # spicyR v2: patients ("case") are the units
 #' # the extra fraction of Th cells, and of beta cells, with a Tc cell within 50 units
 #' res <- spicy(diabetesData, condition = "stage", subject = "case", r = 50,
 #'              from = "Tc", to = c("Th", "beta"))
@@ -288,7 +289,7 @@ spicy <- function(cells,
                   from = NULL,
                   to = NULL,
                   method = c("cell", "image"),
-                  effect = c("allocation", "count"),
+                  effect = c("fraction", "count", "allocation"),
                   k = NULL,
                   combine = c("davies", "maxT", "cauchy"),
                   adjustAbundance = FALSE,
@@ -332,6 +333,7 @@ spicy <- function(cells,
   if (length(dots)) stop("arguments not used by method = \"cell\": ", paste(names(dots), collapse = ", "),
                          ". They belong to method = \"image\".", call. = FALSE)
   combine <- match.arg(combine); variance <- match.arg(variance); effect <- match.arg(effect)
+  if (effect == "allocation") effect <- "fraction"
   if (is.null(r) && is.null(k)) r <- 50
   weighted <- !is.null(cellWeights)
   if (weighted && (from_store || !is.null(k) || length(r) != 1L))
@@ -388,7 +390,7 @@ spicy <- function(cells,
   bad <- setdiff(c(from, to), types)
   if (length(bad)) stop(if (weighted) "not a column of `cellWeights`: " else "cell type not found: ",
                         paste(bad, collapse = ", "), call. = FALSE)
-  # from -> to: are `to` cells placed next to `from` cells (allocation: the extra fraction of `to` cells with a `from`
+  # from -> to: are `to` cells placed next to `from` cells (fraction: the extra fraction of `to` cells with a `from`
   # cell within r; count: extra `from` cells within r of each `to` cell), beyond the `to` cells being a random subset
   # of the cells that are not `from` cells. This is the core's own (counted, centre) order, so pairs pass through.
   pairs <- enumerate_pairs(from, to, types, "binomial")
@@ -440,7 +442,7 @@ spicy <- function(cells,
 ## with the combined p-value (the main test and, when adjusted, the unadjusted test); the other columns are those of
 ## the radius chosen by max-T. The image rows are those of the radius nearest the median.
 .cell_pairs <- function(ctx, graphs, pairs, variance, adjust, Z_extra, radii, combine, n_threads = 1L) {
-  allocation <- graphs[[1]]$effect == "allocation"
+  allocation <- graphs[[1]]$effect %in% c("fraction", "allocation")
   K <- length(graphs)
   keep <- if (K > 1L) which.min(abs(radii - stats::median(radii))) else 1L
   from <- vapply(pairs, `[`, "", 1L); to <- vapply(pairs, `[`, "", 2L)
@@ -532,7 +534,7 @@ spicy <- function(cells,
 }
 
 ## Survival: score test and the hazard ratio of the shrunken excess, per pair, at one radius (or k).
-.cell_survival <- function(ctx, pairs, r, k, sv, Z_extra, cores, adjust, effect = "allocation") {
+.cell_survival <- function(ctx, pairs, r, k, sv, Z_extra, cores, adjust, effect = "fraction") {
   g <- .cell_graph(ctx, pairs, r = if (is.na(r)) NULL else r, k = k, label_clustering = FALSE, n_threads = cores,
                    effect = effect)
   g$image_heterogeneity <- TRUE

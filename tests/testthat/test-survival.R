@@ -49,7 +49,7 @@ test_that("patients with no outcome are left out first: the result is that of th
   tm <- d$os[, 1]; tm[d$patient %in% gone] <- NA
   d$os <- survival::Surv(tm, d$os[, 2])
   without <- scells[!scells$patient %in% gone, ]
-  for (ef in c("allocation", "count")) for (adj in c(FALSE, TRUE)) for (cv in list(NULL, c("age", "depth"))) {
+  for (ef in c("fraction", "count")) for (adj in c(FALSE, TRUE)) for (cv in list(NULL, c("age", "depth"))) {
     a <- spicy(d, condition = "os", subject = "patient", r = 30, from = c("tumour", "T"), effect = ef,
                adjustAbundance = adj, covariates = cv)$cellResults
     b <- spicy(without, condition = "os", subject = "patient", r = 30, from = c("tumour", "T"), effect = ef,
@@ -57,7 +57,7 @@ test_that("patients with no outcome are left out first: the result is that of th
     expect_identical(a$not_tested, b$not_tested)
     num <- names(a)[vapply(a, is.numeric, TRUE)]
     expect_equal(a[num], b[num], tolerance = 1e-8)
-    if (ef == "allocation") expect_identical(a$side, b$side)
+    if (ef == "fraction") expect_identical(a$side, b$side)
   }
 })
 

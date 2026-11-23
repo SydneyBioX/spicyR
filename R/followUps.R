@@ -22,7 +22,7 @@
 #'   (`excess_ref`, `excess_comp`), their difference (`excess_difference`, comp minus ref), its standard error, df and
 #'   p-value, `p_threshold`, `significant`, the pair's `overall_p_value` and `overall_p_adj`, the number of comparisons
 #'   tested in the pair (`n_comparisons`), the frailty variance of the comparison (`tau2`) and `not_tested` (why a
-#'   comparison was not tested; `NA` when it was). For the allocation effect, the pair's `side` and the between-image
+#'   comparison was not tested; `NA` when it was). For the extra fraction, the pair's `side` and the between-image
 #'   variance of the comparison (`tau2_image`); with adjustment, `adjusted_for` and the unadjusted difference and
 #'   p-value. Row names are `"from__to__comp__ref"`. The same table is `x$followUpResults`.
 #'

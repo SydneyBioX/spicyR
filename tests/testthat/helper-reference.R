@@ -94,7 +94,7 @@ ref_psi_tilde <- function(ic, nb, omega, self_count = c("spec", "package")) {
 ## v already multiplied by psi when label_clustering = TRUE), as the package's excess_image_data().
 ref_image_data <- function(cells, pairs, r, label_clustering = TRUE, self_count = "spec", effect = "count") {
   imgs <- sort(unique(as.character(cells$imageID)))
-  counts_fun <- if (effect == "allocation") ref_image_counts_alloc else ref_image_counts
+  counts_fun <- if (effect == "fraction") ref_image_counts_alloc else ref_image_counts
   per_img <- lapply(imgs, function(im) {
     z <- cells[cells$imageID == im, ]; nb <- ref_neighbours(z$x, z$y, r)
     ic <- lapply(seq_len(nrow(pairs)), function(j) counts_fun(as.character(z$cellType), nb, pairs$from[j], pairs$to[j]))
@@ -107,7 +107,7 @@ ref_image_data <- function(cells, pairs, r, label_clustering = TRUE, self_count 
     d <- do.call(rbind, lapply(seq_along(imgs), function(i) { ic <- per_img[[i]]$ic[[j]]
       data.frame(imageID = imgs[i], O = ic$O, E = ic$E, n = ic$n, v = max(ic$v, 0) * per_img[[i]]$psi[j],
                  n_to = if (is.null(ic$n_to)) NA_real_ else ic$n_to) }))
-    if (effect == "allocation") {
+    if (effect == "fraction") {
       # the side, once per pair from the pooled images: attraction n = n_B - E, avoidance n = E
       d <- d[d$n_to > 0 & d$v > 0, , drop = FALSE]
       if (sum(d$O - d$E) < 0) d$n <- d$E

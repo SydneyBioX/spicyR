@@ -59,7 +59,7 @@ BiocManager::install("SydneyBioX/spicyR")     # or the latest version from GitHu
 
 ## Coming from spicyR 1.x
 
-spicyR 2.0 changes the default test. The image-level test of earlier versions, which compares a per-image summary of
+spicyR 2.0 changes the default test to spicyR v2. The image-level test of earlier versions (spicyR v1), which compares a per-image summary of
 the L-function with a mixed model, is still available, with the same results, as `spicy(..., method = "image")`.
 `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work with both.
 

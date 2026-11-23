@@ -71,7 +71,7 @@ spicyBoxPlot <- function(results,
   if (cell && isTRUE(results$isKontextual)) {
     ylabel <- "Kontextual excess\n(beyond chance within the parent)"
     title <- paste0(from, " around ", to, " within ", parent)
-  } else if (cell && identical(results$effect, "allocation")) {
+  } else if (cell && isTRUE(results$effect %in% c("fraction", "allocation"))) {
     ylabel <- paste0("Extra fraction of ", to, " next to ", from, "\n(beyond chance)")
     title <- paste0(to, " next to ", from)
   } else if (cell) {

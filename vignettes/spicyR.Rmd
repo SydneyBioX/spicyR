@@ -292,7 +292,7 @@ To ask about arrangement within a compartment, for example whether proliferating
 Kontextual test in the *Statial* package does this.
 :::
 
-# Allocation or count?
+# Extra fraction or count?
 
 By default spicyR asks whether each `to` cell has a `from` cell nearby. With `effect = "count"` it asks how many:
 the effect is then the number of extra `from` cells within the radius of each `to` cell.
@@ -514,11 +514,11 @@ its own true effect, which varies around its group's mean by an amount estimated
 random-effects, model, with the between-patient variance estimated in the same way). The difference between groups, adjusted for any covariates, is tested on Satterthwaite degrees of freedom
 with patients as the clusters, using the small-sample cluster-robust (CR2) variance [@bell2002bias; @pustejovsky2018small].
 Each group contributes its own CR2 variance. For a self-pair (`from` the same as `to`), whose cells and neighbours are
-both moved by random labelling, the variance is the random-labelling variance of the self-pair. For the allocation
-effect with a radius, the neighbours shared by nearby cells are counted from 50 randomly chosen cells of each image
+both moved by random labelling, the variance is the random-labelling variance of the self-pair. For the extra
+fraction with a radius, the neighbours shared by nearby cells are counted from 50 randomly chosen cells of each image
 (`selfVarianceCells`) and scaled up, an unbiased and reproducible estimate that keeps large radii fast;
-`selfVariance = "exact"` counts them for every cell. With the
-allocation effect, an image whose room on the pair's side is below one cell is not used. A radius where a group's effective patients fall below the smaller of three and half
+`selfVariance = "exact"` counts them for every cell. With the extra
+fraction, an image whose room on the pair's side is below one cell is not used. A radius where a group's effective patients fall below the smaller of three and half
 its patients at that radius, because a few patients carry nearly all of its weight, is not tested. This is designed to keep false positives near the nominal rate even
 with modest numbers of patients. A paper describing the method is in preparation.
 
@@ -549,7 +549,7 @@ citation("spicyR")
 # Coming from spicyR 1.x
 
 spicyR 2.0 changes the default test. Before 2.0, `spicy()` compared a per-image summary of the L-function between
-groups with a weighted mixed model [@canete2022spicyr]. That test is still available, and gives the same results as
+groups with a weighted mixed model [@canete2022spicyr]. That test, spicyR v1, is still available, and gives the same results as
 before, with `method = "image"`; it is described in the vignette "The original image-level test in spicyR". It is
 also the method to use with your own per-image statistics (`alternateResult`), for example from the Statial
 package. `topPairs()`, `signifPlot()`, `spicyBoxPlot()` and `bind()` work with both tests. For the image-level test,

@@ -28,7 +28,7 @@ its error target of about 0.1\%).}
 levels for the pairs called by the overall test at level \code{alpha} (see \code{\link{topFollowUps}}).}
 \item{\code{pairwiseAssoc}}{a list with, for every pair, the effect in every image (\code{NA} where the pair
 could not be measured).}
-\item{\code{effect}}{\code{"allocation"} (the extra fraction of \code{to} cells with a \code{from} cell
+\item{\code{effect}}{\code{"fraction"} (the extra fraction of \code{to} cells with a \code{from} cell
 within \code{r}), \code{"count"} (the extra \code{from} cells within \code{r} of each \code{to} cell), or
 \code{"kontextual"} (Statial's Kontextual test).}
 \item{\code{imageWeights}}{a list with, for every pair, each image's weight in the test: its share of its

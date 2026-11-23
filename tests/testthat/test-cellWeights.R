@@ -14,7 +14,7 @@ test_that("getPairwise() with 0/1 weights equals the cell types", {
 })
 
 test_that("spicy() cell method with 0/1 weights equals the cell types", {
-  for (eff in c("allocation", "count")) {
+  for (eff in c("fraction", "count")) {
     a <- spicy(cells, condition = "stage", subject = "case", r = 50, from = c("Tc", "Th"), to = c("beta", "alpha", "Th"), effect = eff)$cellResults
     b <- spicy(cells, condition = "stage", subject = "case", r = 50, from = c("Tc", "Th"), to = c("beta", "alpha", "Th"), effect = eff,
                cellWeights = onehot)$cellResults
@@ -243,7 +243,7 @@ test_that("soft pairs whose `to` cells all are candidates give the results of sp
 test_that("soft self-pairs, a soft subtype of a 0/1 group, and the count effect are tested", {
   s <- soft_inputs()
   W <- cbind(s$dense, lymphocyte = (s$cells$cellType %in% c("T", "B")) * 1)
-  for (eff in c("allocation", "count")) {
+  for (eff in c("fraction", "count")) {
     b <- spicy(s$cells, condition = "condition", subject = "patient", r = 30, from = c("T", "lymphocyte"),
                to = c("T", "lymphocyte"), cellWeights = W, effect = eff)$cellResults
     expect_identical(paste(b$from, b$to), c("T T", "T lymphocyte", "lymphocyte T", "lymphocyte lymphocyte"))

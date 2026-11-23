@@ -22,7 +22,7 @@ package: "`r BiocStyle::pkg_ver('spicyR')`"
 abstract: >
   The original spicyR test, available as spicy(method = "image"): per-image L-function summaries
   compared between conditions with weighted linear and mixed-effects models. Since spicyR 2.0 the
-  default is spicyR Cell; see the main vignette.
+  default is spicyR v2, the cell-level test; see the main vignette. This test is spicyR v1.
 vignette: >
   %\VignetteIndexEntry{The original image-level test (method = "image")}
   %\VignetteEngine{knitr::rmarkdown}

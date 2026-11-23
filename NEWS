@@ -1,3 +1,11 @@
+CHANGES IN VERSION 1.99.62
+--------------------------
+
+    o spicy(): the extra fraction is effect = "fraction" (the default), the name used in the spicyR 2 paper.
+      effect = "allocation", its earlier name, is still accepted and gives the same results; results now record
+      effect "fraction", and spicyBoxPlot() also plots results that record "allocation". The documentation calls
+      the two tests spicyR v2 (method = "cell") and spicyR v1 (method = "image").
+
 CHANGES IN VERSION 1.99.61
 --------------------------
 

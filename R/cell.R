@@ -1,4 +1,4 @@
-## spicyR Cell: the R side of the cell-level analysis. Everything numeric happens in the C++ core
+## spicyR v2: the R side of the cell-level analysis. Everything numeric happens in the C++ core
 ## (src/core); these functions only prepare inputs, call it and assemble tables. The Python twin
 ## (spicyr) mirrors them line for line. Written with AI assistance (Claude, Anthropic), directed by the
 ## authors; see NEWS.
@@ -200,14 +200,15 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
                      allocation, as.integer(n_threads), .self_var_opts(ctx)$method, .self_var_opts(ctx)$cells)
 }
 
-## Neighbour sums and the label-clustering factor at one radius (or k). effect "allocation": for every cell, whether
+## Neighbour sums and the label-clustering factor at one radius (or k). effect "fraction": for every cell, whether
 ## it has any cell of each type among its neighbours; "count": how many. Without the label-clustering factor (as
 ## spicy()) the sums are taken image by image (.cell_stream()); the factor needs the whole-data dataset (ctx$data, from
 ## .cell_context(dataset = TRUE)).
 .cell_graph <- function(ctx, pairs, r = NULL, k = NULL, label_clustering = TRUE, window = "convex", n_threads = 1L,
-                        effect = "allocation") {
+                        effect = "fraction") {
   knn <- !is.null(k)
-  allocation <- effect == "allocation"
+  if (identical(effect, "allocation")) effect <- "fraction"   # the earlier name, as spicy() accepts it
+  allocation <- effect == "fraction"
   if (!label_clustering) {
     x <- .cell_stream(ctx, radii = r, k = k, allocation = allocation, n_threads = n_threads)[[1]]
     g <- if (allocation) list(knn = knn, effect = effect, any = x$any, self_expected = x$self_expected)
@@ -243,8 +244,9 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 
 ## Several radii from one neighbour search (radius graph, no label-clustering inflation), image by image: one graph
 ## per radius, each identical to .cell_graph(ctx, pairs, r = radii[i], label_clustering = FALSE, effect = effect).
-.cell_graphs_radii <- function(ctx, radii, effect = "allocation") {
-  allocation <- effect == "allocation"
+.cell_graphs_radii <- function(ctx, radii, effect = "fraction") {
+  if (identical(effect, "allocation")) effect <- "fraction"   # the earlier name, as spicy() accepts it
+  allocation <- effect == "fraction"
   m <- .cell_stream(ctx, radii = radii, allocation = allocation)
   lapply(m, function(x) {
     g <- if (allocation) list(knn = FALSE, effect = effect, any = x$any, self_expected = x$self_expected)
@@ -259,13 +261,13 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 .cell_rows <- function(ctx, g, f, t) {
   fc <- match(f, ctx$type_labels) - 1L; tc <- match(t, ctx$type_labels) - 1L
   # images with a missing condition give no row: they play no part in the side, tau2_image or the test
-  rows <- if (g$effect == "allocation") stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi, g$self_var,
+  rows <- if (g$effect %in% c("fraction", "allocation")) stats_allocation_image_rows(g$any, g$self_expected, ctx$counts, fc, tc, g$psi, g$self_var,
                                                                     ctx$image_group)
           else stats_excess_image_rows(g$totals, g$sq, ctx$counts, fc, tc, g$knn, g$psi, g$self_var, ctx$image_group)
   rows$unit <- ctx$image_unit[rows$img + 1L]
   if (!is.null(ctx$image_group)) rows$group <- ctx$image_group[rows$img + 1L]
   # allocation: the pair's side, chosen in the core from the images (attraction scales by 1 - q, avoidance by q)
-  side <- if (g$effect == "allocation") { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
+  side <- if (g$effect %in% c("fraction", "allocation")) { if (sum(rows$O - rows$E) < 0) "avoid" else "attract" }
   if (isTRUE(g$image_heterogeneity)) rows <- .cell_image_effect(ctx, rows)
   attr(rows, "side") <- side
   rows
@@ -293,7 +295,8 @@ enumerate_pairs <- function(from, to, all_types, family, parent = NULL) {
 ## pair of weights: allocation with 0/1 weights by Dataset::overlap_moments (a self-pair of a cell type then gives the
 ## cell-type self-pair), every other case by Dataset::overlap_soft_rows.
 .cell_weighted <- function(ctx, memb, pairs, r, effect, variance, adjust, Z_extra, survival = FALSE, sv = NULL) {
-  allocation <- effect == "allocation"
+  if (identical(effect, "allocation")) effect <- "fraction"   # the earlier name, as spicy() accepts it
+  allocation <- effect == "fraction"
   dataset_build_radius_index(ctx$data, r)
   csr <- .membership_rows(memb, ctx$ord)
   K <- length(memb$labels)

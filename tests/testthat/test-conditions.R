@@ -8,7 +8,7 @@ c3$condition[c3$patient %in% sprintf("A%02d", 1:4)] <- "C"
 run3 <- function(...) suppressMessages(spicy(c3, "condition", subject = "patient", r = 30, ...))
 
 ## The image rows of a pair with the image random effect, as spicy() takes them
-rows3 <- function(cells, f, t, effect = "allocation", ref = NULL) {
+rows3 <- function(cells, f, t, effect = "fraction", ref = NULL) {
   ctx <- spicyR:::.cell_context(cells, "condition", "patient", "imageID", "cellType", c("x", "y"), ref = ref)
   g <- spicyR:::.cell_graph(ctx, list(c(f, t)), r = 30, label_clustering = FALSE, effect = effect)
   g$image_heterogeneity <- TRUE
@@ -74,7 +74,7 @@ test_that("follow-ups: the pairs called by the overall test, every two levels, a
 })
 
 test_that("a follow-up is the two-condition test of spicy() on the patients of its two levels", {
-  for (adjust in c(FALSE, TRUE)) for (effect in c("count", "allocation")) {
+  for (adjust in c(FALSE, TRUE)) for (effect in c("count", "fraction")) {
     res <- run3(alpha = 0.5, effect = effect, adjustAbundance = adjust)
     fu <- res$followUpResults
     expect_gt(nrow(fu), 0)
@@ -86,7 +86,7 @@ test_that("a follow-up is the two-condition test of spicy() on the patients of i
       t2 <- two[match(paste(f$from, f$to), paste(two$from, two$to)), ]
       # allocation: the side of the two levels alone may differ from the side over every image (which the
       # follow-up keeps, as the overall test); compare where they agree
-      same <- if (effect == "allocation") f$side == t2$side else rep(TRUE, nrow(f))
+      same <- if (effect == "fraction") f$side == t2$side else rep(TRUE, nrow(f))
       expect_gt(sum(same), 0)
       for (col in c("excess_ref", "excess_comp", "excess_difference", "se", "df", "p_value", "tau2"))
         expect_equal(f[[col]][same], t2[[col]][same], tolerance = 1e-10, label = paste(effect, adjust, col))
