@@ -4,6 +4,7 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -281,6 +282,10 @@ class Dataset {
   void self_any_from_counts(int img, const std::vector<double>& c, double* out_img) const;
   // The out-neighbour lists of image img's cells (local indices, CSR), b excluded.
   void own_neighbour_lists(int img, bool knn, std::vector<int>& ptr, std::vector<int>& nb) const;
+  // overlap_soft_rows(): each image's soft-weight graph structure (it depends only on the cells and the radius), built
+  // once and reused by every later call at the same radius
+  mutable std::vector<std::shared_ptr<const void>> soft_graph_cache_;
+  mutable double soft_graph_cache_r_ = -1;
   // self_variances for one image from its neighbour lists
   void self_variance_from_lists(int img, const std::vector<int>& ptr, const std::vector<int>& nb, bool allocation,
                                 double* out_img) const;

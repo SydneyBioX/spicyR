@@ -2205,13 +2205,17 @@ std::vector<double> Dataset::overlap_soft_rows(const std::vector<double>& a, con
     throw std::invalid_argument("overlap_soft_rows: one FROM weight per cell and one TO weight per cell and pair");
   std::vector<double> out(static_cast<std::size_t>(n_images()) * P * 4, 0.0);
   std::vector<int> ptr, nb;
+  if (soft_graph_cache_r_ != r_ || soft_graph_cache_.size() != static_cast<std::size_t>(n_images())) {
+    soft_graph_cache_.assign(n_images(), nullptr);
+    soft_graph_cache_r_ = r_;
+  }
   for (int img = 0; img < n_images(); ++img) {
     const int start = image_offsets_[img], N = image_offsets_[img + 1] - start;
     std::vector<long double> ai(N), bi(N);
     long double sa = 0;
     for (int i = 0; i < N; ++i) { ai[i] = a[start + i]; sa += ai[i]; }
     bool graph = false;
-    SoftGraph g;
+    const SoftGraph* gp = nullptr;
     std::vector<long double> h(N);
     long double L = 0;
     for (std::size_t q = 0; q < P; ++q) {
@@ -2228,14 +2232,15 @@ std::vector<double> Dataset::overlap_soft_rows(const std::vector<double>& a, con
           h[l] = allocation ? 1 - prod : sum;
           L += h[l];
         }
-        g = soft_graph(N, ptr, nb);
+        if (!soft_graph_cache_[img]) soft_graph_cache_[img] = std::make_shared<SoftGraph>(soft_graph(N, ptr, nb));
+        gp = static_cast<const SoftGraph*>(soft_graph_cache_[img].get());
         graph = true;
       }
       long double O = 0;
       for (int l = 0; l < N; ++l) O += bi[l] * h[l];
       long double E = 0, V = 0, scale = 0;
-      if (allocation) soft_allocation_moments(g, ai, bi, E, V, scale, exact);
-      else { long double p; soft_count_moments(g, ai, bi, p, V, scale); E = p * L; }
+      if (allocation) soft_allocation_moments(*gp, ai, bi, E, V, scale, exact);
+      else { long double p; soft_count_moments(*gp, ai, bi, p, V, scale); E = p * L; }
       o[0] = static_cast<double>(O); o[1] = static_cast<double>(E);
       o[2] = V > 1e-11L * (1 + scale) ? static_cast<double>(V) : 0.0;
     }
