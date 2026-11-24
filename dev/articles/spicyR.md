@@ -757,12 +757,12 @@ rare cell types, so it is not the default.
 
 ## Reporting results
 
-A methods sentence might read: “We used spicyR (version 1.99.62) to
-test, for every ordered pair of cell types, whether the fraction of `to`
-cells with at least one `from` cell within 25 µm, relative to random
-labelling of the cells in each image, differed between ER+ and ER−
-patients, with patients as the units of analysis. P-values were adjusted
-across pairs by the Benjamini–Hochberg method.” Show a per-patient plot
+A methods sentence might read: “We used spicyR (version 2.1.1) to test,
+for every ordered pair of cell types, whether the fraction of `to` cells
+with at least one `from` cell within 25 µm, relative to random labelling
+of the cells in each image, differed between ER+ and ER− patients, with
+patients as the units of analysis. P-values were adjusted across pairs
+by the Benjamini–Hochberg method.” Show a per-patient plot
 ([`spicyBoxPlot()`](https://sydneybiox.github.io/spicyR/dev/reference/spicyBoxPlot.md))
 and an image of the pair
 ([`plotImage()`](https://sydneybiox.github.io/spicyR/dev/reference/plotImage.md))
@@ -963,13 +963,13 @@ sessionInfo()
 #> [13] matrixStats_1.5.0           ExperimentHub_3.3.2        
 #> [15] AnnotationHub_4.3.3         BiocFileCache_3.3.3        
 #> [17] dbplyr_2.6.0                BiocGenerics_0.59.13       
-#> [19] generics_0.1.4              spicyR_1.99.62             
+#> [19] generics_0.1.4              spicyR_2.1.1               
 #> [21] BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] DBI_1.3.0            RBGL_1.89.0          httr2_1.3.0         
-#>   [4] anndataR_1.3.5       rlang_1.3.0          magrittr_2.0.5      
-#>   [7] Rarr_2.1.69          otel_0.3.0           e1071_1.7-17        
+#>   [4] anndataR_1.3.6       rlang_1.3.0          magrittr_2.0.5      
+#>   [7] Rarr_2.1.70          otel_0.3.0           e1071_1.7-17        
 #>  [10] compiler_4.6.2       RSQLite_3.53.3       paws.storage_0.11.0 
 #>  [13] png_0.1-9            systemfonts_1.3.4    vctrs_0.7.3         
 #>  [16] wk_0.9.5             pkgconfig_2.0.3      crayon_1.5.3        
@@ -984,7 +984,7 @@ sessionInfo()
 #>  [43] knitr_1.52           R.utils_2.13.0       BiocBaseUtils_1.15.1
 #>  [46] Matrix_1.7-6         splines_4.6.2        tidyselect_1.2.1    
 #>  [49] duckspatial_1.4.0    abind_1.4-8          yaml_2.3.12         
-#>  [52] curl_8.1.0           lattice_0.23-1       tibble_3.3.1        
+#>  [52] curl_8.2.0           lattice_0.23-1       tibble_3.3.1        
 #>  [55] withr_3.0.3          KEGGREST_1.53.6      S7_1.0.0            
 #>  [58] evaluate_1.0.5       sf_1.1-3             desc_1.4.3          
 #>  [61] units_1.0-1          proxy_0.4-29         Biostrings_2.81.9   
@@ -993,7 +993,7 @@ sessionInfo()
 #>  [70] ggplot2_4.0.4        scales_1.4.0         class_7.3-24        
 #>  [73] glue_1.8.1           tools_4.6.2          data.table_1.18.6.1 
 #>  [76] fs_2.1.0             grid_4.6.2           tidyr_1.3.2         
-#>  [79] crosstalk_1.2.2      AnnotationDbi_1.75.2 duckdb_2.0.0        
+#>  [79] crosstalk_1.2.2      AnnotationDbi_1.75.2 duckdb_2.0.1        
 #>  [82] cli_3.6.6            rappdirs_0.3.4       textshaping_1.1.0   
 #>  [85] S4Arrays_1.13.3      viridisLite_0.4.3    dplyr_1.2.1         
 #>  [88] gtable_0.3.6         R.methodsS3_1.8.2    sass_0.5.0          

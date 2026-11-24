@@ -481,7 +481,7 @@ sessionInfo()
 #> [13] ExperimentHub_3.3.2         AnnotationHub_4.3.3        
 #> [15] BiocFileCache_3.3.3         dbplyr_2.6.0               
 #> [17] BiocGenerics_0.59.13        generics_0.1.4             
-#> [19] spicyR_1.99.62              BiocStyle_2.41.0           
+#> [19] spicyR_2.1.1                BiocStyle_2.41.0           
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] DBI_1.3.0              deldir_2.0-4           httr2_1.3.0           
@@ -500,7 +500,7 @@ sessionInfo()
 #> [40] knitr_1.52             tensor_1.5.1           BiocBaseUtils_1.15.1  
 #> [43] Matrix_1.7-6           splines_4.6.2          tidyselect_1.2.1      
 #> [46] abind_1.4-8            yaml_2.3.12            spatstat.random_3.5-2 
-#> [49] codetools_0.2-20       spatstat.explore_3.8-3 curl_8.1.0            
+#> [49] codetools_0.2-20       spatstat.explore_3.8-3 curl_8.2.0            
 #> [52] lattice_0.23-1         tibble_3.3.1           withr_3.0.3           
 #> [55] KEGGREST_1.53.6        S7_1.0.0               evaluate_1.0.5        
 #> [58] desc_1.4.3             polyclip_1.10-7        Biostrings_2.81.9     
