@@ -122,8 +122,11 @@ of the \code{from} type with weight 0.6 is a candidate with the remaining 0.4), 
 replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
 \code{from} label's summed weight over the image's cells. A label with itself, and a pair where some \code{to} cells have
 \code{from} weight 1 (for example a group and one of its subtypes), are tested instead under random labelling of all the
-image's cells, each cell keeping its pair of \code{from} and \code{to} weights and never its own neighbour, with the exact
-mean and variance of the score under that permutation (for the count effect, as for a self-pair of cell types,
+image's cells, each cell keeping its pair of \code{from} and \code{to} weights and never its own neighbour, with the mean
+and variance of the score under that permutation (fraction: by default from a closed form that corrects every
+pair of cells exactly for sampling without replacement, exact for up to two cells and second order in 1 / cells;
+\code{selfVariance = "exact"} computes them exactly, at a cost of cells x neighbourhood size^2 per image; count:
+exact) (for the count effect, as for a self-pair of cell types,
 the expected score is a share of the summed \code{from} weight around all the cells, the share that gives the
 difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (fraction:
 with the variance of \code{selfVariance}). One cell with \code{from} weight 1 and a \code{to} weight above 0 in any image is
@@ -132,7 +135,8 @@ enough to test a pair this way in every image. One radius and cells in memory. I
 
 \item{selfVariance}{Cell method, extra fraction with a radius: how a self-pair's variance counts the
 neighbours shared by nearby cells: \code{"sampled"} (the default), \code{"exact"}, \code{"geometricSampled"} or \code{"geometric"}
-(see Details).}
+(see Details). With soft \code{cellWeights}, \code{"exact"} gives the exact moments of the pairs tested under random
+labelling of all cells, and any other value the closed form described under \code{cellWeights}.}
 
 \item{selfVarianceCells}{The number of cells sampled in each image for \code{selfVariance = "sampled"} or
 \code{"geometricSampled"} (every cell when an image has no more).}

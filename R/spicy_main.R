@@ -177,7 +177,8 @@
 #'   analysis, also from a store.
 #' @param selfVariance Cell method, extra fraction with a radius: how a self-pair's variance counts the
 #'   neighbours shared by nearby cells: `"sampled"` (the default), `"exact"`, `"geometricSampled"` or `"geometric"`
-#'   (see Details).
+#'   (see Details). With soft `cellWeights`, `"exact"` gives the exact moments of the pairs tested under random
+#'   labelling of all cells, and any other value the closed form described under `cellWeights`.
 #' @param selfVarianceCells The number of cells sampled in each image for `selfVariance = "sampled"` or
 #'   `"geometricSampled"` (every cell when an image has no more).
 #' @param cellWeights Optional cell weights in \[0, 1\], in the order of `cells`: a numeric vector with one weight
@@ -191,8 +192,11 @@
 #'   replace those of random labelling; weights of 1 give the results of the cell types. The abundance share is the
 #'   `from` label's summed weight over the image's cells. A label with itself, and a pair where some `to` cells have
 #'   `from` weight 1 (for example a group and one of its subtypes), are tested instead under random labelling of all the
-#'   image's cells, each cell keeping its pair of `from` and `to` weights and never its own neighbour, with the exact
-#'   mean and variance of the score under that permutation (for the count effect, as for a self-pair of cell types,
+#'   image's cells, each cell keeping its pair of `from` and `to` weights and never its own neighbour, with the mean
+#'   and variance of the score under that permutation (fraction: by default from a closed form that corrects every
+#'   pair of cells exactly for sampling without replacement, exact for up to two cells and second order in 1 / cells;
+#'   `selfVariance = "exact"` computes them exactly, at a cost of cells x neighbourhood size^2 per image; count:
+#'   exact) (for the count effect, as for a self-pair of cell types,
 #'   the expected score is a share of the summed `from` weight around all the cells, the share that gives the
 #'   difference a mean of 0). With 0/1 weights a label with itself gives the self-pair of that cell type (fraction:
 #'   with the variance of `selfVariance`). One cell with `from` weight 1 and a `to` weight above 0 in any image is

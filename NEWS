@@ -1,3 +1,13 @@
+CHANGES IN VERSION 2.1.1
+--------------------------
+
+    o spicy(), cell method with soft cellWeights: the mean and variance of a label with itself (and of a group with
+      its subtype) under random labelling now come by default from a closed form that corrects every pair of cells
+      exactly for sampling without replacement (exact for up to two cells, second order in 1 / cells). Its cost no
+      longer grows with cells x neighbourhood size^2, and each image's neighbour structure is built once per fit:
+      all 784 weighted pairs of a 151-biopsy heart dataset take 14 s instead of 220 s. selfVariance = "exact" keeps
+      the exact moments.
+
 CHANGES IN VERSION 1.99.62
 --------------------------
 
